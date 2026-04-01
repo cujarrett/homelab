@@ -39,7 +39,7 @@ The goal is to build, break, and rebuild a simple but realistic platform while l
 | Rack | GeeekPi DeskPi RackMate T0 Plus 10" 4U Cabinet | 1 |
 | Rack | GeeekPi 10" 2U Rack Mount for Raspberry Pi | 1 |
 | Rack | 10" Rack Mount PDU 4 Outlet 1U w/ Surge Protection | 1 |
-| Rack | GeeekPi 6.91" 1U Rack Mount LCD Touch Screen (1424x280) | 1 |
+| Display | GeeekPi 6.91" 1U Rack Mount LCD Touch Screen (1424x280) | 1 |
 | Compute | Raspberry Pi 5 8GB | 4 |
 | Compute | GeeekPi P31 M.2 NVMe PoE+ HAT w/ Active Cooler (Pi 5) | 4 |
 | Compute | Dell 256GB M.2 2230 NVMe SSD (Class 35) | 4 |
