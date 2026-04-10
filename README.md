@@ -1,6 +1,9 @@
 # Homelab
 
-This homelab is a small multi-node Raspberry Pi cluster built to learn K3s Kubernetes and Crossplane in a real hardware environment. The focus is on platform engineering, GitOps workflows, and using Kubernetes as a control plane for infrastructure rather than just running containers.
+This homelab is a small multi-node Raspberry Pi cluster built to learn K3s Kubernetes and [Kubernetes Resource Model (KRM)](krm) and [Crossplane](crossplane). The focus is on platform engineering, GitOps workflows, and using Kubernetes as a control plane for infrastructure rather than just running containers.
+
+[krm]: https://github.com/kubernetes/design-proposals-archive/blob/main/architecture/resource-management.md
+[crossplane]: https://www.crossplane.io/
 
 The goal is to build, break, and rebuild a simple but realistic platform while learning how modern cloud-native infrastructure actually works.
 
@@ -10,29 +13,23 @@ The goal is to build, break, and rebuild a simple but realistic platform while l
 [Fiber Internet]
       │
       ▼
-[Fiber → Ethernet Box]
+[Fiber → Fiber ONT]
       │
       ▼
 [UDR7 UniFi Dream Router 7]  <- Main router / firewall / DHCP / gateway
       │
       ├─> [TL-SG1008MP Switch]  <- Dedicated homelab switch (isolates lab traffic)
-      │        │
-      │        ├─> [Raspberry Pi 5 8GB Node 1]  (Controller Node)
-      │        │
-      │        ├─> [Raspberry Pi 5 8GB Node 2]  (Worker)
-      │        │
-      │        ├─> [Raspberry Pi 5 8GB Node 3]  (Worker)
-      │        │
-      │        └─> [Raspberry Pi 5 8GB Node 4]  (Worker)
-      │
-      ├─> [Main Floor Wall Jack] → [PoE Injector] → [U7 LITE Access Point]  (Main Floor Wi-Fi)
-      │
-      ├─> [Upstairs Wall Jack] → [PoE Injector] → [U7 LITE Access Point]  (Upstairs Wi-Fi)
-      │
-      ├─> [Philips Hue Bridge Pro]
+               │
+               ├─> [Raspberry Pi 5 8GB Node 1]  (Controller Node)
+               │
+               ├─> [Raspberry Pi 5 8GB Node 2]  (Worker)
+               │
+               ├─> [Raspberry Pi 5 8GB Node 3]  (Worker)
+               │
+               └─> [Raspberry Pi 5 8GB Node 4]  (Worker)
 ```
 
-## Hardware Inventory
+## Parts
 
 | Category | Item | Qty |
 |----------|------|-----|
@@ -42,12 +39,8 @@ The goal is to build, break, and rebuild a simple but realistic platform while l
 | Display | GeeekPi 6.91" 1U Rack Mount LCD Touch Screen (1424x280) | 1 |
 | Compute | Raspberry Pi 5 8GB | 4 |
 | Compute | GeeekPi P31 M.2 NVMe PoE+ HAT w/ Active Cooler (Pi 5) | 4 |
-| Compute | Dell 256GB M.2 2230 NVMe SSD (Class 35) | 4 |
+| Compute | 256GB M.2 2230 NVMe SSD | 4 |
 | Networking | TP-Link TL-SG1008MP 8-Port Gigabit PoE+ Switch | 1 |
-| Networking | Cat6 Ethernet Cable 6FT | 1 |
-| Networking | Cat6 Ethernet Cables 0.5FT (10-Pack) | 1 |
-| Cooling | be quiet! Pure Wings 3 120mm PWM Fan | 2 |
-| Cooling | Coolerguys Thermal Fan Controller (Rev. 4) | 1 |
-| Cables | 1FT C13 Power Cable | 1 |
-| Cables | Micro HDMI to HDMI 2.1 Cable (1FT, 48Gbps) | 1 |
-| Cables | USB-A to DC 5.5x2.1mm 5V Barrel Cable (3FT) | 1 |
+| Cooling | 120mm PWM Fan top | 1 |
+| Cooling | 80mm PWM Fan bottom | 2 |
+| Cooling | USBC Thermal Fan Controller | 1 |
