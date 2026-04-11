@@ -383,7 +383,15 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "mappings": [],
+              "mappings": [
+                {
+                  "options": {
+                    "0": { "color": "red", "index": 0, "text": "Degraded" },
+                    "1": { "color": "green", "index": 1, "text": "Healthy" }
+                  },
+                  "type": "value"
+                }
+              ],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -445,12 +453,27 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "gridPos": {
+            "h": 3,
+            "w": 2,
+            "x": 22,
+            "y": 0
+          },
+          "id": 16,
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
-              "mappings": [],
+              "mappings": [
+                {
+                  "options": {
+                    "0": { "color": "red", "index": 0, "text": "OutOfSync" },
+                    "1": { "color": "green", "index": 1, "text": "Synced" }
+                  },
+                  "type": "value"
+                }
+              ],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -468,13 +491,6 @@ data:
             },
             "overrides": []
           },
-          "gridPos": {
-            "h": 3,
-            "w": 2,
-            "x": 22,
-            "y": 0
-          },
-          "id": 16,
           "options": {
             "colorMode": "background",
             "graphMode": "none",
