@@ -402,8 +402,8 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 4,
-            "w": 4,
+            "h": 3,
+            "w": 2,
             "x": 20,
             "y": 0
           },
@@ -432,7 +432,74 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(argocd_app_info{health_status=\"Healthy\",sync_status=\"Synced\"}) or vector(0)",
+              "expr": "sum(argocd_app_info{health_status=\"Healthy\"}) or vector(0)",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "ArgoCD Healthy",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 2,
+            "x": 22,
+            "y": 0
+          },
+          "id": 16,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "12.4.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(argocd_app_info{sync_status=\"Synced\"}) or vector(0)",
               "legendFormat": "",
               "refId": "A"
             }
