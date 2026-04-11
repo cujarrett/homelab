@@ -21,6 +21,8 @@ spec:
                     requests:
                       storage: 5Gi
         grafana:
+          deploymentStrategy:
+            type: Recreate
           admin:
             existingSecret: grafana-admin-secret
             userKey: admin-user
