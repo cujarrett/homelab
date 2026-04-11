@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-node-temps
+  name: grafana-dashboard-homelab-display
   namespace: monitoring
   labels:
     grafana_dashboard: "1"
 data:
-  node-temps.json: |-
+  homelab-display.json: |-
     {
       "annotations": {
         "list": [
