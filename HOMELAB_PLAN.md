@@ -1,15 +1,32 @@
-# K3s + Crossplane Raspberry Pi Rack Lab
+# K3s Lab Plan
 
-**Rack:** GeeekPi DeskPi RackMate T0 Plus (10-inch 4U mini rack)
-**Router:** Ubiquiti UniFi Dream Router 7 (UDR7)
-**WiFi:** 2× Ubiquiti U7 LITE WiFi 7 APs
-**Switch:** NETGEAR GS305PP (5-port, 83W PoE, rack-mounted)
-**Compute:** 4× Raspberry Pi 5 8GB + GeeekPi P31 NVMe PoE+ HAT
-**Storage:** 4× Dell 256GB M.2 2230 NVMe SSD
-**Display:** GeeekPi 6.91" 1U LCD touch display (1424×280)
-**Software:** k3s, Traefik, Cert-Manager, Longhorn, Argo CD, Crossplane, Prometheus, Grafana
+<details>
+<summary><strong>Contents</strong></summary>
 
----
+| Section |
+|---|
+| [Architecture](#architecture) |
+| [Node IPs](#node-ips) |
+| [1 — Hardware & OS Setup](#node-reference) |
+| [2 — Install k3s on ctrl-1](#k3s-install) |
+| [3 — Join Worker Nodes](#worker-nodes) |
+| [4 — Verify Cluster Health](#cluster-health) |
+| [5 — Configure Traefik](#traefik) |
+| [6 — DNS: /etc/hosts](#dns-hosts) |
+| [7 — Cert-Manager](#cert-manager) |
+| [8 — Longhorn](#longhorn) |
+| [9 — Argo CD](#argocd) |
+| [10 — Prometheus + Grafana](#prometheus-grafana) |
+| [11 — Grafana Kiosk](#grafana-kiosk) |
+| [12 — AdGuard Home](#adguard) |
+| [13 — Tailscale (Remote Access)](#tailscale) |
+| [14 — Longhorn Backups (Cloudflare R2)](#longhorn-backups) |
+| [Security Checklist](#security-checklist) |
+| [Troubleshooting](#troubleshooting) |
+| [Quick Reference](#quick-reference) |
+| [What's Next](#whats-next) |
+
+</details>
 
 ## Architecture
 
@@ -74,30 +91,8 @@ Kubernetes Layers (logical):
 
 ---
 
-## Setup Order
-
-```
-1 ──   UDR7: VLAN 1 + VLAN 10 + DHCP reservations → see UNIFI_ROUTER_SETUP.md
-2 ──   GS305PP uplinked to router on VLAN 10
-3 ──   Flash OS, assemble Pis, boot from NVMe
-4 ──   Static IPs, hostnames, OS prereqs on all 4 nodes
-5 ──   k3s on ctrl-1 (controller)
-6 ──   k3s agents on work-1, work-2, work-3
-7 ──   Traefik (ingress)
-8 ──   DNS: /etc/hosts on Mac (temporary — replaced by AdGuard in step 14)
-9 ──   Cert-Manager (TLS)
-10 ──  Longhorn (storage)
-11 ──  Argo CD (GitOps)
-12 ──  Prometheus + Grafana + Alertmanager
-13 ──  Grafana kiosk on 1U display
-14 ──  AdGuard Home (wildcard *.local.lab DNS for all devices)
-
-Crossplane + WordPress + Cloudflare Tunnel → see PLATFORM_PLAN.md (side quest, any time after step 11)
-```
-
----
-
-## ✅ 1–4 Done — Node Reference
+<a id="node-reference"></a>
+## 1 — Hardware & OS Setup
 
 All 4 nodes fully prepped: NVMe boot, static IPs, open-iscsi, cgroups, kernel modules, Longhorn dir.
 
@@ -110,7 +105,8 @@ ssh pi@192.168.10.103   # work-3
 
 ---
 
-## ✅ 5 — Install k3s on ctrl-1
+<a id="k3s-install"></a>
+## 2 — Install k3s on ctrl-1
 
 K3s is a lightweight, CNCF-certified Kubernetes distribution built for resource-constrained environments. It ships as a single ~100 MB binary, uses roughly half the RAM of standard Kubernetes, and bundles Traefik, CoreDNS, and a Helm controller out of the box — making it a natural fit for Raspberry Pi hardware.
 
@@ -163,11 +159,12 @@ brew install kubectl helm
 
 ---
 
-## ✅ 6 — Join Worker Nodes
+<a id="worker-nodes"></a>
+## 3 — Join Worker Nodes
 
 A single-node cluster has limited CPU, RAM, and no redundancy. Adding three workers distributes pod scheduling across all four Pis, keeps the control-plane node free for Kubernetes management traffic, and means workloads can survive a single node going down.
 
-Replace `<NODE_TOKEN>` with the token from step 5.
+Replace `<NODE_TOKEN>` with the token from step 2.
 
 ```bash
 # work-1
@@ -206,7 +203,8 @@ kubectl label node work-3 node-role.kubernetes.io/worker=worker
 
 ---
 
-## ✅ 7 — Verify Cluster Health
+<a id="cluster-health"></a>
+## 4 — Verify Cluster Health
 
 Before layering in any infrastructure, confirm the cluster baseline is solid. Pods need to schedule across workers, DNS must resolve service names, and pod-to-pod networking must work — these are the foundations that everything else depends on. Catching problems here is far easier than debugging them after six more components are installed.
 
@@ -229,7 +227,8 @@ kubectl run dns-test --image=busybox:1.36 --rm -it --restart=Never -- \
 
 ---
 
-## 7 — Configure Traefik (Ingress)
+<a id="traefik"></a>
+## 5 — Configure Traefik (Ingress)
 
 Every service deployed in the cluster is only reachable from inside the cluster by default. Traefik is the ingress controller — it listens on ports 80/443 of each node and routes incoming HTTP/HTTPS traffic to the correct pod based on the `Host` header (e.g., `grafana.local.lab → grafana pod`). K3s bundles Traefik automatically, but we configure it to bind to the host ports directly so requests from your Mac actually reach the cluster.
 
@@ -303,16 +302,17 @@ kubectl delete ingress whoami && kubectl delete service whoami && kubectl delete
 sudo sed -i '' '/whoami\.local\.lab/d' /etc/hosts
 ```
 
-**Note:** UniFi Network 10.2 does not support wildcard DNS records. Use `/etc/hosts` on your machine for now; AdGuard Home (step 14) will replace this permanently for all devices on the network.
+**Note:** UniFi Network 10.2 does not support wildcard DNS records. Use `/etc/hosts` on your machine for now; AdGuard Home (step 12) will replace this permanently for all devices on the network.
 
 - [ ] Traefik DaemonSet running on all nodes
 - [ ] Test app responds via `whoami.local.lab`
 
 ---
 
-## 8 — DNS: /etc/hosts for Now (AdGuard Home in Step 14)
+<a id="dns-hosts"></a>
+## 6 — DNS: /etc/hosts for Now (AdGuard Home in Step 12)
 
-Service hostnames like `longhorn.local.lab` need to resolve to the cluster IP (`192.168.10.100`) before a browser or `curl` can reach them. UniFi Network 10.2 doesn't support wildcard DNS records, so while the cluster is being built, your Mac's `/etc/hosts` file is the simplest workaround. AdGuard Home (step 17) replaces this permanently for all devices on the network.
+Service hostnames like `longhorn.local.lab` need to resolve to the cluster IP (`192.168.10.100`) before a browser or `curl` can reach them. UniFi Network 10.2 doesn't support wildcard DNS records, so while the cluster is being built, your Mac's `/etc/hosts` file is the simplest workaround. AdGuard Home (step 12) replaces this permanently for all devices on the network.
 
 UniFi Network 10.2 does not support wildcard local DNS records. AdGuard Home runs on the cluster and serves `*.local.lab → 192.168.10.100` for any device that uses it as a DNS server.
 
@@ -331,13 +331,14 @@ sudo sh -c 'cat >> /etc/hosts << "EOF"
 EOF'
 ```
 
-Phase 2 (deploy AdGuard Home and replace `/etc/hosts`) is covered in step 17 once the cluster is fully built out.
+Phase 2 (deploy AdGuard Home and replace `/etc/hosts`) is covered in step 12 once the cluster is fully built out.
 
 - [ ] `/etc/hosts` entries added for all services
 
 ---
 
-## 9 — Install Cert-Manager
+<a id="cert-manager"></a>
+## 7 — Install Cert-Manager
 
 HTTPS requires TLS certificates. Without them, every browser request to a cluster service shows a security warning, and tools like the ArgoCD CLI and Helm can refuse to talk to untrusted endpoints. Cert-Manager automates requesting, issuing, and renewing certificates — from Let's Encrypt for public-facing services and from a self-signed local CA for internal `*.local.lab` services — so you never have to manage cert expiry manually.
 
@@ -378,7 +379,8 @@ sudo security add-trusted-cert -d -r trustRoot \
 
 ---
 
-## 10 — Install Longhorn (Storage)
+<a id="longhorn"></a>
+## 8 — Install Longhorn (Storage)
 
 By default, Kubernetes pod storage is ephemeral — any data written to disk is lost when a pod restarts or moves to a different node. Longhorn provides distributed block storage backed by the NVMe SSDs on each Raspberry Pi. It automatically replicates volumes across nodes (3× by default), so a disk failure or node loss doesn't destroy your data. Without Longhorn (or similar), stateful workloads like databases and Grafana dashboards can't safely persist anything.
 
@@ -450,7 +452,8 @@ kubectl apply -f apps/longhorn/ingress.yaml
 
 ---
 
-## 11 — Install Argo CD (GitOps)
+<a id="argocd"></a>
+## 9 — Install Argo CD (GitOps)
 
 Managing a cluster by running `kubectl apply` by hand doesn't scale and leaves no audit trail of what changed and when. Argo CD implements GitOps: it watches this GitHub repo and automatically syncs any changes you push to the cluster. The Git history becomes a full audit log, rollbacks are a `git revert` away, and the cluster's desired state is always defined as code — never just whatever was last typed into a terminal.
 
@@ -519,7 +522,8 @@ kubectl -n argocd delete secret argocd-initial-admin-secret
 
 ---
 
-## 12 — Install Prometheus + Grafana + Alertmanager
+<a id="prometheus-grafana"></a>
+## 10 — Install Prometheus + Grafana + Alertmanager
 
 Without observability you're flying blind — you won't know a node is running out of memory until pods start crashing, or a disk is filling up until Longhorn starts refusing writes. Prometheus scrapes real-time metrics from every node and pod; Grafana visualizes them in pre-built dashboards; Alertmanager fires notifications when thresholds are breached. Together they give you the full picture of what the cluster is doing at any moment.
 
@@ -553,7 +557,8 @@ kubectl apply -f apps/monitoring/ingresses.yaml
 
 ---
 
-## 13 — Grafana Kiosk on 1U Display
+<a id="grafana-kiosk"></a>
+## 11 — Grafana Kiosk on 1U Display
 
 A rack with no display is just a box. The 1U LCD mounted in the rack can show a live Grafana cluster-health dashboard so you can see CPU, memory, and disk usage at a glance without opening a laptop. This turns the display from decorative hardware into a useful at-a-glance status panel.
 
@@ -652,7 +657,8 @@ curl -s -u "admin:${GRAFANA_PASS}" \
 
 ---
 
-## 14 — AdGuard Home (Replace /etc/hosts with Wildcard DNS)
+<a id="adguard"></a>
+## 12 — AdGuard Home (Replace /etc/hosts with Wildcard DNS)
 
 `/etc/hosts` only works on your machine. Any other device on the network — a phone, a tablet, another laptop — can't resolve `*.local.lab`. AdGuard Home is a DNS server that runs in the cluster and serves a wildcard rewrite (`*.local.lab → 192.168.10.100`) to every device that uses it for DNS.
 
@@ -694,7 +700,7 @@ In the AdGuard admin UI:
 1. **Filters → DNS rewrites → Add DNS rewrite**
    - Domain: `*.local.lab`
    - IP: `192.168.10.100`
-2. **Settings → DNS settings → Upstream DNS servers**: set `1.1.1.1` and `8.8.8.8`
+2. **Settings → DNS settings → Upstream DNS servers**: set `https://dns10.quad9.net/dns-query`
 3. (Optional) **Filters → DNS blocklists**: disable all lists if you only want DNS rewriting without ad blocking
 
 ### Point your network at AdGuard
@@ -723,7 +729,7 @@ The TLS cert for `*.local.lab` is signed by your local cert-manager CA. Browsers
 **machine:**
 ```bash
 # Export the CA cert
-kubectl get secret -n cert-manager root-ca-secret -o jsonpath='{.data.tls\.crt}' | base64 -d > ~/local-lab-ca.crt
+kubectl get secret -n cert-manager local-lab-ca-secret -o jsonpath='{.data.tls\.crt}' | base64 -d > ~/local-lab-ca.crt
 # Import and trust
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/local-lab-ca.crt
 ```
@@ -742,17 +748,128 @@ dig grafana.local.lab @192.168.10.100
 sudo sed -i '' '/\.local\.lab/d' /etc/hosts
 ```
 
-- [ ] AdGuard Home pod running on `ctrl-1`
-- [ ] Setup wizard completed
-- [ ] `*.local.lab → 192.168.10.100` DNS rewrite configured
-- [ ] UniFi DHCP DNS set to `192.168.10.100` / `1.1.1.1`
-- [ ] `grafana.local.lab` resolves on computer, iPhone, and other devices
-- [ ] Local CA cert trusted on Mac and iPhone
-- [ ] `/etc/hosts` cleaned up
-- [ ] `https://adguard.local.lab` accessible
-- [ ] Secrets via Sealed Secrets (never committed to Git)
-- [ ] etcd snapshots scheduled (`sudo k3s etcd-snapshot save`)
-- [ ] Longhorn backups configured
+- [x] AdGuard Home pod running on `ctrl-1`
+- [x] Setup wizard completed
+- [x] `*.local.lab → 192.168.10.100` DNS rewrite configured
+- [x] UniFi DHCP DNS set to `192.168.10.100` / `1.1.1.1`
+- [x] `grafana.local.lab` resolves on computer, iPhone, and other devices
+- [x] Local CA cert trusted on Mac
+- [x] Local CA cert trusted on iPhone
+- [x] `/etc/hosts` cleaned up
+- [x] `https://adguard.local.lab` accessible
+
+---
+
+<a id="longhorn-backups"></a>
+## 14 — Longhorn Backups (Cloudflare R2)
+
+**Prerequisite:** Cloudflare account set up as part of [PLATFORM_PLAN.md](PLATFORM_PLAN.md) step 16. Do this step while you're already in the Cloudflare dashboard.
+
+Longhorn's 3× replication protects against node/disk failure but not accidental deletes or corruption. R2 provides offsite backups with a free 10 GB tier and zero egress fees.
+
+**1. Create an R2 bucket**
+
+In the Cloudflare dashboard → **R2 Object Storage → Create bucket**. Name it `longhorn-backups`, region `auto`.
+
+**2. Create an API token with R2 permissions**
+
+Cloudflare dashboard → **R2 → Manage R2 API tokens → Create API token**:
+- Permissions: **Object Read & Write**
+- Scope: **Specific bucket → longhorn-backups**
+
+Save the **Access Key ID** and **Secret Access Key** — shown once only.
+
+Find your **Account ID** in the Cloudflare dashboard URL or R2 overview page.
+
+**3. Create the Longhorn backup secret**
+
+```bash
+kubectl create secret generic longhorn-r2-backup \
+  --namespace longhorn-system \
+  --from-literal=AWS_ACCESS_KEY_ID=<ACCESS_KEY_ID> \
+  --from-literal=AWS_SECRET_ACCESS_KEY=<SECRET_ACCESS_KEY> \
+  --from-literal=AWS_ENDPOINTS=https://<ACCOUNT_ID>.r2.cloudflarestorage.com \
+  --from-literal=AWS_REGION=auto
+```
+
+**4. Set the backup target in Longhorn UI**
+
+`https://longhorn.local.lab` → **Settings → General**:
+- **Backup Target**: `s3://longhorn-backups@auto/`
+- **Backup Target Credential Secret**: `longhorn-r2-backup`
+
+Click **Save**. Longhorn will validate the connection — a green tick confirms it.
+
+**5. Schedule recurring backups**
+
+For each volume you care about (e.g. AdGuard, Grafana, WordPress):
+1. **Longhorn UI → Volumes → (volume name) → Recurring Jobs**
+2. Add a job: type **Backup**, cron `0 2 * * *` (2 AM daily), retain `7`
+
+- [ ] R2 bucket created
+- [ ] Longhorn backup target configured and validated
+- [ ] Recurring backup jobs scheduled for key volumes
+
+---
+
+<a id="tailscale"></a>
+## 13 — Tailscale (Remote Access)
+
+Without this, `kubectl`, `ssh`, and `*.local.lab` only work when you're on the home network. Tailscale creates an encrypted mesh VPN — no port forwarding, no exposed firewall ports, works from any network. Install it on `ctrl-1` as a subnet router so your Mac can reach the entire `192.168.10.0/24` cluster subnet remotely.
+
+### Create a Tailscale account
+
+Sign up at [tailscale.com](https://tailscale.com) — free tier supports up to 100 devices.
+
+### Install on ctrl-1
+
+```bash
+ssh pi@192.168.10.100
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up --advertise-routes=192.168.10.0/24 --accept-dns=false
+```
+
+The `--accept-dns=false` prevents Tailscale from overwriting ctrl-1's DNS (it already points at itself via AdGuard).
+
+Copy the auth URL printed to stdout and open it in a browser to approve the device.
+
+### Approve subnet route in Tailscale admin
+
+In the [Tailscale admin console](https://login.tailscale.com/admin/machines):
+1. Find `ctrl-1` → **Edit route settings**
+2. Enable `192.168.10.0/24`
+
+### Install on your Mac
+
+```bash
+brew install --cask tailscale
+```
+
+Open Tailscale from the menu bar → sign in → **Enable subnet routes** when prompted (or via Tailscale menu → **Use exit node / subnets**).
+
+### Configure split DNS
+
+In the [Tailscale admin console](https://login.tailscale.com/admin/dns) → **Nameservers → Add nameserver → Custom**:
+- Nameserver: `192.168.10.100`
+- Restrict to domain: `local.lab`
+
+This makes `*.local.lab` resolve via AdGuard only for that domain, leaving all other DNS unaffected.
+
+### Verify
+
+```bash
+# Disconnect from home WiFi or use a hotspot, then:
+ssh pi@192.168.10.100
+kubectl get nodes
+curl -sk https://adguard.local.lab -o /dev/null -w "%{http_code}"
+```
+
+- [ ] Tailscale account created
+- [ ] ctrl-1 joined as subnet router
+- [ ] `192.168.10.0/24` subnet route approved in admin console
+- [ ] Tailscale installed on Mac
+- [ ] Split DNS configured for `local.lab`
+- [ ] `kubectl` and `*.local.lab` working off-network
 
 ---
 
