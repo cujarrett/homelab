@@ -1428,6 +1428,274 @@ data:
           ],
           "title": "Network Transmit per Node",
           "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "line+area",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 85
+                    }
+                  ]
+                }
+              },
+              "mappings": [],
+              "max": 100,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "red",
+                    "value": 85
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 0,
+            "y": 19
+          },
+          "id": 17,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "max",
+                "lastNotNull"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "12.4.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "(1 - node_filesystem_avail_bytes{instance=~\"192.168.10.100:.*\", mountpoint=\"/\", fstype!~\"tmpfs|rootfs|overlay\"} / node_filesystem_size_bytes{instance=~\"192.168.10.100:.*\", mountpoint=\"/\", fstype!~\"tmpfs|rootfs|overlay\"}) * 100",
+              "legendFormat": "ctrl-1",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "(1 - node_filesystem_avail_bytes{instance=~\"192.168.10.101:.*\", mountpoint=\"/\", fstype!~\"tmpfs|rootfs|overlay\"} / node_filesystem_size_bytes{instance=~\"192.168.10.101:.*\", mountpoint=\"/\", fstype!~\"tmpfs|rootfs|overlay\"}) * 100",
+              "legendFormat": "work-1",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "(1 - node_filesystem_avail_bytes{instance=~\"192.168.10.102:.*\", mountpoint=\"/\", fstype!~\"tmpfs|rootfs|overlay\"} / node_filesystem_size_bytes{instance=~\"192.168.10.102:.*\", mountpoint=\"/\", fstype!~\"tmpfs|rootfs|overlay\"}) * 100",
+              "legendFormat": "work-2",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "(1 - node_filesystem_avail_bytes{instance=~\"192.168.10.103:.*\", mountpoint=\"/\", fstype!~\"tmpfs|rootfs|overlay\"} / node_filesystem_size_bytes{instance=~\"192.168.10.103:.*\", mountpoint=\"/\", fstype!~\"tmpfs|rootfs|overlay\"}) * 100",
+              "legendFormat": "work-3",
+              "refId": "D"
+            }
+          ],
+          "title": "Disk Usage per Node (%)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 8,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 12,
+            "y": 19
+          },
+          "id": 18,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "min",
+                "lastNotNull"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "12.4.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "node_filesystem_avail_bytes{instance=~\"192.168.10.100:.*\", mountpoint=\"/\", fstype!~\"tmpfs|rootfs|overlay\"}",
+              "legendFormat": "ctrl-1",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "node_filesystem_avail_bytes{instance=~\"192.168.10.101:.*\", mountpoint=\"/\", fstype!~\"tmpfs|rootfs|overlay\"}",
+              "legendFormat": "work-1",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "node_filesystem_avail_bytes{instance=~\"192.168.10.102:.*\", mountpoint=\"/\", fstype!~\"tmpfs|rootfs|overlay\"}",
+              "legendFormat": "work-2",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "node_filesystem_avail_bytes{instance=~\"192.168.10.103:.*\", mountpoint=\"/\", fstype!~\"tmpfs|rootfs|overlay\"}",
+              "legendFormat": "work-3",
+              "refId": "D"
+            }
+          ],
+          "title": "Disk Space Available per Node",
+          "type": "timeseries"
         }
       ],
       "preload": false,
