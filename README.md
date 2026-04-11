@@ -1,5 +1,7 @@
 # Homelab
 
+![homelab picture](./homelab.jpg)
+
 This homelab is a small multi-node Raspberry Pi cluster built to learn K3s Kubernetes and [Kubernetes Resource Model (KRM)](krm) and [Crossplane](crossplane). The focus is on platform engineering, GitOps workflows, and using Kubernetes as a control plane for infrastructure rather than just running containers.
 
 [krm]: https://github.com/kubernetes/design-proposals-archive/blob/main/architecture/resource-management.md

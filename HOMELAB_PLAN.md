@@ -84,14 +84,15 @@ Kubernetes Layers (logical):
 5 ──   k3s on ctrl-1 (controller)
 6 ──   k3s agents on work-1, work-2, work-3
 7 ──   Traefik (ingress)
-8 ──    AdGuard Home (wildcard *.local.lab DNS)
-9 ──    Cert-Manager (TLS)
-10 ──   Longhorn (storage)
-11 ──   Argo CD (GitOps)
-12 ──   Prometheus + Grafana + Alertmanager
-13 ──   Grafana kiosk on 1U display
-14-16 ── Crossplane + WordPress + Cloudflare Tunnel → see PLATFORM_PLAN.md
-17 ──   AdGuard Home (replace /etc/hosts with real wildcard DNS)
+8 ──   DNS: /etc/hosts on Mac (temporary — replaced by AdGuard in step 14)
+9 ──   Cert-Manager (TLS)
+10 ──  Longhorn (storage)
+11 ──  Argo CD (GitOps)
+12 ──  Prometheus + Grafana + Alertmanager
+13 ──  Grafana kiosk on 1U display
+14 ──  AdGuard Home (wildcard *.local.lab DNS for all devices)
+
+Crossplane + WordPress + Cloudflare Tunnel → see PLATFORM_PLAN.md (side quest, any time after step 11)
 ```
 
 ---
@@ -302,14 +303,14 @@ kubectl delete ingress whoami && kubectl delete service whoami && kubectl delete
 sudo sed -i '' '/whoami\.local\.lab/d' /etc/hosts
 ```
 
-**Note:** UniFi Network 10.2 does not support wildcard DNS records. Use `/etc/hosts` on your Mac for now; AdGuard Home (step 8) will replace this permanently.
+**Note:** UniFi Network 10.2 does not support wildcard DNS records. Use `/etc/hosts` on your machine for now; AdGuard Home (step 14) will replace this permanently for all devices on the network.
 
 - [ ] Traefik DaemonSet running on all nodes
 - [ ] Test app responds via `whoami.local.lab`
 
 ---
 
-## 8 — DNS: /etc/hosts for Now (AdGuard Home in Step 17)
+## 8 — DNS: /etc/hosts for Now (AdGuard Home in Step 14)
 
 Service hostnames like `longhorn.local.lab` need to resolve to the cluster IP (`192.168.10.100`) before a browser or `curl` can reach them. UniFi Network 10.2 doesn't support wildcard DNS records, so while the cluster is being built, your Mac's `/etc/hosts` file is the simplest workaround. AdGuard Home (step 17) replaces this permanently for all devices on the network.
 
@@ -561,22 +562,50 @@ Connect the 1U display to `ctrl-1` via micro-HDMI.
 ```bash
 ssh pi@192.168.10.100
 
-sudo apt install -y --no-install-recommends \
-  xserver-xorg x11-xserver-utils xinit chromium-browser unclutter
+# Add grafana.local.lab to ctrl-1's own hosts file (needed for the kiosk browser)
+# Also add to the cloud-init template so it survives reboots
+echo '192.168.10.100  grafana.local.lab' | sudo tee -a /etc/hosts
+sudo sed -i '/^::1 localhost/a 192.168.10.100  grafana.local.lab' /etc/cloud/templates/hosts.debian.tmpl
 
-cat <<'SCRIPT' | sudo tee /home/pi/kiosk.sh
+sudo apt install -y --no-install-recommends \
+  xserver-xorg x11-xserver-utils xinit chromium unclutter
+
+cat > ~/kiosk.sh << 'SCRIPT'
 #!/bin/bash
 xset s off && xset -dpms && xset s noblank
 unclutter -idle 1 -root &
-chromium-browser \
-  --noerrdialogs --disable-infobars --kiosk --incognito \
-  --disable-translate --disable-features=TranslateUI \
-  "https://grafana.local.lab/d/<DASHBOARD_ID>/cluster?orgId=1&refresh=10s&kiosk"
+while true; do
+  chromium \
+    --noerrdialogs --disable-infobars --kiosk --incognito \
+    --disable-translate --disable-features=TranslateUI \
+    --ignore-certificate-errors \
+    --force-device-scale-factor=1 \
+    --window-size=1424,280 \
+    "https://grafana.local.lab/d/homelab-kiosk/homelab-kiosk?orgId=1&refresh=10s&kiosk"
+  sleep 2
+done
 SCRIPT
-chmod +x /home/pi/kiosk.sh
+chmod +x ~/kiosk.sh
 
-echo '/home/pi/kiosk.sh' > /home/pi/.xinitrc
-echo '[[ -z $DISPLAY && $XDG_VTNR -eq 1 ]] && startx -- -nocursor' >> /home/pi/.bash_profile
+# Pi 5: force X to use the modesetting driver on the HDMI output,
+# and set correct physical dimensions for the 6.91" 1424×280 display
+# (EDID incorrectly reports 432×243mm causing Chromium to miscalculate viewport)
+sudo mkdir -p /etc/X11/xorg.conf.d
+sudo tee /etc/X11/xorg.conf.d/99-pi5.conf > /dev/null << EOF
+Section "Device"
+    Identifier "Modesetting"
+    Driver "modesetting"
+    Option "kmsdev" "/dev/dri/card1"
+EndSection
+
+Section "Monitor"
+    Identifier "HDMI-1"
+    DisplaySize 172 34
+EndSection
+EOF
+
+echo '~/kiosk.sh' > ~/.xinitrc
+echo '[[ -z $DISPLAY && $(tty) == /dev/tty1 ]] && startx -- -nocursor' >> ~/.bash_profile
 
 sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
 cat <<EOF | sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf
@@ -587,25 +616,30 @@ EOF
 sudo systemctl daemon-reload && sudo systemctl restart getty@tty1
 ```
 
-Enable anonymous Grafana viewer access for the kiosk:
+Enable anonymous Grafana viewer access for the kiosk — run this on your machine:
 
 ```bash
 helm upgrade monitoring prometheus-community/kube-prometheus-stack \
   --namespace monitoring --reuse-values \
-  --set grafana."grafana\.ini".auth.anonymous.enabled=true \
-  --set grafana."grafana\.ini".auth.anonymous.org_role=Viewer
+  --set 'grafana.grafana\.ini.auth\.anonymous.enabled=true' \
+  --set 'grafana.grafana\.ini.auth\.anonymous.org_role=Viewer'
 ```
 
-Replace `<DASHBOARD_ID>` with the ID from the Grafana dashboard URL.
+**Grafana 12 note:** Dashboard-level permissions override org-level roles. Even with anonymous viewer access enabled, the kiosk dashboard will return 403 until you explicitly grant the Viewer role on it. Run this once after the helm upgrade:
+
+```bash
+# Get Grafana admin password
+GRAFANA_PASS=$(kubectl get secret -n monitoring monitoring-grafana \
+  -o jsonpath='{.data.admin-password}' | base64 -d)
+
+curl -s -u "admin:${GRAFANA_PASS}" \
+  -X POST "https://grafana.local.lab/api/dashboards/uid/homelab-kiosk/permissions" \
+  -H "Content-Type: application/json" \
+  -d '{"items":[{"role":"Viewer","permission":1}]}'
+```
 
 - [ ] Display booting into kiosk
 - [ ] Grafana dashboard auto-loads after reboot
-
----
-
-## 14–16 — Crossplane + WordPress + Cloudflare Tunnel
-
-See [PLATFORM_PLAN.md](PLATFORM_PLAN.md).
 
 ---
 
@@ -618,127 +652,104 @@ See [PLATFORM_PLAN.md](PLATFORM_PLAN.md).
 
 ---
 
-## 17 — AdGuard Home (Replace /etc/hosts with Wildcard DNS)
+## 14 — AdGuard Home (Replace /etc/hosts with Wildcard DNS)
 
-`/etc/hosts` only works on your Mac. Any other device on the network — a phone, a tablet, another laptop — can't resolve `*.local.lab`. AdGuard Home is a DNS server that runs in the cluster and serves a wildcard rewrite (`*.local.lab → 192.168.10.100`) to every device that points at it for DNS. It also blocks ads and trackers network-wide as a bonus.
+`/etc/hosts` only works on your machine. Any other device on the network — a phone, a tablet, another laptop — can't resolve `*.local.lab`. AdGuard Home is a DNS server that runs in the cluster and serves a wildcard rewrite (`*.local.lab → 192.168.10.100`) to every device that uses it for DNS.
 
-Now that the cluster is stable, deploy AdGuard Home to serve `*.local.lab → 192.168.10.100` and stop relying on `/etc/hosts`.
+This cluster does not use MetalLB — Traefik uses `hostPort` for HTTP/HTTPS (ports 80/443 directly on `ctrl-1`). AdGuard uses the same pattern: `hostPort: 53` pinned to `ctrl-1` (`192.168.10.100`), so DNS resolves at the same IP as your ingress. The admin UI is exposed via Ingress through Traefik as normal.
 
-### Deploy
+### Create the manifest
+
+The manifest lives at [apps/adguard/adguard.yaml](apps/adguard/adguard.yaml). ArgoCD's root app recurses the `apps/` directory, so no additional ArgoCD Application is needed — committing the file is enough.
+
+### Apply
+
+ArgoCD will sync automatically on push. To apply manually:
 
 ```bash
-kubectl create namespace adguard
-
-cat <<EOF | kubectl apply -f -
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: adguard-home
-  namespace: adguard
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: adguard-home
-  template:
-    metadata:
-      labels:
-        app: adguard-home
-    spec:
-      containers:
-        - name: adguard-home
-          image: adguard/adguardhome:latest
-          ports:
-            - containerPort: 53
-              protocol: UDP
-              name: dns-udp
-            - containerPort: 53
-              protocol: TCP
-              name: dns-tcp
-            - containerPort: 3000
-              name: http
-          volumeMounts:
-            - name: data
-              mountPath: /opt/adguardhome/work
-            - name: conf
-              mountPath: /opt/adguardhome/conf
-      volumes:
-        - name: data
-          emptyDir: {}
-        - name: conf
-          emptyDir: {}
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: adguard-home
-  namespace: adguard
-spec:
-  type: LoadBalancer
-  loadBalancerIP: 192.168.10.200
-  ports:
-    - port: 53
-      targetPort: 53
-      protocol: UDP
-      name: dns-udp
-    - port: 53
-      targetPort: 53
-      protocol: TCP
-      name: dns-tcp
-  selector:
-    app: adguard-home
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: adguard-home
-  namespace: adguard
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-spec:
-  rules:
-    - host: adguard.local.lab
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: adguard-home
-                port:
-                  number: 3000
-EOF
+kubectl apply -f apps/adguard/adguard.yaml
+kubectl rollout status deployment/adguard-home -n adguard
 ```
 
-**Note:** The `LoadBalancer` service requires MetalLB or a similar bare-metal load balancer. If not using MetalLB, use `hostPort: 53` on the pod instead.
+### Complete the setup wizard
 
-### Configure AdGuard Home
+AdGuard requires a one-time setup wizard before it accepts DNS queries. Hit the setup UI directly on port 3000 (before Ingress routes to port 80):
 
-1. Open `http://adguard.local.lab`
-2. Complete the setup wizard
-3. Go to **Filters → DNS rewrites → Add DNS rewrite**:
+```bash
+# Port-forward to reach the setup wizard
+kubectl port-forward -n adguard deployment/adguard-home 3000:3000
+```
+
+Open `http://localhost:3000` and complete the wizard:
+1. Click **Get Started**
+2. Leave listen interfaces as defaults → **Next**
+3. Note the admin interface will move to port 80 after setup → **Next**
+4. Set an admin username and password → **Next** → **Open Dashboard**
+
+After the wizard, the admin UI is available at `https://adguard.local.lab` (once DNS is working — until then, port-forward to port 80).
+
+### Configure DNS rewrite
+
+In the AdGuard admin UI:
+1. **Filters → DNS rewrites → Add DNS rewrite**
    - Domain: `*.local.lab`
    - IP: `192.168.10.100`
-4. Set upstream DNS (e.g. `1.1.1.1`, `8.8.8.8`)
+2. **Settings → DNS settings → Upstream DNS servers**: set `1.1.1.1` and `8.8.8.8`
+3. (Optional) **Filters → DNS blocklists**: disable all lists if you only want DNS rewriting without ad blocking
 
-### Point your Mac at AdGuard
+### Point your network at AdGuard
 
+In **UniFi Network → Settings → Networks → your LAN → DHCP**:
+- DNS Server 1: `192.168.10.100`
+- DNS Server 2: `1.1.1.1` (fallback for when ctrl-1 is rebooting)
+
+Reconnect any device to pick up the new DNS, or wait for DHCP lease renewal.
+
+### Update ctrl-1's own DNS
+
+`ctrl-1` also needs to resolve `*.local.lab`. Add AdGuard as its nameserver:
+
+```bash
+ssh pi@192.168.10.100
+echo "nameserver 127.0.0.1" | sudo tee /etc/resolv.conf
+# Lock it so dhclient doesn't overwrite it
+sudo chattr +i /etc/resolv.conf
 ```
-System Settings → Wi-Fi → Details → DNS → Add 192.168.10.200
+
+### Trust the local CA on your devices
+
+The TLS cert for `*.local.lab` is signed by your local cert-manager CA. Browsers will warn until you install and trust it:
+
+**machine:**
+```bash
+# Export the CA cert
+kubectl get secret -n cert-manager root-ca-secret -o jsonpath='{.data.tls\.crt}' | base64 -d > ~/local-lab-ca.crt
+# Import and trust
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/local-lab-ca.crt
 ```
+
+**iPhone/iPad:** AirDrop the `.crt` file to the device → Settings will prompt to install the profile → go to **Settings → General → VPN & Device Management** and install it → **Settings → General → About → Certificate Trust Settings** and enable full trust.
 
 ### Clean up /etc/hosts
 
+Once `*.local.lab` resolves correctly from your machine:
+
 ```bash
-# Remove all *.local.lab entries added during cluster build
+# Verify AdGuard is resolving correctly first
+dig grafana.local.lab @192.168.10.100
+
+# Then remove the /etc/hosts entries
 sudo sed -i '' '/\.local\.lab/d' /etc/hosts
 ```
 
-- [ ] AdGuard Home pod running
-- [ ] `*.local.lab` wildcard rewrite configured
-- [ ] Mac DNS pointing to `192.168.10.200`
+- [ ] AdGuard Home pod running on `ctrl-1`
+- [ ] Setup wizard completed
+- [ ] `*.local.lab → 192.168.10.100` DNS rewrite configured
+- [ ] UniFi DHCP DNS set to `192.168.10.100` / `1.1.1.1`
+- [ ] `grafana.local.lab` resolves on computer, iPhone, and other devices
+- [ ] Local CA cert trusted on Mac and iPhone
 - [ ] `/etc/hosts` cleaned up
-- [ ] All services still reachable by hostname
+- [ ] `https://adguard.local.lab` accessible
 - [ ] Secrets via Sealed Secrets (never committed to Git)
 - [ ] etcd snapshots scheduled (`sudo k3s etcd-snapshot save`)
 - [ ] Longhorn backups configured
