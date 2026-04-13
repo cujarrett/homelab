@@ -1,0 +1,57 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: xwordpressplatforms.platform.local.lab
+spec:
+  scope: Namespaced
+  group: platform.local.lab
+  names:
+    kind: XWordPressPlatform
+    plural: xwordpressplatforms
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  properties:
+                    host:
+                      type: string
+                    storageSize:
+                      type: string
+                      default: "10Gi"
+                    dbStorageSize:
+                      type: string
+                      default: "5Gi"
+                    replicas:
+                      type: integer
+                      default: 1
+                    cpuRequest:
+                      type: string
+                      default: "500m"
+                    cpuLimit:
+                      type: string
+                      default: "1000m"
+                    memoryRequest:
+                      type: string
+                      default: "256Mi"
+                    memoryLimit:
+                      type: string
+                      default: "512Mi"
+                    dataRetention:
+                      type: string
+                      default: "retain"
+                      enum:
+                        - retain
+                        - delete
+                  required:
+                    - host
+              required:
+                - parameters

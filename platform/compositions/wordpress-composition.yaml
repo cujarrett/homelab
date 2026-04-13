@@ -1,0 +1,427 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: wordpressplatform-composition
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: XWordPressPlatform
+  mode: Pipeline
+  pipeline:
+    # Step 1: generate the MariaDB credentials Secret.
+    # Passwords are derived from the XR's immutable UID (sha256, hex-truncated).
+    # No human input, nothing sensitive in Git — the XR itself has no password fields.
+    - step: generate-db-secret
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ .observed.composite.resource.metadata.name }}-mariadb
+              namespace: {{ .observed.composite.resource.metadata.namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: mariadb-secret
+            type: Opaque
+            stringData:
+              database: wordpress
+              username: wordpress
+              password: "{{ printf "%s-db" .observed.composite.resource.metadata.uid | sha256sum | trunc 32 }}"
+              rootPassword: "{{ printf "%s-root" .observed.composite.resource.metadata.uid | sha256sum | trunc 32 }}"
+
+    # Step 2: patch and transform all remaining composed resources.
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+
+          # --- MariaDB data PVC (standalone so Crossplane owns its lifecycle) ---
+          - name: mariadb-pvc
+            base:
+              apiVersion: v1
+              kind: PersistentVolumeClaim
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                storageClassName: longhorn
+                resources:
+                  requests:
+                    storage: 5Gi
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-mariadb-data", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.dbStorageSize
+                toFieldPath: spec.resources.requests.storage
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.dataRetention
+                toFieldPath: spec.storageClassName
+                transforms:
+                  - type: map
+                    map:
+                      retain: longhorn
+                      delete: longhorn-delete
+
+          # --- MariaDB StatefulSet ---
+          - name: mariadb-statefulset
+            base:
+              apiVersion: apps/v1
+              kind: StatefulSet
+              spec:
+                selector:
+                  matchLabels:
+                    app: mariadb
+                    instance: ""
+                serviceName: ""
+                replicas: 1
+                template:
+                  metadata:
+                    labels:
+                      app: mariadb
+                      instance: ""
+                  spec:
+                    containers:
+                      - name: mariadb
+                        image: mariadb:11
+                        env:
+                          - name: MYSQL_ROOT_PASSWORD
+                            valueFrom:
+                              secretKeyRef:
+                                name: ""
+                                key: rootPassword
+                          - name: MYSQL_DATABASE
+                            valueFrom:
+                              secretKeyRef:
+                                name: ""
+                                key: database
+                          - name: MYSQL_USER
+                            valueFrom:
+                              secretKeyRef:
+                                name: ""
+                                key: username
+                          - name: MYSQL_PASSWORD
+                            valueFrom:
+                              secretKeyRef:
+                                name: ""
+                                key: password
+                        ports:
+                          - containerPort: 3306
+                            name: mysql
+                        resources:
+                          requests:
+                            cpu: "100m"
+                            memory: "256Mi"
+                          limits:
+                            cpu: "500m"
+                            memory: "512Mi"
+                        volumeMounts:
+                          - name: data
+                            mountPath: /var/lib/mysql
+                    volumes:
+                      - name: data
+                        persistentVolumeClaim:
+                          claimName: ""
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-mariadb", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.serviceName
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-mariadb", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.selector.matchLabels.instance
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.template.metadata.labels.instance
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-mariadb", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.template.spec.containers[0].env[1].valueFrom.secretKeyRef.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-mariadb", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.template.spec.containers[0].env[2].valueFrom.secretKeyRef.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-mariadb", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.template.spec.containers[0].env[3].valueFrom.secretKeyRef.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-mariadb", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-mariadb-data", type: Format }
+
+          # --- MariaDB Service ---
+          - name: mariadb-service
+            base:
+              apiVersion: v1
+              kind: Service
+              spec:
+                selector:
+                  app: mariadb
+                  instance: ""
+                ports:
+                  - port: 3306
+                    targetPort: 3306
+                    name: mysql
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-mariadb", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.selector.instance
+
+          # --- WordPress wp-content PVC ---
+          - name: wordpress-pvc
+            base:
+              apiVersion: v1
+              kind: PersistentVolumeClaim
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                storageClassName: longhorn
+                resources:
+                  requests:
+                    storage: 10Gi
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-wp-content", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.storageSize
+                toFieldPath: spec.resources.requests.storage
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.dataRetention
+                toFieldPath: spec.storageClassName
+                transforms:
+                  - type: map
+                    map:
+                      retain: longhorn
+                      delete: longhorn-delete
+
+          # --- WordPress Deployment ---
+          # initContainer seeds wp-content from the image on first run (empty PVC),
+          # leaving existing data untouched on subsequent starts (migration-safe).
+          - name: wordpress-deployment
+            base:
+              apiVersion: apps/v1
+              kind: Deployment
+              spec:
+                selector:
+                  matchLabels:
+                    app: wordpress
+                    instance: ""
+                replicas: 1
+                template:
+                  metadata:
+                    labels:
+                      app: wordpress
+                      instance: ""
+                  spec:
+                    initContainers:
+                      - name: init-wp-content
+                        image: wordpress:6-apache
+                        command:
+                          - sh
+                          - -c
+                          - |
+                            if [ -z "$(ls -A /target)" ]; then
+                              echo "Seeding wp-content from image..."
+                              cp -r /var/www/html/wp-content/. /target/
+                            fi
+                        volumeMounts:
+                          - name: wp-content
+                            mountPath: /target
+                    containers:
+                      - name: wordpress
+                        image: wordpress:6-apache
+                        env:
+                          - name: WORDPRESS_DB_HOST
+                            value: ""
+                          - name: WORDPRESS_DB_NAME
+                            value: wordpress
+                          - name: WORDPRESS_DB_USER
+                            valueFrom:
+                              secretKeyRef:
+                                name: ""
+                                key: username
+                          - name: WORDPRESS_DB_PASSWORD
+                            valueFrom:
+                              secretKeyRef:
+                                name: ""
+                                key: password
+                        ports:
+                          - containerPort: 80
+                        resources:
+                          requests:
+                            cpu: ""
+                            memory: ""
+                          limits:
+                            cpu: ""
+                            memory: ""
+                        volumeMounts:
+                          - name: wp-content
+                            mountPath: /var/www/html/wp-content
+                    volumes:
+                      - name: wp-content
+                        persistentVolumeClaim:
+                          claimName: ""
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-wordpress", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.replicas
+                toFieldPath: spec.replicas
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.selector.matchLabels.instance
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.template.metadata.labels.instance
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.template.spec.containers[0].env[0].value
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-mariadb:3306", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.template.spec.containers[0].env[2].valueFrom.secretKeyRef.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-mariadb", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.template.spec.containers[0].env[3].valueFrom.secretKeyRef.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-mariadb", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-wp-content", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.cpuRequest
+                toFieldPath: spec.template.spec.containers[0].resources.requests.cpu
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.cpuLimit
+                toFieldPath: spec.template.spec.containers[0].resources.limits.cpu
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.memoryRequest
+                toFieldPath: spec.template.spec.containers[0].resources.requests.memory
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.memoryLimit
+                toFieldPath: spec.template.spec.containers[0].resources.limits.memory
+
+          # --- WordPress Service ---
+          - name: wordpress-service
+            base:
+              apiVersion: v1
+              kind: Service
+              spec:
+                selector:
+                  app: wordpress
+                  instance: ""
+                ports:
+                  - port: 80
+                    targetPort: 80
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-wordpress", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.selector.instance
+
+          # --- WordPress Ingress ---
+          - name: wordpress-ingress
+            base:
+              apiVersion: networking.k8s.io/v1
+              kind: Ingress
+              metadata:
+                annotations:
+                  cert-manager.io/cluster-issuer: local-lab-ca-issuer
+                  traefik.ingress.kubernetes.io/router.entrypoints: websecure
+                  traefik.ingress.kubernetes.io/router.tls: "true"
+              spec:
+                ingressClassName: traefik
+                tls:
+                  - hosts:
+                      - ""
+                    secretName: wordpress-tls
+                rules:
+                  - host: ""
+                    http:
+                      paths:
+                        - path: /
+                          pathType: Prefix
+                          backend:
+                            service:
+                              name: ""
+                              port:
+                                number: 80
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-wordpress", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.host
+                toFieldPath: spec.rules[0].host
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.host
+                toFieldPath: spec.tls[0].hosts[0]
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.rules[0].http.paths[0].backend.service.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-wordpress", type: Format }

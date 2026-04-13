@@ -21,6 +21,8 @@
 | [12 — AdGuard Home](#adguard) |
 | [13 — Tailscale (Remote Access)](#tailscale) |
 | [14 — Longhorn Backups (Cloudflare R2)](#longhorn-backups) |
+| [15 — Crossplane](#crossplane) |
+| [16 — Public WordPress via Cloudflare Tunnel](#cloudflare-tunnel) |
 | [Security Checklist](#security-checklist) |
 | [Troubleshooting](#troubleshooting) |
 | [Quick Reference](#quick-reference) |
@@ -763,7 +765,7 @@ sudo sed -i '' '/\.local\.lab/d' /etc/hosts
 <a id="longhorn-backups"></a>
 ## 14 — Longhorn Backups (Cloudflare R2)
 
-**Prerequisite:** Cloudflare account set up as part of [PLATFORM_PLAN.md](PLATFORM_PLAN.md) step 16. Do this step while you're already in the Cloudflare dashboard.
+**Prerequisite:** Cloudflare account set up (step 16). Do this step while you're already in the Cloudflare dashboard.
 
 Longhorn's 3× replication protects against node/disk failure but not accidental deletes or corruption. R2 provides offsite backups with a free 10 GB tier and zero egress fees.
 
@@ -873,6 +875,40 @@ curl -sk https://adguard.local.lab -o /dev/null -w "%{http_code}"
 
 ---
 
+<a id="crossplane"></a>
+## 15 — Install Crossplane
+
+Running `helm install` for each app works fine for a handful of services, but it doesn't give you a reusable, self-service API. Crossplane extends Kubernetes so you can define infrastructure (databases, apps, DNS records, cloud resources) as custom Kubernetes resources — the same declarative model you use for Deployments and Services. This is the foundation that makes the `XWordPressPlatform` XR in step 16 possible.
+
+```bash
+helm repo add crossplane-stable https://charts.crossplane.io/stable && helm repo update
+
+helm install crossplane crossplane-stable/crossplane \
+  --namespace crossplane-system \
+  --create-namespace
+
+kubectl get pods -n crossplane-system
+```
+
+Install functions:
+
+```bash
+kubectl apply -f apps/crossplane/providers.yaml
+kubectl get functions   # Wait for HEALTHY: True — both function-patch-and-transform and function-go-templating
+```
+
+Grant Crossplane RBAC to compose native Kubernetes resources:
+
+```bash
+kubectl apply -f apps/crossplane/rbac.yaml
+```
+
+- [x] Crossplane pods running
+- [x] `function-patch-and-transform` healthy
+- [x] `function-go-templating` healthy
+
+---
+
 ## Troubleshooting
 
 ### Node not joining
@@ -952,9 +988,6 @@ kubectl run -it debug --image=busybox --rm -- sh
 | Grafana | `https://grafana.local.lab` |
 | Prometheus | `https://prometheus.local.lab` |
 | Alertmanager | `https://alertmanager.local.lab` |
-| WordPress (internal) | `https://wordpress.local.lab` |
-| WordPress (public) | `https://blog.yourdomain.com` |
-
 ### `/etc/hosts` (laptop)
 
 ```
