@@ -2,47 +2,43 @@
 
 ![homelab picture](./homelab.jpg)
 
-This homelab is a small multi-node Raspberry Pi cluster built to learn K3s Kubernetes and [Kubernetes Resource Model (KRM)](krm) and [Crossplane](crossplane). The focus is on platform engineering, GitOps workflows, and using Kubernetes as a control plane for infrastructure rather than just running containers.
+A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering and GitOps. The goal is to use Kubernetes as a control plane for infrastructure — not just a place to run containers.
 
-[krm]: https://github.com/kubernetes/design-proposals-archive/blob/main/architecture/resource-management.md
-[crossplane]: https://www.crossplane.io/
+## Platform Stack
 
-The goal is to build, break, and rebuild a simple but realistic platform while learning how modern cloud-native infrastructure actually works.
+| Layer | Technology |
+|---|---|
+| **Cluster** | k3s on 4× Raspberry Pi 5 (1 controller, 3 workers) |
+| **Storage** | Longhorn — distributed block storage with 3× NVMe replication |
+| **Ingress + TLS** | Traefik + cert-manager (local CA for `*.local.lab`, Let's Encrypt for public) |
+| **GitOps** | Argo CD — cluster state driven from this repo |
+| **Platform API** | Crossplane — XRDs and Compositions expose self-service infrastructure APIs |
+| **Observability** | Prometheus + Grafana + Alertmanager (kube-prometheus-stack) |
+| **DNS** | AdGuard Home — wildcard `*.local.lab → 192.168.10.100` for all network devices |
+| **Remote Access** | Tailscale subnet router on ctrl-1 |
+| **Tunnel** | Cloudflare Tunnel — zero-trust public ingress, no exposed firewall ports |
 
 ## Network Topology
 
-```md
+```
 [Fiber Internet]
       │
-      ▼
-[Fiber → Fiber ONT]
+[UDR7 UniFi Dream Router 7]  192.168.1.1
       │
-      ▼
-[UDR7 UniFi Dream Router 7]  <- Main router / firewall / DHCP / gateway
-      │
-      ├─> [TL-SG1008MP Switch]  <- Dedicated homelab switch (isolates lab traffic)
-               │
-               ├─> [Raspberry Pi 5 8GB Node 1]  (Controller Node)
-               │
-               ├─> [Raspberry Pi 5 8GB Node 2]  (Worker)
-               │
-               ├─> [Raspberry Pi 5 8GB Node 3]  (Worker)
-               │
-               └─> [Raspberry Pi 5 8GB Node 4]  (Worker)
+[GS305PP PoE Switch]  VLAN 10: 192.168.10.0/24
+      ├── ctrl-1  192.168.10.100  k3s server
+      ├── work-1  192.168.10.101  k3s agent
+      ├── work-2  192.168.10.102  k3s agent
+      └── work-3  192.168.10.103  k3s agent
 ```
 
-## Parts
+## Hardware
 
-| Category | Item | Qty |
-|----------|------|-----|
-| Rack | GeeekPi DeskPi RackMate T0 Plus 10" 4U Cabinet | 1 |
-| Rack | GeeekPi 10" 2U Rack Mount for Raspberry Pi | 1 |
-| Rack | 10" Rack Mount PDU 4 Outlet 1U w/ Surge Protection | 1 |
-| Display | GeeekPi 6.91" 1U Rack Mount LCD Touch Screen (1424x280) | 1 |
-| Compute | Raspberry Pi 5 8GB | 4 |
-| Compute | GeeekPi P31 M.2 NVMe PoE+ HAT w/ Active Cooler (Pi 5) | 4 |
-| Compute | 256GB M.2 2230 NVMe SSD | 4 |
-| Networking | TP-Link TL-SG1008MP 8-Port Gigabit PoE+ Switch | 1 |
-| Cooling | 120mm PWM Fan top | 1 |
-| Cooling | 80mm PWM Fan bottom | 2 |
-| Cooling | USBC Thermal Fan Controller | 1 |
+| Item | Qty |
+|---|---|
+| Raspberry Pi 5 8GB | 4 |
+| GeeekPi P31 M.2 NVMe PoE+ HAT (Pi 5) | 4 |
+| 256GB M.2 2230 NVMe SSD | 4 |
+| TP-Link GS305PP 8-Port PoE+ Switch | 1 |
+| GeeekPi DeskPi RackMate T0 Plus 10" 4U Rack | 1 |
+| GeeekPi 6.91" 1U Rack LCD (1424×280) | 1 |
