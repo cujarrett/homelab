@@ -38,6 +38,12 @@ spec:
           persistence:
             enabled: true
             size: 5Gi
+          additionalDataSources:
+            - name: Loki
+              type: loki
+              url: http://loki.monitoring.svc.cluster.local:3100
+              access: proxy
+              isDefault: false
           sidecar:
             dashboards:
               enabled: true
