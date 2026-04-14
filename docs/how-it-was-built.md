@@ -20,12 +20,7 @@
 | [11 — Grafana Kiosk](#grafana-kiosk) |
 | [12 — AdGuard Home](#adguard) |
 | [13 — Tailscale (Remote Access)](#tailscale) |
-| [14 — Longhorn Backups (Cloudflare R2)](#longhorn-backups) |
-| [15 — Crossplane](#crossplane) |
-| [Security Checklist](#security-checklist) |
-| [Troubleshooting](#troubleshooting) |
-| [Quick Reference](#quick-reference) |
-| [What's Next](#whats-next) |
+| [14 — Crossplane](#crossplane) |
 
 </details>
 
@@ -721,53 +716,6 @@ sudo sed -i '' '/\.local\.lab/d' /etc/hosts
 ---
 
 <a id="longhorn-backups"></a>
-## 14 — Longhorn Backups (Cloudflare R2)
-
-**Prerequisite:** Cloudflare account set up (step 16). Do this step while you're already in the Cloudflare dashboard.
-
-Longhorn's 3× replication protects against node/disk failure but not accidental deletes or corruption. R2 provides offsite backups with a free 10 GB tier and zero egress fees.
-
-**1. Create an R2 bucket**
-
-In the Cloudflare dashboard → **R2 Object Storage → Create bucket**. Name it `longhorn-backups`, region `auto`.
-
-**2. Create an API token with R2 permissions**
-
-Cloudflare dashboard → **R2 → Manage R2 API tokens → Create API token**:
-- Permissions: **Object Read & Write**
-- Scope: **Specific bucket → longhorn-backups**
-
-Save the **Access Key ID** and **Secret Access Key** — shown once only.
-
-Find your **Account ID** in the Cloudflare dashboard URL or R2 overview page.
-
-**3. Create the Longhorn backup secret**
-
-```bash
-kubectl create secret generic longhorn-r2-backup \
-  --namespace longhorn-system \
-  --from-literal=AWS_ACCESS_KEY_ID=<ACCESS_KEY_ID> \
-  --from-literal=AWS_SECRET_ACCESS_KEY=<SECRET_ACCESS_KEY> \
-  --from-literal=AWS_ENDPOINTS=https://<ACCOUNT_ID>.r2.cloudflarestorage.com \
-  --from-literal=AWS_REGION=auto
-```
-
-**4. Set the backup target in Longhorn UI**
-
-`https://longhorn.local.lab` → **Settings → General**:
-- **Backup Target**: `s3://longhorn-backups@auto/`
-- **Backup Target Credential Secret**: `longhorn-r2-backup`
-
-Click **Save**. Longhorn will validate the connection — a green tick confirms it.
-
-**5. Schedule recurring backups**
-
-For each volume you care about (e.g. AdGuard, Grafana, WordPress):
-1. **Longhorn UI → Volumes → (volume name) → Recurring Jobs**
-2. Add a job: type **Backup**, cron `0 2 * * *` (2 AM daily), retain `7`
-
-
----
 
 <a id="tailscale"></a>
 ## 13 — Tailscale (Remote Access)
@@ -825,7 +773,7 @@ curl -sk https://adguard.local.lab -o /dev/null -w "%{http_code}"
 ---
 
 <a id="crossplane"></a>
-## 15 — Install Crossplane
+## 14 — Install Crossplane
 
 Running `helm install` for each app works fine for a handful of services, but it doesn't give you a reusable, self-service API. Crossplane extends Kubernetes so you can define infrastructure (databases, apps, DNS records, cloud resources) as custom Kubernetes resources — the same declarative model you use for Deployments and Services. This is the foundation that makes the `XWordPressPlatform` XR in step 16 possible.
 
@@ -851,4 +799,3 @@ Grant Crossplane RBAC to compose native Kubernetes resources:
 ```bash
 kubectl apply -f apps/crossplane/rbac.yaml
 ```
-

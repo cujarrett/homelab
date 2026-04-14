@@ -1,8 +1,10 @@
 # Homelab
 
-![homelab picture](./homelab.jpg)
+![homelab picture](./docs/homelab.jpg)
 
 A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering and GitOps. The goal is to use Kubernetes as a control plane for infrastructure — not just a place to run containers.
+
+[How it was built](./docs/how-it-was-built.md)
 
 ## Platform Stack
 
