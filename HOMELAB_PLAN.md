@@ -22,7 +22,6 @@
 | [13 — Tailscale (Remote Access)](#tailscale) |
 | [14 — Longhorn Backups (Cloudflare R2)](#longhorn-backups) |
 | [15 — Crossplane](#crossplane) |
-| [16 — Public WordPress via Cloudflare Tunnel](#cloudflare-tunnel) |
 | [Security Checklist](#security-checklist) |
 | [Troubleshooting](#troubleshooting) |
 | [Quick Reference](#quick-reference) |
@@ -155,9 +154,6 @@ Install tools on your Mac:
 brew install kubectl helm
 ```
 
-- [ ] `ctrl-1` shows `Ready` in `kubectl get nodes`
-- [ ] `kubectl` working from laptop
-- [ ] Helm installed
 
 ---
 
@@ -200,8 +196,6 @@ kubectl label node work-2 node-role.kubernetes.io/worker=worker
 kubectl label node work-3 node-role.kubernetes.io/worker=worker
 ```
 
-- [ ] All 4 nodes `Ready`
-- [ ] Workers labeled
 
 ---
 
@@ -223,9 +217,6 @@ kubectl run dns-test --image=busybox:1.36 --rm -it --restart=Never -- \
 # Should return an IP in 10.43.x.x range
 ```
 
-- [ ] All `kube-system` pods running
-- [ ] Pods schedule across workers
-- [ ] CoreDNS resolves internal names
 
 ---
 
@@ -306,8 +297,6 @@ sudo sed -i '' '/whoami\.local\.lab/d' /etc/hosts
 
 **Note:** UniFi Network 10.2 does not support wildcard DNS records. Use `/etc/hosts` on your machine for now; AdGuard Home (step 12) will replace this permanently for all devices on the network.
 
-- [ ] Traefik DaemonSet running on all nodes
-- [ ] Test app responds via `whoami.local.lab`
 
 ---
 
@@ -335,7 +324,6 @@ EOF'
 
 Phase 2 (deploy AdGuard Home and replace `/etc/hosts`) is covered in step 12 once the cluster is fully built out.
 
-- [ ] `/etc/hosts` entries added for all services
 
 ---
 
@@ -373,11 +361,6 @@ sudo security add-trusted-cert -d -r trustRoot \
   -k /Library/Keychains/System.keychain local-lab-ca.crt
 ```
 
-- [ ] Cert-Manager pods running
-- [ ] `letsencrypt-staging` issuer created
-- [ ] `letsencrypt-prod` issuer created
-- [ ] `local-lab-ca-issuer` created
-- [ ] CA trusted on laptop
 
 ---
 
@@ -448,9 +431,6 @@ Expose the UI:
 kubectl apply -f apps/longhorn/ingress.yaml
 ```
 
-- [ ] All Longhorn pods running
-- [ ] Longhorn is default StorageClass
-- [ ] UI at `https://longhorn.local.lab`
 
 ---
 
@@ -517,10 +497,6 @@ argocd account update-password \
 kubectl -n argocd delete secret argocd-initial-admin-secret
 ```
 
-- [ ] Argo CD UI at `https://argocd.local.lab`
-- [ ] GitHub repo connected
-- [ ] Root Application created
-- [ ] Admin password changed
 
 ---
 
@@ -553,9 +529,6 @@ Expose Grafana and Prometheus:
 kubectl apply -f apps/monitoring/ingresses.yaml
 ```
 
-- [ ] All pods running in `monitoring`
-- [ ] Grafana at `https://grafana.local.lab`
-- [ ] Pre-built dashboards loading
 
 ---
 
@@ -645,17 +618,11 @@ curl -s -u "admin:${GRAFANA_PASS}" \
   -d '{"items":[{"role":"Viewer","permission":1}]}'
 ```
 
-- [ ] Display booting into kiosk
-- [ ] Grafana dashboard auto-loads after reboot
 
 ---
 
 ## Security Checklist
 
-- [ ] SSH keys only, password auth disabled on all nodes
-- [ ] UFW active on all nodes (22, 80, 443, 6443, 10250, 8472/udp)
-- [ ] No port forwarding on router (Cloudflare Tunnel only)
-- [ ] NetworkPolicies restricting Pod-to-Pod traffic
 
 ---
 
@@ -750,15 +717,6 @@ dig grafana.local.lab @192.168.10.100
 sudo sed -i '' '/\.local\.lab/d' /etc/hosts
 ```
 
-- [x] AdGuard Home pod running on `ctrl-1`
-- [x] Setup wizard completed
-- [x] `*.local.lab → 192.168.10.100` DNS rewrite configured
-- [x] UniFi DHCP DNS set to `192.168.10.100` / `1.1.1.1`
-- [x] `grafana.local.lab` resolves on computer, iPhone, and other devices
-- [x] Local CA cert trusted on Mac
-- [x] Local CA cert trusted on iPhone
-- [x] `/etc/hosts` cleaned up
-- [x] `https://adguard.local.lab` accessible
 
 ---
 
@@ -808,9 +766,6 @@ For each volume you care about (e.g. AdGuard, Grafana, WordPress):
 1. **Longhorn UI → Volumes → (volume name) → Recurring Jobs**
 2. Add a job: type **Backup**, cron `0 2 * * *` (2 AM daily), retain `7`
 
-- [ ] R2 bucket created
-- [ ] Longhorn backup target configured and validated
-- [ ] Recurring backup jobs scheduled for key volumes
 
 ---
 
@@ -866,12 +821,6 @@ kubectl get nodes
 curl -sk https://adguard.local.lab -o /dev/null -w "%{http_code}"
 ```
 
-- [ ] Tailscale account created
-- [ ] ctrl-1 joined as subnet router
-- [ ] `192.168.10.0/24` subnet route approved in admin console
-- [ ] Tailscale installed on Mac
-- [ ] Split DNS configured for `local.lab`
-- [ ] `kubectl` and `*.local.lab` working off-network
 
 ---
 
@@ -903,133 +852,3 @@ Grant Crossplane RBAC to compose native Kubernetes resources:
 kubectl apply -f apps/crossplane/rbac.yaml
 ```
 
-- [x] Crossplane pods running
-- [x] `function-patch-and-transform` healthy
-- [x] `function-go-templating` healthy
-
----
-
-## Troubleshooting
-
-### Node not joining
-
-```bash
-sudo systemctl status k3s-agent
-sudo journalctl -u k3s-agent -f
-# Check: correct token? ctrl-1 reachable at 192.168.10.100? Port 6443 open?
-```
-
-### Pod stuck Pending
-
-```bash
-kubectl describe pod <POD> -n <NS>
-# Check: resources available? PVC bound? Node taint?
-```
-
-### Pod CrashLoopBackOff
-
-```bash
-kubectl logs <POD> --previous
-# Check: env vars, missing secrets, ARM64 image support
-```
-
-### Ingress not working
-
-```bash
-kubectl get ingress --all-namespaces
-kubectl logs -n kube-system -l app.kubernetes.io/name=traefik
-# Check: /etc/hosts updated? Host header matches? Ports 80/443 open?
-```
-
-### Longhorn volume not binding
-
-```bash
-kubectl get pvc --all-namespaces
-ssh pi@<NODE_IP> "sudo systemctl status iscsid && df -h /var/lib/longhorn"
-# Check: iscsid running? /var/lib/longhorn exists? Enough disk space?
-```
-
-### Cert not issuing
-
-```bash
-kubectl describe certificate <NAME> -n <NS>
-kubectl logs -n cert-manager -l app=cert-manager
-```
-
-### General debug
-
-```bash
-# Find broken pods
-kubectl get pods --all-namespaces | grep -v Running
-
-# Describe + logs
-kubectl describe pod <POD> -n <NS>
-kubectl logs <POD> -n <NS>
-
-# System logs on node
-ssh pi@<NODE_IP> "sudo journalctl -u k3s -f"
-
-# Network debug pod
-kubectl run -it debug --image=busybox --rm -- sh
-```
-
----
-
-## Quick Reference
-
-### Service URLs
-
-| Service | URL |
-|---|---|
-| Kubernetes API | `https://192.168.10.100:6443` |
-| Traefik Dashboard | `https://traefik.local.lab` |
-| Longhorn UI | `https://longhorn.local.lab` |
-| Argo CD | `https://argocd.local.lab` |
-| Grafana | `https://grafana.local.lab` |
-| Prometheus | `https://prometheus.local.lab` |
-| Alertmanager | `https://alertmanager.local.lab` |
-### `/etc/hosts` (laptop)
-
-```
-192.168.10.100  ctrl-1 ctrl-1.local.lab
-192.168.10.101  work-1 work-1.local.lab
-192.168.10.102  work-2 work-2.local.lab
-192.168.10.103  work-3 work-3.local.lab
-192.168.10.100  traefik.local.lab
-192.168.10.100  argocd.local.lab
-192.168.10.100  grafana.local.lab
-192.168.10.100  prometheus.local.lab
-192.168.10.100  alertmanager.local.lab
-192.168.10.100  longhorn.local.lab
-192.168.10.100  wordpress.local.lab
-```
-
-### kubectl cheatsheet
-
-```bash
-kubectl get nodes -o wide
-kubectl get pods --all-namespaces | grep -v Running
-kubectl top nodes
-kubectl top pods --all-namespaces --sort-by=memory
-kubectl get all -n <namespace>
-kubectl logs <pod> -n <ns> -f
-kubectl describe pod <pod> -n <ns>
-kubectl exec -it <pod> -n <ns> -- sh
-kubectl port-forward svc/grafana 3000:80 -n monitoring
-kubectl port-forward svc/argocd-server 8080:443 -n argocd
-```
-
----
-
-## What's Next
-
-| Order | Component | Notes |
-|---|---|---|
-| 1 | Rancher | Cluster management UI |
-| 2 | Sealed Secrets | Encrypt secrets for GitOps |
-| 3 | Kyverno | Policy engine (enforce labels, limits, no `latest` tags) |
-| 4 | Tekton | In-cluster CI/CD |
-| 5 | Kafka | Event streaming (Bitnami chart, KRaft mode) |
-| 6 | Linkerd | Lightweight service mesh (better ARM support than Istio) |
-| 7 | GraphQL Supergraph | Apollo Router + subgraph services |
-| 8 | Second k3s cluster | Multi-cluster patterns |
