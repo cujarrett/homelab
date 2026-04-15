@@ -43,8 +43,10 @@ spec:
               value: https://blog.mattjarrett.dev
             - name: NODE_ENV
               value: production
-            # SQLite is the default — no separate DB pod needed for a personal blog.
-            # Ghost stores the DB at /var/lib/ghost/content/data/ghost.db (on the PVC).
+            - name: database__client
+              value: sqlite3
+            - name: database__connection__filename
+              value: /var/lib/ghost/content/data/ghost.db
           ports:
             - containerPort: 2368
           volumeMounts:
