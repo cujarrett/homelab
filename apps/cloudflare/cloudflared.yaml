@@ -1,3 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflared-config
+  namespace: cloudflare
+data:
+  config.yaml: |
+    ingress:
+      - hostname: mattjarrett.com
+        service: https://192.168.10.101:443
+        originRequest:
+          noTLSVerify: true
+      - hostname: mattjarrett.dev
+        service: https://192.168.10.101:443
+        originRequest:
+          noTLSVerify: true
+      - hostname: blog.mattjarrett.dev
+        service: https://192.168.10.101:443
+        originRequest:
+          noTLSVerify: true
+      - service: http_status:404
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -19,6 +41,8 @@ spec:
           args:
             - tunnel
             - --no-autoupdate
+            - --config
+            - /etc/cloudflared/config.yaml
             - run
             - --token
             - $(TUNNEL_TOKEN)
@@ -28,6 +52,10 @@ spec:
                 secretKeyRef:
                   name: cloudflare-tunnel-token
                   key: tunnel-token
+          volumeMounts:
+            - name: config
+              mountPath: /etc/cloudflared
+              readOnly: true
           resources:
             limits:
               memory: 128Mi
@@ -35,3 +63,7 @@ spec:
             requests:
               memory: 64Mi
               cpu: 50m
+      volumes:
+        - name: config
+          configMap:
+            name: cloudflared-config
