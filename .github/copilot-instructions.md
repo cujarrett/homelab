@@ -60,6 +60,8 @@ UniFi DHCP DNS: primary `192.168.10.100`, fallback `1.1.1.1`.
 
 ## Public Hostnames
 - `mattjarrett.com` — WordPress, routed via Cloudflare Tunnel
+- `mattjarrett.dev` — static site, routed via Cloudflare Tunnel
+- `blog.mattjarrett.dev` — Ghost blog, routed via Cloudflare Tunnel
 
 ## Monitoring Stack Details
 - **Prometheus**: `monitoring-kube-prometheus-prometheus`, port 9090, 30d retention, 20Gi PVC
@@ -67,6 +69,51 @@ UniFi DHCP DNS: primary `192.168.10.100`, fallback `1.1.1.1`.
 - **Loki**: StatefulSet `loki`, SingleBinary, filesystem, 10Gi PVC (`storage-loki-0`), 30d retention, compactor enabled
 - **Promtail**: DaemonSet, ships logs to Loki
 - **Alertmanager**: 5Gi PVC
+
+### Grafana Dashboards
+Dashboards are ConfigMaps with label `grafana_dashboard: "1"` in any namespace. Apply locally to test before committing:
+```bash
+kubectl apply -f apps/monitoring/<dashboard>.yaml
+```
+
+| UID | File | Purpose |
+|---|---|---|
+| `homelab-kiosk` | `grafana-dashboard-homelab-display.yaml` | Homelab kiosk — 5 grid units tall |
+| `web-traffic` | `grafana-dashboard-web-traffic.yaml` | Web traffic MacBook view — defaults 24h |
+| `web-traffic-kiosk` | `grafana-dashboard-web-traffic-kiosk.yaml` | Web traffic kiosk — 5 grid units tall, sparklines |
+
+**Adding a new dashboard to the kiosk playlist:**
+1. Create the dashboard ConfigMap in `apps/monitoring/` with `grafana_dashboard: "1"` label
+2. Keep height at exactly 5 grid units (`"h": 5`) so it fits the 1U display
+3. Use `"instant": true` on all stat panel targets — avoids heavy range queries that crash the Pi
+4. Apply locally to test: `kubectl apply -f apps/monitoring/<dashboard>.yaml`
+5. In Grafana UI → Dashboards → Playlists → edit playlist `admt9pc` → add the new dashboard
+6. No restart needed — the playlist picks it up immediately
+
+### Traefik Prometheus label quirk
+Prometheus renames the `service` label from Traefik metrics to `exported_service` to avoid collision. Always use `exported_service=~"..."` in Traefik queries.
+
+Service label format: `{namespace}-{servicename}-{port}@kubernetes`
+- `blog.mattjarrett.dev` → `blog-ghost.*@kubernetes`
+- `mattjarrett.dev` → `web-mattjarrett-dev.*@kubernetes`
+- `mattjarrett.com` → `mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes`
+
+## 1U Display (ctrl-1)
+`ctrl-1` runs a kiosk browser on the attached display. It is **not** managed by systemd — it's a bare background process under the `pi` user.
+
+- Script: `~/kiosk.sh` on `ctrl-1`
+- Current URL: `https://grafana.local.lab/playlists/play/admt9pc?kiosk`
+
+To update the URL without rebooting ctrl-1:
+```bash
+# 1. Edit the URL
+ssh pi@192.168.10.100 "sed -i 's|OLD_URL|NEW_URL|' ~/kiosk.sh"
+
+# 2. Restart the tty1 session — triggers autologin → startx → kiosk.sh (k3s is unaffected)
+ssh pi@192.168.10.100 "sudo systemctl restart getty@tty1.service"
+```
+
+**Do not** just `pkill chromium` — the `while true` loop in kiosk.sh will relaunch chromium with the URL already loaded in memory, ignoring the file change. Restarting getty re-runs `.bashrc` which re-sources the updated script.
 
 ## WordPress Platform (Crossplane)
 - XRD: `XWordPressPlatform` (`platform.local.lab/v1alpha1`)
