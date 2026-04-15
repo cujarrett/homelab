@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: blog
+---
+# Ghost content PVC — stores SQLite DB, themes, images, and all uploaded files.
+# Uses Recreate strategy because the RWO PVC can only be mounted by one pod at a time.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ghost-content
+  namespace: blog
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ghost
+  namespace: blog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ghost
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: ghost
+    spec:
+      containers:
+        - name: ghost
+          image: ghost:5-alpine
+          env:
+            - name: url
+              value: https://blog.mattjarrett.dev
+            - name: NODE_ENV
+              value: production
+            # SQLite is the default — no separate DB pod needed for a personal blog.
+            # Ghost stores the DB at /var/lib/ghost/content/data/ghost.db (on the PVC).
+          ports:
+            - containerPort: 2368
+          volumeMounts:
+            - name: content
+              mountPath: /var/lib/ghost/content
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            tcpSocket:
+              port: 2368
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket:
+              port: 2368
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 5
+      volumes:
+        - name: content
+          persistentVolumeClaim:
+            claimName: ghost-content
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ghost
+  namespace: blog
+spec:
+  selector:
+    app: ghost
+  ports:
+    - port: 80
+      targetPort: 2368
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ghost
+  namespace: blog
+  annotations:
+    cert-manager.io/cluster-issuer: local-lab-ca-issuer
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - blog.mattjarrett.dev
+      secretName: ghost-tls
+  rules:
+    - host: blog.mattjarrett.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ghost
+                port:
+                  number: 80
