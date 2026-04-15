@@ -38,7 +38,7 @@ data:
           },
           "targets": [
             {
-              "expr": "increase(traefik_service_requests_total{service=~\"blog-ghost.*@kubernetes|web-mattjarrett-dev.*@kubernetes|mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[$__range])",
+              "expr": "increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes|web-mattjarrett-dev.*@kubernetes|mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[$__range])",
               "legendFormat": "Requests",
               "instant": true
             }
@@ -58,7 +58,7 @@ data:
           },
           "targets": [
             {
-              "expr": "increase(traefik_service_requests_total{service=~\"blog-ghost.*@kubernetes\"}[$__range])",
+              "expr": "increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[$__range])",
               "legendFormat": "blog.mattjarrett.dev",
               "instant": true
             }
@@ -78,7 +78,7 @@ data:
           },
           "targets": [
             {
-              "expr": "increase(traefik_service_requests_total{service=~\"web-mattjarrett-dev.*@kubernetes\"}[$__range])",
+              "expr": "increase(traefik_service_requests_total{exported_service=~\"web-mattjarrett-dev.*@kubernetes\"}[$__range])",
               "legendFormat": "mattjarrett.dev",
               "instant": true
             }
@@ -98,7 +98,7 @@ data:
           },
           "targets": [
             {
-              "expr": "increase(traefik_service_requests_total{service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[$__range])",
+              "expr": "increase(traefik_service_requests_total{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[$__range])",
               "legendFormat": "mattjarrett.com",
               "instant": true
             }
@@ -122,15 +122,15 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(rate(traefik_service_requests_total{service=~\"blog-ghost.*@kubernetes\"}[5m]))",
+              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[5m]))",
               "legendFormat": "blog.mattjarrett.dev"
             },
             {
-              "expr": "sum(rate(traefik_service_requests_total{service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m]))",
+              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m]))",
               "legendFormat": "mattjarrett.dev"
             },
             {
-              "expr": "sum(rate(traefik_service_requests_total{service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[5m]))",
+              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[5m]))",
               "legendFormat": "mattjarrett.com"
             }
           ]
@@ -169,7 +169,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(rate(traefik_service_requests_total{service=~\"blog-ghost.*@kubernetes\",code=~\"2..\"}[5m])) / sum(rate(traefik_service_requests_total{service=~\"blog-ghost.*@kubernetes\"}[5m]))",
+              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\",code=~\"2..\"}[5m])) / sum(rate(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[5m]))",
               "legendFormat": "2xx %",
               "instant": true
             }
@@ -189,7 +189,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(rate(traefik_service_requests_total{service=~\"blog-ghost.*@kubernetes\",code=~\"[45]..\"}[5m]))",
+              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\",code=~\"[45]..\"}[5m]))",
               "legendFormat": "Errors/s",
               "instant": true
             }
@@ -213,7 +213,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum by (code) (rate(traefik_service_requests_total{service=~\"blog-ghost.*@kubernetes\"}[5m]))",
+              "expr": "sum by (code) (rate(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[5m]))",
               "legendFormat": "HTTP {{code}}"
             }
           ]
@@ -236,15 +236,15 @@ data:
           },
           "targets": [
             {
-              "expr": "histogram_quantile(0.50, sum(rate(traefik_service_request_duration_seconds_bucket{service=~\"blog-ghost.*@kubernetes\"}[5m])) by (le))",
+              "expr": "histogram_quantile(0.50, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"blog-ghost.*@kubernetes\"}[5m])) by (le))",
               "legendFormat": "p50"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{service=~\"blog-ghost.*@kubernetes\"}[5m])) by (le))",
+              "expr": "histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"blog-ghost.*@kubernetes\"}[5m])) by (le))",
               "legendFormat": "p95"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(traefik_service_request_duration_seconds_bucket{service=~\"blog-ghost.*@kubernetes\"}[5m])) by (le))",
+              "expr": "histogram_quantile(0.99, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"blog-ghost.*@kubernetes\"}[5m])) by (le))",
               "legendFormat": "p99"
             }
           ]
@@ -283,7 +283,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(rate(traefik_service_requests_total{service=~\"web-mattjarrett-dev.*@kubernetes\",code=~\"2..\"}[5m])) / sum(rate(traefik_service_requests_total{service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m]))",
+              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"web-mattjarrett-dev.*@kubernetes\",code=~\"2..\"}[5m])) / sum(rate(traefik_service_requests_total{exported_service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m]))",
               "legendFormat": "2xx %",
               "instant": true
             }
@@ -303,7 +303,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(rate(traefik_service_requests_total{service=~\"web-mattjarrett-dev.*@kubernetes\",code=~\"[45]..\"}[5m]))",
+              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"web-mattjarrett-dev.*@kubernetes\",code=~\"[45]..\"}[5m]))",
               "legendFormat": "Errors/s",
               "instant": true
             }
@@ -327,7 +327,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum by (code) (rate(traefik_service_requests_total{service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m]))",
+              "expr": "sum by (code) (rate(traefik_service_requests_total{exported_service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m]))",
               "legendFormat": "HTTP {{code}}"
             }
           ]
@@ -350,15 +350,15 @@ data:
           },
           "targets": [
             {
-              "expr": "histogram_quantile(0.50, sum(rate(traefik_service_request_duration_seconds_bucket{service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m])) by (le))",
+              "expr": "histogram_quantile(0.50, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m])) by (le))",
               "legendFormat": "p50"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m])) by (le))",
+              "expr": "histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m])) by (le))",
               "legendFormat": "p95"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(traefik_service_request_duration_seconds_bucket{service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m])) by (le))",
+              "expr": "histogram_quantile(0.99, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m])) by (le))",
               "legendFormat": "p99"
             }
           ]
@@ -397,7 +397,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(rate(traefik_service_requests_total{service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\",code=~\"2..\"}[5m])) / sum(rate(traefik_service_requests_total{service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[5m]))",
+              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\",code=~\"2..\"}[5m])) / sum(rate(traefik_service_requests_total{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[5m]))",
               "legendFormat": "2xx %",
               "instant": true
             }
@@ -417,7 +417,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(rate(traefik_service_requests_total{service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\",code=~\"[45]..\"}[5m]))",
+              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\",code=~\"[45]..\"}[5m]))",
               "legendFormat": "Errors/s",
               "instant": true
             }
@@ -441,7 +441,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum by (code) (rate(traefik_service_requests_total{service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[5m]))",
+              "expr": "sum by (code) (rate(traefik_service_requests_total{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[5m]))",
               "legendFormat": "HTTP {{code}}"
             }
           ]
@@ -464,15 +464,15 @@ data:
           },
           "targets": [
             {
-              "expr": "histogram_quantile(0.50, sum(rate(traefik_service_request_duration_seconds_bucket{service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[5m])) by (le))",
+              "expr": "histogram_quantile(0.50, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[5m])) by (le))",
               "legendFormat": "p50"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[5m])) by (le))",
+              "expr": "histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[5m])) by (le))",
               "legendFormat": "p95"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(traefik_service_request_duration_seconds_bucket{service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[5m])) by (le))",
+              "expr": "histogram_quantile(0.99, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[5m])) by (le))",
               "legendFormat": "p99"
             }
           ]
