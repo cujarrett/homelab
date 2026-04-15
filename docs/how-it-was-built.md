@@ -290,8 +290,6 @@ kubectl delete ingress whoami && kubectl delete service whoami && kubectl delete
 sudo sed -i '' '/whoami\.local\.lab/d' /etc/hosts
 ```
 
-**Note:** UniFi Network 10.2 does not support wildcard DNS records. Use `/etc/hosts` on your machine for now; AdGuard Home (step 12) will replace this permanently for all devices on the network.
-
 
 ---
 
