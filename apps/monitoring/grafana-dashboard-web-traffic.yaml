@@ -6,157 +6,118 @@ metadata:
   labels:
     grafana_dashboard: "1"
 data:
-  blog.json: |-
+  web-traffic.json: |-
     {
       "title": "Web Traffic",
       "uid": "web-traffic",
       "editable": true,
       "graphTooltip": 1,
-      "time": { "from": "now-7d", "to": "now" },
+      "time": { "from": "now-24h", "to": "now" },
       "timepicker": {},
       "refresh": "5m",
       "schemaVersion": 38,
       "panels": [
         {
-          "id": 10,
-          "type": "row",
-          "title": "All Sites",
-          "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
-          "collapsed": false
-        },
-        {
           "id": 1,
           "type": "stat",
-          "title": "Total Requests (selected range)",
-          "gridPos": { "x": 0, "y": 1, "w": 6, "h": 4 },
+          "title": "blog.mattjarrett.dev",
+          "description": "Requests served by origin in the selected window. Each page load counts multiple requests (HTML + assets).",
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
             "reduceOptions": { "calcs": ["sum"] },
-            "colorMode": "value",
+            "colorMode": "none",
             "graphMode": "none",
-            "textMode": "auto"
+            "textMode": "value_and_name",
+            "justifyMode": "center"
+          },
+          "fieldConfig": {
+            "defaults": { "unit": "short", "decimals": 0 }
           },
           "targets": [
             {
-              "expr": "increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes|web-mattjarrett-dev.*@kubernetes|mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[$__range])",
-              "legendFormat": "Requests",
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[$__range]))",
+              "legendFormat": "requests",
               "instant": true
             }
           ]
         },
         {
-          "id": 11,
+          "id": 2,
           "type": "stat",
-          "title": "blog.mattjarrett.dev (selected range)",
-          "gridPos": { "x": 6, "y": 1, "w": 6, "h": 4 },
+          "title": "mattjarrett.dev",
+          "description": "Page-level requests (HTML routes only, assets and k8s probes excluded). Sourced from nginx access logs via Promtail.",
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
             "reduceOptions": { "calcs": ["sum"] },
-            "colorMode": "value",
+            "colorMode": "none",
             "graphMode": "none",
-            "textMode": "auto"
+            "textMode": "value_and_name",
+            "justifyMode": "center"
+          },
+          "fieldConfig": {
+            "defaults": { "unit": "short", "decimals": 0 }
           },
           "targets": [
             {
-              "expr": "increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[$__range])",
-              "legendFormat": "blog.mattjarrett.dev",
+              "expr": "sum(increase(promtail_custom_page_requests_total[$__range]))",
+              "legendFormat": "page requests",
               "instant": true
             }
           ]
         },
         {
-          "id": 12,
-          "type": "stat",
-          "title": "mattjarrett.dev (selected range)",
-          "gridPos": { "x": 12, "y": 1, "w": 6, "h": 4 },
+          "id": 4,
+          "type": "timeseries",
+          "title": "Requests per Hour",
+          "description": "Each point shows how many requests were received in the previous 1-hour window. Refreshes every 5 minutes.",
+          "gridPos": { "x": 0, "y": 5, "w": 24, "h": 9 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "options": {
-            "reduceOptions": { "calcs": ["sum"] },
-            "colorMode": "value",
-            "graphMode": "none",
-            "textMode": "auto"
-          },
-          "targets": [
-            {
-              "expr": "increase(traefik_service_requests_total{exported_service=~\"web-mattjarrett-dev.*@kubernetes\"}[$__range])",
-              "legendFormat": "mattjarrett.dev",
-              "instant": true
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "lineInterpolation": "smooth"
+              }
             }
-          ]
-        },
-        {
-          "id": 13,
-          "type": "stat",
-          "title": "mattjarrett.com (selected range)",
-          "gridPos": { "x": 18, "y": 1, "w": 6, "h": 4 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          },
           "options": {
-            "reduceOptions": { "calcs": ["sum"] },
-            "colorMode": "value",
-            "graphMode": "none",
-            "textMode": "auto"
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "multi", "sort": "desc" }
           },
           "targets": [
             {
-              "expr": "increase(traefik_service_requests_total{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[$__range])",
-              "legendFormat": "mattjarrett.com",
-              "instant": true
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[1h]))",
+              "legendFormat": "blog.mattjarrett.dev"
+            },
+            {
+              "expr": "sum(increase(promtail_custom_page_requests_total[1h]))",
+              "legendFormat": "mattjarrett.dev"
             }
           ]
         },
         {
           "id": 5,
-          "type": "timeseries",
-          "title": "Requests per Second — All Sites",
-          "gridPos": { "x": 0, "y": 5, "w": 24, "h": 8 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "reqps",
-              "custom": { "lineWidth": 2, "fillOpacity": 10 }
-            }
-          },
-          "options": {
-            "legend": { "displayMode": "list", "placement": "bottom" },
-            "tooltip": { "mode": "multi" }
-          },
-          "targets": [
-            {
-              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[5m]))",
-              "legendFormat": "blog.mattjarrett.dev"
-            },
-            {
-              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m]))",
-              "legendFormat": "mattjarrett.dev"
-            },
-            {
-              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[5m]))",
-              "legendFormat": "mattjarrett.com"
-            }
-          ]
-        },
-        {
-          "id": 20,
-          "type": "row",
-          "title": "blog.mattjarrett.dev",
-          "gridPos": { "x": 0, "y": 13, "w": 24, "h": 1 },
-          "collapsed": false
-        },
-        {
-          "id": 3,
           "type": "stat",
-          "title": "HTTP 2xx Rate",
-          "gridPos": { "x": 0, "y": 14, "w": 6, "h": 4 },
+          "title": "blog.mattjarrett.dev — Success Rate",
+          "description": "Percentage of requests returning HTTP 2xx. Below 99% = yellow, below 90% = red. Based on the last 5 minutes of traffic.",
+          "gridPos": { "x": 0, "y": 14, "w": 12, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
             "reduceOptions": { "calcs": ["lastNotNull"] },
             "colorMode": "background",
             "graphMode": "none",
-            "textMode": "auto"
+            "textMode": "auto",
+            "justifyMode": "center"
           },
           "fieldConfig": {
             "defaults": {
               "unit": "percentunit",
+              "decimals": 1,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -170,107 +131,29 @@ data:
           "targets": [
             {
               "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\",code=~\"2..\"}[5m])) / sum(rate(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[5m]))",
-              "legendFormat": "2xx %",
+              "legendFormat": "Success Rate",
               "instant": true
-            }
-          ]
-        },
-        {
-          "id": 4,
-          "type": "stat",
-          "title": "HTTP 4xx / 5xx (5m)",
-          "gridPos": { "x": 6, "y": 14, "w": 6, "h": 4 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"] },
-            "colorMode": "background",
-            "graphMode": "none",
-            "textMode": "auto"
-          },
-          "targets": [
-            {
-              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\",code=~\"[45]..\"}[5m]))",
-              "legendFormat": "Errors/s",
-              "instant": true
-            }
-          ]
-        },
-        {
-          "id": 21,
-          "type": "timeseries",
-          "title": "blog.mattjarrett.dev — Requests by Status",
-          "gridPos": { "x": 0, "y": 18, "w": 12, "h": 8 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "reqps",
-              "custom": { "lineWidth": 2, "fillOpacity": 10 }
-            }
-          },
-          "options": {
-            "legend": { "displayMode": "list", "placement": "bottom" },
-            "tooltip": { "mode": "multi" }
-          },
-          "targets": [
-            {
-              "expr": "sum by (code) (rate(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[5m]))",
-              "legendFormat": "HTTP {{code}}"
             }
           ]
         },
         {
           "id": 6,
-          "type": "timeseries",
-          "title": "blog.mattjarrett.dev — Latency (p50 / p95 / p99)",
-          "gridPos": { "x": 12, "y": 18, "w": 12, "h": 8 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "s",
-              "custom": { "lineWidth": 2, "fillOpacity": 5 }
-            }
-          },
-          "options": {
-            "legend": { "displayMode": "list", "placement": "bottom" },
-            "tooltip": { "mode": "multi" }
-          },
-          "targets": [
-            {
-              "expr": "histogram_quantile(0.50, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"blog-ghost.*@kubernetes\"}[5m])) by (le))",
-              "legendFormat": "p50"
-            },
-            {
-              "expr": "histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"blog-ghost.*@kubernetes\"}[5m])) by (le))",
-              "legendFormat": "p95"
-            },
-            {
-              "expr": "histogram_quantile(0.99, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"blog-ghost.*@kubernetes\"}[5m])) by (le))",
-              "legendFormat": "p99"
-            }
-          ]
-        },
-        {
-          "id": 30,
-          "type": "row",
-          "title": "mattjarrett.dev",
-          "gridPos": { "x": 0, "y": 26, "w": 24, "h": 1 },
-          "collapsed": false
-        },
-        {
-          "id": 31,
           "type": "stat",
-          "title": "HTTP 2xx Rate",
-          "gridPos": { "x": 0, "y": 27, "w": 6, "h": 4 },
+          "title": "mattjarrett.dev — Success Rate",
+          "description": "Percentage of requests returning HTTP 2xx. Below 99% = yellow, below 90% = red. Based on the last 5 minutes of traffic.",
+          "gridPos": { "x": 12, "y": 14, "w": 12, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
             "reduceOptions": { "calcs": ["lastNotNull"] },
             "colorMode": "background",
             "graphMode": "none",
-            "textMode": "auto"
+            "textMode": "auto",
+            "justifyMode": "center"
           },
           "fieldConfig": {
             "defaults": {
               "unit": "percentunit",
+              "decimals": 1,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -284,196 +167,8 @@ data:
           "targets": [
             {
               "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"web-mattjarrett-dev.*@kubernetes\",code=~\"2..\"}[5m])) / sum(rate(traefik_service_requests_total{exported_service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m]))",
-              "legendFormat": "2xx %",
+              "legendFormat": "Success Rate",
               "instant": true
-            }
-          ]
-        },
-        {
-          "id": 32,
-          "type": "stat",
-          "title": "HTTP 4xx / 5xx (5m)",
-          "gridPos": { "x": 6, "y": 27, "w": 6, "h": 4 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"] },
-            "colorMode": "background",
-            "graphMode": "none",
-            "textMode": "auto"
-          },
-          "targets": [
-            {
-              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"web-mattjarrett-dev.*@kubernetes\",code=~\"[45]..\"}[5m]))",
-              "legendFormat": "Errors/s",
-              "instant": true
-            }
-          ]
-        },
-        {
-          "id": 33,
-          "type": "timeseries",
-          "title": "mattjarrett.dev — Requests by Status",
-          "gridPos": { "x": 0, "y": 31, "w": 12, "h": 8 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "reqps",
-              "custom": { "lineWidth": 2, "fillOpacity": 10 }
-            }
-          },
-          "options": {
-            "legend": { "displayMode": "list", "placement": "bottom" },
-            "tooltip": { "mode": "multi" }
-          },
-          "targets": [
-            {
-              "expr": "sum by (code) (rate(traefik_service_requests_total{exported_service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m]))",
-              "legendFormat": "HTTP {{code}}"
-            }
-          ]
-        },
-        {
-          "id": 34,
-          "type": "timeseries",
-          "title": "mattjarrett.dev — Latency (p50 / p95 / p99)",
-          "gridPos": { "x": 12, "y": 31, "w": 12, "h": 8 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "s",
-              "custom": { "lineWidth": 2, "fillOpacity": 5 }
-            }
-          },
-          "options": {
-            "legend": { "displayMode": "list", "placement": "bottom" },
-            "tooltip": { "mode": "multi" }
-          },
-          "targets": [
-            {
-              "expr": "histogram_quantile(0.50, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m])) by (le))",
-              "legendFormat": "p50"
-            },
-            {
-              "expr": "histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m])) by (le))",
-              "legendFormat": "p95"
-            },
-            {
-              "expr": "histogram_quantile(0.99, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m])) by (le))",
-              "legendFormat": "p99"
-            }
-          ]
-        },
-        {
-          "id": 40,
-          "type": "row",
-          "title": "mattjarrett.com",
-          "gridPos": { "x": 0, "y": 39, "w": 24, "h": 1 },
-          "collapsed": false
-        },
-        {
-          "id": 41,
-          "type": "stat",
-          "title": "HTTP 2xx Rate",
-          "gridPos": { "x": 0, "y": 40, "w": 6, "h": 4 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"] },
-            "colorMode": "background",
-            "graphMode": "none",
-            "textMode": "auto"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "percentunit",
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "red", "value": null },
-                  { "color": "yellow", "value": 0.9 },
-                  { "color": "green", "value": 0.99 }
-                ]
-              }
-            }
-          },
-          "targets": [
-            {
-              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\",code=~\"2..\"}[5m])) / sum(rate(traefik_service_requests_total{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[5m]))",
-              "legendFormat": "2xx %",
-              "instant": true
-            }
-          ]
-        },
-        {
-          "id": 42,
-          "type": "stat",
-          "title": "HTTP 4xx / 5xx (5m)",
-          "gridPos": { "x": 6, "y": 40, "w": 6, "h": 4 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"] },
-            "colorMode": "background",
-            "graphMode": "none",
-            "textMode": "auto"
-          },
-          "targets": [
-            {
-              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\",code=~\"[45]..\"}[5m]))",
-              "legendFormat": "Errors/s",
-              "instant": true
-            }
-          ]
-        },
-        {
-          "id": 43,
-          "type": "timeseries",
-          "title": "mattjarrett.com — Requests by Status",
-          "gridPos": { "x": 0, "y": 44, "w": 12, "h": 8 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "reqps",
-              "custom": { "lineWidth": 2, "fillOpacity": 10 }
-            }
-          },
-          "options": {
-            "legend": { "displayMode": "list", "placement": "bottom" },
-            "tooltip": { "mode": "multi" }
-          },
-          "targets": [
-            {
-              "expr": "sum by (code) (rate(traefik_service_requests_total{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[5m]))",
-              "legendFormat": "HTTP {{code}}"
-            }
-          ]
-        },
-        {
-          "id": 44,
-          "type": "timeseries",
-          "title": "mattjarrett.com — Latency (p50 / p95 / p99)",
-          "gridPos": { "x": 12, "y": 44, "w": 12, "h": 8 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "s",
-              "custom": { "lineWidth": 2, "fillOpacity": 5 }
-            }
-          },
-          "options": {
-            "legend": { "displayMode": "list", "placement": "bottom" },
-            "tooltip": { "mode": "multi" }
-          },
-          "targets": [
-            {
-              "expr": "histogram_quantile(0.50, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[5m])) by (le))",
-              "legendFormat": "p50"
-            },
-            {
-              "expr": "histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[5m])) by (le))",
-              "legendFormat": "p95"
-            },
-            {
-              "expr": "histogram_quantile(0.99, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[5m])) by (le))",
-              "legendFormat": "p99"
             }
           ]
         }

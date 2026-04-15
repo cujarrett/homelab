@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-web-traffic-kiosk
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  web-traffic-kiosk.json: |-
+    {
+      "title": "Web Traffic — Kiosk",
+      "uid": "web-traffic-kiosk",
+      "editable": true,
+      "graphTooltip": 0,
+      "time": { "from": "now-24h", "to": "now" },
+      "timepicker": { "hidden": true },
+      "refresh": "5m",
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "blog.mattjarrett.dev",
+          "description": "Requests in the last 24 hours",
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "value_and_name",
+            "justifyMode": "center",
+            "text": { "titleSize": 20, "valueSize": 56 }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "color": { "mode": "fixed", "fixedColor": "blue" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{ "color": "blue", "value": null }]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[24h]))",
+              "legendFormat": "requests last 24h",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "mattjarrett.dev",
+          "description": "Page requests in the last 24 hours (assets excluded)",
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "value_and_name",
+            "justifyMode": "center",
+            "text": { "titleSize": 20, "valueSize": 56 }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "color": { "mode": "fixed", "fixedColor": "green" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{ "color": "green", "value": null }]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(increase(promtail_custom_page_requests_total[24h]))",
+              "legendFormat": "requests last 24h",
+              "instant": true
+            }
+          ]
+        }
+      ]
+    }

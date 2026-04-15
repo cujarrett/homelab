@@ -15,6 +15,25 @@ spec:
         config:
           clients:
             - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+          snippets:
+            pipelineStages:
+              - cri: {}
+              - match:
+                  selector: '{namespace="web", app="mattjarrett-dev"}'
+                  stages:
+                    - regex:
+                        expression: '"GET (?P<page_url>/[a-zA-Z0-9/_-]*)([\?#][^ ]*)? HTTP[^"]*" 200'
+                    - metrics:
+                        page_requests_total:
+                          type: Counter
+                          description: Page-level GET 200 requests to mattjarrett.dev (assets and healthz excluded)
+                          source: page_url
+                          config:
+                            action: inc
+        serviceMonitor:
+          enabled: true
+          labels:
+            release: monitoring
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
