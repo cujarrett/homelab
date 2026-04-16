@@ -6,7 +6,7 @@ metadata:
     rbac.crossplane.io/aggregate-to-crossplane: "true"
 rules:
   - apiGroups: [""]
-    resources: ["secrets", "services", "persistentvolumeclaims"]
+    resources: ["secrets", "services", "persistentvolumeclaims", "namespaces"]
     verbs: ["*"]
   - apiGroups: ["apps"]
     resources: ["deployments", "statefulsets"]
