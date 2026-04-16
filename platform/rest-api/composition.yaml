@@ -140,6 +140,8 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.namespace
                 toFieldPath: metadata.namespace
+            readinessChecks:
+              - type: None
 
           - name: s3
             # SERVICE PROVIDER ROLE (servicebinding.io/service-provider):
