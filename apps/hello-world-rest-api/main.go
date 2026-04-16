@@ -65,9 +65,23 @@ func writeJSON(w http.ResponseWriter, v any) {
 func main() {
 	mux := http.NewServeMux()
 
-	// Health check
+	// Health check — includes binding summary
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]string{"status": "ok"})
+		bindingNames, _ := listBindings()
+		bindingSummary := make(map[string][]string)
+		for _, name := range bindingNames {
+			data, err := readBinding(name)
+			if err != nil {
+				continue
+			}
+			k := keys(data)
+			bindingSummary[name] = k
+		}
+		writeJSON(w, map[string]any{
+			"status":   "ok",
+			"root":     bindingRoot(),
+			"bindings": bindingSummary,
+		})
 	})
 
 	// List all binding names mounted under SERVICE_BINDING_ROOT
@@ -95,18 +109,19 @@ func main() {
 		writeJSON(w, map[string]any{"name": name, "keys": keys})
 	})
 
-	// Ping S3 — reads endpoint from /bindings/s3/endpoint, does HTTP HEAD
+	// Ping S3 — constructs endpoint from /bindings/s3/id (bucket name) and region, does HTTP HEAD
 	mux.HandleFunc("GET /s3/ping", func(w http.ResponseWriter, r *http.Request) {
 		data, err := readBinding("s3")
 		if err != nil {
 			http.Error(w, "s3 binding not found", http.StatusServiceUnavailable)
 			return
 		}
-		endpoint, ok := data["endpoint"]
-		if !ok || endpoint == "" {
-			writeJSON(w, map[string]any{"reachable": false, "error": "s3 binding missing endpoint key", "keys": keys(data)})
+		bucket, region := data["id"], data["region"]
+		if bucket == "" || region == "" {
+			writeJSON(w, map[string]any{"reachable": false, "error": "s3 binding missing id or region key", "keys": keys(data)})
 			return
 		}
+		endpoint := fmt.Sprintf("%s.s3.%s.amazonaws.com", bucket, region)
 		client := &http.Client{Timeout: 5 * time.Second}
 		resp, err := client.Head("https://" + endpoint)
 		if err != nil {
@@ -117,17 +132,17 @@ func main() {
 		writeJSON(w, map[string]any{"endpoint": endpoint, "reachable": true, "statusCode": resp.StatusCode})
 	})
 
-	// Ping ElastiCache — reads endpoint+port from /bindings/elasticache, does TCP dial
+	// Ping ElastiCache — reads primary_endpoint_address+port from /bindings/elasticache, does TCP dial
 	mux.HandleFunc("GET /cache/ping", func(w http.ResponseWriter, r *http.Request) {
 		data, err := readBinding("elasticache")
 		if err != nil {
 			http.Error(w, "elasticache binding not found", http.StatusServiceUnavailable)
 			return
 		}
-		endpoint := data["endpoint"]
+		endpoint := data["primary_endpoint_address"]
 		port := data["port"]
 		if endpoint == "" || port == "" {
-			writeJSON(w, map[string]any{"reachable": false, "error": "elasticache binding missing endpoint or port", "keys": keys(data)})
+			writeJSON(w, map[string]any{"reachable": false, "error": "elasticache binding missing primary_endpoint_address or port", "keys": keys(data)})
 			return
 		}
 		addr := net.JoinHostPort(endpoint, port)
