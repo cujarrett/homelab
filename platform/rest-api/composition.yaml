@@ -61,11 +61,51 @@ spec:
                         image: "" # Set by function-go-templating step above via spec.image patch
                         ports:
                           - containerPort: 8080
+                        env:
+                          # SERVICE_BINDING_ROOT tells the app where bindings are mounted.
+                          # This follows the servicebinding.io spec — each subdirectory is
+                          # a named binding, and files within it are the secret key/value pairs.
+                          # We project the secrets directly here instead of using the
+                          # servicebinding/runtime controller, achieving the same app experience.
+                          - name: SERVICE_BINDING_ROOT
+                            value: /bindings
+                        volumeMounts:
+                          - name: s3-binding
+                            mountPath: /bindings/s3
+                            readOnly: true
+                          - name: elasticache-binding
+                            mountPath: /bindings/elasticache
+                            readOnly: true
+                    volumes:
+                      - name: s3-binding
+                        secret:
+                          secretName: "" # Patched to <xr-name>-s3 below
+                      - name: elasticache-binding
+                        secret:
+                          secretName: "" # Patched to <xr-name>-elasticache below
             patches:
               # Patch the container image from spec.image (set by go-templating step)
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.image
                 toFieldPath: spec.template.spec.containers[0].image
+              # Patch the S3 secret name into the volume
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: metadata.name
+                  strategy: string
+                  string:
+                    fmt: "%s-s3"
+                toFieldPath: spec.template.spec.volumes[0].secret.secretName
+              # Patch the ElastiCache secret name into the volume
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: metadata.name
+                  strategy: string
+                  string:
+                    fmt: "%s-elasticache"
+                toFieldPath: spec.template.spec.volumes[1].secret.secretName
             connectionDetails:
               - type: FromFieldPath
                 name: image
@@ -118,40 +158,6 @@ spec:
             readinessChecks:
               - type: None
 
-          - name: s3-service-binding
-            # APPLICATION OPERATOR ROLE (servicebinding.io/application-operator):
-            # ServiceBinding connects the S3 Secret to the Deployment.
-            # The controller mounts the Secret as files at ${SERVICE_BINDING_ROOT}/s3/<key>.
-            # Uses Direct Secret Reference since provider-aws-s3 does not implement
-            # the Provisioned Service .status.binding.name contract natively.
-            base:
-              apiVersion: servicebinding.io/v1
-              kind: ServiceBinding
-              spec:
-                name: s3  # Sets the binding directory name: ${SERVICE_BINDING_ROOT}/s3/
-                service:
-                  apiVersion: v1
-                  kind: Secret
-                  name: ""  # Patched to "<xr-name>-s3"
-                workload:
-                  apiVersion: apps/v1
-                  kind: Deployment
-                  name: ""  # Patched to XR name
-            patches:
-              - type: CombineFromComposite
-                combine:
-                  variables:
-                    - fromFieldPath: metadata.name
-                  strategy: string
-                  string:
-                    fmt: "%s-s3"
-                toFieldPath: spec.service.name
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.workload.name
-            readinessChecks:
-              - type: None
-
           - name: elasticache
             # SERVICE PROVIDER ROLE (servicebinding.io/service-provider):
             # Crossplane creates ElastiCache and writes connection details into
@@ -185,34 +191,3 @@ spec:
             readinessChecks:
               - type: None
 
-          - name: elasticache-service-binding
-            # APPLICATION OPERATOR ROLE (servicebinding.io/application-operator):
-            # ServiceBinding connects the ElastiCache Secret to the Deployment.
-            # The controller mounts the Secret as files at ${SERVICE_BINDING_ROOT}/elasticache/<key>.
-            base:
-              apiVersion: servicebinding.io/v1
-              kind: ServiceBinding
-              spec:
-                name: elasticache  # Sets the binding directory name: ${SERVICE_BINDING_ROOT}/elasticache/
-                service:
-                  apiVersion: v1
-                  kind: Secret
-                  name: ""  # Patched to "<xr-name>-elasticache"
-                workload:
-                  apiVersion: apps/v1
-                  kind: Deployment
-                  name: ""  # Patched to XR name
-            patches:
-              - type: CombineFromComposite
-                combine:
-                  variables:
-                    - fromFieldPath: metadata.name
-                  strategy: string
-                  string:
-                    fmt: "%s-elasticache"
-                toFieldPath: spec.service.name
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.workload.name
-            readinessChecks:
-              - type: None
