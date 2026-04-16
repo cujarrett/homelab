@@ -50,6 +50,7 @@ spec:
                     containers:
                       - name: api
                         image: placeholder # Patched by CombineFromComposite below
+                        imagePullPolicy: Always
                         ports:
                           - containerPort: 8080
                         env:
