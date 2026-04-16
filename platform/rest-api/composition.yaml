@@ -160,7 +160,7 @@ spec:
               kind: Bucket
               spec:
                 forProvider:
-                  locationConstraint: us-east-1
+                  region: us-east-1
                 writeConnectionSecretToRef:
                   name: ""
                   namespace: ""
@@ -189,7 +189,7 @@ spec:
               spec:
                 forProvider:
                   region: us-east-1
-                  cacheNodeType: cache.t4g.micro
+                  nodeType: cache.t4g.micro
                   engine: redis
                   numCacheClusters: 1
                 writeConnectionSecretToRef:
