@@ -12,9 +12,13 @@ spec:
     #   1. Watches ServiceBinding resources
     #   2. Mounts the referenced Secret as a volume into the workload pod
     #   3. Sets SERVICE_BINDING_ROOT on the container so the app knows where to find bindings
-    repoURL: https://github.com/servicebinding/runtime
-    targetRevision: v1.0.0
-    path: config/default
+    #
+    # We point to our own repo rather than servicebinding/runtime directly because
+    # config/default uses ko:// image placeholders that only resolve at build time.
+    # Our install/kustomization.yaml references the pre-built release manifest instead.
+    repoURL: https://github.com/cujarrett/homelab.git
+    targetRevision: main
+    path: apps/service-binding/install
   destination:
     server: https://kubernetes.default.svc
     namespace: service-binding

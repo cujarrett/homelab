@@ -1,0 +1,7 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # Pre-built release manifest from servicebinding/runtime.
+  # config/default in that repo uses ko:// image placeholders and cannot be
+  # applied directly — the release artifact has real image digests baked in.
+  - https://github.com/servicebinding/runtime/releases/download/v1.0.0/servicebinding-runtime-v1.0.0.yaml
