@@ -27,7 +27,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | Layer | Tool | Notes |
 |---|---|---|
 | Kubernetes | k3s | Lightweight distro |
-| GitOps | ArgoCD | App-of-apps pattern via `apps/argocd/k3s-lab.yaml`, recurses `apps/` |
+| GitOps | ArgoCD | App-of-apps pattern via `apps/argocd/bootstrap.yaml`, recurses `apps/` |
 | Ingress | Traefik | Deployed as DaemonSet via k3s HelmChartConfig; binds hostPorts 80/443 |
 | TLS | cert-manager | Local CA issuer (`local-lab-ca-issuer`) for `.local.lab` hosts; Let's Encrypt (staging + prod) for public hosts via HTTP-01/Traefik |
 | Storage | Longhorn | Default StorageClass; `longhorn-delete` variant wipes PV on release |
