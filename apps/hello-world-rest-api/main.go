@@ -65,7 +65,7 @@ func writeJSON(w http.ResponseWriter, v any) {
 func main() {
 	mux := http.NewServeMux()
 
-	// Health check — includes binding summary
+	// Root — full binding summary with live ping results
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		bindingNames, _ := listBindings()
 		bindingSummary := make(map[string][]string)
@@ -74,13 +74,46 @@ func main() {
 			if err != nil {
 				continue
 			}
-			k := keys(data)
-			bindingSummary[name] = k
+			bindingSummary[name] = keys(data)
 		}
+
+		// S3 ping
+		s3Result := map[string]any{"reachable": false}
+		if s3, err := readBinding("s3"); err == nil {
+			if bucket, region := s3["id"], s3["region"]; bucket != "" && region != "" {
+				endpoint := fmt.Sprintf("%s.s3.%s.amazonaws.com", bucket, region)
+				client := &http.Client{Timeout: 5 * time.Second}
+				if resp, err := client.Head("https://" + endpoint); err == nil {
+					resp.Body.Close()
+					s3Result = map[string]any{"endpoint": endpoint, "reachable": true, "statusCode": resp.StatusCode}
+				} else {
+					s3Result = map[string]any{"endpoint": endpoint, "reachable": false, "error": err.Error()}
+				}
+			}
+		}
+
+		// ElastiCache ping
+		cacheResult := map[string]any{"reachable": false}
+		if ec, err := readBinding("elasticache"); err == nil {
+			if ep, port := ec["primary_endpoint_address"], ec["port"]; ep != "" && port != "" {
+				addr := net.JoinHostPort(ep, port)
+				if conn, err := net.DialTimeout("tcp", addr, 5*time.Second); err == nil {
+					conn.Close()
+					cacheResult = map[string]any{"addr": addr, "reachable": true}
+				} else {
+					cacheResult = map[string]any{"addr": addr, "reachable": false, "error": err.Error()}
+				}
+			}
+		}
+
 		writeJSON(w, map[string]any{
 			"status":   "ok",
 			"root":     bindingRoot(),
 			"bindings": bindingSummary,
+			"ping": map[string]any{
+				"s3":          s3Result,
+				"elasticache": cacheResult,
+			},
 		})
 	})
 
@@ -107,6 +140,24 @@ func main() {
 			keys = append(keys, k)
 		}
 		writeJSON(w, map[string]any{"name": name, "keys": keys})
+	})
+
+	// Show full key-value pairs for all bindings — for local dev/debugging only
+	mux.HandleFunc("GET /debug/bindings", func(w http.ResponseWriter, r *http.Request) {
+		names, err := listBindings()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		all := make(map[string]map[string]string)
+		for _, name := range names {
+			data, err := readBinding(name)
+			if err != nil {
+				continue
+			}
+			all[name] = data
+		}
+		writeJSON(w, all)
 	})
 
 	// Ping S3 — constructs endpoint from /bindings/s3/id (bucket name) and region, does HTTP HEAD
