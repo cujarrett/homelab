@@ -85,6 +85,13 @@ spec:
                   string:
                     fmt: "public.ecr.aws/docker/library/golang:%s-alpine"
                 toFieldPath: spec.template.spec.containers[0].image
+              # Override image if spec.image is explicitly set in the XR.
+              # Applies after the default above, so it wins when present.
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.image
+                toFieldPath: spec.template.spec.containers[0].image
+                policy:
+                  fromFieldPath: Optional
               # Patch the S3 secret name into the volume
               - type: CombineFromComposite
                 combine:
