@@ -35,6 +35,9 @@ spec:
                     enabled:
                       type: boolean
                       default: false
+                namespace:
+                  type: string
+                  description: "Namespace to deploy the REST API Deployment and Service into."
                 goVersion:
                   type: string
                   description: "Go version for the REST API container image."
@@ -42,5 +45,6 @@ spec:
                 image:
                   type: string
                   description: "Container image override. If not set, image is built from goVersion."
+              required: [namespace]
               # image is optional — if not set, the composition builds it from goVersion
           required: [spec]

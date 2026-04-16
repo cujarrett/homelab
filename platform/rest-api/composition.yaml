@@ -44,6 +44,7 @@ spec:
               apiVersion: apps/v1
               kind: Deployment
               metadata:
+                namespace: "" # Patched from spec.namespace
                 labels:
                   app: rest-api
               spec:
@@ -106,6 +107,10 @@ spec:
                   string:
                     fmt: "%s-elasticache"
                 toFieldPath: spec.template.spec.volumes[1].secret.secretName
+              # Patch the namespace from spec.namespace
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.namespace
+                toFieldPath: metadata.namespace
             connectionDetails:
               - type: FromFieldPath
                 name: image
@@ -119,6 +124,7 @@ spec:
               apiVersion: v1
               kind: Service
               metadata:
+                namespace: "" # Patched from spec.namespace
                 labels:
                   app: rest-api
               spec:
@@ -127,6 +133,10 @@ spec:
                 ports:
                   - port: 80
                     targetPort: 8080
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.namespace
+                toFieldPath: metadata.namespace
 
           - name: s3
             # SERVICE PROVIDER ROLE (servicebinding.io/service-provider):
@@ -151,10 +161,8 @@ spec:
                     fmt: "%s-s3"
                 toFieldPath: spec.writeConnectionSecretToRef.name
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.claimRef.namespace
+                fromFieldPath: spec.namespace
                 toFieldPath: spec.writeConnectionSecretToRef.namespace
-                policy:
-                  fromFieldPath: Optional
             readinessChecks:
               - type: None
 
@@ -184,10 +192,8 @@ spec:
                     fmt: "%s-elasticache"
                 toFieldPath: spec.writeConnectionSecretToRef.name
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.claimRef.namespace
+                fromFieldPath: spec.namespace
                 toFieldPath: spec.writeConnectionSecretToRef.namespace
-                policy:
-                  fromFieldPath: Optional
             readinessChecks:
               - type: None
 
