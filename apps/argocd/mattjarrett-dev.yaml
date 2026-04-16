@@ -8,10 +8,10 @@ spec:
   source:
     repoURL: https://github.com/cujarrett/homelab.git
     targetRevision: main
-    path: apps/web
+    path: apps/mattjarrett-dev
   destination:
     server: https://kubernetes.default.svc
-    namespace: web
+    namespace: mattjarrett-dev
   syncPolicy:
     automated:
       prune: true

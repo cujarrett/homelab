@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: web
+  name: mattjarrett-dev
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: mattjarrett-dev-nginx-config
-  namespace: web
+  namespace: mattjarrett-dev
 data:
   default.conf: |
     server {
@@ -41,7 +41,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mattjarrett-dev
-  namespace: web
+  namespace: mattjarrett-dev
 spec:
   replicas: 1
   selector:
@@ -86,7 +86,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: mattjarrett-dev
-  namespace: web
+  namespace: mattjarrett-dev
 spec:
   selector:
     app: mattjarrett-dev
@@ -98,7 +98,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: mattjarrett-dev
-  namespace: web
+  namespace: mattjarrett-dev
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
