@@ -1,0 +1,218 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xrestapi
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: XRestApi
+  # Pipeline mode: functions run in order, each transforming the desired state.
+  # function-go-templating builds the image string from goVersion first,
+  # then function-patch-and-transform applies all patches and creates resources.
+  mode: Pipeline
+  pipeline:
+    - step: set-image-from-go-version
+      # function-go-templating renders Go templates against the XR fields.
+      # Here it builds spec.image from spec.goVersion before patch-and-transform runs.
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{ if not .observed.composite.resource.spec.image }}
+            apiVersion: platform.local.lab/v1alpha1
+            kind: XRestApi
+            metadata:
+              name: {{ .observed.composite.resource.metadata.name }}
+            spec:
+              image: "public.ecr.aws/docker/library/golang:{{ .observed.composite.resource.spec.goVersion }}-alpine"
+            {{ end }}
+
+    - step: create-resources
+      # function-patch-and-transform handles all resource creation and patching.
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: deployment
+            base:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                labels:
+                  app: rest-api
+              spec:
+                replicas: 1
+                selector:
+                  matchLabels:
+                    app: rest-api
+                template:
+                  metadata:
+                    labels:
+                      app: rest-api
+                  spec:
+                    containers:
+                      - name: api
+                        image: "" # Set by function-go-templating step above via spec.image patch
+                        ports:
+                          - containerPort: 8080
+            patches:
+              # Patch the container image from spec.image (set by go-templating step)
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.image
+                toFieldPath: spec.template.spec.containers[0].image
+            connectionDetails:
+              - type: FromFieldPath
+                name: image
+                fromFieldPath: spec.template.spec.containers[0].image
+            readinessChecks:
+              - type: None
+
+          - name: service
+            # Exposes the Deployment via ClusterIP Service
+            base:
+              apiVersion: v1
+              kind: Service
+              metadata:
+                labels:
+                  app: rest-api
+              spec:
+                selector:
+                  app: rest-api
+                ports:
+                  - port: 80
+                    targetPort: 8080
+
+          - name: s3
+            # SERVICE PROVIDER ROLE (servicebinding.io/service-provider):
+            # Crossplane creates the S3 bucket and writes connection details into
+            # a Secret named "<xr-name>-s3" in the claim namespace.
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: Bucket
+              spec:
+                forProvider:
+                  locationConstraint: us-east-1
+                writeConnectionSecretToRef:
+                  name: ""
+                  namespace: ""
+            patches:
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: metadata.name
+                  strategy: string
+                  string:
+                    fmt: "%s-s3"
+                toFieldPath: spec.writeConnectionSecretToRef.name
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.claimRef.namespace
+                toFieldPath: spec.writeConnectionSecretToRef.namespace
+                policy:
+                  fromFieldPath: Optional
+            readinessChecks:
+              - type: None
+
+          - name: s3-service-binding
+            # APPLICATION OPERATOR ROLE (servicebinding.io/application-operator):
+            # ServiceBinding connects the S3 Secret to the Deployment.
+            # The controller mounts the Secret as files at ${SERVICE_BINDING_ROOT}/s3/<key>.
+            # Uses Direct Secret Reference since provider-aws-s3 does not implement
+            # the Provisioned Service .status.binding.name contract natively.
+            base:
+              apiVersion: servicebinding.io/v1
+              kind: ServiceBinding
+              spec:
+                name: s3  # Sets the binding directory name: ${SERVICE_BINDING_ROOT}/s3/
+                service:
+                  apiVersion: v1
+                  kind: Secret
+                  name: ""  # Patched to "<xr-name>-s3"
+                workload:
+                  apiVersion: apps/v1
+                  kind: Deployment
+                  name: ""  # Patched to XR name
+            patches:
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: metadata.name
+                  strategy: string
+                  string:
+                    fmt: "%s-s3"
+                toFieldPath: spec.service.name
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.workload.name
+            readinessChecks:
+              - type: None
+
+          - name: elasticache
+            # SERVICE PROVIDER ROLE (servicebinding.io/service-provider):
+            # Crossplane creates ElastiCache and writes connection details into
+            # a Secret named "<xr-name>-elasticache" in the claim namespace.
+            base:
+              apiVersion: cache.aws.upbound.io/v1beta1
+              kind: ReplicationGroup
+              spec:
+                forProvider:
+                  region: us-east-1
+                  cacheNodeType: cache.t4g.micro
+                  engine: redis
+                  numCacheClusters: 1
+                writeConnectionSecretToRef:
+                  name: ""
+                  namespace: ""
+            patches:
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: metadata.name
+                  strategy: string
+                  string:
+                    fmt: "%s-elasticache"
+                toFieldPath: spec.writeConnectionSecretToRef.name
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.claimRef.namespace
+                toFieldPath: spec.writeConnectionSecretToRef.namespace
+                policy:
+                  fromFieldPath: Optional
+            readinessChecks:
+              - type: None
+
+          - name: elasticache-service-binding
+            # APPLICATION OPERATOR ROLE (servicebinding.io/application-operator):
+            # ServiceBinding connects the ElastiCache Secret to the Deployment.
+            # The controller mounts the Secret as files at ${SERVICE_BINDING_ROOT}/elasticache/<key>.
+            base:
+              apiVersion: servicebinding.io/v1
+              kind: ServiceBinding
+              spec:
+                name: elasticache  # Sets the binding directory name: ${SERVICE_BINDING_ROOT}/elasticache/
+                service:
+                  apiVersion: v1
+                  kind: Secret
+                  name: ""  # Patched to "<xr-name>-elasticache"
+                workload:
+                  apiVersion: apps/v1
+                  kind: Deployment
+                  name: ""  # Patched to XR name
+            patches:
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: metadata.name
+                  strategy: string
+                  string:
+                    fmt: "%s-elasticache"
+                toFieldPath: spec.service.name
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.workload.name
+            readinessChecks:
+              - type: None

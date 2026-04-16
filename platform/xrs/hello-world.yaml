@@ -1,0 +1,10 @@
+apiVersion: platform.local.lab/v1alpha1
+kind: XRestApi
+metadata:
+  name: hello-world
+spec:
+  goVersion: "1.22"
+  s3:
+    enabled: true
+  elasticache:
+    enabled: true
