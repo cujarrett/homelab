@@ -1,0 +1,25 @@
+# App-of-apps root: only recurses apps/argocd/ to pick up Application manifests.
+# Each app directory under apps/ has its own Application manifest here.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bootstrap
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/cujarrett/homelab.git
+    targetRevision: main
+    path: apps/argocd
+    directory:
+      recurse: false
+      exclude: "bootstrap.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
