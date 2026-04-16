@@ -8,6 +8,8 @@ spec:
       selector: {}
       template:
         spec:
+          containers:
+            - name: package-runtime
           nodeSelector:
             node-role.kubernetes.io/worker: worker
 ---
