@@ -110,9 +110,9 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "argocd_app_info{name=\"k3s-lab\",health_status=\"Healthy\"}",
+              "expr": "count(argocd_app_info{health_status=\"Healthy\"})",
               "instant": true,
-              "legendFormat": "Health",
+              "legendFormat": "Healthy",
               "refId": "A"
             },
             {
@@ -120,9 +120,9 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "argocd_app_info{name=\"k3s-lab\",sync_status=\"Synced\"}",
+              "expr": "count(argocd_app_info{sync_status=\"Synced\"})",
               "instant": true,
-              "legendFormat": "Sync",
+              "legendFormat": "Synced",
               "refId": "B"
             }
           ],
