@@ -1911,41 +1911,141 @@ data:
         },
         {
           "id": 105,
-          "type": "timeseries",
-          "title": "Node Uptime — All Nodes",
-          "description": "How long each node has been up. A reset means the node rebooted.",
-          "gridPos": { "h": 5, "w": 24, "x": 0, "y": 24 },
+          "type": "stat",
+          "title": "Uptime — ctrl-1",
+          "gridPos": { "h": 5, "w": 6, "x": 0, "y": 24 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": {
               "unit": "s",
-              "custom": { "lineWidth": 2, "fillOpacity": 5, "lineInterpolation": "smooth" }
-            }
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{ "color": "green", "value": null }]
+              },
+              "mappings": []
+            },
+            "overrides": []
           },
           "options": {
-            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
-            "tooltip": { "mode": "multi", "sort": "desc" }
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "auto"
           },
           "targets": [
             {
               "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.100:9100\"}",
               "legendFormat": "ctrl-1",
+              "instant": true,
               "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 106,
+          "type": "stat",
+          "title": "Uptime — work-1",
+          "gridPos": { "h": 5, "w": 6, "x": 6, "y": 24 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{ "color": "green", "value": null }]
+              },
+              "mappings": []
             },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "auto"
+          },
+          "targets": [
             {
               "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.101:9100\"}",
               "legendFormat": "work-1",
-              "refId": "B"
+              "instant": true,
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 107,
+          "type": "stat",
+          "title": "Uptime — work-2",
+          "gridPos": { "h": 5, "w": 6, "x": 12, "y": 24 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{ "color": "green", "value": null }]
+              },
+              "mappings": []
             },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "auto"
+          },
+          "targets": [
             {
               "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.102:9100\"}",
               "legendFormat": "work-2",
-              "refId": "C"
+              "instant": true,
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 108,
+          "type": "stat",
+          "title": "Uptime — work-3",
+          "gridPos": { "h": 5, "w": 6, "x": 18, "y": 24 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{ "color": "green", "value": null }]
+              },
+              "mappings": []
             },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "auto"
+          },
+          "targets": [
             {
               "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.103:9100\"}",
               "legendFormat": "work-3",
-              "refId": "D"
+              "instant": true,
+              "refId": "A"
             }
           ]
         }
