@@ -477,8 +477,8 @@ argocd repo add https://github.com/<YOUR_USERNAME>/homelab.git \
   --username <YOUR_USERNAME> \
   --password <GITHUB_PAT>
 
-# Edit apps/argocd/k3s-lab.yaml first — update repoURL with your GitHub username
-kubectl apply -f apps/argocd/k3s-lab.yaml
+# Edit apps/argocd/bootstrap.yaml first — update repoURL with your GitHub username
+kubectl apply -f apps/argocd/bootstrap.yaml
 ```
 
 Change admin password and delete initial secret:
