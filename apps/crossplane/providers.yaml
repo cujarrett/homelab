@@ -1,3 +1,16 @@
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: worker-nodes
+spec:
+  deploymentTemplate:
+    spec:
+      selector: {}
+      template:
+        spec:
+          nodeSelector:
+            node-role.kubernetes.io/worker: worker
+---
 apiVersion: pkg.crossplane.io/v1
 kind: Function
 metadata:
@@ -18,6 +31,8 @@ metadata:
   name: provider-aws-s3
 spec:
   package: xpkg.upbound.io/upbound/provider-aws-s3:v2.5.2
+  runtimeConfigRef:
+    name: worker-nodes
 ---
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
@@ -25,3 +40,5 @@ metadata:
   name: provider-aws-elasticache
 spec:
   package: xpkg.upbound.io/upbound/provider-aws-elasticache:v2.5.2
+  runtimeConfigRef:
+    name: worker-nodes
