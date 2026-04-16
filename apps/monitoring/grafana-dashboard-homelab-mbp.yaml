@@ -1701,136 +1701,232 @@ data:
           "type": "timeseries"
         },
         {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 19
+          },
           "id": 100,
-          "type": "row",
+          "panels": [],
           "title": "Cluster Availability",
-          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 19 },
-          "collapsed": false
+          "type": "row"
         },
         {
-          "id": 101,
-          "type": "stat",
-          "title": "Nodes Ready",
-          "description": "Number of nodes in Ready state out of total. Red = a node is down.",
-          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 20 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"] },
-            "colorMode": "background",
-            "graphMode": "none",
-            "textMode": "value_and_name",
-            "justifyMode": "center"
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
           },
+          "description": "Number of nodes in Ready state out of total. Red = a node is down.",
           "fieldConfig": {
             "defaults": {
-              "unit": "short",
               "decimals": 0,
+              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
-                  { "color": "red", "value": null },
-                  { "color": "yellow", "value": 3 },
-                  { "color": "green", "value": 4 }
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 3
+                  },
+                  {
+                    "color": "green",
+                    "value": 4
+                  }
                 ]
-              }
+              },
+              "unit": "short"
             },
             "overrides": [
               {
-                "matcher": { "id": "byName", "options": "Ready" },
-                "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }]
+                "matcher": {
+                  "id": "byName",
+                  "options": "Ready"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "green",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
               },
               {
-                "matcher": { "id": "byName", "options": "Total" },
-                "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "text" } }]
+                "matcher": {
+                  "id": "byName",
+                  "options": "Total"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "text",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
               }
             ]
           },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 20
+          },
+          "id": 101,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value_and_name",
+            "wideLayout": true
+          },
+          "pluginVersion": "12.4.2",
           "targets": [
             {
               "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"})",
-              "legendFormat": "Ready",
               "instant": true,
+              "legendFormat": "Ready",
               "refId": "A"
             },
             {
               "expr": "count(kube_node_info)",
-              "legendFormat": "Total",
               "instant": true,
+              "legendFormat": "Total",
               "refId": "B"
             }
-          ]
+          ],
+          "title": "Nodes Ready",
+          "type": "stat"
         },
         {
-          "id": 102,
-          "type": "stat",
-          "title": "Pods Running",
-          "description": "Percentage of pods in Running phase. Below 95% = yellow, below 80% = red.",
-          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 20 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"] },
-            "colorMode": "background",
-            "graphMode": "none",
-            "textMode": "auto",
-            "justifyMode": "center"
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
           },
+          "description": "Percentage of pods in Running phase. Below 95% = yellow, below 80% = red.",
           "fieldConfig": {
             "defaults": {
-              "unit": "percentunit",
               "decimals": 1,
+              "mappings": [],
+              "max": 1,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
-                  { "color": "red", "value": null },
-                  { "color": "yellow", "value": 0.8 },
-                  { "color": "green", "value": 0.95 }
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 0.8
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.95
+                  }
                 ]
-              }
-            }
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
           },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 20
+          },
+          "id": 102,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "12.4.2",
           "targets": [
             {
               "expr": "sum(kube_pod_status_phase{phase=\"Running\"}) / sum(kube_pod_status_phase{phase=~\"Running|Pending|Failed|Unknown\"})",
-              "legendFormat": "Running %",
               "instant": true,
+              "legendFormat": "Running %",
               "refId": "A"
             }
-          ]
+          ],
+          "title": "Pods Running",
+          "type": "stat"
         },
         {
-          "id": 103,
-          "type": "stat",
-          "title": "Deployments Available",
-          "description": "Deployments with all desired replicas available. Red = at least one deployment is degraded.",
-          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 20 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"] },
-            "colorMode": "background",
-            "graphMode": "none",
-            "textMode": "value_and_name",
-            "justifyMode": "center"
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
           },
+          "description": "Deployments with all desired replicas available. Red = at least one deployment is degraded.",
           "fieldConfig": {
             "defaults": {
-              "unit": "short",
               "decimals": 0,
+              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
-                "steps": [{ "color": "green", "value": null }]
-              }
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "short"
             },
             "overrides": [
               {
-                "matcher": { "id": "byName", "options": "Degraded" },
+                "matcher": {
+                  "id": "byName",
+                  "options": "Degraded"
+                },
                 "properties": [
                   {
                     "id": "thresholds",
                     "value": {
                       "mode": "absolute",
                       "steps": [
-                        { "color": "green", "value": null },
-                        { "color": "red", "value": 1 }
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "red",
+                          "value": 1
+                        }
                       ]
                     }
                   }
@@ -1838,55 +1934,89 @@ data:
               }
             ]
           },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 12,
+            "y": 20
+          },
+          "id": 103,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value_and_name",
+            "wideLayout": true
+          },
+          "pluginVersion": "12.4.2",
           "targets": [
             {
               "expr": "sum(kube_deployment_status_condition{condition=\"Available\",status=\"true\"})",
-              "legendFormat": "Available",
               "instant": true,
+              "legendFormat": "Available",
               "refId": "A"
             },
             {
               "expr": "sum(kube_deployment_status_condition{condition=\"Available\",status=\"false\"})",
-              "legendFormat": "Degraded",
               "instant": true,
+              "legendFormat": "Degraded",
               "refId": "B"
             }
-          ]
+          ],
+          "title": "Deployments Available",
+          "type": "stat"
         },
         {
-          "id": 104,
-          "type": "stat",
-          "title": "PVCs Bound",
-          "description": "Persistent volume claims in Bound state. Any non-Bound PVC means a workload may be broken.",
-          "gridPos": { "h": 4, "w": 6, "x": 18, "y": 20 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"] },
-            "colorMode": "background",
-            "graphMode": "none",
-            "textMode": "value_and_name",
-            "justifyMode": "center"
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
           },
+          "description": "Persistent volume claims in Bound state. Any non-Bound PVC means a workload may be broken.",
           "fieldConfig": {
             "defaults": {
-              "unit": "short",
               "decimals": 0,
+              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
-                "steps": [{ "color": "green", "value": null }]
-              }
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "short"
             },
             "overrides": [
               {
-                "matcher": { "id": "byName", "options": "Unbound" },
+                "matcher": {
+                  "id": "byName",
+                  "options": "Unbound"
+                },
                 "properties": [
                   {
                     "id": "thresholds",
                     "value": {
                       "mode": "absolute",
                       "steps": [
-                        { "color": "green", "value": null },
-                        { "color": "red", "value": 1 }
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "red",
+                          "value": 1
+                        }
                       ]
                     }
                   }
@@ -1894,160 +2024,287 @@ data:
               }
             ]
           },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 18,
+            "y": 20
+          },
+          "id": 104,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value_and_name",
+            "wideLayout": true
+          },
+          "pluginVersion": "12.4.2",
           "targets": [
             {
               "expr": "sum(kube_persistentvolumeclaim_status_phase{phase=\"Bound\"})",
-              "legendFormat": "Bound",
               "instant": true,
+              "legendFormat": "Bound",
               "refId": "A"
             },
             {
               "expr": "sum(kube_persistentvolumeclaim_status_phase{phase!=\"Bound\"})",
-              "legendFormat": "Unbound",
               "instant": true,
+              "legendFormat": "Unbound",
               "refId": "B"
             }
-          ]
+          ],
+          "title": "PVCs Bound",
+          "type": "stat"
         },
         {
-          "id": 105,
-          "type": "stat",
-          "title": "Uptime — ctrl-1",
-          "gridPos": { "h": 5, "w": 6, "x": 0, "y": 24 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "fieldConfig": {
             "defaults": {
-              "unit": "s",
-              "color": { "mode": "thresholds" },
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
-                "steps": [{ "color": "green", "value": null }]
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
               },
-              "mappings": []
+              "unit": "s"
             },
             "overrides": []
           },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 24
+          },
+          "id": 105,
           "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-            "orientation": "auto",
-            "textMode": "auto",
             "colorMode": "background",
             "graphMode": "none",
-            "justifyMode": "auto"
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
           },
+          "pluginVersion": "12.4.2",
           "targets": [
             {
               "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.100:9100\"}",
-              "legendFormat": "ctrl-1",
               "instant": true,
+              "legendFormat": "ctrl-1",
               "refId": "A"
             }
-          ]
+          ],
+          "title": "Uptime — ctrl-1",
+          "type": "stat"
         },
         {
-          "id": 106,
-          "type": "stat",
-          "title": "Uptime — work-1",
-          "gridPos": { "h": 5, "w": 6, "x": 6, "y": 24 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "fieldConfig": {
             "defaults": {
-              "unit": "s",
-              "color": { "mode": "thresholds" },
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
-                "steps": [{ "color": "green", "value": null }]
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
               },
-              "mappings": []
+              "unit": "s"
             },
             "overrides": []
           },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 24
+          },
+          "id": 106,
           "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-            "orientation": "auto",
-            "textMode": "auto",
             "colorMode": "background",
             "graphMode": "none",
-            "justifyMode": "auto"
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
           },
+          "pluginVersion": "12.4.2",
           "targets": [
             {
               "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.101:9100\"}",
-              "legendFormat": "work-1",
               "instant": true,
+              "legendFormat": "work-1",
               "refId": "A"
             }
-          ]
+          ],
+          "title": "Uptime — work-1",
+          "type": "stat"
         },
         {
-          "id": 107,
-          "type": "stat",
-          "title": "Uptime — work-2",
-          "gridPos": { "h": 5, "w": 6, "x": 12, "y": 24 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "fieldConfig": {
             "defaults": {
-              "unit": "s",
-              "color": { "mode": "thresholds" },
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
-                "steps": [{ "color": "green", "value": null }]
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
               },
-              "mappings": []
+              "unit": "s"
             },
             "overrides": []
           },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 12,
+            "y": 24
+          },
+          "id": 107,
           "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-            "orientation": "auto",
-            "textMode": "auto",
             "colorMode": "background",
             "graphMode": "none",
-            "justifyMode": "auto"
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
           },
+          "pluginVersion": "12.4.2",
           "targets": [
             {
               "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.102:9100\"}",
-              "legendFormat": "work-2",
               "instant": true,
+              "legendFormat": "work-2",
               "refId": "A"
             }
-          ]
+          ],
+          "title": "Uptime — work-2",
+          "type": "stat"
         },
         {
-          "id": 108,
-          "type": "stat",
-          "title": "Uptime — work-3",
-          "gridPos": { "h": 5, "w": 6, "x": 18, "y": 24 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "fieldConfig": {
             "defaults": {
-              "unit": "s",
-              "color": { "mode": "thresholds" },
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
-                "steps": [{ "color": "green", "value": null }]
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
               },
-              "mappings": []
+              "unit": "s"
             },
             "overrides": []
           },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 18,
+            "y": 24
+          },
+          "id": 108,
           "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-            "orientation": "auto",
-            "textMode": "auto",
             "colorMode": "background",
             "graphMode": "none",
-            "justifyMode": "auto"
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
           },
+          "pluginVersion": "12.4.2",
           "targets": [
             {
               "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.103:9100\"}",
-              "legendFormat": "work-3",
               "instant": true,
+              "legendFormat": "work-3",
               "refId": "A"
             }
-          ]
+          ],
+          "title": "Uptime — work-3",
+          "type": "stat"
         }
       ],
       "preload": false,
@@ -2068,6 +2325,6 @@ data:
       "timezone": "browser",
       "title": "Homelab — MacBook",
       "uid": "homelab-mbp",
-      "version": 8,
+      "version": 2,
       "weekStart": ""
     }
