@@ -6,31 +6,8 @@ spec:
   compositeTypeRef:
     apiVersion: platform.local.lab/v1alpha1
     kind: XRestApi
-  # Pipeline mode: functions run in order, each transforming the desired state.
-  # function-go-templating builds the image string from goVersion first,
-  # then function-patch-and-transform applies all patches and creates resources.
   mode: Pipeline
   pipeline:
-    - step: set-image-from-go-version
-      # function-go-templating renders Go templates against the XR fields.
-      # Here it builds spec.image from spec.goVersion before patch-and-transform runs.
-      functionRef:
-        name: function-go-templating
-      input:
-        apiVersion: gotemplating.fn.crossplane.io/v1beta1
-        kind: GoTemplate
-        source: Inline
-        inline:
-          template: |
-            {{ if not .observed.composite.resource.spec.image }}
-            apiVersion: platform.local.lab/v1alpha1
-            kind: XRestApi
-            metadata:
-              name: {{ .observed.composite.resource.metadata.name }}
-            spec:
-              image: "public.ecr.aws/docker/library/golang:{{ .observed.composite.resource.spec.goVersion }}-alpine"
-            {{ end }}
-
     - step: create-resources
       # function-patch-and-transform handles all resource creation and patching.
       functionRef:
@@ -72,7 +49,7 @@ spec:
                   spec:
                     containers:
                       - name: api
-                        image: "" # Set by function-go-templating step above via spec.image patch
+                        image: placeholder # Patched by CombineFromComposite below
                         ports:
                           - containerPort: 8080
                         env:
@@ -98,9 +75,15 @@ spec:
                         secret:
                           secretName: "" # Patched to <xr-name>-elasticache below
             patches:
-              # Patch the container image from spec.image (set by go-templating step)
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.image
+              # Build image from spec.goVersion directly — avoids the two-reconcile lag
+              # of setting spec.image via go-templating (which writes to desired, not observed).
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.goVersion
+                  strategy: string
+                  string:
+                    fmt: "public.ecr.aws/docker/library/golang:%s-alpine"
                 toFieldPath: spec.template.spec.containers[0].image
               # Patch the S3 secret name into the volume
               - type: CombineFromComposite
@@ -189,6 +172,7 @@ spec:
               spec:
                 forProvider:
                   region: us-east-1
+                  description: "" # Patched from XR name below
                   nodeType: cache.t4g.micro
                   engine: redis
                   numCacheClusters: 1
@@ -196,6 +180,14 @@ spec:
                   name: ""
                   namespace: ""
             patches:
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: metadata.name
+                  strategy: string
+                  string:
+                    fmt: "%s-elasticache"
+                toFieldPath: spec.forProvider.description
               - type: CombineFromComposite
                 combine:
                   variables:
