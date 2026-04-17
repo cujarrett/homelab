@@ -12,6 +12,14 @@ spec:
     helm:
       releaseName: monitoring
       values: |
+        kubeApiServer:
+          enabled: false
+        grafana:
+          serviceMonitor:
+            enabled: false
+        prometheusOperator:
+          serviceMonitor:
+            selfMonitor: false
         alertmanager:
           alertmanagerSpec:
             nodeSelector:
