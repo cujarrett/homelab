@@ -28,6 +28,7 @@ spec:
                           type: Counter
                           description: Page-level GET 200/304 requests to mattjarrett.dev (assets and healthz excluded)
                           config:
+                            value: page_url
                             action: inc
         serviceMonitor:
           enabled: true
