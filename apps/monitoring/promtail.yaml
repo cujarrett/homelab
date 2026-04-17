@@ -15,21 +15,6 @@ spec:
         config:
           clients:
             - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
-          snippets:
-            pipelineStages:
-              - cri: {}
-              - match:
-                  selector: '{namespace="mattjarrett-dev", app="mattjarrett-dev"}'
-                  stages:
-                    - regex:
-                        expression: '"GET (?P<page_url>/[a-zA-Z0-9/_-]*)([\?#][^ ]*)? HTTP[^"]*" (200|304)'
-                    - metrics:
-                        page_requests_total:
-                          type: Counter
-                          description: Page-level GET 200/304 requests to mattjarrett.dev (assets and healthz excluded)
-                          config:
-                            value: page_url
-                            action: inc
         serviceMonitor:
           enabled: true
           labels:

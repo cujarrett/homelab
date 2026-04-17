@@ -185,7 +185,7 @@ data:
               "refId": "A"
             },
             {
-              "expr": "sum(increase(promtail_custom_page_requests_total[1h]))",
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes\"}[1h]))",
               "legendFormat": "mattjarrett.dev",
               "refId": "B"
             }
@@ -248,7 +248,7 @@ data:
           "pluginVersion": "12.4.2",
           "targets": [
             {
-              "expr": "sum(increase(promtail_custom_page_requests_total[24h]))",
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes\"}[24h]))",
               "instant": true,
               "legendFormat": "requests last 24h",
               "refId": "A"
