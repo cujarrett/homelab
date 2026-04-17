@@ -71,30 +71,6 @@ spec:
                 memory: 512Mi
               limits:
                 memory: 1500Mi
-            # Drop high-cardinality kubelet/cAdvisor metrics unused in homelab dashboards
-            additionalScrapeConfigs: []
-            kubelet:
-              serviceMonitor:
-                cAdvisorMetricRelabelings:
-                  # Drop per-CPU-core breakdown (keep aggregate)
-                  - sourceLabels: [__name__, cpu]
-                    regex: "container_cpu_usage_seconds_total;cpu[0-9]+"
-                    action: drop
-                  # Drop noisy/unused cAdvisor metrics
-                  - sourceLabels: [__name__]
-                    regex: "container_blkio_device_usage_total|container_tasks_state|container_memory_failures_total|container_network_tcp_usage_total|container_network_udp_usage_total|container_cpu_cfs_throttled_periods_total|container_cpu_cfs_periods_total|container_file_descriptors|container_last_seen|container_start_time_seconds|container_spec_.*|container_threads.*"
-                    action: drop
-                metricRelabelings:
-                  - sourceLabels: [__name__]
-                    regex: "kubelet_runtime_operations_duration_seconds_bucket|kubelet_cgroup_manager_duration_seconds_bucket|kubelet_pod_worker_duration_seconds_bucket|kubelet_node_config_error|kubelet_pleg_relist_duration_seconds_bucket|rest_client_request_duration_seconds_bucket|storage_operation_duration_seconds_bucket"
-                    action: drop
-            kubeApiServer:
-              serviceMonitor:
-                metricRelabelings:
-                  # Drop high-cardinality apiserver histogram buckets
-                  - sourceLabels: [__name__]
-                    regex: "apiserver_request_duration_seconds_bucket|apiserver_response_sizes_bucket|apiserver_watch_events_sizes_bucket|etcd_request_duration_seconds_bucket|apiserver_storage_list_fetched_objects_total|apiserver_storage_list_evaluated_objects_total|apiserver_storage_db_compaction_.*"
-                    action: drop
             storageSpec:
               volumeClaimTemplate:
                 spec:
