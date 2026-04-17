@@ -19,7 +19,7 @@ spec:
             pipelineStages:
               - cri: {}
               - match:
-                  selector: '{namespace="web", app="mattjarrett-dev"}'
+                  selector: '{namespace="mattjarrett-dev", app="mattjarrett-dev"}'
                   stages:
                     - regex:
                         expression: '"GET (?P<page_url>/[a-zA-Z0-9/_-]*)([\?#][^ ]*)? HTTP[^"]*" 200'
