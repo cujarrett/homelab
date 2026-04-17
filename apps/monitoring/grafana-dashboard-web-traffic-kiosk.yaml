@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-web-traffic-kiosk
+  name: web-traffic-kiosk
   namespace: monitoring
   labels:
     grafana_dashboard: "1"
@@ -155,7 +155,38 @@ data:
               },
               "unit": "short"
             },
-            "overrides": []
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "mattjarrett.dev"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "green",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "blog.mattjarrett.dev"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
           },
           "gridPos": {
             "h": 6,
@@ -275,6 +306,6 @@ data:
       "timezone": "browser",
       "title": "Web Traffic — Kiosk",
       "uid": "web-traffic-kiosk",
-      "version": 5,
+      "version": 2,
       "weekStart": ""
     }
