@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: homelab-kiosk
+  name: grafana-dashboard-homelab-display
   namespace: monitoring
   labels:
     grafana_dashboard: "1"
 data:
-  homelab-kiosk.json: |-
+  homelab-display.json: |-
     {
       "annotations": {
         "list": [
@@ -205,7 +205,7 @@ data:
               ],
               "displayMode": "list",
               "placement": "right",
-              "showLegend": false
+              "showLegend": true
             },
             "tooltip": {
               "hideZeros": false,
@@ -1182,6 +1182,6 @@ data:
       "timezone": "browser",
       "title": "Homelab Kiosk",
       "uid": "homelab-kiosk",
-      "version": 1,
+      "version": 4,
       "weekStart": ""
     }
