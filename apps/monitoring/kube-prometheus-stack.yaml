@@ -69,7 +69,6 @@ spec:
             enabled: false
         prometheus:
           prometheusSpec:
-            enableAdminAPI: true
             nodeSelector:
               node-role.kubernetes.io/worker: worker
             retention: 30d
