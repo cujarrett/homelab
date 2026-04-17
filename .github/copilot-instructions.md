@@ -95,7 +95,7 @@ Prometheus renames the `service` label from Traefik metrics to `exported_service
 
 Service label format: `{namespace}-{servicename}-{port}@kubernetes`
 - `blog.mattjarrett.dev` → `blog-ghost.*@kubernetes`
-- `mattjarrett.dev` → `web-mattjarrett-dev.*@kubernetes`
+- `mattjarrett.dev` → `mattjarrett-dev-mattjarrett-dev.*@kubernetes` or `web-mattjarrett-dev.*@kubernetes` (both exist; use alternation `|`)
 - `mattjarrett.com` → `mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes`
 
 ## 1U Display (ctrl-1)

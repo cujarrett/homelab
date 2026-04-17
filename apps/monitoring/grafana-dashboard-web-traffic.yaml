@@ -166,7 +166,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"web-mattjarrett-dev.*@kubernetes\",code=~\"2..\"}[5m])) / sum(rate(traefik_service_requests_total{exported_service=~\"web-mattjarrett-dev.*@kubernetes\"}[5m]))",
+              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes|web-mattjarrett-dev.*@kubernetes\",code=~\"2..\"}[5m])) / sum(rate(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes|web-mattjarrett-dev.*@kubernetes\"}[5m]))",
               "legendFormat": "Success Rate",
               "instant": true
             }
