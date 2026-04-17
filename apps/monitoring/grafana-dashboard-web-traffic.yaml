@@ -140,7 +140,7 @@ data:
           "id": 6,
           "type": "stat",
           "title": "mattjarrett.dev — Success Rate",
-          "description": "Percentage of requests returning HTTP 2xx. Below 99% = yellow, below 90% = red. Based on the last 5 minutes of traffic.",
+          "description": "Percentage of requests returning HTTP 2xx. Below 99% = yellow, below 90% = red. Based on the last 1 hour of traffic; shows 100% when no traffic.",
           "gridPos": { "x": 12, "y": 14, "w": 12, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
@@ -166,7 +166,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes|web-mattjarrett-dev.*@kubernetes\",code=~\"2..\"}[5m])) / sum(rate(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes|web-mattjarrett-dev.*@kubernetes\"}[5m]))",
+              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes|web-mattjarrett-dev.*@kubernetes\",code=~\"2..\"}[1h])) / sum(rate(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes|web-mattjarrett-dev.*@kubernetes\"}[1h]) > 0)",
               "legendFormat": "Success Rate",
               "instant": true
             }
