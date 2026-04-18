@@ -65,6 +65,9 @@ spec:
             dashboards:
               enabled: true
               searchNamespace: ALL
+              folderAnnotation: grafana_folder
+              provider:
+                foldersFromFilesStructure: true
           ingress:
             enabled: false
         prometheus:
