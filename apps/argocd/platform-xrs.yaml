@@ -11,8 +11,6 @@ spec:
     path: platform
     directory:
       recurse: true
-      # Exclude the xrs/ directory — XR instances are managed by their own ArgoCD apps
-      exclude: "xrs/**"
   destination:
     server: https://kubernetes.default.svc
     namespace: default
