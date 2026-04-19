@@ -1,0 +1,23 @@
+apiVersion: platform.local.lab/v1alpha1
+kind: XSpa
+metadata:
+  name: mattjarrett-dev
+  namespace: mattjarrett-dev
+spec:
+  parameters:
+    namespace: mattjarrett-dev
+    image: ghcr.io/cujarrett/mattjarrett.dev:latest
+    host: mattjarrett.dev
+    tlsIssuer: letsencrypt-prod
+    imagePullSecret: ghcr-pull-secret
+    contentSecurityPolicy: "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self';"
+    healthCheckPath: /healthz
+    replicas: 1
+    cpuRequest: "50m"
+    cpuLimit: "200m"
+    memoryRequest: "64Mi"
+    memoryLimit: "128Mi"
+    argocd:
+      repoURL: https://github.com/cujarrett/homelab.git
+      targetRevision: main
+      xrsPath: platform/xrs/spa

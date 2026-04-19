@@ -1,0 +1,312 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: spa-composition
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: XSpa
+  mode: Pipeline
+  pipeline:
+    # Step 1: generate the nginx ConfigMap via go-templating so the CSP header
+    # value and health check path can be injected from XR parameters.
+    - step: generate-nginx-config
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{ .observed.composite.resource.metadata.name }}-nginx-config
+              namespace: {{ .observed.composite.resource.spec.parameters.namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: nginx-config
+            data:
+              default.conf: |
+                server {
+                    listen 80;
+                    server_tokens off;
+                    add_header Content-Security-Policy "{{ .observed.composite.resource.spec.parameters.contentSecurityPolicy }}" always;
+                    add_header X-Content-Type-Options "nosniff";
+                    add_header Referrer-Policy "strict-origin-when-cross-origin";
+
+                    root /usr/share/nginx/html;
+                    index index.html;
+
+                    location {{ .observed.composite.resource.spec.parameters.healthCheckPath }} {
+                        access_log off;
+                        return 200 'ok';
+                        add_header Content-Type text/plain;
+                    }
+
+                    location = /index.html {
+                        add_header Cache-Control "no-cache";
+                    }
+
+                    location ~* \.(js|css|woff2|png|jpg|jpeg|gif|ico|svg|woff)$ {
+                        add_header Cache-Control "public, max-age=31536000, immutable";
+                    }
+
+                    location / {
+                        try_files $uri $uri/ /index.html;
+                    }
+                }
+
+    # Step 2: patch and transform all remaining composed resources.
+    - step: create-resources
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+
+          # --- Namespace ---
+          - name: namespace
+            base:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: "" # Patched from spec.parameters.namespace
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.namespace
+                toFieldPath: metadata.name
+            readinessChecks:
+              - type: None
+
+          # --- Deployment ---
+          # Runs the SPA image (nginx + pre-built Angular dist/) and mounts the
+          # nginx ConfigMap (generated in step 1) so SPA routing and headers are
+          # applied without baking them into the image.
+          - name: deployment
+            base:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                namespace: "" # Patched from spec.parameters.namespace
+                labels:
+                  app: spa
+              spec:
+                replicas: 1
+                selector:
+                  matchLabels:
+                    app: spa
+                    instance: "" # Patched from XR metadata.name
+                template:
+                  metadata:
+                    labels:
+                      app: spa
+                      instance: "" # Patched from XR metadata.name
+                  spec:
+                    containers:
+                      - name: spa
+                        image: "" # Patched from spec.parameters.image
+                        imagePullPolicy: Always
+                        ports:
+                          - containerPort: 80
+                        resources:
+                          requests:
+                            cpu: "" # Patched from spec.parameters.cpuRequest
+                            memory: "" # Patched from spec.parameters.memoryRequest
+                          limits:
+                            cpu: "" # Patched from spec.parameters.cpuLimit
+                            memory: "" # Patched from spec.parameters.memoryLimit
+                        readinessProbe:
+                          httpGet:
+                            path: "" # Patched from spec.parameters.healthCheckPath
+                            port: 80
+                          initialDelaySeconds: 5
+                          periodSeconds: 10
+                        volumeMounts:
+                          - name: nginx-config
+                            mountPath: /etc/nginx/conf.d/default.conf
+                            subPath: default.conf
+                            readOnly: true
+                    volumes:
+                      - name: nginx-config
+                        configMap:
+                          name: "" # Patched to <xr-name>-nginx-config
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.namespace
+                toFieldPath: metadata.namespace
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.selector.matchLabels.instance
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.template.metadata.labels.instance
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.image
+                toFieldPath: spec.template.spec.containers[0].image
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.replicas
+                toFieldPath: spec.replicas
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.cpuRequest
+                toFieldPath: spec.template.spec.containers[0].resources.requests.cpu
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.cpuLimit
+                toFieldPath: spec.template.spec.containers[0].resources.limits.cpu
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.memoryRequest
+                toFieldPath: spec.template.spec.containers[0].resources.requests.memory
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.memoryLimit
+                toFieldPath: spec.template.spec.containers[0].resources.limits.memory
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.healthCheckPath
+                toFieldPath: spec.template.spec.containers[0].readinessProbe.httpGet.path
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.template.spec.volumes[0].configMap.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-nginx-config", type: Format }
+              # Optional: add imagePullSecrets if spec.parameters.imagePullSecret is set
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.imagePullSecret
+                toFieldPath: spec.template.spec.imagePullSecrets[0].name
+                policy:
+                  fromFieldPath: Optional
+            readinessChecks:
+              - type: None
+
+          # --- Service ---
+          - name: service
+            base:
+              apiVersion: v1
+              kind: Service
+              metadata:
+                namespace: "" # Patched from spec.parameters.namespace
+                labels:
+                  app: spa
+              spec:
+                selector:
+                  app: spa
+                  instance: "" # Patched from XR metadata.name
+                ports:
+                  - port: 80
+                    targetPort: 80
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.namespace
+                toFieldPath: metadata.namespace
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.selector.instance
+            readinessChecks:
+              - type: None
+
+          # --- Ingress ---
+          # Traefik websecure entrypoint with TLS termination via cert-manager.
+          # tlsIssuer selects between local-lab-ca-issuer (.local.lab) and
+          # letsencrypt-prod (public hosts routed via Cloudflare Tunnel).
+          - name: ingress
+            base:
+              apiVersion: networking.k8s.io/v1
+              kind: Ingress
+              metadata:
+                namespace: "" # Patched from spec.parameters.namespace
+                annotations:
+                  traefik.ingress.kubernetes.io/router.entrypoints: websecure
+                  traefik.ingress.kubernetes.io/router.tls: "true"
+                  cert-manager.io/cluster-issuer: "" # Patched from spec.parameters.tlsIssuer
+              spec:
+                ingressClassName: traefik
+                tls:
+                  - hosts:
+                      - "" # Patched from spec.parameters.host
+                    secretName: "" # Patched to <xr-name>-tls
+                rules:
+                  - host: "" # Patched from spec.parameters.host
+                    http:
+                      paths:
+                        - path: /
+                          pathType: Prefix
+                          backend:
+                            service:
+                              name: "" # Patched from XR metadata.name
+                              port:
+                                number: 80
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.namespace
+                toFieldPath: metadata.namespace
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tlsIssuer
+                toFieldPath: metadata.annotations["cert-manager.io/cluster-issuer"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.host
+                toFieldPath: spec.tls[0].hosts[0]
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.tls[0].secretName
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-tls", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.host
+                toFieldPath: spec.rules[0].host
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.rules[0].http.paths[0].backend.service.name
+            readinessChecks:
+              - type: None
+
+          - name: argocd-application
+            base:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Application
+              metadata:
+                name: "" # Patched from XR metadata.name
+                namespace: argocd
+              spec:
+                project: default
+                source:
+                  repoURL: "" # Patched from spec.parameters.argocd.repoURL
+                  targetRevision: "" # Patched from spec.parameters.argocd.targetRevision
+                  path: "" # Patched from spec.parameters.argocd.xrsPath
+                  directory:
+                    include: "" # Patched to <xr-name>.yaml
+                destination:
+                  server: https://kubernetes.default.svc
+                  namespace: "" # Patched from spec.parameters.namespace
+                syncPolicy:
+                  automated:
+                    prune: true
+                    selfHeal: true
+                  syncOptions:
+                    - CreateNamespace=true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.argocd.repoURL
+                toFieldPath: spec.source.repoURL
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.argocd.targetRevision
+                toFieldPath: spec.source.targetRevision
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.argocd.xrsPath
+                toFieldPath: spec.source.path
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: metadata.name
+                  strategy: string
+                  string:
+                    fmt: "%s.yaml"
+                toFieldPath: spec.source.directory.include
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.namespace
+                toFieldPath: spec.destination.namespace
+            readinessChecks:
+              - type: None

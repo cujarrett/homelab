@@ -1,0 +1,110 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xspas.platform.local.lab
+spec:
+  group: platform.local.lab
+  names:
+    kind: XSpa
+    plural: xspas
+  claimNames:
+    kind: Spa
+    plural: spas
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  properties:
+                    namespace:
+                      type: string
+                      description: "Namespace to deploy the SPA into."
+                    image:
+                      type: string
+                      description: >
+                        Container image for the SPA (e.g. ghcr.io/owner/app:sha-abc123).
+                        Expected to be an nginx-based image with the built Angular app already
+                        copied into /usr/share/nginx/html. CI on the source repo builds and
+                        pushes this on merge to main, then commits the new tag back here.
+                    host:
+                      type: string
+                      description: "Ingress hostname (e.g. myapp.local.lab or myapp.example.com)."
+                    replicas:
+                      type: integer
+                      default: 1
+                      description: "Number of nginx replicas. Stateless — safe to scale freely."
+                    tlsIssuer:
+                      type: string
+                      default: "local-lab-ca-issuer"
+                      description: >
+                        cert-manager ClusterIssuer name.
+                        Use local-lab-ca-issuer for .local.lab internal hosts.
+                        Use letsencrypt-prod for public hosts via Cloudflare Tunnel.
+                      enum:
+                        - local-lab-ca-issuer
+                        - letsencrypt-staging
+                        - letsencrypt-prod
+                    imagePullSecret:
+                      type: string
+                      description: >
+                        Name of the Kubernetes Secret containing registry credentials
+                        (e.g. ghcr-pull-secret for private GHCR images). Omit for public images.
+                    contentSecurityPolicy:
+                      type: string
+                      default: "default-src 'self'; frame-ancestors 'none'; base-uri 'self';"
+                      description: >
+                        Value for the Content-Security-Policy response header.
+                        Override with app-specific origins (e.g. Google Fonts, external APIs).
+                        Default is a strict policy suitable for SPAs with no external dependencies.
+                    healthCheckPath:
+                      type: string
+                      default: "/healthz"
+                      description: "Path served by nginx for readiness probes. Returns HTTP 200."
+                    cpuRequest:
+                      type: string
+                      default: "50m"
+                      description: "CPU request for the nginx container."
+                    cpuLimit:
+                      type: string
+                      default: "200m"
+                      description: "CPU limit for the nginx container."
+                    memoryRequest:
+                      type: string
+                      default: "32Mi"
+                      description: "Memory request for the nginx container."
+                    memoryLimit:
+                      type: string
+                      default: "64Mi"
+                      description: "Memory limit for the nginx container."
+                    argocd:
+                      type: object
+                      description: "ArgoCD Application settings."
+                      properties:
+                        repoURL:
+                          type: string
+                          description: "Git repository URL (e.g. https://github.com/owner/repo.git)."
+                        targetRevision:
+                          type: string
+                          default: "main"
+                          description: "Git branch, tag, or commit SHA to sync from."
+                        xrsPath:
+                          type: string
+                          default: "platform/xrs/spa"
+                          description: "Path in the repo to the directory containing XR instance files."
+                      required: [repoURL]
+                  required:
+                    - namespace
+                    - image
+                    - host
+              required:
+                - parameters
+          required:
+            - spec
