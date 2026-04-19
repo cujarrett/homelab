@@ -12,7 +12,7 @@ spec:
           - path: "platform/xrs/**/*.yaml"
   template:
     metadata:
-      name: "{{path.basenameNormalized}}"
+      name: "{{metadata.name}}"
     spec:
       project: workloads
       source:
