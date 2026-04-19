@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: xrs
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: https://github.com/cujarrett/homelab.git
+        revision: main
+        files:
+          - path: "platform/xrs/**/*.yaml"
+  template:
+    metadata:
+      name: "{{path.basenameNormalized}}"
+    spec:
+      project: workloads
+      source:
+        repoURL: https://github.com/cujarrett/homelab.git
+        targetRevision: main
+        path: "platform/xrs/{{path[2]}}"
+        directory:
+          include: "{{path.filename}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{metadata.namespace}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

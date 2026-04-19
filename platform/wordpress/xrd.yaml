@@ -51,22 +51,6 @@ spec:
                       enum:
                         - retain
                         - delete
-                    argocd:
-                      type: object
-                      description: "ArgoCD Application settings."
-                      properties:
-                        repoURL:
-                          type: string
-                          description: "Git repository URL (e.g. https://github.com/owner/repo.git)."
-                        targetRevision:
-                          type: string
-                          default: "main"
-                          description: "Git branch, tag, or commit SHA to sync from."
-                        xrsPath:
-                          type: string
-                          default: "platform/xrs/wordpress"
-                          description: "Path in the repo to the directory containing XR instance files."
-                      required: [repoURL]
                   required:
                     - host
               required:
