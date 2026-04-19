@@ -1,0 +1,46 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xcaches.platform.local.lab
+spec:
+  group: platform.local.lab
+  names:
+    kind: XCache
+    plural: xcaches
+  claimNames:
+    kind: Cache
+    plural: caches
+  connectionSecretKeys:
+    - type
+    - provider
+    - host
+    - port
+    - username
+    - password
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                secretNamespace:
+                  type: string
+                  description: "Namespace to write the connection secret into."
+                secretName:
+                  type: string
+                  description: "Name for the connection secret."
+                region:
+                  type: string
+                  default: us-east-1
+                  description: "Cloud region for the cache cluster."
+                nodeType:
+                  type: string
+                  default: cache.t4g.micro
+                  description: "Cache node instance type."
+              required: [secretNamespace, secretName]
+          required: [spec]
