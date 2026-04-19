@@ -26,6 +26,7 @@ spec:
               namespace: {{ .observed.composite.resource.spec.parameters.namespace }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: nginx-config
+                gotemplating.fn.crossplane.io/ready: "True"
             data:
               default.conf: |
                 server {
