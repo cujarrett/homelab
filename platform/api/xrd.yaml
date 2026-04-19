@@ -1,0 +1,65 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xapis.platform.local.lab
+spec:
+  group: platform.local.lab
+  names:
+    kind: XApi
+    plural: xapis
+  claimNames:
+    kind: Api
+    plural: apis
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                objectStorage:
+                  type: object
+                  description: "Object storage options. If omitted, no bucket is created."
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: false
+                cache:
+                  type: object
+                  description: "Cache options. If omitted, no cache is created."
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: false
+                namespace:
+                  type: string
+                  description: "Namespace to deploy the API Deployment and Service into."
+                image:
+                  type: string
+                  description: "Container image for the API (e.g. ghcr.io/owner/api:sha-abc123). CI builds and pushes this on merge to main, then commits the new tag back here to trigger an ArgoCD sync."
+                port:
+                  type: integer
+                  default: 8080
+                  description: "Port the container listens on. Service always exposes port 80 → this targetPort."
+                argocd:
+                  type: object
+                  description: "ArgoCD Application settings."
+                  properties:
+                    repoURL:
+                      type: string
+                      description: "Git repository URL (e.g. https://github.com/owner/repo.git)."
+                    targetRevision:
+                      type: string
+                      default: "main"
+                      description: "Git branch, tag, or commit SHA to sync from."
+                    xrsPath:
+                      type: string
+                      default: "platform/xrs/api"
+                      description: "Path in the repo to the directory containing XR instance files."
+                  required: [repoURL]
+              required: [namespace, image]
+          required: [spec]

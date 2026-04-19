@@ -1,11 +1,11 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: xrestapi
+  name: xapi
 spec:
   compositeTypeRef:
     apiVersion: platform.local.lab/v1alpha1
-    kind: XRestApi
+    kind: XApi
   mode: Pipeline
   pipeline:
     - step: create-resources
@@ -49,10 +49,10 @@ spec:
                   spec:
                     containers:
                       - name: api
-                        image: placeholder # Patched by CombineFromComposite below
+                        image: placeholder # Patched from spec.image
                         imagePullPolicy: Always
                         ports:
-                          - containerPort: 8080
+                          - containerPort: 8080 # Patched from spec.port
                         env:
                           # SERVICE_BINDING_ROOT tells the app where bindings are mounted.
                           # This follows the servicebinding.io spec — each subdirectory is
@@ -62,54 +62,40 @@ spec:
                           - name: SERVICE_BINDING_ROOT
                             value: /bindings
                         volumeMounts:
-                          - name: s3-binding
-                            mountPath: /bindings/s3
+                          - name: object-storage-binding
+                            mountPath: /bindings/object-storage
                             readOnly: true
-                          - name: elasticache-binding
-                            mountPath: /bindings/elasticache
+                          - name: cache-binding
+                            mountPath: /bindings/cache
                             readOnly: true
                     volumes:
-                      - name: s3-binding
+                      - name: object-storage-binding
                         secret:
-                          secretName: "" # Patched to <xr-name>-s3 below
-                      - name: elasticache-binding
+                          secretName: "" # Patched to <xr-name>-object-storage below
+                      - name: cache-binding
                         secret:
-                          secretName: "" # Patched to <xr-name>-elasticache below
+                          secretName: "" # Patched to <xr-name>-cache below
             patches:
-              # Build image from spec.goVersion directly — avoids the two-reconcile lag
-              # of setting spec.image via go-templating (which writes to desired, not observed).
-              - type: CombineFromComposite
-                combine:
-                  variables:
-                    - fromFieldPath: spec.goVersion
-                  strategy: string
-                  string:
-                    fmt: "public.ecr.aws/docker/library/golang:%s-alpine"
-                toFieldPath: spec.template.spec.containers[0].image
-              # Override image if spec.image is explicitly set in the XR.
-              # Applies after the default above, so it wins when present.
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.image
                 toFieldPath: spec.template.spec.containers[0].image
-                policy:
-                  fromFieldPath: Optional
-              # Patch the S3 secret name into the volume
+              # Patch the object-storage secret name into the volume
               - type: CombineFromComposite
                 combine:
                   variables:
                     - fromFieldPath: metadata.name
                   strategy: string
                   string:
-                    fmt: "%s-s3"
+                    fmt: "%s-object-storage"
                 toFieldPath: spec.template.spec.volumes[0].secret.secretName
-              # Patch the ElastiCache secret name into the volume
+              # Patch the cache secret name into the volume
               - type: CombineFromComposite
                 combine:
                   variables:
                     - fromFieldPath: metadata.name
                   strategy: string
                   string:
-                    fmt: "%s-elasticache"
+                    fmt: "%s-cache"
                 toFieldPath: spec.template.spec.volumes[1].secret.secretName
               # Patch the namespace from spec.namespace
               - type: FromCompositeFieldPath
@@ -136,18 +122,21 @@ spec:
                   app: rest-api
                 ports:
                   - port: 80
-                    targetPort: 8080
+                    targetPort: 8080 # Patched from spec.port
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.namespace
                 toFieldPath: metadata.namespace
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.port
+                toFieldPath: spec.ports[0].targetPort
             readinessChecks:
               - type: None
 
-          - name: s3
+          - name: object-storage
             # SERVICE PROVIDER ROLE (servicebinding.io/service-provider):
             # Crossplane creates the S3 bucket and writes connection details into
-            # a Secret named "<xr-name>-s3" in the claim namespace.
+            # a Secret named "<xr-name>-object-storage" in the claim namespace.
             base:
               apiVersion: s3.aws.upbound.io/v1beta2
               kind: Bucket
@@ -164,7 +153,7 @@ spec:
                     - fromFieldPath: metadata.name
                   strategy: string
                   string:
-                    fmt: "%s-s3"
+                    fmt: "%s-object-storage"
                 toFieldPath: spec.writeConnectionSecretToRef.name
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.namespace
@@ -172,10 +161,10 @@ spec:
             readinessChecks:
               - type: None
 
-          - name: elasticache
+          - name: cache
             # SERVICE PROVIDER ROLE (servicebinding.io/service-provider):
             # Crossplane creates ElastiCache and writes connection details into
-            # a Secret named "<xr-name>-elasticache" in the claim namespace.
+            # a Secret named "<xr-name>-cache" in the claim namespace.
             base:
               apiVersion: elasticache.aws.upbound.io/v1beta2
               kind: ReplicationGroup
@@ -196,7 +185,7 @@ spec:
                     - fromFieldPath: metadata.name
                   strategy: string
                   string:
-                    fmt: "%s-elasticache"
+                    fmt: "%s-cache"
                 toFieldPath: spec.forProvider.description
               - type: CombineFromComposite
                 combine:
@@ -204,7 +193,7 @@ spec:
                     - fromFieldPath: metadata.name
                   strategy: string
                   string:
-                    fmt: "%s-elasticache"
+                    fmt: "%s-cache"
                 toFieldPath: spec.writeConnectionSecretToRef.name
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.namespace
@@ -212,3 +201,53 @@ spec:
             readinessChecks:
               - type: None
 
+          - name: argocd-application
+            base:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Application
+              metadata:
+                name: "" # Patched from XR metadata.name
+                namespace: argocd
+              spec:
+                project: default
+                source:
+                  repoURL: "" # Patched from spec.argocd.repoURL
+                  targetRevision: "" # Patched from spec.argocd.targetRevision
+                  path: "" # Patched from spec.argocd.xrsPath
+                  directory:
+                    include: "" # Patched to <xr-name>.yaml
+                destination:
+                  server: https://kubernetes.default.svc
+                  namespace: "" # Patched from spec.namespace
+                syncPolicy:
+                  automated:
+                    prune: true
+                    selfHeal: true
+                  syncOptions:
+                    - CreateNamespace=true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.argocd.repoURL
+                toFieldPath: spec.source.repoURL
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.argocd.targetRevision
+                toFieldPath: spec.source.targetRevision
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.argocd.xrsPath
+                toFieldPath: spec.source.path
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: metadata.name
+                  strategy: string
+                  string:
+                    fmt: "%s.yaml"
+                toFieldPath: spec.source.directory.include
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.namespace
+                toFieldPath: spec.destination.namespace
+            readinessChecks:
+              - type: None
