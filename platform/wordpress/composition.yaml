@@ -480,9 +480,3 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.namespace
                 toFieldPath: spec.destination.namespace
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: metadata.namespace
-                transforms:
-                  - type: string
-                    string: { fmt: "argocd", type: Format }
