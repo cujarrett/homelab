@@ -5,10 +5,20 @@ metadata:
   namespace: argocd
 spec:
   project: platform
-  source:
-    repoURL: https://github.com/cujarrett/homelab.git
-    targetRevision: main
-    path: apps/crossplane
+  sources:
+    - repoURL: https://charts.crossplane.io/stable
+      chart: crossplane
+      targetRevision: 2.2.0
+      helm:
+        releaseName: crossplane
+        values: |
+          metrics:
+            enabled: true
+          args:
+            - --composition-revision-history-size=5
+    - repoURL: https://github.com/cujarrett/homelab.git
+      targetRevision: main
+      path: apps/crossplane
   destination:
     server: https://kubernetes.default.svc
     namespace: crossplane-system
@@ -18,3 +28,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true

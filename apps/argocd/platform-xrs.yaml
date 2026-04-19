@@ -4,6 +4,7 @@ metadata:
   name: platform-definitions
   namespace: argocd
 spec:
+  revisionHistoryLimit: 5
   project: platform
   source:
     repoURL: https://github.com/cujarrett/homelab.git
