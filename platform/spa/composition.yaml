@@ -200,6 +200,9 @@ spec:
                 toFieldPath: metadata.namespace
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
                 toFieldPath: spec.selector.instance
             readinessChecks:
               - type: None

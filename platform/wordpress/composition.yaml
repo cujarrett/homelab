@@ -70,7 +70,7 @@ spec:
                 transforms:
                   - type: map
                     map:
-                      retain: longhorn
+                      retain: longhorn-retain
                       delete: longhorn-delete
 
           # --- MariaDB StatefulSet ---
@@ -233,7 +233,7 @@ spec:
                 transforms:
                   - type: map
                     map:
-                      retain: longhorn
+                      retain: longhorn-retain
                       delete: longhorn-delete
 
           # --- WordPress Deployment ---
