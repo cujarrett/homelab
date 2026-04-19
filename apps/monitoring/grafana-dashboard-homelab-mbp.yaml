@@ -2449,24 +2449,24 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Number of composite resources (XRs) with Synced=True. Red = at least one XR cannot be reconciled.",
+          "description": "Rate of Crossplane watch circuit breaker opens over 5m. Should be 0. Non-zero means a resource is stuck and Crossplane is backing off — this is what fired during the WatchCircuitOpen incident.",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 0,
+              "decimals": 3,
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "red",
+                    "color": "green",
                     "value": 0
                   },
                   {
-                    "color": "green",
-                    "value": 1
+                    "color": "red",
+                    "value": 0.001
                   }
                 ]
               },
@@ -2503,13 +2503,13 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(crossplane_composite_resource_synced) or vector(0)",
+              "expr": "sum(rate(circuit_breaker_events_total{result=\"Open\"}[5m])) or vector(0)",
               "instant": true,
-              "legendFormat": "Synced",
+              "legendFormat": "Circuit Opens/s",
               "refId": "A"
             }
           ],
-          "title": "XRs Synced",
+          "title": "Circuit Breaker Opens/s",
           "type": "stat"
         },
         {
@@ -2517,13 +2517,13 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Number of composite resources (XRs) with Ready=False. Should be 0. Red = at least one XR has unhealthy composed resources.",
+          "description": "Rate of successful Crossplane reconciles over 5m. Should be > 0 while XRs exist. Dropping to 0 means Crossplane has stopped processing entirely.",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 0,
+              "decimals": 3,
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
@@ -2531,10 +2531,6 @@ data:
                   {
                     "color": "green",
                     "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 1
                   }
                 ]
               },
@@ -2550,7 +2546,7 @@ data:
           },
           "id": 302,
           "options": {
-            "colorMode": "background",
+            "colorMode": "value",
             "graphMode": "none",
             "justifyMode": "center",
             "orientation": "auto",
@@ -2571,13 +2567,13 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(crossplane_composite_resource_ready == 0) or vector(0)",
+              "expr": "sum(rate(controller_runtime_reconcile_total{job=\"crossplane-metrics\"}[5m])) or vector(0)",
               "instant": true,
-              "legendFormat": "Not Ready",
+              "legendFormat": "Reconciles/s",
               "refId": "A"
             }
           ],
-          "title": "XRs Not Ready",
+          "title": "Reconciles/s",
           "type": "stat"
         },
         {
@@ -2667,6 +2663,6 @@ data:
       "timezone": "browser",
       "title": "Homelab — MacBook",
       "uid": "homelab-mbp",
-      "version": 7,
+      "version": 8,
       "weekStart": ""
     }

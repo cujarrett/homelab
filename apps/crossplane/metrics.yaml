@@ -50,34 +50,20 @@ spec:
     - name: crossplane.xr
       interval: 60s
       rules:
-        # XR stuck not synced — Crossplane can't reconcile it (bad composition,
-        # RBAC error, circuit breaker open, etc.)
-        - alert: CrossplaneXRNotSynced
+        # Circuit breaker opened — Crossplane backed off from reconciling a resource.
+        # This is the metric that tracks WatchCircuitOpen incidents.
+        - alert: CrossplaneCircuitBreakerOpen
           expr: |
-            crossplane_composite_resource_synced == 0
+            rate(circuit_breaker_events_total{result="Open"}[5m]) > 0
           for: 5m
           labels:
             severity: warning
           annotations:
-            summary: "Crossplane XR {{ $labels.name }} is not synced"
+            summary: "Crossplane circuit breaker open on {{ $labels.controller }}"
             description: >
-              XR {{ $labels.kind }}/{{ $labels.name }} in group {{ $labels.group }}
-              has had Synced=False for over 5 minutes. Crossplane cannot reconcile it.
-              Check: kubectl describe xwordpressplatform {{ $labels.name }} -n {{ $labels.namespace }}
-
-        # XR synced but not ready — composed resources created but unhealthy
-        - alert: CrossplaneXRNotReady
-          expr: |
-            crossplane_composite_resource_ready == 0
-          for: 15m
-          labels:
-            severity: warning
-          annotations:
-            summary: "Crossplane XR {{ $labels.name }} is not ready"
-            description: >
-              XR {{ $labels.kind }}/{{ $labels.name }} has been Synced but not Ready
-              for over 15 minutes. Some composed resources are unhealthy.
-              Check: kubectl describe xwordpressplatform {{ $labels.name }} -n {{ $labels.namespace }}
+              Controller {{ $labels.controller }} has had its watch circuit breaker
+              open for over 5 minutes. Crossplane is backing off and not reconciling
+              this resource. Check: kubectl get events -A --sort-by=.lastTimestamp | tail -20
 
         # Reconcile errors spiking — something is consistently failing
         - alert: CrossplaneReconcileErrors
