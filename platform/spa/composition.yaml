@@ -308,5 +308,11 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.namespace
                 toFieldPath: spec.destination.namespace
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.namespace
+                transforms:
+                  - type: string
+                    string: { fmt: "argocd", type: Format }
             readinessChecks:
               - type: None
