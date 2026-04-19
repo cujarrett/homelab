@@ -1,0 +1,64 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: infrastructure
+  namespace: argocd
+spec:
+  description: Cluster primitives — storage, ingress, DNS, TLS, tunnels
+  sourceRepos:
+    - "https://github.com/cujarrett/homelab.git"
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  description: Platform layer — ArgoCD, Crossplane, compositions, bootstrap
+  sourceRepos:
+    - "https://github.com/cujarrett/homelab.git"
+    - "https://argoproj.github.io/argo-helm"
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: observability
+  namespace: argocd
+spec:
+  description: Monitoring stack — Prometheus, Grafana, Loki, Promtail, Alertmanager
+  sourceRepos:
+    - "https://github.com/cujarrett/homelab.git"
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: monitoring
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: workloads
+  namespace: argocd
+spec:
+  description: User-facing applications — blogs, sites, APIs, Crossplane-managed XRs
+  sourceRepos:
+    - "https://github.com/cujarrett/homelab.git"
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
