@@ -409,3 +409,58 @@ spec:
                 transforms:
                   - type: string
                     string: { fmt: "%s-wordpress", type: Format }
+
+          - name: argocd-application
+            base:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Application
+              metadata:
+                name: "" # Patched from XR metadata.name
+                namespace: argocd
+              spec:
+                project: default
+                source:
+                  repoURL: "" # Patched from spec.parameters.argocd.repoURL
+                  targetRevision: "" # Patched from spec.parameters.argocd.targetRevision
+                  path: "" # Patched from spec.parameters.argocd.xrsPath
+                  directory:
+                    include: "" # Patched to <xr-name>.yaml
+                destination:
+                  server: https://kubernetes.default.svc
+                  namespace: "" # Patched from XR metadata.namespace
+                syncPolicy:
+                  automated:
+                    prune: true
+                    selfHeal: true
+                  syncOptions:
+                    - CreateNamespace=true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.argocd.repoURL
+                toFieldPath: spec.source.repoURL
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.argocd.targetRevision
+                toFieldPath: spec.source.targetRevision
+                policy:
+                  fromFieldPath: Optional
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.argocd.xrsPath
+                toFieldPath: spec.source.path
+                policy:
+                  fromFieldPath: Optional
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: metadata.name
+                  strategy: string
+                  string:
+                    fmt: "%s.yaml"
+                toFieldPath: spec.source.directory.include
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.namespace
+                toFieldPath: spec.destination.namespace

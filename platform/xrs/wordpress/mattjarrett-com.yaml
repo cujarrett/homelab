@@ -5,23 +5,16 @@ metadata:
   namespace: mattjarrett-com
 spec:
   parameters:
-    # Traefik ingress hostname. Use mattjarrett.com (Cloudflare Tunnel) or mattjarrett.local.lab (local only).
-    # Must match the WordPress siteurl/home in the DB — changing this requires a DB search-replace.
     host: mattjarrett.com
-    # wp-content PVC size (uploads, themes, plugins)
     storageSize: "10Gi"
-    # MariaDB PVC size — current DB dump is 22MB
     dbStorageSize: "1Gi"
-    # Number of WordPress pod replicas
     replicas: 1
-    # CPU reserved on the node for the WordPress container
     cpuRequest: "250m"
-    # Max CPU the WordPress container can burst to (image resize/thumbnail generation)
     cpuLimit: "1500m"
-    # RAM reserved on the node for the WordPress container (PHP image processing needs headroom)
     memoryRequest: "512Mi"
-    # Max RAM the WordPress container can use before OOMKill
     memoryLimit: "1024Mi"
-    # retain: keeps PV data after XR delete (longhorn StorageClass)
-    # delete: wipes PV data after XR delete (longhorn-delete StorageClass)
     dataRetention: retain
+    argocd:
+      repoURL: https://github.com/cujarrett/homelab.git
+      targetRevision: main
+      xrsPath: platform/xrs/wordpress
