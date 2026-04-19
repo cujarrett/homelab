@@ -64,6 +64,14 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.dbStorageSize
                 toFieldPath: spec.resources.requests.storage
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.dataRetention
+                toFieldPath: spec.storageClassName
+                transforms:
+                  - type: map
+                    map:
+                      retain: longhorn
+                      delete: longhorn-delete
 
           # --- MariaDB StatefulSet ---
           - name: mariadb-statefulset
@@ -219,6 +227,14 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.storageSize
                 toFieldPath: spec.resources.requests.storage
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.dataRetention
+                toFieldPath: spec.storageClassName
+                transforms:
+                  - type: map
+                    map:
+                      retain: longhorn
+                      delete: longhorn-delete
 
           # --- WordPress Deployment ---
           # initContainer seeds wp-content from the image on first run (empty PVC),
