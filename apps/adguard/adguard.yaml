@@ -20,10 +20,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/hostname: ctrl-1   # hostPort 53 must be on a known IP
-      tolerations:
-        - key: node-role.kubernetes.io/control-plane
-          operator: Exists
-          effect: NoSchedule
       hostNetwork: false
       containers:
         - name: adguard-home
