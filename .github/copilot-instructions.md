@@ -157,19 +157,19 @@ Service label format: `{namespace}-{servicename}-{port}@kubernetes`
 - `mattjarrett.dev` → `mattjarrett-dev-mattjarrett-dev.*@kubernetes` or `web-mattjarrett-dev.*@kubernetes` (both exist; use alternation `|`)
 - `mattjarrett.com` → `mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes`
 
-## 1U Display (ctrl-1)
-`ctrl-1` runs a kiosk browser on the attached display. It is **not** managed by systemd — it's a bare background process under the `pi` user.
+## 1U Display (work-1)
+`work-1` runs a kiosk browser on the attached display. It is **not** managed by systemd — it's a bare background process under the `pi` user.
 
-- Script: `~/kiosk.sh` on `ctrl-1`
+- Script: `~/kiosk.sh` on `work-1`
 - Current URL: `https://grafana.local.lab/playlists/play/admt9pc?kiosk`
 
-To update the URL without rebooting ctrl-1:
+To update the URL without rebooting work-1:
 ```bash
 # 1. Edit the URL
-ssh pi@192.168.10.100 "sed -i 's|OLD_URL|NEW_URL|' ~/kiosk.sh"
+ssh pi@192.168.10.101 "sed -i 's|OLD_URL|NEW_URL|' ~/kiosk.sh"
 
 # 2. Restart the tty1 session — triggers autologin → startx → kiosk.sh (k3s is unaffected)
-ssh pi@192.168.10.100 "sudo systemctl restart getty@tty1.service"
+ssh pi@192.168.10.101 "sudo systemctl restart getty@tty1.service"
 ```
 
 **Do not** just `pkill chromium` — the `while true` loop in kiosk.sh will relaunch chromium with the URL already loaded in memory, ignoring the file change. Restarting getty re-runs `.bashrc` which re-sources the updated script.
