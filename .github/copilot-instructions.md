@@ -66,6 +66,60 @@ UniFi DHCP DNS: primary `192.168.10.100`, fallback `1.1.1.1`.
 - `mattjarrett.com` — WordPress, routed via Cloudflare Tunnel
 - `mattjarrett.dev` — static site, routed via Cloudflare Tunnel
 - `blog.mattjarrett.dev` — Ghost blog, routed via Cloudflare Tunnel
+- `my-vinyl-api.mattjarrett.dev` — vinyl collection API, routed via Cloudflare Tunnel
+- `myvinyl.mattjarrett.dev` — vinyl collection SPA, routed via Cloudflare Tunnel
+
+## Cloudflare Tunnel Operations
+
+Tunnel ID: `REDACTED` — retrieve with:
+```bash
+kubectl get secret cloudflare-tunnel-token -n cloudflare -o jsonpath='{.data.tunnelID}' | base64 -d
+```
+
+Account ID: `REDACTED` — visible in the Cloudflare dashboard URL (`dash.cloudflare.com/<account-id>/`) or retrieve with:
+```bash
+kubectl get secret cloudflare-tunnel-token -n cloudflare -o jsonpath='{.data.accountID}' | base64 -d
+```
+
+All hostnames route to: `https://192.168.10.101:443` with `noTLSVerify: true`
+
+**Every new public hostname requires a tunnel config update.** The API is a full replace — always fetch first, append, then PUT back.
+
+Adding a new public hostname:
+```bash
+# 0. Get IDs from cluster
+export ACCOUNT_ID=$(kubectl get secret cloudflare-tunnel-token -n cloudflare -o jsonpath='{.data.accountID}' | base64 -d)
+export TUNNEL_ID=$(kubectl get secret cloudflare-tunnel-token -n cloudflare -o jsonpath='{.data.tunnelID}' | base64 -d)
+export CF_TOKEN=<token>
+
+# 1. Fetch current config
+curl -s -X GET \
+  "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/configurations" \
+  -H "Authorization: Bearer $CF_TOKEN" | python3 -m json.tool
+
+# 2. PUT the full ingress array back with the new entry added before the catch-all:
+curl -s -X PUT \
+  "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/configurations" \
+  -H "Authorization: Bearer $CF_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "config": {
+      "ingress": [
+        ...existing entries...,
+        {"hostname":"<new-hostname>","service":"https://192.168.10.101:443","originRequest":{"noTLSVerify":true}},
+        {"service":"http_status:404"}
+      ],
+      "warp-routing":{"enabled":false}
+    }
+  }'
+```
+
+**Required for Let's Encrypt cert issuance:** the tunnel hostname must be added *before* the cert request is created, otherwise the HTTP-01 challenge self-check fails. If the cert is already stuck pending, delete the CertificateRequest to force a retry:
+```bash
+kubectl delete certificaterequest -n <namespace> --all
+```
+
+**API token permissions needed:** Cloudflare Zero Trust → Argo Tunnel (Legacy) → Edit
 
 ## Monitoring Stack Details
 - **Prometheus**: `monitoring-kube-prometheus-prometheus`, port 9090, 30d retention, 20Gi PVC
