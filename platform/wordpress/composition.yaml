@@ -91,6 +91,15 @@ spec:
                       app: mariadb
                       instance: ""
                   spec:
+                    affinity:
+                      nodeAffinity:
+                        preferredDuringSchedulingIgnoredDuringExecution:
+                          - weight: 100
+                            preference:
+                              matchExpressions:
+                                - key: kubernetes.io/hostname
+                                  operator: NotIn
+                                  values: ["ctrl-1"]
                     containers:
                       - name: mariadb
                         image: mariadb:11
@@ -255,6 +264,15 @@ spec:
                       app: wordpress
                       instance: ""
                   spec:
+                    affinity:
+                      nodeAffinity:
+                        preferredDuringSchedulingIgnoredDuringExecution:
+                          - weight: 100
+                            preference:
+                              matchExpressions:
+                                - key: kubernetes.io/hostname
+                                  operator: NotIn
+                                  values: ["ctrl-1"]
                     initContainers:
                       - name: init-wp-content
                         image: wordpress:6-apache
