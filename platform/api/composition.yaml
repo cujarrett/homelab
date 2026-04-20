@@ -35,6 +35,7 @@ spec:
               apiVersion: v1
               kind: Service
               metadata:
+                name: "" # Patched from XR metadata.name
                 namespace: "" # Patched from spec.namespace
                 labels:
                   app: rest-api
@@ -45,6 +46,9 @@ spec:
                   - port: 80
                     targetPort: 8080 # Patched from spec.port
             patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.namespace
                 toFieldPath: metadata.namespace
