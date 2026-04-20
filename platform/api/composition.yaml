@@ -43,8 +43,12 @@ spec:
                 selector:
                   app: rest-api
                 ports:
-                  - port: 80
+                  - name: http
+                    port: 80
                     targetPort: 8080 # Patched from spec.port
+                  - name: metrics
+                    port: 9090
+                    targetPort: 9090
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.name
@@ -202,6 +206,25 @@ spec:
               secretName: {{ $name }}-cache
               secretNamespace: {{ $ns }}
             {{- end }}
+            ---
+            apiVersion: monitoring.coreos.com/v1
+            kind: ServiceMonitor
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              labels:
+                release: monitoring
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: servicemonitor
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels:
+                  app: rest-api
+              endpoints:
+                - port: metrics
+                  path: /metrics
+                  interval: 60s
             {{- if $host }}
             ---
             apiVersion: networking.k8s.io/v1
