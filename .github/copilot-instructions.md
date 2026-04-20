@@ -163,6 +163,37 @@ Service label format: `{namespace}-{servicename}-{port}@kubernetes`
 - Script: `~/kiosk.sh` on `work-1`
 - Current URL: `https://grafana.local.lab/playlists/play/admt9pc?kiosk`
 
+### X server config (manual — not in Git)
+The Pi 5 has two DRM devices (`card0` = v3d, `card1` = display). Without explicit config, Xorg fails with "Cannot run in framebuffer mode". A config file must exist at `/etc/X11/xorg.conf.d/99-pi5.conf` on work-1:
+```
+Section "Device"
+    Identifier "Modesetting"
+    Driver "modesetting"
+    Option "kmsdev" "/dev/dri/card1"
+EndSection
+
+Section "Monitor"
+    Identifier "HDMI-1"
+    DisplaySize 172 34
+EndSection
+```
+If work-1 is ever rebuilt, create this file before attempting to start the kiosk:
+```bash
+sudo mkdir -p /etc/X11/xorg.conf.d
+sudo tee /etc/X11/xorg.conf.d/99-pi5.conf << 'EOF'
+Section "Device"
+    Identifier "Modesetting"
+    Driver "modesetting"
+    Option "kmsdev" "/dev/dri/card1"
+EndSection
+
+Section "Monitor"
+    Identifier "HDMI-1"
+    DisplaySize 172 34
+EndSection
+EOF
+```
+
 To update the URL without rebooting work-1:
 ```bash
 # 1. Edit the URL
