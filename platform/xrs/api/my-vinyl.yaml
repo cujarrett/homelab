@@ -1,0 +1,13 @@
+apiVersion: platform.local.lab/v1alpha1
+kind: XApi
+metadata:
+  name: my-vinyl
+  namespace: my-vinyl
+spec:
+  namespace: my-vinyl
+  image: ghcr.io/cujarrett/my-vinyl-api:sha-8a7069a
+  port: 8080
+  host: my-vinyl-api.mattjarrett.dev
+  tlsIssuer: letsencrypt-prod
+  secretRef:
+    name: discogs-credentials
