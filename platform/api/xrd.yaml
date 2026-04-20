@@ -45,5 +45,19 @@ spec:
                   type: integer
                   default: 8080
                   description: "Port the container listens on. Service always exposes port 80 → this targetPort."
+                host:
+                  type: string
+                  description: "Hostname for the Ingress. If omitted, no Ingress is created."
+                tlsIssuer:
+                  type: string
+                  default: local-lab-ca-issuer
+                  description: "cert-manager ClusterIssuer for TLS."
+                secretRef:
+                  type: object
+                  description: "Optional reference to a pre-existing Secret in spec.namespace to inject into the API container via envFrom."
+                  properties:
+                    name:
+                      type: string
+                      description: "Name of the Secret."
               required: [namespace, image]
           required: [spec]

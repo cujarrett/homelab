@@ -29,85 +29,6 @@ spec:
             readinessChecks:
               - type: None
 
-          - name: deployment
-            base:
-              apiVersion: apps/v1
-              kind: Deployment
-              metadata:
-                namespace: "" # Patched from spec.namespace
-                labels:
-                  app: rest-api
-              spec:
-                replicas: 1
-                selector:
-                  matchLabels:
-                    app: rest-api
-                template:
-                  metadata:
-                    labels:
-                      app: rest-api
-                  spec:
-                    containers:
-                      - name: api
-                        image: placeholder # Patched from spec.image
-                        imagePullPolicy: Always
-                        ports:
-                          - containerPort: 8080 # Patched from spec.port
-                        env:
-                          # SERVICE_BINDING_ROOT tells the app where bindings are mounted.
-                          # This follows the servicebinding.io spec — each subdirectory is
-                          # a named binding, and files within it are the secret key/value pairs.
-                          # We project the secrets directly here instead of using the
-                          # servicebinding/runtime controller, achieving the same app experience.
-                          - name: SERVICE_BINDING_ROOT
-                            value: /bindings
-                        volumeMounts:
-                          - name: object-storage-binding
-                            mountPath: /bindings/object-storage
-                            readOnly: true
-                          - name: cache-binding
-                            mountPath: /bindings/cache
-                            readOnly: true
-                    volumes:
-                      - name: object-storage-binding
-                        secret:
-                          secretName: "" # Patched to <xr-name>-object-storage below
-                      - name: cache-binding
-                        secret:
-                          secretName: "" # Patched to <xr-name>-cache below
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.image
-                toFieldPath: spec.template.spec.containers[0].image
-              # Patch the object-storage secret name into the volume
-              - type: CombineFromComposite
-                combine:
-                  variables:
-                    - fromFieldPath: metadata.name
-                  strategy: string
-                  string:
-                    fmt: "%s-object-storage"
-                toFieldPath: spec.template.spec.volumes[0].secret.secretName
-              # Patch the cache secret name into the volume
-              - type: CombineFromComposite
-                combine:
-                  variables:
-                    - fromFieldPath: metadata.name
-                  strategy: string
-                  string:
-                    fmt: "%s-cache"
-                toFieldPath: spec.template.spec.volumes[1].secret.secretName
-              # Patch the namespace from spec.namespace
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.namespace
-                toFieldPath: metadata.namespace
-            connectionDetails:
-              - type: FromFieldPath
-                name: image
-                fromFieldPath: spec.template.spec.containers[0].image
-            readinessChecks:
-              - type: None
-
           - name: service
             # Exposes the Deployment via ClusterIP Service
             base:
@@ -133,70 +54,178 @@ spec:
             readinessChecks:
               - type: None
 
-          - name: object-storage
-            # SERVICE PROVIDER ROLE (servicebinding.io/service-provider):
-            # Crossplane creates the S3 bucket and writes connection details into
-            # a Secret named "<xr-name>-object-storage" in the claim namespace.
-            base:
-              apiVersion: s3.aws.upbound.io/v1beta2
-              kind: Bucket
-              spec:
-                forProvider:
-                  region: us-east-1
-                writeConnectionSecretToRef:
-                  name: ""
-                  namespace: ""
-            patches:
-              - type: CombineFromComposite
-                combine:
-                  variables:
-                    - fromFieldPath: metadata.name
-                  strategy: string
-                  string:
-                    fmt: "%s-object-storage"
-                toFieldPath: spec.writeConnectionSecretToRef.name
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.namespace
-                toFieldPath: spec.writeConnectionSecretToRef.namespace
-            readinessChecks:
-              - type: None
-
-          - name: cache
-            # SERVICE PROVIDER ROLE (servicebinding.io/service-provider):
-            # Crossplane creates ElastiCache and writes connection details into
-            # a Secret named "<xr-name>-cache" in the claim namespace.
-            base:
-              apiVersion: elasticache.aws.upbound.io/v1beta2
-              kind: ReplicationGroup
-              spec:
-                forProvider:
-                  region: us-east-1
-                  description: "" # Patched from XR name below
-                  nodeType: cache.t4g.micro
-                  engine: redis
-                  numCacheClusters: 1
-                writeConnectionSecretToRef:
-                  name: ""
-                  namespace: ""
-            patches:
-              - type: CombineFromComposite
-                combine:
-                  variables:
-                    - fromFieldPath: metadata.name
-                  strategy: string
-                  string:
-                    fmt: "%s-cache"
-                toFieldPath: spec.forProvider.description
-              - type: CombineFromComposite
-                combine:
-                  variables:
-                    - fromFieldPath: metadata.name
-                  strategy: string
-                  string:
-                    fmt: "%s-cache"
-                toFieldPath: spec.writeConnectionSecretToRef.name
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.namespace
-                toFieldPath: spec.writeConnectionSecretToRef.namespace
-            readinessChecks:
-              - type: None
+    - step: conditional-resources
+      # function-go-templating generates the Deployment with conditional init containers
+      # and optional platform XRs (XObjectStorage, XCache). Init containers block the
+      # API container from starting until each enabled binding's secret is populated,
+      # ensuring infrastructure dependencies are fully ready before the app receives traffic.
+      # XObjectStorage and XCache are reusable platform primitives — their compositions
+      # handle the cloud-specific resource creation independently of XApi.
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $ns := $xr.spec.namespace }}
+            {{- $objectStorageEnabled := and $xr.spec.objectStorage $xr.spec.objectStorage.enabled }}
+            {{- $cacheEnabled := and $xr.spec.cache $xr.spec.cache.enabled }}
+            {{- $host := $xr.spec.host | default "" }}
+            {{- $tlsIssuer := $xr.spec.tlsIssuer | default "local-lab-ca-issuer" }}
+            {{- $secretRefName := "" }}
+            {{- if $xr.spec.secretRef }}{{- $secretRefName = $xr.spec.secretRef.name }}{{- end }}
+            ---
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              labels:
+                app: rest-api
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: deployment
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              replicas: 1
+              selector:
+                matchLabels:
+                  app: rest-api
+              template:
+                metadata:
+                  labels:
+                    app: rest-api
+                spec:
+                  {{- if or $objectStorageEnabled $cacheEnabled }}
+                  initContainers:
+                    {{- if $objectStorageEnabled }}
+                    - name: wait-for-object-storage-binding
+                      image: busybox:1.36
+                      command:
+                        - sh
+                        - -c
+                        - "until [ -f /bindings/object-storage/type ]; do echo waiting for object-storage binding; sleep 5; done"
+                      volumeMounts:
+                        - name: object-storage-binding
+                          mountPath: /bindings/object-storage
+                          readOnly: true
+                    {{- end }}
+                    {{- if $cacheEnabled }}
+                    - name: wait-for-cache-binding
+                      image: busybox:1.36
+                      command:
+                        - sh
+                        - -c
+                        - "until [ -f /bindings/cache/type ]; do echo waiting for cache binding; sleep 5; done"
+                      volumeMounts:
+                        - name: cache-binding
+                          mountPath: /bindings/cache
+                          readOnly: true
+                    {{- end }}
+                  {{- end }}
+                  containers:
+                    - name: api
+                      image: {{ $xr.spec.image }}
+                      imagePullPolicy: Always
+                      ports:
+                        - containerPort: {{ $xr.spec.port }}
+                      env:
+                        - name: SERVICE_BINDING_ROOT
+                          value: /bindings
+                      {{- if $secretRefName }}
+                      envFrom:
+                        - secretRef:
+                            name: {{ $secretRefName }}
+                      {{- end }}
+                      {{- if or $objectStorageEnabled $cacheEnabled }}
+                      volumeMounts:
+                        {{- if $objectStorageEnabled }}
+                        - name: object-storage-binding
+                          mountPath: /bindings/object-storage
+                          readOnly: true
+                        {{- end }}
+                        {{- if $cacheEnabled }}
+                        - name: cache-binding
+                          mountPath: /bindings/cache
+                          readOnly: true
+                        {{- end }}
+                      {{- end }}
+                  {{- if or $objectStorageEnabled $cacheEnabled }}
+                  volumes:
+                    {{- if $objectStorageEnabled }}
+                    - name: object-storage-binding
+                      secret:
+                        secretName: {{ $name }}-object-storage
+                        optional: true
+                    {{- end }}
+                    {{- if $cacheEnabled }}
+                    - name: cache-binding
+                      secret:
+                        secretName: {{ $name }}-cache
+                        optional: true
+                    {{- end }}
+                  {{- end }}
+            {{- if $objectStorageEnabled }}
+            ---
+            # Delegates to the XObjectStorage platform primitive.
+            # Its composition handles cloud-specific provisioning and writes
+            # the connection secret at {{ $name }}-object-storage in {{ $ns }}.
+            apiVersion: platform.local.lab/v1alpha1
+            kind: XObjectStorage
+            metadata:
+              name: {{ $name }}-object-storage
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: object-storage
+            spec:
+              secretName: {{ $name }}-object-storage
+              secretNamespace: {{ $ns }}
+            {{- end }}
+            {{- if $cacheEnabled }}
+            ---
+            # Delegates to the XCache platform primitive.
+            # Its composition handles cloud-specific provisioning and writes
+            # the connection secret at {{ $name }}-cache in {{ $ns }}.
+            apiVersion: platform.local.lab/v1alpha1
+            kind: XCache
+            metadata:
+              name: {{ $name }}-cache
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: cache
+            spec:
+              secretName: {{ $name }}-cache
+              secretNamespace: {{ $ns }}
+            {{- end }}
+            {{- if $host }}
+            ---
+            apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                traefik.ingress.kubernetes.io/router.entrypoints: websecure
+                traefik.ingress.kubernetes.io/router.tls: "true"
+                cert-manager.io/cluster-issuer: {{ $tlsIssuer }}
+                gotemplating.fn.crossplane.io/composition-resource-name: ingress
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              ingressClassName: traefik
+              tls:
+                - hosts:
+                    - {{ $host }}
+                  secretName: {{ $name }}-tls
+              rules:
+                - host: {{ $host }}
+                  http:
+                    paths:
+                      - path: /
+                        pathType: Prefix
+                        backend:
+                          service:
+                            name: {{ $name }}
+                            port:
+                              number: 80
+            {{- end }}
