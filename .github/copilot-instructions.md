@@ -3,6 +3,19 @@
 ## Copilot Rules
 - **Never run `git commit`, `git push`, or any git command that writes to or modifies repository history or remotes.** If a task requires committing or pushing, stop and tell the user to run the git command manually.
 
+### Pre-commit safety check
+
+Whenever files are ready to be committed (after a set of changes is complete, or when the user asks), automatically perform this check on every changed file **before** telling the user to commit. Report the results inline — do not wait to be asked.
+
+Check for:
+1. **Hardcoded secrets** — passwords, API keys, tokens, private keys, connection strings with credentials
+2. **Sensitive identifiers** — AWS account IDs, Cloudflare account/tunnel IDs, internal IPs beyond those documented in `copilot-instructions.md`, UUIDs that are runtime secrets
+3. **Personal data** — email addresses, names, or other PII not already public
+4. **Credentials in templates** — go-template or Helm values that embed literal secrets instead of referencing a Secret/external store
+5. **Cluster safety** — no `kubectl delete` or destructive operations baked into manifests; no `hostNetwork: true` or `privileged: true` without justification
+
+If all checks pass, state "All files safe to commit." If any issue is found, describe it and suggest a fix before the user commits.
+
 ## Overview
 A 4-node k3s Kubernetes homelab managed entirely via GitOps with ArgoCD.
 All workloads are defined as manifests in this repo under `apps/`, `platform/`, and `scripts/`.

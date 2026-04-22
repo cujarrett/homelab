@@ -165,8 +165,9 @@ spec:
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: object-storage
             spec:
-              secretName: {{ $name }}-object-storage
-              secretNamespace: {{ $ns }}
+              writeConnectionSecretToRef:
+                name: {{ $name }}-object-storage
+                namespace: {{ $ns }}
             {{- end }}
             {{- if $cacheEnabled }}
             ---

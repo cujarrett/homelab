@@ -8,7 +8,91 @@ spec:
     kind: XObjectStorage
   mode: Pipeline
   pipeline:
-    - step: create-bucket
+    - step: render-resources
+      # Creates the S3 bucket, an IAM user scoped to that bucket, an access key
+      # for the user, and (once the bucket ARN is known) an inline user policy
+      # granting least-privilege S3 access. All resources are managed together
+      # so deleting the XR cleans up the IAM user and access key automatically.
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $region := $xr.spec.region | default "us-east-1" }}
+            {{- $bucketArn := "" }}
+            {{- with index .observed.resources "bucket" }}
+              {{- with .resource.status.atProvider }}
+                {{- $bucketArn = .arn | default "" }}
+              {{- end }}
+            {{- end }}
+            ---
+            # S3 bucket — external-name is left unset so Crossplane generates a
+            # unique name from the managed resource name.
+            apiVersion: s3.aws.upbound.io/v1beta2
+            kind: Bucket
+            metadata:
+              name: {{ $name }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: bucket
+            spec:
+              forProvider:
+                region: {{ $region }}
+            ---
+            # IAM user scoped to this XR — deleted with the XR.
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: User
+            metadata:
+              name: {{ $name }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: iam-user
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              forProvider: {}
+            ---
+            # Access key for the IAM user. Credentials are written to a secret in
+            # crossplane-system and bubbled up to the XR connection secret via the
+            # PT step below.
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: AccessKey
+            metadata:
+              name: {{ $name }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: access-key
+            spec:
+              forProvider:
+                userSelector:
+                  matchControllerRef: true
+              writeConnectionSecretToRef:
+                name: {{ $name }}-access-key
+                namespace: crossplane-system
+            {{- if $bucketArn }}
+            ---
+            # Inline user policy granting least-privilege access to this bucket only.
+            # Only created once the bucket ARN is known (after bucket is provisioned).
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: UserPolicy
+            metadata:
+              name: {{ $name }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: user-policy
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              forProvider:
+                userSelector:
+                  matchControllerRef: true
+                policy: >-
+                  {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:GetObject","s3:PutObject","s3:DeleteObject","s3:ListBucket"],"Resource":["{{ $bucketArn }}","{{ $bucketArn }}/*"]}]}
+            {{- end }}
+    - step: bubble-connection-details
+      # Declares which fields from each managed resource's connection secret
+      # should be aggregated into the XR's connection secret. The XApi composition
+      # sets writeConnectionSecretToRef on this XR, so all keys here end up
+      # in the binding secret mounted by the API container.
       functionRef:
         name: function-patch-and-transform
       input:
@@ -16,29 +100,9 @@ spec:
         kind: Resources
         resources:
           - name: bucket
-            # SERVICE PROVIDER ROLE (servicebinding.io/service-provider):
-            # Provisions an S3-compatible bucket and writes connection details into
-            # a Secret. The type/provider files in the secret identify the protocol
-            # (s3) and implementation (aws) per the servicebinding.io spec.
             base:
               apiVersion: s3.aws.upbound.io/v1beta2
               kind: Bucket
-              spec:
-                forProvider:
-                  region: us-east-1 # Patched from spec.region
-                writeConnectionSecretToRef:
-                  name: ""      # Patched from spec.secretName
-                  namespace: "" # Patched from spec.secretNamespace
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.region
-                toFieldPath: spec.forProvider.region
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.secretName
-                toFieldPath: spec.writeConnectionSecretToRef.name
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.secretNamespace
-                toFieldPath: spec.writeConnectionSecretToRef.namespace
             connectionDetails:
               - type: FromValue
                 name: type
@@ -46,18 +110,29 @@ spec:
               - type: FromValue
                 name: provider
                 value: aws
-              - type: FromConnectionSecretKey
-                name: region
-                fromConnectionSecretKey: region
-              - type: FromConnectionSecretKey
+              - type: FromFieldPath
                 name: bucket
-                fromConnectionSecretKey: bucket
-              - type: FromConnectionSecretKey
+                fromFieldPath: status.atProvider.id
+              - type: FromFieldPath
+                name: region
+                fromFieldPath: spec.forProvider.region
+              - type: FromFieldPath
                 name: uri
-                fromConnectionSecretKey: endpoint
+                fromFieldPath: status.atProvider.id
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "https://%s.s3.amazonaws.com"
+          - name: access-key
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: AccessKey
+            connectionDetails:
               - type: FromConnectionSecretKey
                 name: username
-                fromConnectionSecretKey: aws_access_key_id
+                fromConnectionSecretKey: attribute.id
               - type: FromConnectionSecretKey
                 name: password
-                fromConnectionSecretKey: aws_secret_access_key
+                fromConnectionSecretKey: attribute.secret
+
