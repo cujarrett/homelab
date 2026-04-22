@@ -16,15 +16,6 @@ spec:
 apiVersion: pkg.crossplane.io/v1
 kind: Function
 metadata:
-  name: function-patch-and-transform
-spec:
-  package: xpkg.crossplane.io/crossplane-contrib/function-patch-and-transform:v0.10.3
-  runtimeConfigRef:
-    name: worker-nodes
----
-apiVersion: pkg.crossplane.io/v1
-kind: Function
-metadata:
   name: function-go-templating
 spec:
   package: xpkg.upbound.io/crossplane-contrib/function-go-templating:v0.12.0
