@@ -67,21 +67,35 @@ spec:
                 permissionsBoundary: arn:aws:iam::{{ $accountId }}:policy/CrossplaneUserBoundary
             {{- if $bucketArn }}
             ---
-            # Inline user policy granting least-privilege access to this bucket only.
+            # Managed IAM policy granting least-privilege access to this bucket only.
             # Only created once the bucket ARN is known (after bucket is provisioned).
+            # provider-aws-iam uses Policy + UserPolicyAttachment, not UserPolicy.
             apiVersion: iam.aws.upbound.io/v1beta1
-            kind: UserPolicy
+            kind: Policy
             metadata:
-              name: {{ $name }}
+              name: {{ $name }}-bucket-policy
               annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: user-policy
+                gotemplating.fn.crossplane.io/composition-resource-name: bucket-policy
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              forProvider:
+                policy: >-
+                  {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:GetObject","s3:PutObject","s3:DeleteObject","s3:ListBucket"],"Resource":["{{ $bucketArn }}","{{ $bucketArn }}/*"]}]}
+            ---
+            # Attaches the bucket policy to the IAM user scoped to this XR.
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: UserPolicyAttachment
+            metadata:
+              name: {{ $name }}-bucket-policy-attachment
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: bucket-policy-attachment
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               forProvider:
                 userSelector:
                   matchControllerRef: true
-                policy: >-
-                  {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:GetObject","s3:PutObject","s3:DeleteObject","s3:ListBucket"],"Resource":["{{ $bucketArn }}","{{ $bucketArn }}/*"]}]}
+                policyArnSelector:
+                  matchControllerRef: true
             {{- end }}
     - step: render-and-bubble-aws-resources
       # PT fully owns the Bucket and AccessKey — full spec in the base so PT's
