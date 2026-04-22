@@ -118,14 +118,6 @@ spec:
               - type: FromFieldPath
                 name: region
                 fromFieldPath: spec.forProvider.region
-              - type: FromFieldPath
-                name: uri
-                fromFieldPath: status.atProvider.id
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: "https://%s.s3.amazonaws.com"
           - name: access-key
             base:
               apiVersion: iam.aws.upbound.io/v1beta1
