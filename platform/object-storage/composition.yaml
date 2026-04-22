@@ -6,103 +6,9 @@ spec:
   compositeTypeRef:
     apiVersion: platform.local.lab/v1alpha1
     kind: XObjectStorage
-  # aws-platform-config holds infrastructure facts (awsAccountId) that must not
-  # appear in git. Create it manually in the cluster once:
-  #   kubectl apply -f - <<EOF
-  #   apiVersion: apiextensions.crossplane.io/v1beta1
-  #   kind: EnvironmentConfig
-  #   metadata:
-  #     name: aws-platform-config
-  #   data:
-  #     awsAccountId: "123456789012"
-  #   EOF
-  environmentConfigs:
-    - type: Reference
-      ref:
-        name: aws-platform-config
   mode: Pipeline
   pipeline:
-    - step: render-conditional-resources
-      # go-templating handles resources that need EnvironmentConfig data (User,
-      # permissionsBoundary) or conditional creation (UserPolicy, only rendered
-      # once the bucket ARN is observable). Bucket and AccessKey are intentionally
-      # NOT rendered here — PT owns those resources (see next step). Mixing the
-      # same composition-resource-name across both functions causes PT to replace
-      # the go-templating output with its base (no spec), failing validation.
-      functionRef:
-        name: function-go-templating
-      input:
-        apiVersion: gotemplating.fn.crossplane.io/v1beta1
-        kind: GoTemplate
-        source: Inline
-        inline:
-          template: |
-            {{- $xr := .observed.composite.resource }}
-            {{- $name := $xr.metadata.name }}
-            {{- $env := index .context "apiextensions.crossplane.io/environment" }}
-            {{- $accountId := $env.awsAccountId }}
-            {{- $bucketArn := "" }}
-            {{- if .observed.resources }}
-              {{- with index .observed.resources "bucket" }}
-                {{- with .resource.status.atProvider }}
-                  {{- $bucketArn = .arn | default "" }}
-                {{- end }}
-              {{- end }}
-            {{- end }}
-            ---
-            # IAM user scoped to this XR — deleted with the XR.
-            # path scopes the user to /crossplane/ so crossplane-user's IAM policy
-            # (Resource: arn:aws:iam::*:user/crossplane/*) can only manage users here.
-            # permissionsBoundary hard-caps what this user can ever do
-            apiVersion: iam.aws.upbound.io/v1beta1
-            kind: User
-            metadata:
-              name: {{ $name }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: iam-user
-                gotemplating.fn.crossplane.io/ready: "True"
-            spec:
-              forProvider:
-                path: /crossplane/
-                permissionsBoundary: arn:aws:iam::{{ $accountId }}:policy/CrossplaneUserBoundary
-            {{- if $bucketArn }}
-            ---
-            # Managed IAM policy granting least-privilege access to this bucket only.
-            # Only created once the bucket ARN is known (after bucket is provisioned).
-            # provider-aws-iam uses Policy + UserPolicyAttachment, not UserPolicy.
-            apiVersion: iam.aws.upbound.io/v1beta1
-            kind: Policy
-            metadata:
-              name: {{ $name }}-bucket-policy
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: bucket-policy
-                gotemplating.fn.crossplane.io/ready: "True"
-            spec:
-              forProvider:
-                policy: >-
-                  {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:GetObject","s3:PutObject","s3:DeleteObject","s3:ListBucket"],"Resource":["{{ $bucketArn }}","{{ $bucketArn }}/*"]}]}
-            ---
-            # Attaches the bucket policy to the IAM user scoped to this XR.
-            apiVersion: iam.aws.upbound.io/v1beta1
-            kind: UserPolicyAttachment
-            metadata:
-              name: {{ $name }}-bucket-policy-attachment
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: bucket-policy-attachment
-                gotemplating.fn.crossplane.io/ready: "True"
-            spec:
-              forProvider:
-                userSelector:
-                  matchControllerRef: true
-                policyArnSelector:
-                  matchControllerRef: true
-            {{- end }}
-    - step: render-and-bubble-aws-resources
-      # PT fully owns the Bucket and AccessKey — full spec in the base so PT's
-      # output is always a valid resource. PT runs after go-templating and its
-      # base replaces (not merges) any prior desired state for the same
-      # composition-resource-name, which is why these resources must not appear
-      # in the go-templating step above.
+    - step: render-aws-resources
       functionRef:
         name: function-patch-and-transform
       input:
@@ -133,31 +39,4 @@ spec:
               - type: FromFieldPath
                 name: region
                 fromFieldPath: spec.forProvider.region
-          - name: access-key
-            base:
-              apiVersion: iam.aws.upbound.io/v1beta1
-              kind: AccessKey
-              spec:
-                forProvider:
-                  userSelector:
-                    matchControllerRef: true
-                writeConnectionSecretToRef:
-                  namespace: crossplane-system
-                  name: placeholder
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.writeConnectionSecretToRef.name
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: "%s-access-key"
-            connectionDetails:
-              - type: FromConnectionSecretKey
-                name: username
-                fromConnectionSecretKey: attribute.id
-              - type: FromConnectionSecretKey
-                name: password
-                fromConnectionSecretKey: attribute.secret
 
