@@ -12,7 +12,7 @@ spec:
     path: platform
     directory:
       recurse: true
-      exclude: "xrs/**"
+      exclude: "{xrs/**,api/**,object-storage/**,cache/**}"
   destination:
     server: https://kubernetes.default.svc
     namespace: default
