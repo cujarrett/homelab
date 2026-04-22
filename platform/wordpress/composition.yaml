@@ -258,6 +258,8 @@ spec:
                     app: wordpress
                     instance: ""
                 replicas: 1
+                strategy:
+                  type: Recreate
                 template:
                   metadata:
                     labels:
