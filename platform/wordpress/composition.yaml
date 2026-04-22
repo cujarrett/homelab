@@ -33,6 +33,49 @@ spec:
               username: wordpress
               password: "{{ printf "%s-db" .observed.composite.resource.metadata.uid | sha256sum | trunc 32 }}"
               rootPassword: "{{ printf "%s-root" .observed.composite.resource.metadata.uid | sha256sum | trunc 32 }}"
+            ---
+            {{ $name := .observed.composite.resource.metadata.name -}}
+            {{ $namespace := .observed.composite.resource.metadata.namespace -}}
+            {{ $params := .observed.composite.resource.spec.parameters -}}
+            {{ $mariadbSC := "longhorn-retain" -}}
+            {{ if (index .observed.resources "mariadb-pvc") -}}
+            {{ $mariadbSC = (index .observed.resources "mariadb-pvc").resource.spec.storageClassName -}}
+            {{ else if eq $params.dataRetention "delete" -}}
+            {{ $mariadbSC = "longhorn-delete" -}}
+            {{ end -}}
+            apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: {{ $name }}-mariadb-data
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: mariadb-pvc
+            spec:
+              accessModes: ["ReadWriteOnce"]
+              storageClassName: {{ $mariadbSC }}
+              resources:
+                requests:
+                  storage: {{ $params.dbStorageSize | default "5Gi" }}
+            ---
+            {{ $wpSC := "longhorn-retain" -}}
+            {{ if (index .observed.resources "wordpress-pvc") -}}
+            {{ $wpSC = (index .observed.resources "wordpress-pvc").resource.spec.storageClassName -}}
+            {{ else if eq $params.dataRetention "delete" -}}
+            {{ $wpSC = "longhorn-delete" -}}
+            {{ end -}}
+            apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: {{ $name }}-wp-content
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: wordpress-pvc
+            spec:
+              accessModes: ["ReadWriteOnce"]
+              storageClassName: {{ $wpSC }}
+              resources:
+                requests:
+                  storage: {{ $params.storageSize | default "10Gi" }}
 
     # Step 2: patch and transform all remaining composed resources.
     - step: patch-and-transform
@@ -42,37 +85,6 @@ spec:
         apiVersion: pt.fn.crossplane.io/v1beta1
         kind: Resources
         resources:
-
-          # --- MariaDB data PVC (standalone so Crossplane owns its lifecycle) ---
-          - name: mariadb-pvc
-            managementPolicies: ["Observe", "Create", "LateInitialize", "Delete"]
-            base:
-              apiVersion: v1
-              kind: PersistentVolumeClaim
-              spec:
-                accessModes: ["ReadWriteOnce"]
-                storageClassName: longhorn
-                resources:
-                  requests:
-                    storage: 5Gi
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: metadata.name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-mariadb-data", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.dbStorageSize
-                toFieldPath: spec.resources.requests.storage
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.dataRetention
-                toFieldPath: spec.storageClassName
-                transforms:
-                  - type: map
-                    map:
-                      retain: longhorn-retain
-                      delete: longhorn-delete
 
           # --- MariaDB StatefulSet ---
           - name: mariadb-statefulset
@@ -215,37 +227,6 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.name
                 toFieldPath: spec.selector.instance
-
-          # --- WordPress wp-content PVC ---
-          - name: wordpress-pvc
-            managementPolicies: ["Observe", "Create", "LateInitialize", "Delete"]
-            base:
-              apiVersion: v1
-              kind: PersistentVolumeClaim
-              spec:
-                accessModes: ["ReadWriteOnce"]
-                storageClassName: longhorn
-                resources:
-                  requests:
-                    storage: 10Gi
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: metadata.name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-wp-content", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.storageSize
-                toFieldPath: spec.resources.requests.storage
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.dataRetention
-                toFieldPath: spec.storageClassName
-                transforms:
-                  - type: map
-                    map:
-                      retain: longhorn-retain
-                      delete: longhorn-delete
 
           # --- WordPress Deployment ---
           # initContainer seeds wp-content from the image on first run (empty PVC),
