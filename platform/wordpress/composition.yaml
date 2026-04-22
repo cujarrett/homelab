@@ -31,6 +31,7 @@ spec:
               namespace: {{ $namespace }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: mariadb-secret
+                gotemplating.fn.crossplane.io/ready: "True"
             type: Opaque
             stringData:
               database: wordpress
@@ -54,6 +55,7 @@ spec:
               namespace: {{ $namespace }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: mariadb-pvc
+                gotemplating.fn.crossplane.io/ready: "True"
             spec:
               accessModes: ["ReadWriteOnce"]
               storageClassName: {{ $mariadbSC }}
@@ -75,6 +77,7 @@ spec:
               namespace: {{ $namespace }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: wordpress-pvc
+                gotemplating.fn.crossplane.io/ready: "True"
             spec:
               accessModes: ["ReadWriteOnce"]
               storageClassName: {{ $wpSC }}
@@ -90,6 +93,7 @@ spec:
               namespace: {{ $namespace }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: mariadb-statefulset
+                gotemplating.fn.crossplane.io/ready: "True"
             spec:
               selector:
                 matchLabels:
@@ -162,6 +166,7 @@ spec:
               namespace: {{ $namespace }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: mariadb-service
+                gotemplating.fn.crossplane.io/ready: "True"
             spec:
               selector:
                 app: mariadb
@@ -181,6 +186,7 @@ spec:
               namespace: {{ $namespace }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: wordpress-deployment
+                gotemplating.fn.crossplane.io/ready: "True"
             spec:
               selector:
                 matchLabels:
@@ -267,6 +273,7 @@ spec:
               namespace: {{ $namespace }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: wordpress-service
+                gotemplating.fn.crossplane.io/ready: "True"
             spec:
               selector:
                 app: wordpress
@@ -283,6 +290,7 @@ spec:
               namespace: {{ $namespace }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: wordpress-ingress
+                gotemplating.fn.crossplane.io/ready: "True"
                 cert-manager.io/cluster-issuer: local-lab-ca-issuer
                 traefik.ingress.kubernetes.io/router.entrypoints: websecure
                 traefik.ingress.kubernetes.io/router.tls: "true"
