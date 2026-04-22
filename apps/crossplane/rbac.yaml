@@ -6,13 +6,16 @@ metadata:
     rbac.crossplane.io/aggregate-to-crossplane: "true"
 rules:
   - apiGroups: [""]
-    resources: ["secrets", "services", "persistentvolumeclaims", "namespaces"]
+    resources: ["secrets", "services", "persistentvolumeclaims", "namespaces", "configmaps"]
     verbs: ["*"]
   - apiGroups: ["apps"]
     resources: ["deployments", "statefulsets"]
     verbs: ["*"]
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses"]
+    verbs: ["*"]
+  - apiGroups: ["traefik.io"]
+    resources: ["middlewares", "ingressroutes"]
     verbs: ["*"]
   - apiGroups: ["argoproj.io"]
     resources: ["applications"]

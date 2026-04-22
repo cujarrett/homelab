@@ -317,10 +317,16 @@ spec:
                         volumeMounts:
                           - name: wp-content
                             mountPath: /var/www/html/wp-content
+                          - name: security-mu-plugin
+                            mountPath: /var/www/html/wp-content/mu-plugins/security-hardening.php
+                            subPath: security-hardening.php
                     volumes:
                       - name: wp-content
                         persistentVolumeClaim:
                           claimName: ""
+                      - name: security-mu-plugin
+                        configMap:
+                          name: ""
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.name
@@ -361,6 +367,12 @@ spec:
                 transforms:
                   - type: string
                     string: { fmt: "%s-wp-content", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.template.spec.volumes[1].configMap.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-security-mu-plugin", type: Format }
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.cpuRequest
                 toFieldPath: spec.template.spec.containers[0].resources.requests.cpu
@@ -440,6 +452,96 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.name
                 toFieldPath: spec.rules[0].http.paths[0].backend.service.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-wordpress", type: Format }
+
+          # --- Security mu-plugin ConfigMap ---
+          # Mounts a must-use plugin into the WordPress container that:
+          #   1. Disables XML-RPC (blocks brute-force via xmlrpc.php)
+          #   2. Removes /wp/v2/users from the REST API (prevents username enumeration)
+          - name: security-mu-plugin-configmap
+            base:
+              apiVersion: v1
+              kind: ConfigMap
+              data:
+                security-hardening.php: |
+                  <?php
+                  // Disable XML-RPC
+                  add_filter('xmlrpc_enabled', '__return_false');
+                  // Remove users from REST API to prevent username enumeration
+                  add_filter('rest_endpoints', function($endpoints) {
+                      unset($endpoints['/wp/v2/users']);
+                      unset($endpoints['/wp/v2/users/(?P<id>[\d]+)']);
+                      return $endpoints;
+                  });
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-security-mu-plugin", type: Format }
+
+          # --- wp-login.php / xmlrpc.php rate limit Middleware ---
+          - name: wp-security-ratelimit-middleware
+            base:
+              apiVersion: traefik.io/v1alpha1
+              kind: Middleware
+              spec:
+                rateLimit:
+                  average: 10
+                  burst: 20
+                  period: 1m
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-wp-security-ratelimit", type: Format }
+
+          # --- IngressRoute applying rate limit to sensitive WordPress endpoints ---
+          - name: wp-security-ingressroute
+            base:
+              apiVersion: traefik.io/v1alpha1
+              kind: IngressRoute
+              spec:
+                entryPoints:
+                  - websecure
+                routes:
+                  - match: ""
+                    kind: Rule
+                    priority: 100
+                    middlewares:
+                      - name: ""
+                    services:
+                      - name: ""
+                        port: 80
+                tls:
+                  secretName: wordpress-tls
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-wp-security", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.host
+                toFieldPath: spec.routes[0].match
+                transforms:
+                  - type: string
+                    string: { fmt: "Host(`%s`) && (Path(`/wp-login.php`) || Path(`/xmlrpc.php`))", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.routes[0].middlewares[0].name
+                transforms:
+                  - type: string
+                    string: { fmt: "%s-wp-security-ratelimit", type: Format }
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.routes[0].services[0].name
                 transforms:
                   - type: string
                     string: { fmt: "%s-wordpress", type: Format }
