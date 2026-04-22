@@ -25,9 +25,11 @@ spec:
             {{- $name := $xr.metadata.name }}
             {{- $region := $xr.spec.region | default "us-east-1" }}
             {{- $bucketArn := "" }}
-            {{- with index .observed.resources "bucket" }}
-              {{- with .resource.status.atProvider }}
-                {{- $bucketArn = .arn | default "" }}
+            {{- if .observed.resources }}
+              {{- with index .observed.resources "bucket" }}
+                {{- with .resource.status.atProvider }}
+                  {{- $bucketArn = .arn | default "" }}
+                {{- end }}
               {{- end }}
             {{- end }}
             ---
