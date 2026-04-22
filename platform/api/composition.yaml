@@ -8,67 +8,11 @@ spec:
     kind: XApi
   mode: Pipeline
   pipeline:
-    - step: create-resources
-      # function-patch-and-transform handles all resource creation and patching.
-      functionRef:
-        name: function-patch-and-transform
-      input:
-        apiVersion: pt.fn.crossplane.io/v1beta1
-        kind: Resources
-        resources:
-          - name: namespace
-            base:
-              apiVersion: v1
-              kind: Namespace
-              metadata:
-                name: "" # Patched from spec.namespace
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.namespace
-                toFieldPath: metadata.name
-            readinessChecks:
-              - type: None
-
-          - name: service
-            # Exposes the Deployment via ClusterIP Service
-            base:
-              apiVersion: v1
-              kind: Service
-              metadata:
-                name: "" # Patched from XR metadata.name
-                namespace: "" # Patched from spec.namespace
-                labels:
-                  app: rest-api
-              spec:
-                selector:
-                  app: rest-api
-                ports:
-                  - name: http
-                    port: 80
-                    targetPort: 8080 # Patched from spec.port
-                  - name: metrics
-                    port: 9090
-                    targetPort: 9090
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: metadata.name
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.namespace
-                toFieldPath: metadata.namespace
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.port
-                toFieldPath: spec.ports[0].targetPort
-            readinessChecks:
-              - type: None
-
-    - step: conditional-resources
-      # function-go-templating generates the Deployment with conditional init containers
-      # and optional platform XRs (XObjectStorage, XCache). Init containers block the
-      # API container from starting until each enabled binding's secret is populated,
-      # ensuring infrastructure dependencies are fully ready before the app receives traffic.
+    - step: render-all-resources
+      # function-go-templating generates all resources. Deployment uses conditional
+      # init containers and volumes for optional object storage and cache bindings.
       # XObjectStorage and XCache are reusable platform primitives — their compositions
-      # handle the cloud-specific resource creation independently of XApi.
+      # handle cloud-specific resource creation independently of XApi.
       functionRef:
         name: function-go-templating
       input:
@@ -86,7 +30,42 @@ spec:
             {{- $tlsIssuer := $xr.spec.tlsIssuer | default "local-lab-ca-issuer" }}
             {{- $secretRefName := "" }}
             {{- if $xr.spec.secretRef }}{{- $secretRefName = $xr.spec.secretRef.name }}{{- end }}
+            # --- Namespace ---
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: namespace
+                gotemplating.fn.crossplane.io/ready: "True"
             ---
+            # --- Service ---
+            # Exposes the Deployment via ClusterIP Service.
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              labels:
+                app: rest-api
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: service
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                app: rest-api
+              ports:
+                - name: http
+                  port: 80
+                  targetPort: {{ $xr.spec.port | default 8080 }}
+                - name: metrics
+                  port: 9090
+                  targetPort: 9090
+            ---
+            # --- Deployment ---
+            # Init containers block the API container from starting until each enabled
+            # binding's secret is populated, ensuring infrastructure dependencies are
+            # fully ready before the app receives traffic.
             apiVersion: apps/v1
             kind: Deployment
             metadata:
@@ -139,7 +118,7 @@ spec:
                       image: {{ $xr.spec.image }}
                       imagePullPolicy: Always
                       ports:
-                        - containerPort: {{ $xr.spec.port }}
+                        - containerPort: {{ $xr.spec.port | default 8080 }}
                       env:
                         - name: SERVICE_BINDING_ROOT
                           value: /bindings
@@ -179,8 +158,6 @@ spec:
             {{- if $objectStorageEnabled }}
             ---
             # Delegates to the XObjectStorage platform primitive.
-            # Its composition handles cloud-specific provisioning and writes
-            # the connection secret at {{ $name }}-object-storage in {{ $ns }}.
             apiVersion: platform.local.lab/v1alpha1
             kind: XObjectStorage
             metadata:
@@ -194,8 +171,6 @@ spec:
             {{- if $cacheEnabled }}
             ---
             # Delegates to the XCache platform primitive.
-            # Its composition handles cloud-specific provisioning and writes
-            # the connection secret at {{ $name }}-cache in {{ $ns }}.
             apiVersion: platform.local.lab/v1alpha1
             kind: XCache
             metadata:
