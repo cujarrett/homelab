@@ -50,9 +50,11 @@ spec:
                 fromFieldPath: spec.secretNamespace
                 toFieldPath: spec.writeConnectionSecretToRef.namespace
             connectionDetails:
-              - name: type
+              - type: Value
+                name: type
                 value: redis
-              - name: provider
+              - type: Value
+                name: provider
                 value: aws
               - type: FromConnectionSecretKey
                 name: host
