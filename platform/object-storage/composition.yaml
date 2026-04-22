@@ -40,10 +40,10 @@ spec:
                 fromFieldPath: spec.secretNamespace
                 toFieldPath: spec.writeConnectionSecretToRef.namespace
             connectionDetails:
-              - type: Value
+              - type: FromValue
                 name: type
                 value: s3
-              - type: Value
+              - type: FromValue
                 name: provider
                 value: aws
               - type: FromConnectionSecretKey
