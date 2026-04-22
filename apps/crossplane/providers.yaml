@@ -23,6 +23,15 @@ spec:
     name: worker-nodes
 ---
 apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-patch-and-transform
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:v0.8.2
+  runtimeConfigRef:
+    name: worker-nodes
+---
+apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
   name: provider-aws-s3
