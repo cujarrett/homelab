@@ -8,10 +8,7 @@ spec:
     kind: XWordPressPlatform
   mode: Pipeline
   pipeline:
-    # Step 1: generate the MariaDB credentials Secret.
-    # Passwords are derived from the XR's immutable UID (sha256, hex-truncated).
-    # No human input, nothing sensitive in Git — the XR itself has no password fields.
-    - step: generate-db-secret
+    - step: render-all-resources
       functionRef:
         name: function-go-templating
       input:
@@ -20,29 +17,36 @@ spec:
         source: Inline
         inline:
           template: |
+            {{- $name := .observed.composite.resource.metadata.name }}
+            {{- $namespace := .observed.composite.resource.metadata.namespace }}
+            {{- $uid := .observed.composite.resource.metadata.uid }}
+            {{- $params := .observed.composite.resource.spec.parameters }}
+            # --- MariaDB credentials Secret ---
+            # Passwords derived from the XR's immutable UID (sha256, hex-truncated).
+            # No human input, nothing sensitive in Git.
             apiVersion: v1
             kind: Secret
             metadata:
-              name: {{ .observed.composite.resource.metadata.name }}-mariadb
-              namespace: {{ .observed.composite.resource.metadata.namespace }}
+              name: {{ $name }}-mariadb
+              namespace: {{ $namespace }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: mariadb-secret
             type: Opaque
             stringData:
               database: wordpress
               username: wordpress
-              password: "{{ printf "%s-db" .observed.composite.resource.metadata.uid | sha256sum | trunc 32 }}"
-              rootPassword: "{{ printf "%s-root" .observed.composite.resource.metadata.uid | sha256sum | trunc 32 }}"
+              password: "{{ printf "%s-db" $uid | sha256sum | trunc 32 }}"
+              rootPassword: "{{ printf "%s-root" $uid | sha256sum | trunc 32 }}"
             ---
-            {{ $name := .observed.composite.resource.metadata.name -}}
-            {{ $namespace := .observed.composite.resource.metadata.namespace -}}
-            {{ $params := .observed.composite.resource.spec.parameters -}}
-            {{ $mariadbSC := "longhorn-retain" -}}
-            {{ if (index .observed.resources "mariadb-pvc") -}}
-            {{ $mariadbSC = (index .observed.resources "mariadb-pvc").resource.spec.storageClassName -}}
-            {{ else if eq $params.dataRetention "delete" -}}
-            {{ $mariadbSC = "longhorn-delete" -}}
-            {{ end -}}
+            # --- MariaDB data PVC ---
+            # storageClassName is frozen on first creation: once bound, a PVC's storageClassName
+            # is immutable. We read back the observed value so reconciles are always no-ops.
+            {{- $mariadbSC := "longhorn-retain" }}
+            {{- if (index .observed.resources "mariadb-pvc") }}
+            {{-   $mariadbSC = (index .observed.resources "mariadb-pvc").resource.spec.storageClassName }}
+            {{- else if eq $params.dataRetention "delete" }}
+            {{-   $mariadbSC = "longhorn-delete" }}
+            {{- end }}
             apiVersion: v1
             kind: PersistentVolumeClaim
             metadata:
@@ -57,12 +61,13 @@ spec:
                 requests:
                   storage: {{ $params.dbStorageSize | default "5Gi" }}
             ---
-            {{ $wpSC := "longhorn-retain" -}}
-            {{ if (index .observed.resources "wordpress-pvc") -}}
-            {{ $wpSC = (index .observed.resources "wordpress-pvc").resource.spec.storageClassName -}}
-            {{ else if eq $params.dataRetention "delete" -}}
-            {{ $wpSC = "longhorn-delete" -}}
-            {{ end -}}
+            # --- WordPress wp-content PVC ---
+            {{- $wpSC := "longhorn-retain" }}
+            {{- if (index .observed.resources "wordpress-pvc") }}
+            {{-   $wpSC = (index .observed.resources "wordpress-pvc").resource.spec.storageClassName }}
+            {{- else if eq $params.dataRetention "delete" }}
+            {{-   $wpSC = "longhorn-delete" }}
+            {{- end }}
             apiVersion: v1
             kind: PersistentVolumeClaim
             metadata:
@@ -76,457 +81,288 @@ spec:
               resources:
                 requests:
                   storage: {{ $params.storageSize | default "10Gi" }}
-
-    # Step 2: patch and transform all remaining composed resources.
-    - step: patch-and-transform
-      functionRef:
-        name: function-patch-and-transform
-      input:
-        apiVersion: pt.fn.crossplane.io/v1beta1
-        kind: Resources
-        resources:
-
-          # --- MariaDB StatefulSet ---
-          - name: mariadb-statefulset
-            base:
-              apiVersion: apps/v1
-              kind: StatefulSet
-              spec:
-                selector:
-                  matchLabels:
-                    app: mariadb
-                    instance: ""
-                serviceName: ""
-                replicas: 1
-                template:
-                  metadata:
-                    labels:
-                      app: mariadb
-                      instance: ""
-                  spec:
-                    affinity:
-                      nodeAffinity:
-                        preferredDuringSchedulingIgnoredDuringExecution:
-                          - weight: 100
-                            preference:
-                              matchExpressions:
-                                - key: kubernetes.io/hostname
-                                  operator: NotIn
-                                  values: ["ctrl-1"]
-                    containers:
-                      - name: mariadb
-                        image: mariadb:11
-                        env:
-                          - name: MYSQL_ROOT_PASSWORD
-                            valueFrom:
-                              secretKeyRef:
-                                name: ""
-                                key: rootPassword
-                          - name: MYSQL_DATABASE
-                            valueFrom:
-                              secretKeyRef:
-                                name: ""
-                                key: database
-                          - name: MYSQL_USER
-                            valueFrom:
-                              secretKeyRef:
-                                name: ""
-                                key: username
-                          - name: MYSQL_PASSWORD
-                            valueFrom:
-                              secretKeyRef:
-                                name: ""
-                                key: password
-                        ports:
-                          - containerPort: 3306
-                            name: mysql
-                        resources:
-                          requests:
-                            cpu: "100m"
-                            memory: "256Mi"
-                          limits:
-                            cpu: "500m"
-                            memory: "512Mi"
-                        volumeMounts:
-                          - name: data
-                            mountPath: /var/lib/mysql
-                    volumes:
-                      - name: data
-                        persistentVolumeClaim:
-                          claimName: ""
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: metadata.name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-mariadb", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.serviceName
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-mariadb", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.selector.matchLabels.instance
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.template.metadata.labels.instance
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-mariadb", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.template.spec.containers[0].env[1].valueFrom.secretKeyRef.name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-mariadb", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.template.spec.containers[0].env[2].valueFrom.secretKeyRef.name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-mariadb", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.template.spec.containers[0].env[3].valueFrom.secretKeyRef.name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-mariadb", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-mariadb-data", type: Format }
-
-          # --- MariaDB Service ---
-          - name: mariadb-service
-            base:
-              apiVersion: v1
-              kind: Service
-              spec:
-                selector:
+            ---
+            # --- MariaDB StatefulSet ---
+            apiVersion: apps/v1
+            kind: StatefulSet
+            metadata:
+              name: {{ $name }}-mariadb
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: mariadb-statefulset
+            spec:
+              selector:
+                matchLabels:
                   app: mariadb
-                  instance: ""
-                ports:
-                  - port: 3306
-                    targetPort: 3306
-                    name: mysql
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: metadata.name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-mariadb", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.selector.instance
-
-          # --- WordPress Deployment ---
-          # initContainer seeds wp-content from the image on first run (empty PVC),
-          # leaving existing data untouched on subsequent starts (migration-safe).
-          - name: wordpress-deployment
-            base:
-              apiVersion: apps/v1
-              kind: Deployment
-              spec:
-                selector:
-                  matchLabels:
-                    app: wordpress
-                    instance: ""
-                replicas: 1
-                strategy:
-                  type: Recreate
-                template:
-                  metadata:
-                    labels:
-                      app: wordpress
-                      instance: ""
-                  spec:
-                    affinity:
-                      nodeAffinity:
-                        preferredDuringSchedulingIgnoredDuringExecution:
-                          - weight: 100
-                            preference:
-                              matchExpressions:
-                                - key: kubernetes.io/hostname
-                                  operator: NotIn
-                                  values: ["ctrl-1"]
-                    initContainers:
-                      - name: init-wp-content
-                        image: wordpress:6-apache
-                        command:
-                          - sh
-                          - -c
-                          - |
-                            if [ -z "$(ls -A /target)" ]; then
-                              echo "Seeding wp-content from image..."
-                              cp -r /var/www/html/wp-content/. /target/
-                            fi
-                        volumeMounts:
-                          - name: wp-content
-                            mountPath: /target
-                    containers:
-                      - name: wordpress
-                        image: wordpress:6-apache
-                        env:
-                          - name: WORDPRESS_DB_HOST
-                            value: ""
-                          - name: WORDPRESS_DB_NAME
-                            value: wordpress
-                          - name: WORDPRESS_DB_USER
-                            valueFrom:
-                              secretKeyRef:
-                                name: ""
-                                key: username
-                          - name: WORDPRESS_DB_PASSWORD
-                            valueFrom:
-                              secretKeyRef:
-                                name: ""
-                                key: password
-                        ports:
-                          - containerPort: 80
-                        resources:
-                          requests:
-                            cpu: ""
-                            memory: ""
-                          limits:
-                            cpu: ""
-                            memory: ""
-                        volumeMounts:
-                          - name: wp-content
-                            mountPath: /var/www/html/wp-content
-                          - name: security-mu-plugin
-                            mountPath: /var/www/html/wp-content/mu-plugins/security-hardening.php
-                            subPath: security-hardening.php
-                    volumes:
-                      - name: wp-content
-                        persistentVolumeClaim:
-                          claimName: ""
-                      - name: security-mu-plugin
-                        configMap:
-                          name: ""
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: metadata.name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-wordpress", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.replicas
-                toFieldPath: spec.replicas
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.selector.matchLabels.instance
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.template.metadata.labels.instance
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.template.spec.containers[0].env[0].value
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-mariadb:3306", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.template.spec.containers[0].env[2].valueFrom.secretKeyRef.name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-mariadb", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.template.spec.containers[0].env[3].valueFrom.secretKeyRef.name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-mariadb", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-wp-content", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.template.spec.volumes[1].configMap.name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-security-mu-plugin", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.cpuRequest
-                toFieldPath: spec.template.spec.containers[0].resources.requests.cpu
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.cpuLimit
-                toFieldPath: spec.template.spec.containers[0].resources.limits.cpu
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.memoryRequest
-                toFieldPath: spec.template.spec.containers[0].resources.requests.memory
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.memoryLimit
-                toFieldPath: spec.template.spec.containers[0].resources.limits.memory
-
-          # --- WordPress Service ---
-          - name: wordpress-service
-            base:
-              apiVersion: v1
-              kind: Service
-              spec:
-                selector:
+                  instance: {{ $name }}
+              serviceName: {{ $name }}-mariadb
+              replicas: 1
+              template:
+                metadata:
+                  labels:
+                    app: mariadb
+                    instance: {{ $name }}
+                spec:
+                  affinity:
+                    nodeAffinity:
+                      preferredDuringSchedulingIgnoredDuringExecution:
+                        - weight: 100
+                          preference:
+                            matchExpressions:
+                              - key: kubernetes.io/hostname
+                                operator: NotIn
+                                values: ["ctrl-1"]
+                  containers:
+                    - name: mariadb
+                      image: mariadb:11
+                      env:
+                        - name: MYSQL_ROOT_PASSWORD
+                          valueFrom:
+                            secretKeyRef:
+                              name: {{ $name }}-mariadb
+                              key: rootPassword
+                        - name: MYSQL_DATABASE
+                          valueFrom:
+                            secretKeyRef:
+                              name: {{ $name }}-mariadb
+                              key: database
+                        - name: MYSQL_USER
+                          valueFrom:
+                            secretKeyRef:
+                              name: {{ $name }}-mariadb
+                              key: username
+                        - name: MYSQL_PASSWORD
+                          valueFrom:
+                            secretKeyRef:
+                              name: {{ $name }}-mariadb
+                              key: password
+                      ports:
+                        - containerPort: 3306
+                          name: mysql
+                      resources:
+                        requests:
+                          cpu: "100m"
+                          memory: "256Mi"
+                        limits:
+                          cpu: "500m"
+                          memory: "512Mi"
+                      volumeMounts:
+                        - name: data
+                          mountPath: /var/lib/mysql
+                  volumes:
+                    - name: data
+                      persistentVolumeClaim:
+                        claimName: {{ $name }}-mariadb-data
+            ---
+            # --- MariaDB Service ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: {{ $name }}-mariadb
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: mariadb-service
+            spec:
+              selector:
+                app: mariadb
+                instance: {{ $name }}
+              ports:
+                - port: 3306
+                  targetPort: 3306
+                  name: mysql
+            ---
+            # --- WordPress Deployment ---
+            # initContainer seeds wp-content from the image on first run (empty PVC),
+            # leaving existing data untouched on subsequent starts (migration-safe).
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: {{ $name }}-wordpress
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: wordpress-deployment
+            spec:
+              selector:
+                matchLabels:
                   app: wordpress
-                  instance: ""
-                ports:
-                  - port: 80
-                    targetPort: 80
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: metadata.name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-wordpress", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.selector.instance
-
-          # --- WordPress Ingress ---
-          - name: wordpress-ingress
-            base:
-              apiVersion: networking.k8s.io/v1
-              kind: Ingress
-              metadata:
-                annotations:
-                  cert-manager.io/cluster-issuer: local-lab-ca-issuer
-                  traefik.ingress.kubernetes.io/router.entrypoints: websecure
-                  traefik.ingress.kubernetes.io/router.tls: "true"
-              spec:
-                ingressClassName: traefik
-                tls:
-                  - hosts:
-                      - ""
-                    secretName: wordpress-tls
-                rules:
-                  - host: ""
-                    http:
-                      paths:
-                        - path: /
-                          pathType: Prefix
-                          backend:
-                            service:
-                              name: ""
-                              port:
-                                number: 80
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: metadata.name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-wordpress", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.host
-                toFieldPath: spec.rules[0].host
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.host
-                toFieldPath: spec.tls[0].hosts[0]
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.rules[0].http.paths[0].backend.service.name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-wordpress", type: Format }
-
-          # --- Security mu-plugin ConfigMap ---
-          # Mounts a must-use plugin into the WordPress container that:
-          #   1. Disables XML-RPC (blocks brute-force via xmlrpc.php)
-          #   2. Removes /wp/v2/users from the REST API (prevents username enumeration)
-          - name: security-mu-plugin-configmap
-            base:
-              apiVersion: v1
-              kind: ConfigMap
-              data:
-                security-hardening.php: |
-                  <?php
-                  // Disable XML-RPC
-                  add_filter('xmlrpc_enabled', '__return_false');
-                  // Remove users from REST API to prevent username enumeration
-                  add_filter('rest_endpoints', function($endpoints) {
-                      unset($endpoints['/wp/v2/users']);
-                      unset($endpoints['/wp/v2/users/(?P<id>[\d]+)']);
-                      return $endpoints;
-                  });
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: metadata.name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-security-mu-plugin", type: Format }
-
-          # --- wp-login.php / xmlrpc.php rate limit Middleware ---
-          - name: wp-security-ratelimit-middleware
-            base:
-              apiVersion: traefik.io/v1alpha1
-              kind: Middleware
-              spec:
-                rateLimit:
-                  average: 10
-                  burst: 20
-                  period: 1m
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: metadata.name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-wp-security-ratelimit", type: Format }
-
-          # --- IngressRoute applying rate limit to sensitive WordPress endpoints ---
-          - name: wp-security-ingressroute
-            base:
-              apiVersion: traefik.io/v1alpha1
-              kind: IngressRoute
-              spec:
-                entryPoints:
-                  - websecure
-                routes:
-                  - match: ""
-                    kind: Rule
-                    priority: 100
-                    middlewares:
-                      - name: ""
-                    services:
-                      - name: ""
-                        port: 80
-                tls:
+                  instance: {{ $name }}
+              replicas: {{ $params.replicas | default 1 }}
+              strategy:
+                type: Recreate
+              template:
+                metadata:
+                  labels:
+                    app: wordpress
+                    instance: {{ $name }}
+                spec:
+                  affinity:
+                    nodeAffinity:
+                      preferredDuringSchedulingIgnoredDuringExecution:
+                        - weight: 100
+                          preference:
+                            matchExpressions:
+                              - key: kubernetes.io/hostname
+                                operator: NotIn
+                                values: ["ctrl-1"]
+                  initContainers:
+                    - name: init-wp-content
+                      image: wordpress:6-apache
+                      command:
+                        - sh
+                        - -c
+                        - |
+                          if [ -z "$(ls -A /target)" ]; then
+                            echo "Seeding wp-content from image..."
+                            cp -r /var/www/html/wp-content/. /target/
+                          fi
+                      volumeMounts:
+                        - name: wp-content
+                          mountPath: /target
+                  containers:
+                    - name: wordpress
+                      image: wordpress:6-apache
+                      env:
+                        - name: WORDPRESS_DB_HOST
+                          value: {{ $name }}-mariadb:3306
+                        - name: WORDPRESS_DB_NAME
+                          value: wordpress
+                        - name: WORDPRESS_DB_USER
+                          valueFrom:
+                            secretKeyRef:
+                              name: {{ $name }}-mariadb
+                              key: username
+                        - name: WORDPRESS_DB_PASSWORD
+                          valueFrom:
+                            secretKeyRef:
+                              name: {{ $name }}-mariadb
+                              key: password
+                      ports:
+                        - containerPort: 80
+                      resources:
+                        requests:
+                          cpu: {{ $params.cpuRequest | default "500m" }}
+                          memory: {{ $params.memoryRequest | default "256Mi" }}
+                        limits:
+                          cpu: {{ $params.cpuLimit | default "1000m" }}
+                          memory: {{ $params.memoryLimit | default "512Mi" }}
+                      volumeMounts:
+                        - name: wp-content
+                          mountPath: /var/www/html/wp-content
+                        - name: security-mu-plugin
+                          mountPath: /var/www/html/wp-content/mu-plugins/security-hardening.php
+                          subPath: security-hardening.php
+                  volumes:
+                    - name: wp-content
+                      persistentVolumeClaim:
+                        claimName: {{ $name }}-wp-content
+                    - name: security-mu-plugin
+                      configMap:
+                        name: {{ $name }}-security-mu-plugin
+            ---
+            # --- WordPress Service ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: {{ $name }}-wordpress
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: wordpress-service
+            spec:
+              selector:
+                app: wordpress
+                instance: {{ $name }}
+              ports:
+                - port: 80
+                  targetPort: 80
+            ---
+            # --- WordPress Ingress ---
+            apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: {{ $name }}-wordpress
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: wordpress-ingress
+                cert-manager.io/cluster-issuer: local-lab-ca-issuer
+                traefik.ingress.kubernetes.io/router.entrypoints: websecure
+                traefik.ingress.kubernetes.io/router.tls: "true"
+            spec:
+              ingressClassName: traefik
+              tls:
+                - hosts:
+                    - {{ $params.host }}
                   secretName: wordpress-tls
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: metadata.name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-wp-security", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.host
-                toFieldPath: spec.routes[0].match
-                transforms:
-                  - type: string
-                    string: { fmt: "Host(`%s`) && (Path(`/wp-login.php`) || Path(`/xmlrpc.php`))", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.routes[0].middlewares[0].name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-wp-security-ratelimit", type: Format }
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.routes[0].services[0].name
-                transforms:
-                  - type: string
-                    string: { fmt: "%s-wordpress", type: Format }
+              rules:
+                - host: {{ $params.host }}
+                  http:
+                    paths:
+                      - path: /
+                        pathType: Prefix
+                        backend:
+                          service:
+                            name: {{ $name }}-wordpress
+                            port:
+                              number: 80
+            ---
+            # --- Security mu-plugin ConfigMap ---
+            # Mounts a must-use plugin that:
+            #   1. Disables XML-RPC (blocks brute-force via xmlrpc.php)
+            #   2. Removes /wp/v2/users from the REST API (prevents username enumeration)
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{ $name }}-security-mu-plugin
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: security-mu-plugin-configmap
+                gotemplating.fn.crossplane.io/ready: "True"
+            data:
+              security-hardening.php: |
+                <?php
+                // Disable XML-RPC
+                add_filter('xmlrpc_enabled', '__return_false');
+                // Remove users from REST API to prevent username enumeration
+                add_filter('rest_endpoints', function($endpoints) {
+                    unset($endpoints['/wp/v2/users']);
+                    unset($endpoints['/wp/v2/users/(?P<id>[\d]+)']);
+                    return $endpoints;
+                });
+            ---
+            # --- wp-login.php / xmlrpc.php rate limit Middleware ---
+            apiVersion: traefik.io/v1alpha1
+            kind: Middleware
+            metadata:
+              name: {{ $name }}-wp-security-ratelimit
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: wp-security-ratelimit-middleware
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              rateLimit:
+                average: 10
+                burst: 20
+                period: 1m
+            ---
+            # --- IngressRoute applying rate limit to sensitive WordPress endpoints ---
+            apiVersion: traefik.io/v1alpha1
+            kind: IngressRoute
+            metadata:
+              name: {{ $name }}-wp-security
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: wp-security-ingressroute
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              entryPoints:
+                - websecure
+              routes:
+                - match: "Host(`{{ $params.host }}`) && (Path(`/wp-login.php`) || Path(`/xmlrpc.php`))"
+                  kind: Rule
+                  priority: 100
+                  middlewares:
+                    - name: {{ $name }}-wp-security-ratelimit
+                  services:
+                    - name: {{ $name }}-wordpress
+                      port: 80
+              tls:
+                secretName: wordpress-tls
