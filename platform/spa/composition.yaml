@@ -65,6 +65,16 @@ spec:
                         add_header Cache-Control "public, max-age=31536000, immutable";
                     }
 
+                    # Block common credential/config file probes before the SPA catch-all.
+                    # Without this, try_files serves index.html (200) for every .env scan.
+                    location ~* (\.env|\.git|\.htaccess|\.htpasswd|wp-config\.php|phpinfo\.php|settings\.py|settings\.json|settings\.yaml|config\.json|config\.php|web\.config|composer\.(json|lock)|package(-lock)?\.json|yarn\.lock|Dockerfile|docker-compose\.yml|\.DS_Store|readme\.md|README\.md)$ {
+                        return 404;
+                    }
+
+                    location ~* \.(php|asp|aspx|jsp|cgi|sh|py|rb|pl)$ {
+                        return 404;
+                    }
+
                     location / {
                         try_files $uri $uri/ /index.html;
                     }
