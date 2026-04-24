@@ -67,7 +67,28 @@ spec:
 
                     # Block common credential/config file probes before the SPA catch-all.
                     # Without this, try_files serves index.html (200) for every .env scan.
-                    location ~* (\.env|\.git|\.htaccess|\.htpasswd|wp-config\.php|phpinfo\.php|settings\.py|settings\.json|settings\.yaml|config\.json|config\.php|web\.config|composer\.(json|lock)|package(-lock)?\.json|yarn\.lock|Dockerfile|docker-compose\.yml|\.DS_Store|readme\.md|README\.md)$ {
+
+                    # .git directory traversal (e.g. /.git/HEAD, /.git/logs/HEAD)
+                    location ~* /\.git(/|$) {
+                        return 404;
+                    }
+
+                    # .env variants: .env, .env.production, .env.local, config/.env.production, etc.
+                    location ~* (^|/)\.env[^/]* {
+                        return 404;
+                    }
+
+                    # Sensitive dot-files and config probes
+                    location ~* (\.htaccess|\.htpasswd|\.gitconfig|\.DS_Store|wp-config\.php|phpinfo\.php|settings\.py|settings\.json|settings\.yaml|config\.json|config\.php|config\.yaml|config\.rb|web\.config|composer\.(json|lock)|package(-lock)?\.json|yarn\.lock|Dockerfile|docker-compose\.yml|readme\.md|README\.md|wlwmanifest\.xml|xmlrpc\.php)$ {
+                        return 404;
+                    }
+
+                    # Credential/secret path probes (e.g. /.aws/credentials, /api-keys.txt, /logs/error.log)
+                    location ~* (^|/)(\.aws|credentials|api-keys\.txt|logs/error\.log|var/log/)(/|$) {
+                        return 404;
+                    }
+
+                    location ~* \.(log)$ {
                         return 404;
                     }
 
