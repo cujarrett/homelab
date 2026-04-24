@@ -294,6 +294,7 @@ spec:
                 cert-manager.io/cluster-issuer: local-lab-ca-issuer
                 traefik.ingress.kubernetes.io/router.entrypoints: websecure
                 traefik.ingress.kubernetes.io/router.tls: "true"
+                traefik.ingress.kubernetes.io/router.middlewares: "{{ $namespace }}-{{ $name }}-wp-security-headers@kubernetescrd"
             spec:
               ingressClassName: traefik
               tls:
@@ -364,7 +365,7 @@ spec:
               entryPoints:
                 - websecure
               routes:
-                - match: "Host(`{{ $params.host }}`) && (Path(`/wp-login.php`) || Path(`/xmlrpc.php`))"
+                - match: "Host(`{{ $params.host }}`) && (Path(`/wp-login.php`) || Path(`/xmlrpc.php`) || PathPrefix(`/wp-admin/`))"
                   kind: Rule
                   priority: 100
                   middlewares:
@@ -374,3 +375,25 @@ spec:
                       port: 80
               tls:
                 secretName: wordpress-tls
+            ---
+            # --- Security response headers Middleware ---
+            # Applied to all WordPress traffic via the Ingress annotation.
+            # Strips Server and X-Powered-By disclosure headers; adds standard
+            # browser security headers missing from Apache's default config.
+            apiVersion: traefik.io/v1alpha1
+            kind: Middleware
+            metadata:
+              name: {{ $name }}-wp-security-headers
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: wp-security-headers-middleware
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              headers:
+                customResponseHeaders:
+                  Server: ""
+                  X-Powered-By: ""
+                  X-Content-Type-Options: "nosniff"
+                  X-Frame-Options: "SAMEORIGIN"
+                  Referrer-Policy: "strict-origin-when-cross-origin"
+                  X-XSS-Protection: "1; mode=block"
