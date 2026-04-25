@@ -336,6 +336,19 @@ spec:
                     unset($endpoints['/wp/v2/users/(?P<id>[\d]+)']);
                     return $endpoints;
                 });
+                // Remove users provider from XML sitemaps (/wp-sitemap-users-1.xml)
+                add_filter('wp_sitemaps_add_provider', function($provider, $name) {
+                    return ($name === 'users') ? false : $provider;
+                }, 10, 2);
+                // Disable author archive pages (/author/<slug>/) to prevent username enumeration
+                add_action('template_redirect', function() {
+                    if (is_author()) {
+                        global $wp_query;
+                        $wp_query->set_404();
+                        status_header(404);
+                        nocache_headers();
+                    }
+                });
             ---
             # --- wp-login.php / xmlrpc.php rate limit Middleware ---
             apiVersion: traefik.io/v1alpha1
