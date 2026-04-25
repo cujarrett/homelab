@@ -19,7 +19,7 @@ spec:
           template: |
             {{- $name := .observed.composite.resource.metadata.name }}
             {{- $params := .observed.composite.resource.spec.parameters }}
-            {{- $namespace := $params.namespace }}
+            {{- $namespace := $name }}
             # --- Namespace ---
             apiVersion: v1
             kind: Namespace
