@@ -72,7 +72,7 @@ No extra tooling required — Crossplane writes the Secret and it's immediately 
 
 ### Model 2: Cross-cluster (platform cluster + workload cluster)
 
-Crossplane runs on a dedicated platform cluster. Credentials are written to a Secret on the platform cluster, then synced to a shared store (e.g. AWS Secrets Manager) and pulled down into the workload cluster's app namespace by ESO.
+Crossplane runs on a dedicated platform cluster. Credentials are written to a Secret on the platform cluster, then synced to a shared store (e.g. AWS Secrets Manager) and pulled down into the workload cluster's app namespace by [External Secrets Operator](https://external-secrets.io) (ESO).
 
 ```
 Platform cluster (Crossplane)
@@ -230,12 +230,3 @@ With manual wiring, the wiring lives in the Crossplane composition — one place
 The init container readiness pattern (block the app until the Secret exists) is not something the ServiceBinding operator handles.
 
 The ServiceBinding operator is worth adopting when workloads are not managed by a Crossplane composition (plain Deployments deployed outside of platform abstractions).
-
-## Reference Links
-- https://servicebinding.io/
-- https://servicebinding.io/application-developer/
-- https://servicebinding.io/service-provider/
-- https://servicebinding.io/application-operator/
-- https://external-secrets.io/
-- https://external-secrets.io/latest/provider/aws-secrets-manager/
-- https://docs.crossplane.io/latest/concepts/connection-details/
