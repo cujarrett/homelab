@@ -46,6 +46,8 @@ spec:
                     server_tokens off;
                     add_header Content-Security-Policy "{{ $params.contentSecurityPolicy }}" always;
                     add_header X-Content-Type-Options "nosniff";
+                    add_header X-Frame-Options "SAMEORIGIN";
+                    add_header X-XSS-Protection "1; mode=block";
                     add_header Referrer-Policy "strict-origin-when-cross-origin";
 
                     root /usr/share/nginx/html;
@@ -70,6 +72,11 @@ spec:
 
                     # .git directory traversal (e.g. /.git/HEAD, /.git/logs/HEAD)
                     location ~* /\.git(/|$) {
+                        return 404;
+                    }
+
+                    # .vscode directory probes (e.g. /.vscode/sftp.json)
+                    location ~* /\.vscode(/|$) {
                         return 404;
                     }
 
