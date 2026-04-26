@@ -164,7 +164,6 @@ spec:
                   {{- end }}
             {{- if $objectStorageEnabled }}
             ---
-            # writeConnectionSecretToRef → written as the object-storage-binding volume
             apiVersion: platform.local.lab/v1alpha1
             kind: XObjectStorage
             metadata:
@@ -174,9 +173,6 @@ spec:
                 gotemplating.fn.crossplane.io/ready: {{ $objStorageReady | quote }}
             spec:
               environment: {{ $env }}
-              writeConnectionSecretToRef:
-                name: {{ $name }}-object-storage
-                namespace: {{ $ns }}
             {{- end }}
             {{- if $cacheEnabled }}
             ---

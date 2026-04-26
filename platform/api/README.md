@@ -82,7 +82,7 @@ XApi: metadata.name = "foo"
 │
 ├── XObjectStorage sub-XR: name = "foo-object-storage"
 │   │  spec.environment = "prod"        ← bubbled from XApi
-│   │  writeConnectionSecretToRef → Secret "foo-object-storage" in namespace "foo"
+│   │  (composition creates Secret "foo-object-storage" in namespace "foo" directly)
 │   │
 │   ├── Bucket (MR)                            ← s3.aws.upbound.io
 │   │   └─ connectionDetails: type, provider, bucket, region
