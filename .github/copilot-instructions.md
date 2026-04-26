@@ -2,7 +2,7 @@
 
 ## Copilot Rules
 - **Never run `git commit`, `git push`, or any git command that writes to or modifies repository history or remotes.** If a task requires committing or pushing, stop and tell the user to run the git command manually.
-- **Always use `k` instead of `kubectl` in commands shown to the user.**
+- **Always use `k` instead of `kubectl` in commands shown to the user in chat. Use kubectl in all doc file.**
 - **When debugging, always list every command used** — show the command, what it does, and why — so the user can learn the debugging workflow. Do this inline as you debug, not as a summary at the end.
 
 ### Pre-commit safety check
