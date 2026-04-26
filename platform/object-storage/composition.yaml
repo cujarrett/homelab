@@ -1,0 +1,165 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xobjectstorage
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: XObjectStorage
+  mode: Pipeline
+  pipeline:
+    - step: load-environment-configs
+      # In Crossplane v2 Pipeline mode, EnvironmentConfig data must be injected
+      # by function-environment-configs before P&T can read it via FromEnvironmentFieldPath.
+      functionRef:
+        name: function-environment-configs
+      input:
+        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+        kind: Input
+        spec:
+          environmentConfigs:
+            - type: Reference
+              ref:
+                name: aws-platform-config
+    - step: render-aws-resources
+      # Uses P&T for connectionDetails aggregation across multiple managed resources.
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: bucket
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta2
+              kind: Bucket
+              spec:
+                forProvider:
+                  region: ""
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              # Set a deterministic bucket name (= XR name) so the composition can tag the IAM
+              # user with the exact bucket name for principal-tag-based ABAC (aws:PrincipalTag).
+              # aws:ResourceTag does not work for S3 — IAM never populates it from S3 bucket tags.
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.annotations["crossplane.io/external-name"]
+              # Informational tags — not used for IAM ABAC but useful in the AWS console
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.App
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.Namespace
+                transforms:
+                  - type: string
+                    string:
+                      type: Regexp
+                      regexp:
+                        match: '^(.+)-object-storage$'
+                        group: 1
+            connectionDetails:
+              # FromValue: literal constant, not read from the provider
+              - type: FromValue
+                name: type
+                value: s3
+              - type: FromValue
+                name: provider
+                value: aws
+              # status.atProvider.id is the bucket name AWS assigned
+              - type: FromFieldPath
+                name: bucket
+                fromFieldPath: status.atProvider.id
+              - type: FromFieldPath
+                name: region
+                fromFieldPath: spec.forProvider.region
+
+          - name: user
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: User
+              spec:
+                forProvider:
+                  # /crossplane/ path groups Crossplane-managed IAM users in the console
+                  path: /crossplane/
+            patches:
+              # Bucket tag: matches the deterministic bucket external-name.
+              # The ABAC policy uses arn:aws:s3:::${aws:PrincipalTag/Bucket} in the Resource ARN
+              # because aws:ResourceTag is not populated by IAM for S3 buckets.
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.Bucket
+              # Informational tags
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.App
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.Namespace
+                transforms:
+                  - type: string
+                    string:
+                      type: Regexp
+                      regexp:
+                        match: '^(.+)-object-storage$'
+                        group: 1
+
+          - name: access-key
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: AccessKey
+              spec:
+                forProvider:
+                  # matchControllerRef binds this AccessKey to the User created above
+                  userSelector:
+                    matchControllerRef: true
+                writeConnectionSecretToRef:
+                  name: ""
+                  namespace: ""
+            patches:
+              # Writes credentials to an intermediate secret {name}-iam before promotion
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.writeConnectionSecretToRef.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s-iam"
+              # Strip "-object-storage" to derive the app namespace
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.writeConnectionSecretToRef.namespace
+                transforms:
+                  - type: string
+                    string:
+                      type: Regexp
+                      regexp:
+                        match: '^(.+)-object-storage$'
+                        group: 1
+            connectionDetails:
+              # Promote credentials from the intermediate secret to the XR connection secret
+              - type: FromConnectionSecretKey
+                name: username
+                fromConnectionSecretKey: username
+              - type: FromConnectionSecretKey
+                name: password
+                fromConnectionSecretKey: password
+
+          - name: abac-policy-attachment
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: UserPolicyAttachment
+              spec:
+                forProvider:
+                  policyArn: ""
+                  userSelector:
+                    matchControllerRef: true
+            patches:
+              # ARN comes from EnvironmentConfig — not stored in Git
+              - type: FromEnvironmentFieldPath
+                fromFieldPath: abacPolicyArn
+                toFieldPath: spec.forProvider.policyArn
+
