@@ -163,3 +163,44 @@ spec:
                 fromFieldPath: abacPolicyArn
                 toFieldPath: spec.forProvider.policyArn
 
+    - step: create-binding-secret
+      # In Crossplane v2, XR-level connection secrets are removed.
+      # Instead, create the binding Secret directly as a composed native K8s resource.
+      # P&T (previous step) collects connectionDetails into desired.composite.connectionDetails;
+      # go-templating reads those and creates the Secret once credentials are available.
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $cd := .desired.composite.connectionDetails -}}
+            {{- $username := index $cd "username" | toString -}}
+            {{- $password := index $cd "password" | toString -}}
+            {{- if and $username $password -}}
+            {{- $xr := .observed.composite.resource -}}
+            {{- $name := $xr.metadata.name -}}
+            {{- $namespace := regexReplaceAll "-object-storage$" $name "" -}}
+            {{- $bucket := index $cd "bucket" | toString | default $name -}}
+            {{- $region := index $cd "region" | toString | default "us-east-1" -}}
+            ---
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: binding-secret
+                gotemplating.fn.crossplane.io/ready: "True"
+            type: Opaque
+            stringData:
+              type: s3
+              provider: aws
+              bucket: {{ $bucket }}
+              region: {{ $region }}
+              username: {{ $username }}
+              password: {{ $password }}
+            {{- end -}}
+
