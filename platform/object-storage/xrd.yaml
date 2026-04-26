@@ -8,6 +8,13 @@ spec:
   names:
     kind: XObjectStorage
     plural: xobjectstorages
+  connectionSecretKeys:
+    - type
+    - provider
+    - bucket
+    - region
+    - username
+    - password
   versions:
     - name: v1alpha1
       served: true
