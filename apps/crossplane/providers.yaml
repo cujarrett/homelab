@@ -16,6 +16,15 @@ spec:
 apiVersion: pkg.crossplane.io/v1
 kind: Function
 metadata:
+  name: function-environment-configs
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-environment-configs:v0.3.0
+  runtimeConfigRef:
+    name: worker-nodes
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
   name: function-go-templating
 spec:
   package: xpkg.upbound.io/crossplane-contrib/function-go-templating:v0.12.0
