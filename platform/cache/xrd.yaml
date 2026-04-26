@@ -1,0 +1,33 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: xcaches.platform.local.lab
+spec:
+  group: platform.local.lab
+  names:
+    kind: XCache
+    plural: xcaches
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                region:
+                  type: string
+                  default: us-east-1
+                  description: "Cloud region for the cache cluster."
+                size:
+                  type: string
+                  default: small
+                  enum: [small, medium, large]
+                  description: "Size for the cache cluster (prod only). small=cache.t4g.micro, medium=cache.t4g.small, large=cache.t4g.medium."
+                environment:
+                  type: string
+                  default: test
+                  description: "Runtime environment. prod provisions AWS ElastiCache; test provisions in-cluster Redis."

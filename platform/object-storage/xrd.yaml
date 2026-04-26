@@ -1,0 +1,28 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: xobjectstorages.platform.local.lab
+spec:
+  group: platform.local.lab
+  names:
+    kind: XObjectStorage
+    plural: xobjectstorages
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                region:
+                  type: string
+                  default: us-east-1
+                  description: "Cloud region for the bucket."
+                environment:
+                  type: string
+                  default: test
+                  description: "Runtime environment (prod or test). Reserved for future routing (e.g. in-cluster MinIO for test). Currently passed through from XApi but does not alter provisioning."

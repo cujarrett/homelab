@@ -1,0 +1,127 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xcache
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: XCache
+  mode: Pipeline
+  pipeline:
+    - step: render-cache
+      # environment: test → in-cluster Redis; prod → AWS ElastiCache
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $env := $xr.spec.environment | default "test" }}
+            {{- /* "my-app-cache" → "my-app" */ -}}
+            {{- $ns := trimSuffix "-cache" $name }}
+            {{- $region := $xr.spec.region | default "us-east-1" }}
+            {{- $size := $xr.spec.size | default "small" }}
+            {{- $nodeTypeMap := dict "small" "cache.t4g.micro" "medium" "cache.t4g.small" "large" "cache.t4g.medium" }}
+            {{- $nodeType := get $nodeTypeMap $size | default "cache.t4g.micro" }}
+            {{- if eq $env "test" }}
+            ---
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: {{ $name }}-redis
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: redis-deployment
+                # required for native k8s resources — no Crossplane Ready condition
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              replicas: 1
+              selector:
+                matchLabels:
+                  app: {{ $name }}-redis
+              template:
+                metadata:
+                  labels:
+                    app: {{ $name }}-redis
+                spec:
+                  containers:
+                    - name: redis
+                      image: redis:7-alpine
+                      ports:
+                        - containerPort: 6379
+            ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: {{ $name }}-redis
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: redis-service
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                app: {{ $name }}-redis
+              ports:
+                - port: 6379
+                  targetPort: 6379
+            ---
+            # Same secret shape as prod so XApi mounts it identically in both environments
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: cache-secret
+                gotemplating.fn.crossplane.io/ready: "True"
+            stringData:
+              type: redis
+              provider: in-cluster
+              host: {{ $name }}-redis.{{ $ns }}.svc.cluster.local
+              port: "6379"
+            {{- else }}
+            ---
+            # Provider writes connection details to {name}-rg-conn once ElastiCache is up
+            apiVersion: elasticache.aws.upbound.io/v1beta2
+            kind: ReplicationGroup
+            metadata:
+              name: {{ $name }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: replication-group
+            spec:
+              forProvider:
+                region: {{ $region }}
+                description: "{{ $name }}"
+                nodeType: {{ $nodeType }}
+                engine: redis
+                numCacheClusters: 1
+              writeConnectionSecretToRef:
+                name: {{ $name }}-rg-conn
+                namespace: {{ $ns }}
+            {{- /* .observed.resources is nil until ElastiCache is ready; binding secret is skipped until then */ -}}
+            {{- $rgConn := dict }}
+            {{- with index .observed.resources "replication-group" }}
+              {{- $rgConn = .connectionDetails | default dict }}
+            {{- end }}
+            {{- if $rgConn }}
+            ---
+            # type/provider not published by the provider; added here for servicebinding.io compliance
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: cache-secret
+                gotemplating.fn.crossplane.io/ready: "True"
+            stringData:
+              type: redis
+              provider: aws
+              host: {{ index $rgConn "host" | default "" }}
+              port: {{ index $rgConn "port" | default "6379" }}
+            {{- end }}
+            {{- end }}

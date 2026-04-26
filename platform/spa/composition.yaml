@@ -30,7 +30,7 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
             ---
             # --- nginx ConfigMap ---
-            # CSP header and health check path injected from XR parameters.
+            # Generated from XR params so the SPA image stays generic across instances.
             apiVersion: v1
             kind: ConfigMap
             metadata:
@@ -59,38 +59,34 @@ spec:
                         add_header Content-Type text/plain;
                     }
 
+                    # no-cache: browser always refetches the entry point
                     location = /index.html {
                         add_header Cache-Control "no-cache";
                     }
 
+                    # immutable: hashed filenames change on each build
                     location ~* \.(js|css|woff2|png|jpg|jpeg|gif|ico|svg|woff)$ {
                         add_header Cache-Control "public, max-age=31536000, immutable";
                     }
 
-                    # Block common credential/config file probes before the SPA catch-all.
-                    # Without this, try_files serves index.html (200) for every .env scan.
-
-                    # .git directory traversal (e.g. /.git/HEAD, /.git/logs/HEAD)
+                    # Block credential/config probes before the catch-all.
+                    # Without these, try_files returns 200 for every .env scan.
                     location ~* /\.git(/|$) {
                         return 404;
                     }
 
-                    # .vscode directory probes (e.g. /.vscode/sftp.json)
                     location ~* /\.vscode(/|$) {
                         return 404;
                     }
 
-                    # .env variants: .env, .env.production, .env.local, config/.env.production, etc.
                     location ~* (^|/)\.env[^/]* {
                         return 404;
                     }
 
-                    # Sensitive dot-files and config probes
                     location ~* (\.htaccess|\.htpasswd|\.gitconfig|\.DS_Store|wp-config\.php|phpinfo\.php|settings\.py|settings\.json|settings\.yaml|config\.json|config\.php|config\.yaml|config\.rb|web\.config|composer\.(json|lock)|package(-lock)?\.json|yarn\.lock|Dockerfile|docker-compose\.yml|readme\.md|README\.md|wlwmanifest\.xml|xmlrpc\.php)$ {
                         return 404;
                     }
 
-                    # Credential/secret path probes (e.g. /.aws/credentials, /api-keys.txt, /logs/error.log)
                     location ~* (^|/)(\.aws|credentials|api-keys\.txt|logs/error\.log|var/log/)(/|$) {
                         return 404;
                     }
@@ -103,14 +99,13 @@ spec:
                         return 404;
                     }
 
+                    # SPA catch-all: client-side router handles unmatched paths
                     location / {
                         try_files $uri $uri/ /index.html;
                     }
                 }
             ---
             # --- Deployment ---
-            # Runs the SPA image (nginx + pre-built dist/) and mounts the nginx ConfigMap
-            # so SPA routing and headers are applied without baking them into the image.
             apiVersion: apps/v1
             kind: Deployment
             metadata:
@@ -186,9 +181,7 @@ spec:
                   targetPort: 80
             ---
             # --- Ingress ---
-            # Traefik websecure entrypoint with TLS termination via cert-manager.
-            # tlsIssuer selects between local-lab-ca-issuer (.local.lab) and
-            # letsencrypt-prod (public hosts routed via Cloudflare Tunnel).
+            # tlsIssuer: local-lab-ca-issuer for .local.lab; letsencrypt-prod for public hosts
             apiVersion: networking.k8s.io/v1
             kind: Ingress
             metadata:

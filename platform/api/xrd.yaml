@@ -1,0 +1,60 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: xapis.platform.local.lab
+spec:
+  group: platform.local.lab
+  names:
+    kind: XApi
+    plural: xapis
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                objectStorage:
+                  type: object
+                  description: "Object storage options. If omitted, no bucket is created."
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: false
+                cache:
+                  type: object
+                  description: "Cache options. If omitted, no cache is created."
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: false
+                environment:
+                  type: string
+                  default: test
+                  description: "Runtime environment (prod or test). Controls whether cache bindings use managed cloud resources (prod) or in-cluster equivalents (test)."
+                image:
+                  type: string
+                  description: "Container image for the API (e.g. ghcr.io/owner/api:sha-abc123). CI builds and pushes this on merge to main, then commits the new tag back here to trigger an ArgoCD sync."
+                port:
+                  type: integer
+                  default: 8080
+                  description: "Port the container listens on. Service always exposes port 80 → this targetPort."
+                host:
+                  type: string
+                  description: "Hostname for the Ingress. If omitted, no Ingress is created."
+                tlsIssuer:
+                  type: string
+                  default: local-lab-ca-issuer
+                  description: "cert-manager ClusterIssuer for TLS."
+                secretRef:
+                  type: object
+                  description: "Optional reference to a pre-existing Secret in the app namespace to inject into the API container via envFrom."
+                  properties:
+                    name:
+                      type: string
+                      description: "Name of the Secret."
+              required: [image]
