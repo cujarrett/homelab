@@ -24,7 +24,7 @@ spec:
           include: "{{path.filename}}"
       destination:
         server: https://kubernetes.default.svc
-        namespace: "{{metadata.namespace}}"
+        namespace: "{{metadata.name}}"
       syncPolicy:
         automated:
           prune: true
