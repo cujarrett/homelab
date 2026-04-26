@@ -46,14 +46,7 @@ Crossplane (same cluster)
 
 Simpler, but constrains you: the workload must run on the same cluster that Crossplane manages cloud resources on.
 
-Configure the MR to write credentials directly into the app namespace:
-
-```yaml
-# AccessKey MR — writes directly to the app namespace
-writeConnectionSecretToRef:
-  name: my-object-storage
-  namespace: my-app
-```
+The composition creates the binding Secret directly as a native Kubernetes composed resource using `function-go-templating`. The MR writes an intermediate Secret with the raw credentials; the go-templating step reads them from `.desired.composite.connectionDetails` and creates the final binding Secret in the app namespace.
 
 The pod mounts the Secret as a service binding volume:
 
@@ -68,7 +61,7 @@ volumeMounts:
     mountPath: /bindings/object-storage
 ```
 
-No extra tooling required — Crossplane writes the Secret and it's immediately available in the app namespace.
+No extra tooling required — the composition creates the Secret in the app namespace and it's immediately available.
 
 ### Model 2: Cross-cluster (platform cluster + workload cluster)
 

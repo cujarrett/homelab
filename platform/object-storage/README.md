@@ -13,9 +13,7 @@ Consumed by `XApi` when `objectStorage.enabled: true`. Can also be used standalo
 
 ## Connection secret
 
-When consumed via `XApi`, the secret name and namespace are derived automatically by the composition — no caller input needed. The secret name equals the XR name; the namespace is derived by stripping `-object-storage` from the XR name.
-
-For standalone use, you must provide `writeConnectionSecretToRef` explicitly (see example below), since there is no parent XR to derive the namespace from.
+The secret name equals the XR name; the namespace is derived by stripping `-object-storage` from the XR name. No caller input needed in either case.
 
 | Key | Value |
 |---|---|
@@ -30,21 +28,7 @@ The app authenticates to S3 using `username`/`password`, read from `/bindings/ob
 
 ## Example
 
-When consumed via `XApi` — no `writeConnectionSecretToRef` needed:
-
-```yaml
-apiVersion: platform.local.lab/v1alpha1
-kind: XApi
-metadata:
-  name: foo
-spec:
-  image: my-org/my-api:latest
-  objectStorage:
-    enabled: true
-# Secret "foo-object-storage" is written to namespace "foo" automatically.
-```
-
-Standalone use — `writeConnectionSecretToRef` is required:
+Name the XR `{namespace}-object-storage` and the Secret is written to namespace `{namespace}` automatically:
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
@@ -53,9 +37,7 @@ metadata:
   name: foo-object-storage
 spec:
   region: us-east-1
-  writeConnectionSecretToRef:
-    name: foo-object-storage
-    namespace: foo
+# Secret "foo-object-storage" is written to namespace "foo" automatically.
 ```
 
 ## IAM Design
