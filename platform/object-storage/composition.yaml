@@ -176,7 +176,7 @@ spec:
         source: Inline
         inline:
           template: |
-            {{- $cd := .desired.composite.connectionDetails -}}
+            {{- $cd := .desired.composite.connectionDetails | default dict -}}
             {{- $username := index $cd "username" | toString -}}
             {{- $password := index $cd "password" | toString -}}
             {{- if and $username $password -}}
