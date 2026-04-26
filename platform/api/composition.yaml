@@ -24,6 +24,15 @@ spec:
             {{- /* `and` avoids nil-pointer if the key is absent */ -}}
             {{- $objectStorageEnabled := and $xr.spec.objectStorage $xr.spec.objectStorage.enabled }}
             {{- $cacheEnabled := and $xr.spec.cache $xr.spec.cache.enabled }}
+            {{- $objStorageReady := "False" }}
+            {{- $objStorageObs := index .observed.resources "object-storage" }}
+            {{- if $objStorageObs }}
+              {{- range ($objStorageObs.resource.status.conditions | default list) }}
+                {{- if and (eq .type "Ready") (eq .status "True") }}
+                  {{- $objStorageReady = "True" }}
+                {{- end }}
+              {{- end }}
+            {{- end }}
             {{- $host := $xr.spec.host | default "" }}
             {{- $tlsIssuer := $xr.spec.tlsIssuer | default "local-lab-ca-issuer" }}
             {{- $secretRefName := "" }}
@@ -162,6 +171,7 @@ spec:
               name: {{ $name }}-object-storage
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: object-storage
+                gotemplating.fn.crossplane.io/ready: {{ $objStorageReady | quote }}
             spec:
               environment: {{ $env }}
               writeConnectionSecretToRef:
