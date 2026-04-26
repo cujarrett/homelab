@@ -25,7 +25,7 @@ spec:
             {{- $objectStorageEnabled := and $xr.spec.objectStorage $xr.spec.objectStorage.enabled }}
             {{- $cacheEnabled := and $xr.spec.cache $xr.spec.cache.enabled }}
             {{- $objStorageReady := "False" }}
-            {{- $objStorageObs := index .observed.resources "object-storage" }}
+            {{- $objStorageObs := index (.observed.resources | default dict) "object-storage" }}
             {{- if $objStorageObs }}
               {{- range ($objStorageObs.resource.status.conditions | default list) }}
                 {{- if and (eq .type "Ready") (eq .status "True") }}
