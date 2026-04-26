@@ -25,11 +25,20 @@ spec:
             {{- $objectStorageEnabled := and $xr.spec.objectStorage $xr.spec.objectStorage.enabled }}
             {{- $cacheEnabled := and $xr.spec.cache $xr.spec.cache.enabled }}
             {{- $objStorageReady := "False" }}
-            {{- $objStorageObs := index (.observed.resources | default dict) "object-storage" }}
-            {{- if $objStorageObs }}
-              {{- range ($objStorageObs.resource.status.conditions | default list) }}
+            {{- $objStorageObserved := index (.observed.resources | default dict) "object-storage" }}
+            {{- if $objStorageObserved }}
+              {{- range ($objStorageObserved.resource.status.conditions | default list) }}
                 {{- if and (eq .type "Ready") (eq .status "True") }}
                   {{- $objStorageReady = "True" }}
+                {{- end }}
+              {{- end }}
+            {{- end }}
+            {{- $cacheReady := "False" }}
+            {{- $cacheObserved := index (.observed.resources | default dict) "cache" }}
+            {{- if $cacheObserved }}
+              {{- range ($cacheObserved.resource.status.conditions | default list) }}
+                {{- if and (eq .type "Ready") (eq .status "True") }}
+                  {{- $cacheReady = "True" }}
                 {{- end }}
               {{- end }}
             {{- end }}
@@ -182,6 +191,7 @@ spec:
               name: {{ $name }}-cache
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: cache
+                gotemplating.fn.crossplane.io/ready: {{ $cacheReady | quote }}
             spec:
               environment: {{ $env }}
             {{- end }}
