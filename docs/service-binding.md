@@ -187,22 +187,22 @@ var s3Client = buildS3Client(os.ReadFile("/bindings/object-storage/username"))
 
 **Crossplane's side:** If using ESO → Secrets Manager, ESO's `refreshInterval` re-syncs the Kubernetes Secret once the upstream value changes — but the upstream rotation (new key in AWS) still needs to happen separately.
 
-## Environment-Aware Bindings (QA vs. Prod)
+## Environment-Aware Bindings (Test vs. Prod)
 
 The composition is the only layer that knows what backs a binding. The consumer app see identical binding files regardless of whether the Secret came from ElastiCache or an in-cluster Redis pod.
 
-The `XApi` XRD example has an `environment` field (`qa` or `prod`, default `prod`). The composition forks on it:
+The `XApi` XRD example has an `environment` field (`test` or `prod`, default `test`). The composition forks on it:
 
 ```go
 {{- if and $cacheEnabled (eq $xr.spec.environment "prod") }}
 # renders XCache sub-XR → provisions ElastiCache → writes connection Secret to app namespace
 {{- end }}
-{{- if and $cacheEnabled (eq $xr.spec.environment "qa") }}
+{{- if and $cacheEnabled (eq $xr.spec.environment "test") }}
 # renders in-cluster Redis Deployment + Service + a plain Secret with identical keys
 {{- end }}
 ```
 
-For QA, the composition writes the Secret directly (no MR, no cloud provisioning) with the in-cluster Service DNS name as `host`:
+For test, the composition writes the Secret directly (no MR, no cloud provisioning) with the in-cluster Service DNS name as `host`:
 
 ```yaml
 apiVersion: v1
@@ -217,9 +217,9 @@ stringData:
   port: "6379"
 ```
 
-The init container (`until [ -f /bindings/cache/type ]`) works identically for both paths — the QA Secret appears immediately (no cloud wait), so the init container exits fast.
+The init container (`until [ -f /bindings/cache/type ]`) works identically for both paths — the test Secret appears immediately (no cloud wait), so the init container exits fast.
 
-The XApi consumer sets `cache.enabled: true` and `environment: qa`. The app reads the same `/bindings/cache/` files. No compromise to the binding contract.
+The XApi consumer sets `cache.enabled: true` and `environment: test`. The app reads the same `/bindings/cache/` files. No compromise to the binding contract.
 
 ## Manual Wiring vs. the ServiceBinding Operator
 
