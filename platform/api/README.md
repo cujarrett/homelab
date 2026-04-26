@@ -103,6 +103,52 @@ Every placement decision flows from one source: `metadata.name`. The XApi name b
 
 (`MR` = Managed Resource, the actual AWS resource owned by a provider. `XObjectStorage` is both a reusable platform primitive and a composed resource embedded inside `XApi`.)
 
+## Operations
+
+### Observability
+
+```bash
+# Top-level XR status — SYNCED=composition ran, READY=all children healthy
+k get xapi <name>
+k get xobjectstorage <name>-object-storage
+
+# All AWS managed resources owned by this XR (bucket, user, accesskey, policy attachment)
+k get managed | grep <name>
+
+# Detailed conditions — shows exactly WHY something is not ready
+k get xapi <name> -o jsonpath='{.status.conditions}' | python3 -m json.tool
+
+# Pod status in the app namespace
+k get pods -n <name>
+
+# Binding secret — confirm credentials are present and correct
+k get secret <name>-object-storage -n <name> -o jsonpath='{.data.bucket}' | base64 -d
+```
+
+### Delete and re-inflate
+
+```bash
+# 1. Delete the XR — Crossplane cascade-deletes all composed resources
+#    (bucket, IAM user, access key, policy attachment, binding secret, deployment, etc.)
+k delete xapi <name>
+
+# 2. Watch it all disappear
+k get managed | grep <name>   # should drain to nothing
+k get ns <name>               # namespace gone too
+
+# 3. Re-apply from git — ArgoCD will do this automatically on next sync, or immediately:
+k apply -f platform/xrs/api/<name>.yaml
+
+# 4. Watch it inflate
+k get xapi <name>
+k get xobjectstorage <name>-object-storage
+k get managed | grep <name>
+k get pods -n <name>
+
+# 5. Once READY=True, hit the Ingress
+curl https://<host>/health
+```
+
 ## Prerequisites
 
 The underlying cloud providers must be installed and credentials must be available in the cluster before any XApi XR with `objectStorage.enabled: true` or `cache.enabled: true` will reconcile successfully.
