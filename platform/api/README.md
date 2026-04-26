@@ -103,68 +103,25 @@ Every placement decision flows from one source: `metadata.name`. The XApi name b
 
 ## Operations
 
-### Watch it come up (after pushing an XR file)
-
 ```bash
-# 1. Confirm ArgoCD picked it up and applied the XR
-kubectl get xapi platform-api-starter
-
-# 2. Watch the managed resources provision (S3 bucket, IAM user, access key)
-kubectl get managed | grep platform-api-starter
-
-# 3. Watch the pod start — init container blocks until binding secret is ready
-kubectl get pods -n platform-api-starter
-
-# 4. Confirm binding secret has all 6 keys with correct values
-kubectl get secret platform-api-starter-object-storage -n platform-api-starter \
-  -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
-
-# 5. Hit the Ingress
-curl https://platform-api-starter.local.lab/health
-```
-
-### Observability
-
-```bash
-# Top-level XR status — SYNCED=composition ran, READY=all children healthy
+# XR status — SYNCED=composition ran, READY=all children healthy
 kubectl get xapi platform-api-starter
 kubectl get xobjectstorage platform-api-starter-object-storage
 
-# All AWS managed resources owned by this XR (bucket, user, accesskey, policy attachment)
+# AWS managed resources (bucket, IAM user, access key, policy attachment)
 kubectl get managed | grep platform-api-starter
 
 # Detailed conditions — shows exactly WHY something is not ready
 kubectl get xapi platform-api-starter -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
-# Pod status in the app namespace
+# Pod status — init container blocks startup until binding secret is ready
 kubectl get pods -n platform-api-starter
 
-# Binding secret — confirm credentials are present and correct
+# Binding secret — confirm all 6 keys are present with correct values
 kubectl get secret platform-api-starter-object-storage -n platform-api-starter \
-  -o jsonpath='{.data.bucket}' | base64 -d
-```
+  -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 
-### Delete and re-inflate
-
-```bash
-# 1. Delete the XR — Crossplane cascade-deletes all composed resources
-#    (bucket, IAM user, access key, policy attachment, binding secret, deployment, etc.)
-kubectl delete xapi platform-api-starter
-
-# 2. Watch it all disappear
-kubectl get managed | grep platform-api-starter   # should drain to nothing
-kubectl get ns platform-api-starter               # namespace gone too
-
-# 3. Re-apply from git — ArgoCD will do this automatically on next sync, or immediately:
-kubectl apply -f platform/xrs/api/platform-api-starter.yaml
-
-# 4. Watch it inflate
-kubectl get xapi platform-api-starter
-kubectl get xobjectstorage platform-api-starter-object-storage
-kubectl get managed | grep platform-api-starter
-kubectl get pods -n platform-api-starter
-
-# 5. Once READY=True, hit the Ingress
+# Hit the Ingress
 curl https://platform-api-starter.local.lab/health
 ```
 
