@@ -183,8 +183,8 @@ spec:
             {{- $xr := .observed.composite.resource -}}
             {{- $name := $xr.metadata.name -}}
             {{- $namespace := regexReplaceAll "-object-storage$" $name "" -}}
-            {{- $bucket := index $cd "bucket" | toString | default $name -}}
-            {{- $region := index $cd "region" | toString | default "us-east-1" -}}
+            {{- $bucket := index $cd "bucket" | toString | b64dec | default $name -}}
+            {{- $region := index $cd "region" | toString | b64dec | default "us-east-1" -}}
             ---
             apiVersion: v1
             kind: Secret
@@ -200,7 +200,7 @@ spec:
               provider: aws
               bucket: {{ $bucket }}
               region: {{ $region }}
-              username: {{ $username }}
-              password: {{ $password }}
+              username: {{ $username | b64dec }}
+              password: {{ $password | b64dec }}
             {{- end -}}
 
