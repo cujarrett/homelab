@@ -4,7 +4,11 @@ Crossplane platform primitive that provisions a Redis-compatible cache cluster a
 
 Consumed by `XApi` when `cache.enabled: true`. Can also be used standalone or by other platform compositions.
 
-## Connection secret
+## What it provisions
+- `environment: test` — **Redis Deployment + Service** (in-cluster, `redis:7-alpine`) + binding Secret; no AWS resources
+- `environment: prod` — **ElastiCache ReplicationGroup** (AWS) + binding Secret
+
+## Binding secret
 
 Secret name equals the XR name; namespace is the XR name with `-cache` stripped (e.g. `my-app-cache` → secret in namespace `my-app`).
 
@@ -47,4 +51,22 @@ spec:
   region: us-east-1
   size: small   # small=cache.t4g.micro | medium=cache.t4g.small | large=cache.t4g.medium
 # Secret written to: my-app/my-app-cache
+```
+
+## Operations
+
+```bash
+# XR status
+kubectl get xcaches my-app-cache
+
+# Binding secret — confirm all 4 keys are present
+kubectl get secret my-app-cache -n my-app \
+  -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
+
+# Ping Redis directly (environment: test — in-cluster only)
+kubectl run redis-test --rm -it --restart=Never \
+  --image=redis:7-alpine \
+  -n my-app \
+  -- redis-cli -h my-app-cache-redis.my-app.svc.cluster.local ping
+# Expected output: PONG
 ```

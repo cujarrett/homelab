@@ -45,7 +45,7 @@ spec:
 # Deploys into namespace: platform-api-starter
 ```
 
-## Service binding keys
+## Binding secret
 
 When optional integrations are enabled, Crossplane creates a Secret and mounts it into the container at `$SERVICE_BINDING_ROOT/<binding>/`. Each file in that directory is one key. The app reads the file contents at runtime.
 
@@ -128,4 +128,3 @@ curl https://platform-api-starter.local.lab/health
 ## Prerequisites
 
 The underlying cloud providers must be installed and credentials must be available in the cluster before any XApi XR with `objectStorage.enabled: true` or `cache.enabled: true` will reconcile successfully.
-
