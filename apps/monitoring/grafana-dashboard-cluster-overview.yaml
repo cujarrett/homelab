@@ -1,0 +1,307 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-cluster-overview
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  cluster-overview.json: |-
+    {
+      "title": "Cluster Overview",
+      "uid": "homelab-cluster",
+      "editable": true,
+      "graphTooltip": 1,
+      "time": { "from": "now-1h", "to": "now" },
+      "timepicker": {},
+      "refresh": "30s",
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+          "id": 100,
+          "title": "CPU",
+          "type": "row"
+        },
+        {
+          "id": 1,
+          "type": "gauge",
+          "title": "ctrl-1 CPU",
+          "description": "Current CPU utilisation on ctrl-1 (192.168.10.100).",
+          "gridPos": { "x": 0, "y": 1, "w": 6, "h": 6 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "value", "showThresholdLabels": false, "showThresholdMarkers": true },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent", "min": 0, "max": 100, "decimals": 1,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{instance=~\"192.168.10.100:.*\", mode=\"idle\"}[5m]))) * 100", "legendFormat": "ctrl-1", "instant": true }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "gauge",
+          "title": "work-1 CPU",
+          "description": "Current CPU utilisation on work-1 (192.168.10.101).",
+          "gridPos": { "x": 6, "y": 1, "w": 6, "h": 6 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "value", "showThresholdLabels": false, "showThresholdMarkers": true },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent", "min": 0, "max": 100, "decimals": 1,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{instance=~\"192.168.10.101:.*\", mode=\"idle\"}[5m]))) * 100", "legendFormat": "work-1", "instant": true }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "gauge",
+          "title": "work-2 CPU",
+          "description": "Current CPU utilisation on work-2 (192.168.10.102).",
+          "gridPos": { "x": 12, "y": 1, "w": 6, "h": 6 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "value", "showThresholdLabels": false, "showThresholdMarkers": true },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent", "min": 0, "max": 100, "decimals": 1,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{instance=~\"192.168.10.102:.*\", mode=\"idle\"}[5m]))) * 100", "legendFormat": "work-2", "instant": true }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "gauge",
+          "title": "work-3 CPU",
+          "description": "Current CPU utilisation on work-3 (192.168.10.103).",
+          "gridPos": { "x": 18, "y": 1, "w": 6, "h": 6 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "value", "showThresholdLabels": false, "showThresholdMarkers": true },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent", "min": 0, "max": 100, "decimals": 1,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{instance=~\"192.168.10.103:.*\", mode=\"idle\"}[5m]))) * 100", "legendFormat": "work-3", "instant": true }
+          ]
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
+          "id": 101,
+          "title": "Memory",
+          "type": "row"
+        },
+        {
+          "id": 5,
+          "type": "gauge",
+          "title": "ctrl-1 Memory",
+          "description": "Current memory utilisation on ctrl-1.",
+          "gridPos": { "x": 0, "y": 8, "w": 6, "h": 6 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "value", "showThresholdLabels": false, "showThresholdMarkers": true },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent", "min": 0, "max": 100, "decimals": 1,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 75 }, { "color": "red", "value": 90 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "(1 - node_memory_MemAvailable_bytes{instance=~\"192.168.10.100:.*\"} / node_memory_MemTotal_bytes{instance=~\"192.168.10.100:.*\"}) * 100", "legendFormat": "ctrl-1", "instant": true }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "gauge",
+          "title": "work-1 Memory",
+          "description": "Current memory utilisation on work-1.",
+          "gridPos": { "x": 6, "y": 8, "w": 6, "h": 6 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "value", "showThresholdLabels": false, "showThresholdMarkers": true },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent", "min": 0, "max": 100, "decimals": 1,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 75 }, { "color": "red", "value": 90 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "(1 - node_memory_MemAvailable_bytes{instance=~\"192.168.10.101:.*\"} / node_memory_MemTotal_bytes{instance=~\"192.168.10.101:.*\"}) * 100", "legendFormat": "work-1", "instant": true }
+          ]
+        },
+        {
+          "id": 7,
+          "type": "gauge",
+          "title": "work-2 Memory",
+          "description": "Current memory utilisation on work-2.",
+          "gridPos": { "x": 12, "y": 8, "w": 6, "h": 6 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "value", "showThresholdLabels": false, "showThresholdMarkers": true },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent", "min": 0, "max": 100, "decimals": 1,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 75 }, { "color": "red", "value": 90 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "(1 - node_memory_MemAvailable_bytes{instance=~\"192.168.10.102:.*\"} / node_memory_MemTotal_bytes{instance=~\"192.168.10.102:.*\"}) * 100", "legendFormat": "work-2", "instant": true }
+          ]
+        },
+        {
+          "id": 8,
+          "type": "gauge",
+          "title": "work-3 Memory",
+          "description": "Current memory utilisation on work-3.",
+          "gridPos": { "x": 18, "y": 8, "w": 6, "h": 6 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "value", "showThresholdLabels": false, "showThresholdMarkers": true },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent", "min": 0, "max": 100, "decimals": 1,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 75 }, { "color": "red", "value": 90 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "(1 - node_memory_MemAvailable_bytes{instance=~\"192.168.10.103:.*\"} / node_memory_MemTotal_bytes{instance=~\"192.168.10.103:.*\"}) * 100", "legendFormat": "work-3", "instant": true }
+          ]
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+          "id": 102,
+          "title": "Disk (NVMe /)",
+          "type": "row"
+        },
+        {
+          "id": 9,
+          "type": "stat",
+          "title": "ctrl-1 Disk",
+          "description": "NVMe root filesystem used on ctrl-1.",
+          "gridPos": { "x": 0, "y": 15, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent", "decimals": 1,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "(1 - node_filesystem_avail_bytes{instance=~\"192.168.10.100:.*\",mountpoint=\"/\",fstype!=\"tmpfs\"} / node_filesystem_size_bytes{instance=~\"192.168.10.100:.*\",mountpoint=\"/\",fstype!=\"tmpfs\"}) * 100", "legendFormat": "ctrl-1", "instant": true }
+          ]
+        },
+        {
+          "id": 10,
+          "type": "stat",
+          "title": "work-1 Disk",
+          "description": "NVMe root filesystem used on work-1.",
+          "gridPos": { "x": 6, "y": 15, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent", "decimals": 1,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "(1 - node_filesystem_avail_bytes{instance=~\"192.168.10.101:.*\",mountpoint=\"/\",fstype!=\"tmpfs\"} / node_filesystem_size_bytes{instance=~\"192.168.10.101:.*\",mountpoint=\"/\",fstype!=\"tmpfs\"}) * 100", "legendFormat": "work-1", "instant": true }
+          ]
+        },
+        {
+          "id": 11,
+          "type": "stat",
+          "title": "work-2 Disk",
+          "description": "NVMe root filesystem used on work-2.",
+          "gridPos": { "x": 12, "y": 15, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent", "decimals": 1,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "(1 - node_filesystem_avail_bytes{instance=~\"192.168.10.102:.*\",mountpoint=\"/\",fstype!=\"tmpfs\"} / node_filesystem_size_bytes{instance=~\"192.168.10.102:.*\",mountpoint=\"/\",fstype!=\"tmpfs\"}) * 100", "legendFormat": "work-2", "instant": true }
+          ]
+        },
+        {
+          "id": 12,
+          "type": "stat",
+          "title": "work-3 Disk",
+          "description": "NVMe root filesystem used on work-3.",
+          "gridPos": { "x": 18, "y": 15, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent", "decimals": 1,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "(1 - node_filesystem_avail_bytes{instance=~\"192.168.10.103:.*\",mountpoint=\"/\",fstype!=\"tmpfs\"} / node_filesystem_size_bytes{instance=~\"192.168.10.103:.*\",mountpoint=\"/\",fstype!=\"tmpfs\"}) * 100", "legendFormat": "work-3", "instant": true }
+          ]
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 19 },
+          "id": 103,
+          "title": "Network I/O",
+          "type": "row"
+        },
+        {
+          "id": 13,
+          "type": "timeseries",
+          "title": "Network Receive (all nodes)",
+          "description": "Bytes received per second per node, excluding loopback.",
+          "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "Bps", "decimals": 1,
+              "custom": { "lineWidth": 2, "fillOpacity": 10, "lineInterpolation": "smooth" }
+            }
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            { "expr": "sum by (instance) (rate(node_network_receive_bytes_total{instance=~\"192.168.10.100:.*|192.168.10.101:.*|192.168.10.102:.*|192.168.10.103:.*\",device!=\"lo\"}[5m]))", "legendFormat": "{{instance}}" }
+          ]
+        },
+        {
+          "id": 14,
+          "type": "timeseries",
+          "title": "Network Transmit (all nodes)",
+          "description": "Bytes transmitted per second per node, excluding loopback.",
+          "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "Bps", "decimals": 1,
+              "custom": { "lineWidth": 2, "fillOpacity": 10, "lineInterpolation": "smooth" }
+            }
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            { "expr": "sum by (instance) (rate(node_network_transmit_bytes_total{instance=~\"192.168.10.100:.*|192.168.10.101:.*|192.168.10.102:.*|192.168.10.103:.*\",device!=\"lo\"}[5m]))", "legendFormat": "{{instance}}" }
+          ]
+        }
+      ]
+    }
