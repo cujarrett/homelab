@@ -1,17 +1,11 @@
 apiVersion: platform.local.lab/v1alpha1
-kind: XSpa
+kind: XApi
 metadata:
-  name: my-vinyl
+  name: my-vinyl-api
 spec:
-  parameters:
-    image: ghcr.io/cujarrett/my-vinyl-spa:main
-    host: myvinyl.mattjarrett.dev
-    tlsIssuer: letsencrypt-prod
-    imagePullSecret: ghcr-pull-secret
-    contentSecurityPolicy: "default-src 'self'; connect-src 'self' https://my-vinyl-api.mattjarrett.dev; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://i.discogs.com; frame-ancestors 'none'; base-uri 'self';"
-    healthCheckPath: /healthz
-    replicas: 1
-    cpuRequest: "50m"
-    cpuLimit: "200m"
-    memoryRequest: "64Mi"
-    memoryLimit: "128Mi"
+  image: ghcr.io/cujarrett/my-vinyl-api:main
+  port: 8080
+  host: my-vinyl-api.mattjarrett.dev
+  tlsIssuer: letsencrypt-prod
+  secretRef:
+    name: discogs-credentials
