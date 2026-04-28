@@ -1,0 +1,219 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-gitops-platform
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  gitops-platform.json: |-
+    {
+      "title": "GitOps & Platform",
+      "uid": "homelab-gitops",
+      "editable": true,
+      "graphTooltip": 1,
+      "time": { "from": "now-6h", "to": "now" },
+      "timepicker": {},
+      "refresh": "1m",
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "ArgoCD Apps",
+          "description": "Total number of ArgoCD applications.",
+          "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "none", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
+          "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 } },
+          "targets": [
+            { "expr": "count(argocd_app_info)", "legendFormat": "total apps", "instant": true }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Healthy Apps",
+          "description": "Apps with health_status=Healthy.",
+          "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 1 }, { "color": "green", "value": 10 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "count(argocd_app_info{health_status=\"Healthy\"})", "legendFormat": "healthy", "instant": true }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Synced Apps",
+          "description": "Apps with sync_status=Synced.",
+          "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 1 }, { "color": "green", "value": 10 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "count(argocd_app_info{sync_status=\"Synced\"})", "legendFormat": "synced", "instant": true }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Out of Sync",
+          "description": "Apps not in Synced state — should be 0 in a healthy cluster.",
+          "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "count(argocd_app_info{sync_status!=\"Synced\"}) or vector(0)", "legendFormat": "out of sync", "instant": true }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "table",
+          "title": "ArgoCD App Status",
+          "description": "Per-app health and sync status. Sourced from argocd_app_info metric.",
+          "gridPos": { "x": 0, "y": 4, "w": 24, "h": 12 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "sortBy": [{ "displayName": "name", "desc": false }], "footer": { "show": false } },
+          "fieldConfig": {
+            "defaults": { "custom": { "align": "left" } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "health_status" }, "properties": [
+                { "id": "custom.width", "value": 140 },
+                { "id": "mappings", "value": [
+                  { "type": "value", "options": { "Healthy": { "text": "Healthy", "color": "green", "index": 0 }, "Degraded": { "text": "Degraded", "color": "red", "index": 1 }, "Progressing": { "text": "Progressing", "color": "yellow", "index": 2 }, "Missing": { "text": "Missing", "color": "orange", "index": 3 }, "Unknown": { "text": "Unknown", "color": "grey", "index": 4 } } }
+                ] },
+                { "id": "custom.displayMode", "value": "color-text" }
+              ] },
+              { "matcher": { "id": "byName", "options": "sync_status" }, "properties": [
+                { "id": "custom.width", "value": 120 },
+                { "id": "mappings", "value": [
+                  { "type": "value", "options": { "Synced": { "text": "Synced", "color": "green", "index": 0 }, "OutOfSync": { "text": "Out of Sync", "color": "orange", "index": 1 }, "Unknown": { "text": "Unknown", "color": "grey", "index": 2 } } }
+                ] },
+                { "id": "custom.displayMode", "value": "color-text" }
+              ] },
+              { "matcher": { "id": "byName", "options": "Value" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "Time" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "__name__" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "job" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "instance" }, "properties": [ { "id": "custom.hidden", "value": true } ] }
+            ]
+          },
+          "targets": [
+            { "expr": "argocd_app_info", "instant": true, "legendFormat": "", "format": "table", "refId": "A" }
+          ],
+          "transformations": [
+            { "id": "filterFieldsByName", "options": { "include": { "names": ["name", "health_status", "sync_status", "project", "dest_namespace"] } } },
+            { "id": "sortBy", "options": { "fields": [{ "displayName": "name", "desc": false }] } }
+          ]
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 },
+          "id": 104,
+          "title": "Workloads",
+          "type": "row"
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "Running Pods by Namespace",
+          "description": "Count of Running pods per namespace over time. Drops indicate restarts or scaling events.",
+          "gridPos": { "x": 0, "y": 17, "w": 12, "h": 9 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "custom": { "lineWidth": 2, "fillOpacity": 10, "lineInterpolation": "smooth" }
+            }
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            { "expr": "sum by (namespace) (kube_pod_status_phase{phase=\"Running\",namespace=~\"argocd|monitoring|longhorn-system|adguard|cloudflare|cert-manager|crossplane-system|mattjarrett-com|mattjarrett-dev|blog\"})", "legendFormat": "{{namespace}}" }
+          ]
+        },
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "Container Restarts per Hour (by Namespace)",
+          "description": "Container restart rate per namespace. Spikes indicate crash-looping or OOM events.",
+          "gridPos": { "x": 12, "y": 17, "w": 12, "h": 9 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "custom": { "lineWidth": 2, "fillOpacity": 8, "lineInterpolation": "smooth" }
+            }
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            { "expr": "sum by (namespace) (increase(kube_pod_container_status_restarts_total{namespace=~\"argocd|monitoring|longhorn-system|adguard|cloudflare|cert-manager|crossplane-system|mattjarrett-com|mattjarrett-dev|blog\"}[1h]))", "legendFormat": "{{namespace}}" }
+          ]
+        },
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "ArgoCD Reconciliation Rate",
+          "description": "ArgoCD application controller reconcile operations per minute. High rate may indicate frequent drift.",
+          "gridPos": { "x": 0, "y": 26, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops", "decimals": 2,
+              "custom": { "lineWidth": 2, "fillOpacity": 10, "lineInterpolation": "smooth" }
+            }
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            { "expr": "sum by (app) (rate(argocd_app_reconcile_count[5m])) * 60", "legendFormat": "{{app}}" }
+          ]
+        },
+        {
+          "id": 9,
+          "type": "timeseries",
+          "title": "Longhorn Volume Usage",
+          "description": "Longhorn actual size on disk per volume. Helps identify volumes growing unexpectedly.",
+          "gridPos": { "x": 12, "y": 26, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes", "decimals": 1,
+              "custom": { "lineWidth": 2, "fillOpacity": 8, "lineInterpolation": "smooth" }
+            }
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            { "expr": "longhorn_volume_actual_size_bytes", "legendFormat": "{{volume}}" }
+          ]
+        }
+      ]
+    }

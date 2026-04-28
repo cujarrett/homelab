@@ -16,6 +16,28 @@ data:
       "timepicker": {},
       "refresh": "5m",
       "schemaVersion": 38,
+      "templating": {
+        "list": [
+          {
+            "current": { "selected": true, "text": "All", "value": ".*" },
+            "hide": 0,
+            "includeAll": false,
+            "label": "HTTP Code",
+            "multi": false,
+            "name": "status_code",
+            "options": [
+              { "selected": true, "text": "All", "value": ".*" },
+              { "selected": false, "text": "2xx Success", "value": "2.." },
+              { "selected": false, "text": "3xx Redirect", "value": "3.." },
+              { "selected": false, "text": "4xx Client Error", "value": "4.." },
+              { "selected": false, "text": "5xx Server Error", "value": "5.." }
+            ],
+            "query": "All : .*, 2xx Success : 2.., 3xx Redirect : 3.., 4xx Client Error : 4.., 5xx Server Error : 5..",
+            "skipUrlSync": false,
+            "type": "custom"
+          }
+        ]
+      },
       "panels": [
         {
           "id": 1,
@@ -36,7 +58,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[$__range]))",
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\",code=~\"$status_code\"}[$__range]))",
               "legendFormat": "requests",
               "instant": true
             }
@@ -61,7 +83,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes\"}[$__range]))",
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes\",code=~\"$status_code\"}[$__range]))",
               "legendFormat": "requests",
               "instant": true
             }
@@ -91,11 +113,11 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[1h]))",
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\",code=~\"$status_code\"}[1h]))",
               "legendFormat": "blog.mattjarrett.dev"
             },
             {
-              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes\"}[1h]))",
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes\",code=~\"$status_code\"}[1h]))",
               "legendFormat": "mattjarrett.dev"
             }
           ]
@@ -170,6 +192,45 @@ data:
               "legendFormat": "Success Rate",
               "instant": true
             }
+          ]
+        },
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "HTTP Status Code Breakdown",
+          "description": "Requests per hour by HTTP status code class. 2xx = success, 3xx = redirect, 4xx = client errors / bots, 5xx = server errors. Always shows all classes regardless of the filter above.",
+          "gridPos": { "x": 0, "y": 18, "w": 24, "h": 10 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "custom": { "lineWidth": 2, "fillOpacity": 8, "lineInterpolation": "smooth" }
+            },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "blog 2xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "blog 3xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "light-blue", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "blog 4xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }, { "id": "custom.lineStyle", "value": { "dash": [10, 10], "fill": "dash" } }] },
+              { "matcher": { "id": "byName", "options": "blog 5xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "mattjarrett.dev 2xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "mattjarrett.dev 3xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "light-green", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "mattjarrett.dev 4xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }, { "id": "custom.lineStyle", "value": { "dash": [10, 10], "fill": "dash" } }] },
+              { "matcher": { "id": "byName", "options": "mattjarrett.dev 5xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "dark-red", "mode": "fixed" } }] }
+            ]
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\",code=~\"2..\"}[1h]))", "legendFormat": "blog 2xx", "refId": "A" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\",code=~\"3..\"}[1h]))", "legendFormat": "blog 3xx", "refId": "B" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\",code=~\"4..\"}[1h]))", "legendFormat": "blog 4xx", "refId": "C" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\",code=~\"5..\"}[1h]))", "legendFormat": "blog 5xx", "refId": "D" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes\",code=~\"2..\"}[1h]))", "legendFormat": "mattjarrett.dev 2xx", "refId": "E" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes\",code=~\"3..\"}[1h]))", "legendFormat": "mattjarrett.dev 3xx", "refId": "F" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes\",code=~\"4..\"}[1h]))", "legendFormat": "mattjarrett.dev 4xx", "refId": "G" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes\",code=~\"5..\"}[1h]))", "legendFormat": "mattjarrett.dev 5xx", "refId": "H" }
           ]
         }
       ]

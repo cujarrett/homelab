@@ -156,36 +156,12 @@ data:
               "unit": "short"
             },
             "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "mattjarrett.dev"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "green",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "blog.mattjarrett.dev"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "blue",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              }
+              { "matcher": { "id": "byName", "options": "mattjarrett.dev" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "blog.mattjarrett.dev" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "blog 2xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }, { "id": "custom.lineWidth", "value": 1 }] },
+              { "matcher": { "id": "byName", "options": "blog 4xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }, { "id": "custom.lineStyle", "value": { "dash": [8, 8], "fill": "dash" } }, { "id": "custom.lineWidth", "value": 1 }] },
+              { "matcher": { "id": "byName", "options": "mattjarrett.dev 2xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }, { "id": "custom.lineWidth", "value": 1 }] },
+              { "matcher": { "id": "byName", "options": "mattjarrett.dev 4xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }, { "id": "custom.lineStyle", "value": { "dash": [8, 8], "fill": "dash" } }, { "id": "custom.lineWidth", "value": 1 }] }
             ]
           },
           "gridPos": {
@@ -218,8 +194,26 @@ data:
             {
               "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes\"}[1h]))",
               "legendFormat": "mattjarrett.dev",
-              "refId": "B"
-            }
+              "refId": "B"            },
+            {
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\",code=~\"2..\"}[1h]))",
+              "legendFormat": "blog 2xx",
+              "refId": "C"
+            },
+            {
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\",code=~\"4..\"}[1h]))",
+              "legendFormat": "blog 4xx",
+              "refId": "D"
+            },
+            {
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes\",code=~\"2..\"}[1h]))",
+              "legendFormat": "mattjarrett.dev 2xx",
+              "refId": "E"
+            },
+            {
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes\",code=~\"4..\"}[1h]))",
+              "legendFormat": "mattjarrett.dev 4xx",
+              "refId": "F"            }
           ],
           "title": "Requests per Hour",
           "type": "timeseries"
