@@ -99,6 +99,16 @@ spec:
                         return 404;
                     }
 
+                    # Endpoint/framework probes (Spring Boot, Symfony, Magento, etc.)
+                    location ~* (^/actuator(/|$)|^/swagger(/|$)|^/openapi(/|$)|^/v2/_catalog(/|$)|^/v3/api-docs(/|$)|^/console(/|$)|^/telescope(/|$)|^/server-status$|^/_profiler(/|$)|^/_environment(/|$)|^/rest/(V[0-9]+|default)(/|$)) {
+                        return 404;
+                    }
+
+                    # Config/secret file probes not covered above
+                    location ~* (application\.(yml|yaml|properties)|appsettings(\.[^.]+)?\.json|terraform\.tfstate(\.backup)?|serverless\.yml|connectionstrings\.config|\.composer/) {
+                        return 404;
+                    }
+
                     # SPA catch-all: client-side router handles unmatched paths
                     location / {
                         try_files $uri $uri/ /index.html;
