@@ -1,0 +1,13 @@
+apiVersion: platform.local.lab/v1alpha1
+kind: XApi
+metadata:
+  name: platform-api-starter
+spec:
+  image: ghcr.io/cujarrett/platform-api-starter:main
+  port: 8080
+  host: platform-api-starter.local.lab
+  environment: prod
+  cache:
+    enabled: true
+  objectStorage:
+    enabled: true
