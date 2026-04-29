@@ -13,6 +13,8 @@ spec:
   template:
     metadata:
       name: "{{metadata.name}}"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
     spec:
       revisionHistoryLimit: 5
       project: workloads
