@@ -7,7 +7,6 @@ spec:
     image: ghcr.io/cujarrett/my-vinyl-spa:main
     host: myvinyl.mattjarrett.dev
     tlsIssuer: letsencrypt-prod
-    imagePullSecret: ghcr-pull-secret
     contentSecurityPolicy: "default-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://i.discogs.com; frame-ancestors 'none'; base-uri 'self';"
     healthCheckPath: /healthz
     replicas: 1
