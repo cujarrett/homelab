@@ -5,6 +5,8 @@ metadata:
 spec:
   image: ghcr.io/cujarrett/my-vinyl-api:main
   port: 8080
+  host: my-vinyl-api.local.lab
+  tlsIssuer: local-lab-ca-issuer
   environment: test
   cache:
     enabled: true
