@@ -79,6 +79,16 @@ spec:
                       type: string
                       default: "64Mi"
                       description: "Memory limit for the nginx container."
+                    apiProxy:
+                      type: object
+                      description: "Optional API proxy. When enabled, nginx proxies /api/ to an in-cluster service, keeping the API off the public internet."
+                      properties:
+                        enabled:
+                          type: boolean
+                          default: false
+                        upstream:
+                          type: string
+                          description: "FQDN of the upstream service (e.g. my-vinyl-api.my-vinyl-api.svc.cluster.local). nginx proxies /api/ → http://<upstream>/."
                   required:
                     - image
                     - host
