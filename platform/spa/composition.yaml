@@ -20,6 +20,7 @@ spec:
             {{- $name := .observed.composite.resource.metadata.name }}
             {{- $params := .observed.composite.resource.spec.parameters }}
             {{- $namespace := $name }}
+            {{- $apiProxyEnabled := and $params.apiProxy $params.apiProxy.enabled }}
             # --- Namespace ---
             apiVersion: v1
             kind: Namespace
@@ -108,6 +109,17 @@ spec:
                     location ~* (application\.(yml|yaml|properties)|appsettings(\.[^.]+)?\.json|terraform\.tfstate(\.backup)?|serverless\.yml|connectionstrings\.config|\.composer/) {
                         return 404;
                     }
+
+                    {{- if $apiProxyEnabled }}
+                    # API proxy: routes /api/ to in-cluster service (no public exposure needed)
+                    location /api/ {
+                        proxy_pass http://{{ $params.apiProxy.upstream }}/;
+                        proxy_set_header Host $host;
+                        proxy_set_header X-Real-IP $remote_addr;
+                        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                        proxy_set_header X-Forwarded-Proto $scheme;
+                    }
+                    {{- end }}
 
                     # SPA catch-all: client-side router handles unmatched paths
                     location / {
