@@ -23,3 +23,6 @@ rules:
   - apiGroups: ["monitoring.coreos.com"]
     resources: ["servicemonitors", "servicemonitors/status"]
     verbs: ["*"]
+  - apiGroups: ["jetstream.nats.io"]
+    resources: ["streams", "consumers", "streams/status", "consumers/status"]
+    verbs: ["*"]
