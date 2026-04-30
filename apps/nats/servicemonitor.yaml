@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: nats
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - nats
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nats
+  endpoints:
+    - port: prom-metrics
+      path: /metrics
+      interval: 30s
