@@ -36,13 +36,13 @@ Crossplane composition that hosts an Angular (or any static) SPA on nginx.
 apiVersion: platform.local.lab/v1alpha1
 kind: XSpa
 metadata:
-  name: my-app
-  namespace: my-app
+  name: foo
+  namespace: foo
 spec:
   parameters:
-    namespace: my-app
-    image: ghcr.io/owner/my-app:sha-abc123
-    host: my-app.local.lab
+    namespace: foo
+    image: ghcr.io/owner/foo:sha-abc123
+    host: foo.local.lab
     tlsIssuer: local-lab-ca-issuer
     argocd:
       repoURL: https://github.com/owner/homelab.git

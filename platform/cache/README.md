@@ -10,7 +10,7 @@ Consumed by `XApi` when `cache.enabled: true`. Can also be used standalone or by
 
 ## Binding secret
 
-Secret name equals the XR name; namespace is the XR name with `-cache` stripped (e.g. `my-app-cache` → secret in namespace `my-app`).
+Secret name equals the XR name; namespace is the XR name with `-cache` stripped (e.g. `foo-cache` → secret in namespace `foo`).
 
 All keys are automatically wired — no manual credential handling required.
 
@@ -35,36 +35,36 @@ All keys are automatically wired — no manual credential handling required.
 apiVersion: platform.local.lab/v1alpha1
 kind: XCache
 metadata:
-  name: my-app-cache
+  name: foo-cache
 spec:
   parameters:
     environment: test   # in-cluster Redis — no AWS resources provisioned
-# Secret written to: my-app/my-app-cache
+# Secret written to: foo/foo-cache
 ```
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
 kind: XCache
 metadata:
-  name: my-app-cache
+  name: foo-cache
 spec:
   parameters:
     environment: prod  # explicit prod — provisions AWS ElastiCache
     region: us-east-1
     size: small   # small=cache.t4g.micro | medium=cache.t4g.small | large=cache.t4g.medium
-# Secret written to: my-app/my-app-cache
+# Secret written to: foo/foo-cache
 ```
 
 ## Operations
 
 ```bash
 # XR status
-kubectl get xcaches my-app-cache
+kubectl get xcaches foo-cache
 
 # Binding secret — confirm all 4 keys are present
-kubectl get secret my-app-cache -n my-app \
+kubectl get secret foo-cache -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 
 # Detailed conditions — shows exactly WHY something is not ready
-kubectl get xcache my-app-cache -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get xcache foo-cache -o jsonpath='{.status.conditions}' | python3 -m json.tool
 ```
