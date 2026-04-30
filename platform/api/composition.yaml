@@ -46,6 +46,8 @@ spec:
             {{- $tlsIssuer := $xr.spec.parameters.tlsIssuer | default "local-lab-ca-issuer" }}
             {{- $secretRefName := "" }}
             {{- if $xr.spec.parameters.secretRef }}{{- $secretRefName = $xr.spec.parameters.secretRef.name }}{{- end }}
+            {{- $topicRefName := "" }}
+            {{- if $xr.spec.parameters.topicRef }}{{- $topicRefName = $xr.spec.parameters.topicRef.name }}{{- end }}
             # --- Namespace ---
             apiVersion: v1
             kind: Namespace
@@ -137,6 +139,14 @@ spec:
                         # servicebinding.io convention: $SERVICE_BINDING_ROOT/<binding>/<key>
                         - name: SERVICE_BINDING_ROOT
                           value: /bindings
+                      {{- if $topicRefName }}
+                        # XTopic wiring: injected automatically from topicRef.
+                        # App reads NATS_URL + NATS_STREAM to publish events.
+                        - name: NATS_URL
+                          value: "nats://nats.nats.svc.cluster.local:4222"
+                        - name: NATS_STREAM
+                          value: {{ $topicRefName | upper | quote }}
+                      {{- end }}
                       {{- if $secretRefName }}
                       envFrom:
                         - secretRef:
