@@ -5,8 +5,8 @@ Crossplane platform primitive that provisions a Redis-compatible cache cluster a
 Consumed by `XApi` when `cache.enabled: true`. Can also be used standalone or by other platform compositions.
 
 ## What it provisions
-- `environment: test` — **Redis Deployment + Service** (in-cluster, `redis:7-alpine`) + binding Secret; no AWS resources
-- `environment: prod` — **ElastiCache ReplicationGroup** (AWS) + binding Secret
+- `environment: test` — **in-cluster cache cluster** + binding Secret; no cloud resources
+- `environment: prod` — **cloud-managed cache cluster** + binding Secret
 
 ## Binding secret
 
@@ -63,10 +63,6 @@ kubectl get xcaches my-app-cache
 kubectl get secret my-app-cache -n my-app \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 
-# Ping Redis directly (environment: test — in-cluster only)
-kubectl run redis-test --rm -it --restart=Never \
-  --image=redis:7-alpine \
-  -n my-app \
-  -- redis-cli -h my-app-cache-redis.my-app.svc.cluster.local ping
-# Expected output: PONG
+# Detailed conditions — shows exactly WHY something is not ready
+kubectl get xcache my-app-cache -o jsonpath='{.status.conditions}' | python3 -m json.tool
 ```
