@@ -1,0 +1,12 @@
+apiVersion: platform.local.lab/v1alpha1
+kind: XTopic
+metadata:
+  name: nms-events
+spec:
+  parameters:
+    streamName: NMS-EVENTS
+    subjects:
+      - "nms.event.>"
+    retention: limits
+    maxAge: "720h"
+    replicas: 3
