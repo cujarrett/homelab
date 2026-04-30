@@ -1,0 +1,102 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: xsubscriptions.platform.local.lab
+spec:
+  group: platform.local.lab
+  scope: Cluster
+  names:
+    kind: XSubscription
+    plural: xsubscriptions
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [parameters]
+              properties:
+                parameters:
+                  type: object
+                  required: [topicRef, image]
+                  properties:
+                    topicRef:
+                      type: object
+                      description: >
+                        Reference to an XTopic instance to consume from.
+                        The stream name is derived automatically: topicRef.name uppercased.
+                      required: [name]
+                      properties:
+                        name:
+                          type: string
+                          description: metadata.name of the XTopic instance (e.g. foo-events).
+                    filterSubject:
+                      type: string
+                      description: >
+                        Only deliver messages matching this subject. Supports wildcards:
+                        * matches a single token, > matches one or more tokens.
+                        Defaults to > (all subjects on the stream).
+                      default: ">"
+                    image:
+                      type: string
+                      description: Container image for the consumer Deployment.
+                    port:
+                      type: integer
+                      description: >
+                        Port the container exposes for the Service and ServiceMonitor.
+                        Typically 9090 for Prometheus /metrics.
+                      default: 9090
+                    deliverPolicy:
+                      type: string
+                      description: >
+                        Which messages to deliver on first connect.
+                        all: replay all messages from stream start (default).
+                        new: only messages published after subscription.
+                        last: only the most recent message.
+                        lastPerSubject: most recent message per subject.
+                      default: all
+                      enum:
+                        - all
+                        - new
+                        - last
+                        - lastPerSubject
+                    ackPolicy:
+                      type: string
+                      description: >
+                        How messages should be acknowledged.
+                        explicit: app must call ack/nack per message (default; safe for at-least-once).
+                        all: ack a sequence to implicitly ack all prior messages.
+                        none: no acks required (fire-and-forget).
+                      default: explicit
+                      enum:
+                        - explicit
+                        - all
+                        - none
+                    ackWait:
+                      type: string
+                      description: >
+                        How long NATS waits before redelivering an unacknowledged message.
+                        Go duration string (e.g. 30s, 5m). Defaults to 30s.
+                      default: "30s"
+                    replicas:
+                      type: integer
+                      description: >
+                        Number of consumer Deployment replicas. Use 1 for ordered processing.
+                        For competing consumers, increase replicas and set a deliverGroup in NATS.
+                      default: 1
+                      minimum: 1
+                    secretRef:
+                      type: object
+                      description: >
+                        Optional secret to inject as environment variables into the consumer Deployment.
+                        Use for API keys, bearer tokens, or other runtime secrets.
+                        Secret must exist in the same namespace as the consumer Deployment.
+                      required: [name]
+                      properties:
+                        name:
+                          type: string
+                          description: Name of the Secret in the consumer Deployment namespace.

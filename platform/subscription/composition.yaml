@@ -1,0 +1,152 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xsubscription
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: XSubscription
+  mode: Pipeline
+  pipeline:
+    - step: render-subscription
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $ns := $name }}
+            {{- $params := $xr.spec.parameters }}
+            {{- /* Derive NATS stream name from topicRef.name by convention: nms-events → NMS-EVENTS */}}
+            {{- $stream := $params.topicRef.name | upper }}
+            # --- Namespace ---
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: namespace
+                gotemplating.fn.crossplane.io/ready: "True"
+            ---
+            # --- NACK Consumer ---
+            # NACK controller watches this object and creates a durable JetStream consumer.
+            # The consumer is pull-based (no deliverSubject set) — the Deployment pulls
+            # messages explicitly via the NATS client library.
+            #
+            # durableName persists consumer position across restarts — NATS remembers
+            # the last acked sequence so the consumer resumes where it left off.
+            #
+            # ackPolicy: explicit → app must ack each message; unacked messages are
+            # redelivered after ackWait. Safe default for at-least-once processing.
+            #
+            # deliverPolicy: all → on first connect, replay all existing messages
+            # from stream start. Change to "new" for a consumer that only sees
+            # messages published after it was created.
+            apiVersion: jetstream.nats.io/v1beta2
+            kind: Consumer
+            metadata:
+              name: {{ $name }}
+              namespace: nats
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: consumer
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              streamName: {{ $stream }}
+              durableName: {{ $name }}
+              filterSubject: {{ $params.filterSubject | default ">" | quote }}
+              deliverPolicy: {{ $params.deliverPolicy | default "all" }}
+              ackPolicy: {{ $params.ackPolicy | default "explicit" }}
+              ackWait: {{ $params.ackWait | default "30s" | quote }}
+              maxAckPending: -1
+            ---
+            # --- Service ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              labels:
+                app: xsubscription
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: service
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                app: xsubscription
+              ports:
+                - name: metrics
+                  port: {{ $params.port | default 9090 }}
+                  targetPort: {{ $params.port | default 9090 }}
+            ---
+            # --- Deployment ---
+            # Injects NATS connection details as env vars. The consumer app uses these
+            # to connect to NATS, bind to the durable consumer, and pull messages.
+            # No NATS credentials needed — in-cluster connections are unauthenticated.
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              labels:
+                app: xsubscription
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: deployment
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              replicas: {{ $params.replicas | default 1 }}
+              selector:
+                matchLabels:
+                  app: xsubscription
+              template:
+                metadata:
+                  labels:
+                    app: xsubscription
+                spec:
+                  containers:
+                    - name: consumer
+                      image: {{ $params.image }}
+                      ports:
+                        - containerPort: {{ $params.port | default 9090 }}
+                          name: metrics
+                      env:
+                        - name: NATS_URL
+                          value: "nats://nats.nats.svc.cluster.local:4222"
+                        - name: NATS_STREAM
+                          value: {{ $stream | quote }}
+                        - name: NATS_CONSUMER
+                          value: {{ $name | quote }}
+                        - name: NATS_FILTER_SUBJECT
+                          value: {{ $params.filterSubject | default ">" | quote }}
+                        - name: PORT
+                          value: {{ $params.port | default 9090 | quote }}
+                      {{- if $params.secretRef }}
+                      envFrom:
+                        - secretRef:
+                            name: {{ $params.secretRef.name }}
+                      {{- end }}
+            ---
+            # --- ServiceMonitor ---
+            # Tells Prometheus to scrape /metrics on the consumer's metrics port.
+            apiVersion: monitoring.coreos.com/v1
+            kind: ServiceMonitor
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              labels:
+                app: xsubscription
+                release: monitoring
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: servicemonitor
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels:
+                  app: xsubscription
+              endpoints:
+                - port: metrics
+                  path: /metrics
+                  interval: 30s
