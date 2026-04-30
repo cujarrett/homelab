@@ -1,0 +1,12 @@
+apiVersion: platform.local.lab/v1alpha1
+kind: XSubscription
+metadata:
+  name: nms-metrics-consumer
+spec:
+  parameters:
+    topicRef:
+      name: nms-events
+    filterSubject: "nms.event.snapshot"
+    deliverPolicy: all
+    ackPolicy: explicit
+    ackWait: "30s"
