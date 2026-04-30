@@ -28,6 +28,18 @@ Check for:
 
 If all checks pass, state "All files safe to commit." If any issue is found, describe it and suggest a fix before the user commits.
 
+## Philosophy: Grug-Brained Development
+
+> "Complexity very, very bad." — [grugbrain.dev](https://grugbrain.dev/)
+
+- **Say no.** The best weapon against complexity is the word "no". No new feature, no new abstraction, until it earns its place.
+- **No abstraction until a pattern repeats three times.** Let cut points emerge naturally from the code; don't invent them up front.
+- **80/20 solutions.** Ship 80% of the value with 20% of the code. Ugly but working beats elegant but over-engineered.
+- **Chesterton's Fence.** Understand why code exists before removing it. If you don't see the use, go away and think.
+- **Boring, obvious code wins.** Intermediate variables with good names beat clever one-liners. Easier to debug.
+- **DRY is not a law.** A little copy-paste beats a complex abstraction built for two cases.
+- **No FOLD** (Fear Of Looking Dumb). If something is too complex, say so. That's a signal to simplify, not a personal failing.
+
 ## Overview
 A 4-node k3s Kubernetes homelab managed entirely via GitOps with ArgoCD.
 All workloads are defined as manifests in this repo under `apps/`, `platform/`, and `scripts/`.
