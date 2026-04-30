@@ -1,0 +1,62 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xtopic
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: XTopic
+  mode: Pipeline
+  pipeline:
+    - step: render-stream
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $params := $xr.spec.parameters }}
+            # --- NACK JetStream Stream ---
+            # NACK controller (running in nats namespace) watches this object and
+            # calls the NATS API to create/update the stream. This is the NATS
+            # equivalent of a Kafka Topic — a durable, persistent named channel.
+            #
+            # retention: limits  → like Kafka log retention (oldest msgs removed at limits)
+            # retention: interest → msgs removed when all consumers have read them
+            # retention: workqueue → msgs removed when any consumer acks (competing consumers)
+            #
+            # replicas: 3 → each message written to 3 NATS nodes (Raft consensus)
+            # Kafka equivalent: replication.factor=3
+            apiVersion: jetstream.nats.io/v1beta2
+            kind: Stream
+            metadata:
+              name: {{ $name }}
+              namespace: nats
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: stream
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              # Stream name as seen in NATS (nats stream ls)
+              name: {{ $params.streamName }}
+              # Subjects this stream captures — NATS wildcard > = "all subtokens"
+              # e.g. nms.harvest.> captures nms.harvest.crops, nms.harvest.minerals, etc.
+              subjects:
+              {{- range $params.subjects }}
+                - {{ . | quote }}
+              {{- end }}
+              retention: {{ $params.retention | default "limits" }}
+              # file storage survives pod restarts — memory is faster but ephemeral
+              storage: file
+              # Raft replication across NATS cluster — Kafka replication.factor equivalent
+              replicas: {{ $params.replicas | default 3 }}
+              # Go duration string — Kafka log.retention.ms equivalent
+              maxAge: {{ $params.maxAge | default "720h" }}
+              # -1 = unlimited — Kafka log.retention.bytes equivalent
+              maxBytes: {{ $params.maxBytes | default -1 }}
+              maxConsumers: -1
+              maxMsgs: -1
+              discard: old

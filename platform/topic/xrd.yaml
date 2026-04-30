@@ -1,0 +1,76 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: xtopics.platform.local.lab
+spec:
+  group: platform.local.lab
+  scope: Cluster
+  names:
+    kind: XTopic
+    plural: xtopics
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [parameters]
+              properties:
+                parameters:
+                  type: object
+                  required: [streamName, subjects]
+                  properties:
+                    streamName:
+                      type: string
+                      description: >
+                        NATS JetStream stream name (e.g. NMS-HARVEST).
+                        Must not contain spaces, wildcards, or dots.
+                        Uppercase is conventional for stream names.
+                    subjects:
+                      type: array
+                      description: >
+                        NATS subjects this stream captures. Supports wildcards:
+                        * matches a single token, > matches one or more tokens.
+                        e.g. ["nms.harvest.>"] captures all nms.harvest.* subjects.
+                      minItems: 1
+                      items:
+                        type: string
+                    retention:
+                      type: string
+                      description: >
+                        How messages are retained once limits are reached.
+                        limits: remove oldest when limits hit (default, like Kafka log retention).
+                        interest: remove when all consumers have received (like SQS).
+                        workqueue: remove when any consumer has ack'd (competing consumers pattern).
+                      default: limits
+                      enum:
+                        - limits
+                        - interest
+                        - workqueue
+                    maxAge:
+                      type: string
+                      description: >
+                        Maximum age of any message expressed as a Go duration
+                        (e.g. 720h = 30 days, 24h = 1 day). Empty string means unlimited.
+                        Maps to Kafka's log.retention.ms.
+                      default: "720h"
+                    maxBytes:
+                      type: integer
+                      description: >
+                        Maximum total stream size in bytes. -1 for unlimited.
+                        When exceeded, oldest messages are discarded.
+                        Maps to Kafka's log.retention.bytes.
+                      default: -1
+                      minimum: -1
+                    replicas:
+                      type: integer
+                      description: >
+                        Number of NATS cluster nodes that store a copy of each message.
+                        Must be <= NATS cluster size (3). Higher = more durability.
+                        Maps to Kafka's replication.factor.
+                      default: 3
+                      minimum: 1
