@@ -71,45 +71,12 @@ Per the [servicebinding.io spec](https://servicebinding.io/spec/core/1.1.0/), ea
 | `host` | Cache endpoint hostname |
 | `port` | `6379` |
 
-## Architecture
-
-```
-XApi: metadata.name = "foo"
-│  namespace (derived) = "foo"
-│  spec.objectStorage.enabled: true
-│
-├── XObjectStorage sub-XR: name = "foo-object-storage"
-│   │  spec.environment = "prod"        ← bubbled from XApi
-│   │  (composition creates Secret "foo-object-storage" in namespace "foo" directly)
-│   │
-│   ├── Bucket (MR)                            ← s3.aws.upbound.io
-│   │   └─ connectionDetails: type, provider, bucket, region
-│   ├── User (MR)                              ← iam.aws.upbound.io
-│   ├── AccessKey (MR)                         ← iam.aws.upbound.io
-│   │   └─ connectionDetails: username, password → aggregated into XR connection secret
-│   └── UserPolicyAttachment (MR)              ← iam.aws.upbound.io
-│       (attaches shared ABAC policy — no inline Policy MR needed)
-│       → Secret "foo-object-storage" in namespace "foo"
-│         keys: type, provider, bucket, region, username, password
-│
-└── Deployment
-    ├── initContainer: waits until /bindings/object-storage/type exists
-    └── volume: mounts Secret "foo-object-storage" at /bindings/object-storage/
-```
-
-Every placement decision flows from one source: `metadata.name`. The XApi name becomes the namespace. The sub-XR name is `{xapi-name}-object-storage`, which becomes the Secret name. No caller, Backstage template, or CI pipeline needs to know or set any of it.
-
-(`MR` = Managed Resource, the actual AWS resource owned by a provider. `XObjectStorage` is both a reusable platform primitive and a composed resource embedded inside `XApi`.)
-
 ## Operations
 
 ```bash
 # XR status — SYNCED=composition ran, READY=all children healthy
 kubectl get xapi platform-api-starter
 kubectl get xobjectstorage platform-api-starter-object-storage
-
-# AWS managed resources (bucket, IAM user, access key, policy attachment)
-kubectl get managed | grep platform-api-starter
 
 # Detailed conditions — shows exactly WHY something is not ready
 kubectl get xapi platform-api-starter -o jsonpath='{.status.conditions}' | python3 -m json.tool
