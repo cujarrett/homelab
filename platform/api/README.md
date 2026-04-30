@@ -21,7 +21,7 @@ The binding secret is mounted at `$SERVICE_BINDING_ROOT/<binding>/`. Each file i
 | `port` | no | `8080` | Port the container listens on. Service always exposes port 80 → this targetPort. |
 | `host` | no | — | Hostname for the Ingress. If omitted, no Ingress is created. |
 | `tlsIssuer` | no | `local-lab-ca-issuer` | cert-manager ClusterIssuer for TLS. |
-| `environment` | no | `test` | `prod` or `test`. Controls whether cache uses ElastiCache or in-cluster Redis. |
+| `environment` | no | `test` | `prod` or `test`. Controls whether optional integrations use cloud-managed or in-cluster resources. |
 | `objectStorage.enabled` | no | `false` | Provision an object storage bucket and inject credentials |
 | `cache.enabled` | no | `false` | Provision a cache cluster and inject credentials |
 | `secretRef.name` | no | — | Name of a pre-existing Secret to inject via `envFrom`. |
@@ -36,12 +36,13 @@ kind: XApi
 metadata:
   name: platform-api-starter
 spec:
-  image: ghcr.io/cujarrett/platform-api-starter:main
-  port: 8080
-  host: platform-api-starter.local.lab
-  environment: test
-  objectStorage:
-    enabled: true
+  parameters:
+    image: ghcr.io/cujarrett/platform-api-starter:main
+    port: 8080
+    host: platform-api-starter.local.lab
+    environment: test
+    objectStorage:
+      enabled: true
 # Deploys into namespace: platform-api-starter
 ```
 
@@ -56,18 +57,18 @@ Per the [servicebinding.io spec](https://servicebinding.io/spec/core/1.1.0/), ea
 | File | Value |
 |---|---|
 | `type` | `s3` |
-| `provider` | `aws` |
+| `provider` | implementation identifier |
 | `bucket` | Bucket name |
 | `region` | Region string |
-| `username` | IAM access key ID |
-| `password` | IAM secret access key |
+| `username` | Access key ID |
+| `password` | Secret access key |
 
 ### `/bindings/cache/`
 
 | File | Value |
 |---|---|
 | `type` | `redis` |
-| `provider` | `aws` (prod) or `in-cluster` (test) |
+| `provider` | implementation identifier |
 | `host` | Cache endpoint hostname |
 | `port` | `6379` |
 

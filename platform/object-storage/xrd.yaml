@@ -19,11 +19,14 @@ spec:
             spec:
               type: object
               properties:
-                region:
-                  type: string
-                  default: us-east-1
-                  description: "Cloud region for the bucket."
-                environment:
-                  type: string
-                  default: test
-                  description: "Runtime environment (prod or test). Reserved for future routing (e.g. in-cluster MinIO for test). Currently passed through from XApi but does not alter provisioning."
+                parameters:
+                  type: object
+                  properties:
+                    region:
+                      type: string
+                      default: us-east-1
+                      description: "Cloud region for the bucket."
+                    environment:
+                      type: string
+                      default: test
+                      description: "Runtime environment (prod or test). Reserved for future routing (e.g. in-cluster MinIO for test). Currently passed through from XApi but does not alter provisioning."

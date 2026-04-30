@@ -37,7 +37,8 @@ kind: XCache
 metadata:
   name: my-app-cache
 spec:
-  environment: test   # in-cluster Redis — no AWS resources provisioned
+  parameters:
+    environment: test   # in-cluster Redis — no AWS resources provisioned
 # Secret written to: my-app/my-app-cache
 ```
 
@@ -47,9 +48,10 @@ kind: XCache
 metadata:
   name: my-app-cache
 spec:
-  environment: prod  # explicit prod — provisions AWS ElastiCache
-  region: us-east-1
-  size: small   # small=cache.t4g.micro | medium=cache.t4g.small | large=cache.t4g.medium
+  parameters:
+    environment: prod  # explicit prod — provisions AWS ElastiCache
+    region: us-east-1
+    size: small   # small=cache.t4g.micro | medium=cache.t4g.small | large=cache.t4g.medium
 # Secret written to: my-app/my-app-cache
 ```
 

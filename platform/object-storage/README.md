@@ -40,7 +40,8 @@ kind: XObjectStorage
 metadata:
   name: foo-object-storage
 spec:
-  region: us-east-1
+  parameters:
+    region: us-east-1
 # Secret "foo-object-storage" is written to namespace "foo" automatically.
 ```
 
