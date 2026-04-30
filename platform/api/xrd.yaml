@@ -69,6 +69,14 @@ spec:
                         name:
                           type: string
                           description: "metadata.name of the XTopic instance (e.g. foo-events)."
+                    subscriptionRef:
+                      type: object
+                      description: "Optional reference to an XSubscription instance this API consumes from. When set, the platform wires the consumer binding automatically."
+                      required: [name]
+                      properties:
+                        name:
+                          type: string
+                          description: "metadata.name of the XSubscription instance (e.g. nms-metrics-consumer)."
                   required: [image]
               required:
                 - parameters

@@ -48,6 +48,8 @@ spec:
             {{- if $xr.spec.parameters.secretRef }}{{- $secretRefName = $xr.spec.parameters.secretRef.name }}{{- end }}
             {{- $topicRefName := "" }}
             {{- if $xr.spec.parameters.topicRef }}{{- $topicRefName = $xr.spec.parameters.topicRef.name }}{{- end }}
+            {{- $subscriptionRefName := "" }}
+            {{- if $xr.spec.parameters.subscriptionRef }}{{- $subscriptionRefName = $xr.spec.parameters.subscriptionRef.name }}{{- end }}
             # --- Namespace ---
             apiVersion: v1
             kind: Namespace
@@ -146,6 +148,16 @@ spec:
                           value: "nats://nats.nats.svc.cluster.local:4222"
                         - name: NATS_STREAM
                           value: {{ $topicRefName | upper | quote }}
+                      {{- end }}
+                      {{- if $subscriptionRefName }}
+                        # XSubscription wiring: injected automatically from subscriptionRef.
+                        # App reads NATS_CONSUMER to bind to the durable cursor.
+                        {{- if not $topicRefName }}
+                        - name: NATS_URL
+                          value: "nats://nats.nats.svc.cluster.local:4222"
+                        {{- end }}
+                        - name: NATS_CONSUMER
+                          value: {{ $subscriptionRefName | quote }}
                       {{- end }}
                       {{- if $secretRefName }}
                       envFrom:
