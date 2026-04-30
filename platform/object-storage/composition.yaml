@@ -38,7 +38,7 @@ spec:
                   region: ""
             patches:
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.region
+                fromFieldPath: spec.parameters.region
                 toFieldPath: spec.forProvider.region
               # Set a deterministic bucket name (= XR name) so the composition can tag the IAM
               # user with the exact bucket name for principal-tag-based ABAC (aws:PrincipalTag).

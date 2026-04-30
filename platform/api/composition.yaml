@@ -20,10 +20,10 @@ spec:
             {{- $xr := .observed.composite.resource }}
             {{- $name := $xr.metadata.name }}
             {{- $ns := $name }}
-            {{- $env := $xr.spec.environment | default "test" }}
+            {{- $env := $xr.spec.parameters.environment | default "test" }}
             {{- /* `and` avoids nil-pointer if the key is absent */ -}}
-            {{- $objectStorageEnabled := and $xr.spec.objectStorage $xr.spec.objectStorage.enabled }}
-            {{- $cacheEnabled := and $xr.spec.cache $xr.spec.cache.enabled }}
+            {{- $objectStorageEnabled := and $xr.spec.parameters.objectStorage $xr.spec.parameters.objectStorage.enabled }}
+            {{- $cacheEnabled := and $xr.spec.parameters.cache $xr.spec.parameters.cache.enabled }}
             {{- $objStorageReady := "False" }}
             {{- $objStorageObserved := index (.observed.resources | default dict) "object-storage" }}
             {{- if $objStorageObserved }}
@@ -42,10 +42,10 @@ spec:
                 {{- end }}
               {{- end }}
             {{- end }}
-            {{- $host := $xr.spec.host | default "" }}
-            {{- $tlsIssuer := $xr.spec.tlsIssuer | default "local-lab-ca-issuer" }}
+            {{- $host := $xr.spec.parameters.host | default "" }}
+            {{- $tlsIssuer := $xr.spec.parameters.tlsIssuer | default "local-lab-ca-issuer" }}
             {{- $secretRefName := "" }}
-            {{- if $xr.spec.secretRef }}{{- $secretRefName = $xr.spec.secretRef.name }}{{- end }}
+            {{- if $xr.spec.parameters.secretRef }}{{- $secretRefName = $xr.spec.parameters.secretRef.name }}{{- end }}
             # --- Namespace ---
             apiVersion: v1
             kind: Namespace
@@ -72,7 +72,7 @@ spec:
               ports:
                 - name: http
                   port: 80
-                  targetPort: {{ $xr.spec.port | default 8080 }}
+                  targetPort: {{ $xr.spec.parameters.port | default 8080 }}
                 - name: metrics
                   port: 9090
                   targetPort: 9090
@@ -129,10 +129,10 @@ spec:
                   {{- end }}
                   containers:
                     - name: api
-                      image: {{ $xr.spec.image }}
+                      image: {{ $xr.spec.parameters.image }}
                       imagePullPolicy: Always
                       ports:
-                        - containerPort: {{ $xr.spec.port | default 8080 }}
+                        - containerPort: {{ $xr.spec.parameters.port | default 8080 }}
                       env:
                         # servicebinding.io convention: $SERVICE_BINDING_ROOT/<binding>/<key>
                         - name: SERVICE_BINDING_ROOT
@@ -181,7 +181,8 @@ spec:
                 gotemplating.fn.crossplane.io/composition-resource-name: object-storage
                 gotemplating.fn.crossplane.io/ready: {{ $objStorageReady | quote }}
             spec:
-              environment: {{ $env }}
+              parameters:
+                environment: {{ $env }}
             {{- end }}
             {{- if $cacheEnabled }}
             ---
@@ -193,7 +194,8 @@ spec:
                 gotemplating.fn.crossplane.io/composition-resource-name: cache
                 gotemplating.fn.crossplane.io/ready: {{ $cacheReady | quote }}
             spec:
-              environment: {{ $env }}
+              parameters:
+                environment: {{ $env }}
             {{- end }}
             ---
             # release: monitoring matches the Prometheus operator's serviceMonitorSelector

@@ -20,11 +20,11 @@ spec:
           template: |
             {{- $xr := .observed.composite.resource }}
             {{- $name := $xr.metadata.name }}
-            {{- $env := $xr.spec.environment | default "test" }}
+            {{- $env := $xr.spec.parameters.environment | default "test" }}
             {{- /* "my-app-cache" → "my-app" */ -}}
             {{- $ns := trimSuffix "-cache" $name }}
-            {{- $region := $xr.spec.region | default "us-east-1" }}
-            {{- $size := $xr.spec.size | default "small" }}
+            {{- $region := $xr.spec.parameters.region | default "us-east-1" }}
+            {{- $size := $xr.spec.parameters.size | default "small" }}
             {{- $nodeTypeMap := dict "small" "cache.t4g.micro" "medium" "cache.t4g.small" "large" "cache.t4g.medium" }}
             {{- $nodeType := get $nodeTypeMap $size | default "cache.t4g.micro" }}
             {{- $rgReady := "False" }}
