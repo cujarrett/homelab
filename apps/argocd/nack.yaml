@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nack
+  namespace: argocd
+spec:
+  project: infrastructure
+  source:
+    repoURL: https://nats-io.github.io/k8s/helm/charts/
+    chart: nack
+    targetRevision: 0.33.2
+    helm:
+      releaseName: nack
+      values: |
+        jetstream:
+          nats:
+            # Points the NACK controller at the in-cluster NATS service.
+            # NACK reconciles Stream and Consumer CRDs against this server.
+            url: nats://nats.nats.svc.cluster.local:4222
+        nodeSelector:
+          node-role.kubernetes.io/worker: worker
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nats
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
