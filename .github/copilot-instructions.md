@@ -6,6 +6,14 @@
 - **Never wrap `kubectl`/`k` commands in `ssh pi@...` — the user's local machine has Tailscale and kubeconfig configured. Run `kubectl` commands directly in the terminal.**
 - **When debugging, always list every command used** — show the command, what it does, and why — so the user can learn the debugging workflow. Do this inline as you debug, not as a summary at the end.
 - **After changing XRDs or Compositions, remind the user to sync `platform-definitions`:** `argocd app sync platform-definitions --grpc-web`
+- **Platform README and XRD examples must use `foo`, `bar`, or `baz` as placeholder names** — never use real instance names (e.g. `nms-events`, `mattjarrett-com`) in `platform/*/README.md` or `platform/*/xrd.yaml` description fields.
+- **Platform READMEs and XRD descriptions must not leak implementation details.** Rules:
+  - No infrastructure technology names in XRD `description` fields (e.g. no "NATS", "Redis", "S3", "NACK") — describe *what* the platform does, not *how*
+  - No internal resource names, namespaces, or controller names in README prose (e.g. no "managed by NACK", no `kubectl get consumer -n nats`)
+  - No internal derivation conventions in user-facing descriptions (e.g. no "uppercased to become the stream name")
+  - Env var names injected into containers are a **necessary exception** — document them in the README since app code must read them
+  - Wildcard syntax required to use a parameter is a **necessary exception** — document it since dev teams need it to set the value correctly
+  - The composition is the platform team's implementation file — details there are fine
 
 ### Pre-commit safety check
 
