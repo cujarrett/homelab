@@ -5,11 +5,8 @@ Provisions object storage and exposes connection details as a [servicebinding.io
 Consumed by `XApi` when `objectStorage.enabled: true`. Can also be used standalone.
 
 ## What it provisions
-- **S3 Bucket** — tagged with XR name and namespace for ABAC
-- **IAM User** — path `/crossplane/`, tagged to match the bucket
-- **AccessKey** — credentials written to the binding secret
-- **UserPolicyAttachment** — attaches shared `CrossplaneObjectStorageABAC` policy
-- **Binding Secret** — written to namespace derived from XR name
+- **Object storage bucket** — scoped to this XR instance; credentials cannot access another instance's bucket
+- **Binding Secret** — written to namespace derived from XR name; contains everything the app needs to connect
 
 ## Parameters
 
@@ -47,32 +44,11 @@ spec:
 # Secret "foo-object-storage" is written to namespace "foo" automatically.
 ```
 
-## IAM Design
-
-Each XR gets a dedicated IAM user tagged with `App` (XR name) and `Namespace` (`spec.claimRef.namespace` — empty for standalone XRs, populated when the XR is created by `XApi`). A single shared policy (`CrossplaneObjectStorageABAC`) grants S3 access only when the bucket's tags match the user's tags — so credentials for one instance cannot access another's bucket, and no bucket ARNs are hard-coded.
-
-```
-IAM User (crossplane/foo-object-storage)
-  tags: App=foo-object-storage, Namespace=foo
-    │
-    └─ CrossplaneObjectStorageABAC
-         condition: aws:ResourceTag/App == ${aws:PrincipalTag/App}
-                    aws:ResourceTag/Namespace == ${aws:PrincipalTag/Namespace}
-                         ↓
-                    S3 Bucket (same tags)
-```
-
-- One policy covers all instances — no per-bucket inline policy
-- `crossplane-user` only needs `iam:AttachUserPolicy`, not `iam:PutUserPolicy`
-
 ## Operations
 
 ```bash
 # XR status — SYNCED=composition ran, READY=all children healthy
 kubectl get xobjectstorages foo-object-storage
-
-# AWS managed resources (bucket, IAM user, access key, policy attachment)
-kubectl get managed | grep foo-object-storage
 
 # Detailed conditions — shows exactly WHY something is not ready
 kubectl get xobjectstorage foo-object-storage -o jsonpath='{.status.conditions}' | python3 -m json.tool
