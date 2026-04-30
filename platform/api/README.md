@@ -34,16 +34,16 @@ The namespace is always `metadata.name` — no input required.
 apiVersion: platform.local.lab/v1alpha1
 kind: XApi
 metadata:
-  name: platform-api-starter
+  name: foo
 spec:
   parameters:
-    image: ghcr.io/cujarrett/platform-api-starter:main
+    image: ghcr.io/owner/foo:main
     port: 8080
-    host: platform-api-starter.local.lab
+    host: foo.local.lab
     environment: test
     objectStorage:
       enabled: true
-# Deploys into namespace: platform-api-starter
+# Deploys into namespace: foo
 ```
 
 ## Binding secret
@@ -76,21 +76,21 @@ Per the [servicebinding.io spec](https://servicebinding.io/spec/core/1.1.0/), ea
 
 ```bash
 # XR status — SYNCED=composition ran, READY=all children healthy
-kubectl get xapi platform-api-starter
-kubectl get xobjectstorage platform-api-starter-object-storage
+kubectl get xapi foo
+kubectl get xobjectstorage foo-object-storage
 
 # Detailed conditions — shows exactly WHY something is not ready
-kubectl get xapi platform-api-starter -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get xapi foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
 # Pod status — init container blocks startup until binding secret is ready
-kubectl get pods -n platform-api-starter
+kubectl get pods -n foo
 
 # Binding secret — confirm all 6 keys are present with correct values
-kubectl get secret platform-api-starter-object-storage -n platform-api-starter \
+kubectl get secret foo-object-storage -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 
 # Hit the Ingress
-curl https://platform-api-starter.local.lab/health
+curl https://foo.local.lab/health
 ```
 
 ## Prerequisites

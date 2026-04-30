@@ -30,11 +30,11 @@ Crossplane composition that deploys a self-contained WordPress site with MariaDB
 apiVersion: platform.local.lab/v1alpha1
 kind: XWordPressPlatform
 metadata:
-  name: my-site
-  namespace: my-site
+  name: foo
+  namespace: foo
 spec:
   parameters:
-    host: my-site.example.com
+    host: foo.example.com
     storageSize: "10Gi"
     dbStorageSize: "1Gi"
     dataRetention: retain
