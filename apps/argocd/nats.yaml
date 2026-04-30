@@ -38,6 +38,13 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: nats
+  ignoreDifferences:
+    # Kubernetes adds status.phase to volumeClaimTemplates at runtime.
+    # The Helm chart doesn't include it, causing a perpetual OutOfSync loop.
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/volumeClaimTemplates
   syncPolicy:
     automated:
       prune: true
