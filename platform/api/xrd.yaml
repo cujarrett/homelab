@@ -61,6 +61,14 @@ spec:
                         name:
                           type: string
                           description: "Name of the Secret."
+                    topicRef:
+                      type: object
+                      description: "Optional reference to an XTopic instance this API publishes to. When set, the platform wires the connection automatically."
+                      required: [name]
+                      properties:
+                        name:
+                          type: string
+                          description: "metadata.name of the XTopic instance (e.g. foo-events)."
                   required: [image]
               required:
                 - parameters
