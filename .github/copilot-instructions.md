@@ -103,8 +103,6 @@ UniFi DHCP DNS: primary `192.168.10.100`, fallback `1.1.1.1`.
 - `mattjarrett.com` — WordPress, routed via Cloudflare Tunnel
 - `mattjarrett.dev` — static site, routed via Cloudflare Tunnel
 - `blog.mattjarrett.dev` — Ghost blog, routed via Cloudflare Tunnel
-- `my-vinyl-api.mattjarrett.dev` — vinyl collection API, routed via Cloudflare Tunnel
-- `myvinyl.mattjarrett.dev` — vinyl collection SPA, routed via Cloudflare Tunnel
 
 ## Cloudflare Tunnel Operations
 
