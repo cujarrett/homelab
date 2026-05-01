@@ -1,0 +1,32 @@
+# kiosk.sh
+
+Runs a fullscreen Chromium kiosk on `work-1`'s attached 1U display, showing the Grafana playlist.
+
+## What it does
+
+1. Disables screensaver and display power management (`xset`)
+2. Hides the mouse cursor after 1 second of inactivity (`unclutter`)
+3. Waits for Grafana to be healthy before launching
+4. Launches Chromium in kiosk mode pointing at the playlist
+5. Restarts Chromium automatically if it crashes (`while true` loop)
+
+## Display
+
+- Resolution: 1424×280 (1U rack display)
+- URL: `https://grafana.local.lab/playlists/play/admt9pc?kiosk`
+- Memory-constrained flags: `--max-old-space-size=64`, `--renderer-process-limit=1`
+
+## How to update the URL without rebooting
+
+```bash
+ssh pi@192.168.10.101 "sed -i 's|OLD_URL|NEW_URL|' ~/kiosk.sh"
+sudo systemctl restart getty@tty1.service
+```
+
+Restarting `getty@tty1` re-runs autologin → `.bashrc` → `kiosk.sh` with the new URL.
+Do **not** just `pkill chromium` — the loop will relaunch with the old URL still in memory.
+
+## X server requirement
+
+Requires `/etc/X11/xorg.conf.d/99-pi5.conf` on `work-1` to force the display DRM device.
+See the homelab `copilot-instructions.md` for the config file contents.
