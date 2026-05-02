@@ -35,6 +35,8 @@ spec:
       labels:
         app: ghost
     spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: worker
       containers:
         - name: ghost
           image: ghost:5-alpine
