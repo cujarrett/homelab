@@ -4,7 +4,7 @@
 
 A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering and GitOps. The goal is to use Kubernetes as a control plane for infrastructure — not just a place to run containers.
 
-[How it was built](./docs/how-it-was-built.md)
+[How it was built](https://blog.mattjarrett.dev/homelab/)
 
 ## Platform Stack
 
@@ -19,20 +19,6 @@ A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering a
 | **DNS** | AdGuard Home — wildcard `*.local.lab → 192.168.10.100` for all network devices |
 | **Remote Access** | Tailscale subnet router on ctrl-1 |
 | **Tunnel** | Cloudflare Tunnel — zero-trust public ingress, no exposed firewall ports |
-
-## Network Topology
-
-```
-[Fiber Internet]
-      │
-[UDR7 UniFi Dream Router 7]  192.168.1.1
-      │
-[GS305PP PoE Switch]  VLAN 10: 192.168.10.0/24
-      ├── ctrl-1  192.168.10.100  k3s server
-      ├── work-1  192.168.10.101  k3s agent
-      ├── work-2  192.168.10.102  k3s agent
-      └── work-3  192.168.10.103  k3s agent
-```
 
 ## Hardware
 
