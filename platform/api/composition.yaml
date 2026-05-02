@@ -95,6 +95,8 @@ spec:
                   labels:
                     app: xapi
                 spec:
+                  nodeSelector:
+                    node-role.kubernetes.io/worker: worker
                   {{- if or $objectStorageEnabled $cacheEnabled }}
                   initContainers:
                     {{- if $objectStorageEnabled }}
