@@ -35,3 +35,6 @@ spec:
                       type: string
                       default: test
                       description: "Runtime environment. prod provisions AWS ElastiCache; test provisions in-cluster Redis."
+                    namespace:
+                      type: string
+                      description: "Namespace to deploy into. Must already exist (created by the tenant's namespace.yaml)."

@@ -4,6 +4,7 @@ metadata:
   name: sump-pump-bridge
 spec:
   parameters:
+    namespace: sump-pump
     image: ghcr.io/cujarrett/sump-pump-bridge:main
     port: 8080
     # NOTE: Shelly devices can't validate custom CA certs. When configuring

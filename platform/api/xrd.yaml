@@ -69,6 +69,9 @@ spec:
                         name:
                           type: string
                           description: "metadata.name of the XTopic instance (e.g. foo-events)."
+                    namespace:
+                      type: string
+                      description: "Namespace to deploy into. Must already exist (created by the tenant's namespace.yaml)."
                     subscriptionRef:
                       type: object
                       description: "Optional reference to an XSubscription instance this API consumes from. When set, the platform wires the consumer binding automatically."
@@ -77,6 +80,6 @@ spec:
                         name:
                           type: string
                           description: "metadata.name of the XSubscription instance (e.g. nms-metrics-consumer)."
-                  required: [image]
+                  required: [image, namespace]
               required:
                 - parameters

@@ -53,6 +53,6 @@ spec:
 kubectl get xsubscription foo-consumer
 
 # Check pod (deployed by the paired XApi)
-kubectl get pods -n foo-consumer
+kubectl get pods -n foo
 ```
 

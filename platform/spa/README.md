@@ -3,18 +3,18 @@
 Crossplane composition that hosts an Angular (or any static) SPA on nginx.
 
 ## What it provisions
-- **Namespace** — isolated per app
 - **ConfigMap** — nginx config with SPA routing (`try_files` → `index.html`), security headers, asset caching, and a health check endpoint
 - **Deployment** — nginx container running the pre-built SPA image
 - **Service** — ClusterIP on port 80
 - **Ingress** — Traefik `websecure` entrypoint with cert-manager TLS
-- **ArgoCD Application** — self-managing ArgoCD app that syncs the XR instance file from Git
+
+The namespace is owned by the tenant — created by `namespace.yaml` in the tenant directory, not by this composition.
 
 ## Parameters
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `namespace` | yes | — | Namespace to deploy into |
+| `namespace` | yes | — | Tenant namespace to deploy into. Must already exist. |
 | `image` | yes | — | Container image (`ghcr.io/owner/app:sha-abc123`). CI builds on merge to main and commits the new tag back to trigger sync. |
 | `host` | yes | — | Ingress hostname (e.g. `myapp.local.lab` or `myapp.example.com`) |
 | `tlsIssuer` | no | `local-lab-ca-issuer` | cert-manager ClusterIssuer. Use `letsencrypt-prod` for public hosts. |
@@ -26,28 +26,37 @@ Crossplane composition that hosts an Angular (or any static) SPA on nginx.
 | `cpuLimit` | no | `200m` | CPU limit |
 | `memoryRequest` | no | `32Mi` | Memory request |
 | `memoryLimit` | no | `64Mi` | Memory limit |
-| `argocd.repoURL` | yes | — | Git repository URL (e.g. `https://github.com/owner/repo.git`) |
-| `argocd.targetRevision` | no | `main` | Git branch, tag, or commit SHA to sync from |
-| `argocd.xrsPath` | no | `platform/xrs/spa` | Path in the repo to the XR instance files directory |
+| `apiProxy.enabled` | no | `false` | Proxy `/api/` to an in-cluster service (keeps API off the public internet). |
+| `apiProxy.upstream` | no | — | FQDN of the upstream service (e.g. `my-api.my-tenant.svc.cluster.local`). |
 
-## Example instance
+## Example
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
 kind: XSpa
 metadata:
   name: foo
-  namespace: foo
 spec:
   parameters:
     namespace: foo
     image: ghcr.io/owner/foo:sha-abc123
     host: foo.local.lab
-    tlsIssuer: local-lab-ca-issuer
-    argocd:
-      repoURL: https://github.com/owner/homelab.git
-      targetRevision: main
-      xrsPath: platform/xrs/spa
 ```
 
-Instance files live in [`platform/xrs/spa/`](../xrs/spa/).
+Instance files live in [`tenants/`](../../tenants/).
+
+## Operations
+
+```bash
+# XR status — SYNCED=composition ran, READY=all children healthy
+kubectl get xspa foo
+
+# Detailed conditions
+kubectl get xspa foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
+
+# Pod status
+kubectl get pods -n foo
+
+# Hit the Ingress
+curl https://foo.local.lab/healthz
+```

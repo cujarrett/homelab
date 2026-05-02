@@ -79,6 +79,9 @@ spec:
                       type: string
                       default: "64Mi"
                       description: "Memory limit for the nginx container."
+                    namespace:
+                      type: string
+                      description: "Namespace to deploy into. Must already exist (created by the tenant's namespace.yaml)."
                     apiProxy:
                       type: object
                       description: "Optional API proxy. When enabled, nginx proxies /api/ to an in-cluster service, keeping the API off the public internet."
@@ -92,6 +95,7 @@ spec:
                   required:
                     - image
                     - host
+                    - namespace
               required:
                 - parameters
           required:

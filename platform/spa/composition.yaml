@@ -19,17 +19,8 @@ spec:
           template: |
             {{- $name := .observed.composite.resource.metadata.name }}
             {{- $params := .observed.composite.resource.spec.parameters }}
-            {{- $namespace := $name }}
+            {{- $namespace := $params.namespace }}
             {{- $apiProxyEnabled := and $params.apiProxy $params.apiProxy.enabled }}
-            # --- Namespace ---
-            apiVersion: v1
-            kind: Namespace
-            metadata:
-              name: {{ $namespace }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: namespace
-                gotemplating.fn.crossplane.io/ready: "True"
-            ---
             # --- nginx ConfigMap ---
             # Generated from XR params so the SPA image stays generic across instances.
             apiVersion: v1
