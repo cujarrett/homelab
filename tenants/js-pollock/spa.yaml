@@ -8,7 +8,7 @@ spec:
     image: ghcr.io/cujarrett/js-pollock:latest
     host: jspollock.mattjarrett.dev
     tlsIssuer: letsencrypt-prod
-    contentSecurityPolicy: "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self';"
+    contentSecurityPolicy: "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'; connect-src 'self'; font-src 'self' https://fonts.gstatic.com; frame-ancestors 'none'; base-uri 'self';"
     healthCheckPath: /healthz
     replicas: 1
     cpuRequest: "50m"
