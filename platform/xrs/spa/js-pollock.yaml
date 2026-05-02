@@ -4,10 +4,9 @@ metadata:
   name: js-pollock
 spec:
   parameters:
-    image: ghcr.io/cujarrett/jspollock:latest
+    image: ghcr.io/cujarrett/js-pollock:latest
     host: jspollock.mattjarrett.dev
     tlsIssuer: letsencrypt-prod
-    imagePullSecret: ghcr-pull-secret
     contentSecurityPolicy: "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self';"
     healthCheckPath: /healthz
     replicas: 1
