@@ -42,7 +42,7 @@ If all checks pass, state "All files safe to commit." If any issue is found, des
 
 ## Overview
 A 4-node k3s Kubernetes homelab managed entirely via GitOps with ArgoCD.
-All workloads are defined as manifests in this repo under `apps/`, `platform/`, and `scripts/`.
+All workloads are defined as manifests in this repo under `cluster/`, `platform/`, `tenants/`, and `scripts/`.
 GitHub repo: `https://github.com/cujarrett/homelab.git` (branch: `main`)
 
 ## Hardware & Network
@@ -67,7 +67,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | Layer | Tool | Notes |
 |---|---|---|
 | Kubernetes | k3s | Lightweight distro |
-| GitOps | ArgoCD | App-of-apps pattern via `apps/argocd/bootstrap.yaml`, recurses `apps/` |
+| GitOps | ArgoCD | App-of-apps pattern via `cluster/argocd/bootstrap.yaml`, recurses `cluster/` |
 | Ingress | Traefik | Deployed as DaemonSet via k3s HelmChartConfig; binds hostPorts 80/443 |
 | TLS | cert-manager | Local CA issuer (`local-lab-ca-issuer`) for `.local.lab` hosts; Let's Encrypt (staging + prod) for public hosts via HTTP-01/Traefik |
 | Storage | Longhorn | Three StorageClasses: `longhorn` (default, Delete), `longhorn-retain` (Retain — use for stateful platform XRs), `longhorn-delete` (explicit Delete) |
@@ -79,16 +79,21 @@ SSH access: `ssh pi@192.168.10.10x`
 | Namespace | App | Notes |
 |---|---|---|
 | `argocd` | ArgoCD | Ingress at `argocd.local.lab` |
-| `monitoring` | kube-prometheus-stack | Prometheus (30d retention, 20Gi), Grafana (5Gi), Alertmanager (5Gi) |
-| `monitoring` | Loki | SingleBinary mode, filesystem storage, 10Gi PVC, 30d retention |
+| `monitoring` | kube-prometheus-stack | Prometheus (365d retention, 35Gi), Grafana (2Gi), Alertmanager (2Gi) |
+| `monitoring` | Loki | SingleBinary mode, filesystem storage, 2Gi PVC, 30d retention |
 | `monitoring` | Promtail | DaemonSet log shipper → Loki at `http://loki.monitoring.svc.cluster.local:3100` |
 | `longhorn-system` | Longhorn | Ingress at `longhorn.local.lab` |
 | `adguard` | AdGuard Home | DNS ad-blocking/resolver |
 | `cloudflare` | cloudflared | Cloudflare Tunnel for public ingress |
 | `cert-manager` | cert-manager | TLS issuers |
 | `crossplane-system` | Crossplane | Platform compositions, XRDs, providers |
-| `mattjarrett-com` | WordPress (XWordPressPlatform) | `mattjarrett.com` via Cloudflare Tunnel; 10Gi wp-content, 1Gi MariaDB |
-| `mattjarrett-dev` | Angular SPA (XSpa) | `mattjarrett.dev` via Cloudflare Tunnel; nginx serving pre-built Angular dist |
+| `nats` | NATS + NACK | JetStream cluster (3 replicas), NACK controller for Stream/Consumer CRDs |
+| `mattjarrett-com` | WordPress (XWordPressPlatform) | `mattjarrett.com` via Cloudflare Tunnel; 7Gi wp-content, 1Gi MariaDB |
+| `mattjarrett-dev` | Angular SPA (XSpa) | `mattjarrett.dev` via Cloudflare Tunnel |
+| `blog` | Ghost (Deployment) | `blog.mattjarrett.dev` via Cloudflare Tunnel; 2Gi content PVC |
+| `my-vinyl` | XSpa + XApi + XCache | `myvinyl.mattjarrett.dev` via Cloudflare Tunnel |
+| `js-pollock` | XSpa | `jspollock.mattjarrett.dev` via Cloudflare Tunnel |
+| `sump-pump` | XApi ×2 + XTopic + XSubscription | IoT sump pump bridge + consumer; images not yet published |
 
 ## Internal Hostnames (`.local.lab`)
 All use `local-lab-ca-issuer` (self-signed CA), TLS via Traefik `websecure` entrypoint.
@@ -103,6 +108,8 @@ UniFi DHCP DNS: primary `192.168.10.100`, fallback `1.1.1.1`.
 - `mattjarrett.com` — WordPress, routed via Cloudflare Tunnel
 - `mattjarrett.dev` — static site, routed via Cloudflare Tunnel
 - `blog.mattjarrett.dev` — Ghost blog, routed via Cloudflare Tunnel
+- `myvinyl.mattjarrett.dev` — my-vinyl SPA, routed via Cloudflare Tunnel
+- `jspollock.mattjarrett.dev` — js-pollock SPA, routed via Cloudflare Tunnel
 
 ## Cloudflare Tunnel Operations
 
@@ -157,16 +164,16 @@ kubectl delete certificaterequest -n <namespace> --all
 **API token permissions needed:** Cloudflare Zero Trust → Argo Tunnel (Legacy) → Edit
 
 ## Monitoring Stack Details
-- **Prometheus**: `monitoring-kube-prometheus-prometheus`, port 9090, 30d retention, 20Gi PVC
-- **Grafana**: `monitoring-grafana`, anonymous viewer access enabled, Loki datasource configured, dashboards loaded via sidecar from all namespaces
-- **Loki**: StatefulSet `loki`, SingleBinary, filesystem, 10Gi PVC (`storage-loki-0`), 30d retention, compactor enabled
+- **Prometheus**: `monitoring-kube-prometheus-prometheus`, port 9090, 365d retention, 35Gi PVC
+- **Grafana**: admin secret `grafana-admin-secret`, anonymous viewer access enabled, Loki datasource configured, dashboards loaded via sidecar from all namespaces, playlist provisioned via ConfigMap
+- **Loki**: StatefulSet `loki`, SingleBinary, filesystem, 2Gi PVC (`storage-loki-0`), 30d retention, compactor enabled
 - **Promtail**: DaemonSet, ships logs to Loki
-- **Alertmanager**: 5Gi PVC
+- **Alertmanager**: 2Gi PVC
 
 ### Grafana Dashboards
 Dashboards are ConfigMaps with label `grafana_dashboard: "1"` in any namespace. Apply locally to test before committing:
 ```bash
-kubectl apply -f apps/monitoring/<dashboard>.yaml
+kubectl apply -f cluster/monitoring/<dashboard>.yaml
 ```
 
 | UID | File | Purpose |
@@ -175,14 +182,19 @@ kubectl apply -f apps/monitoring/<dashboard>.yaml
 | `homelab-mbp` | `grafana-dashboard-homelab-mbp.yaml` | Homelab MacBook Pro view |
 | `web-traffic` | `grafana-dashboard-web-traffic.yaml` | Web traffic MacBook view — defaults 24h |
 | `web-traffic-kiosk` | `grafana-dashboard-web-traffic-kiosk.yaml` | Web traffic kiosk — 5 grid units tall, sparklines |
+| `homelab-cluster` | `grafana-dashboard-cluster-overview.yaml` | Cluster overview |
+| `homelab-gitops` | `grafana-dashboard-gitops-platform.yaml` | GitOps & Platform |
+| `my-vinyl-api` | `grafana-dashboard-my-vinyl-api.yaml` | my-vinyl API metrics |
+| `sump-pump` | `grafana-dashboard-sump-pump.yaml` | Sump pump IoT metrics |
+| `node-pod-workload` | `grafana-dashboard-node-pods.yaml` | Node pod workload |
 
 **Adding a new dashboard to the kiosk playlist:**
-1. Create the dashboard ConfigMap in `apps/monitoring/` with `grafana_dashboard: "1"` label
+1. Create the dashboard ConfigMap in `cluster/monitoring/` with `grafana_dashboard: "1"` label
 2. Keep height at exactly 5 grid units (`"h": 5`) so it fits the 1U display
 3. Use `"instant": true` on all stat panel targets — avoids heavy range queries that crash the Pi
-4. Apply locally to test: `kubectl apply -f apps/monitoring/<dashboard>.yaml`
-5. In Grafana UI → Dashboards → Playlists → edit playlist `admt9pc` → add the new dashboard
-6. No restart needed — the playlist picks it up immediately
+4. Apply locally to test: `kubectl apply -f cluster/monitoring/<dashboard>.yaml`
+5. Add the dashboard UID to `cluster/monitoring/grafana-playlist-kiosk.yaml` and push — playlist is provisioned from this ConfigMap, no Grafana UI edit needed
+6. No restart needed — Grafana hot-reloads provisioned playlists
 
 ### Traefik Prometheus label quirk
 Prometheus renames the `service` label from Traefik metrics to `exported_service` to avoid collision. Always use `exported_service=~"..."` in Traefik queries.
@@ -191,12 +203,14 @@ Service label format: `{namespace}-{servicename}-{port}@kubernetes`
 - `blog.mattjarrett.dev` → `blog-ghost.*@kubernetes`
 - `mattjarrett.dev` → `mattjarrett-dev-mattjarrett-dev.*@kubernetes` or `web-mattjarrett-dev.*@kubernetes` (both exist; use alternation `|`)
 - `mattjarrett.com` → `mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes`
+- `myvinyl.mattjarrett.dev` → `my-vinyl-my-vinyl.*@kubernetes`
+- `jspollock.mattjarrett.dev` → `js-pollock-js-pollock.*@kubernetes`
 
 ## 1U Display (work-1)
 `work-1` runs a kiosk browser on the attached display. It is **not** managed by systemd — it's a bare background process under the `pi` user.
 
 - Script: `~/kiosk.sh` on `work-1`
-- Current URL: `https://grafana.local.lab/playlists/play/admt9pc?kiosk`
+- Current URL: `https://grafana.local.lab/playlists/play/bfkvgx130fncwc?kiosk`
 
 ### X server config (manual — not in Git)
 The Pi 5 has two DRM devices (`card0` = v3d, `card1` = display). Without explicit config, Xorg fails with "Cannot run in framebuffer mode". A config file must exist at `/etc/X11/xorg.conf.d/99-pi5.conf` on work-1:
