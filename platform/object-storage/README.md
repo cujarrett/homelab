@@ -14,10 +14,11 @@ Consumed by `XApi` when `objectStorage.enabled: true`. Can also be used standalo
 |---|---|---|---|
 | `region` | no | `us-east-1` | Cloud region for the bucket |
 | `environment` | no | `test` | Pass-through from `XApi`|
+| `namespace` | yes | — | Namespace to write the binding Secret into. Passed automatically by `XApi`. |
 
 ## Binding secret
 
-The secret name equals the XR name; the namespace is derived by stripping `-object-storage` from the XR name. No caller input needed in either case.
+The secret name equals the XR name; the namespace comes from the explicit `namespace` parameter passed by the parent `XApi`.
 
 | Key | Value |
 |---|---|

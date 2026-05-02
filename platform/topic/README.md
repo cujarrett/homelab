@@ -35,7 +35,7 @@ spec:
     replicas: 3
 ```
 
-Instance files live in [`platform/xrs/topic/`](../xrs/topic/).
+Instance files live in [`tenants/`](../../tenants/).
 
 ## Kafka / AWS equivalent concepts
 

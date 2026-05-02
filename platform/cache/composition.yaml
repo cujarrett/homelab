@@ -21,8 +21,7 @@ spec:
             {{- $xr := .observed.composite.resource }}
             {{- $name := $xr.metadata.name }}
             {{- $env := $xr.spec.parameters.environment | default "test" }}
-            {{- /* "my-app-cache" → "my-app" */ -}}
-            {{- $ns := trimSuffix "-cache" $name }}
+            {{- $ns := $xr.spec.parameters.namespace }}
             {{- $region := $xr.spec.parameters.region | default "us-east-1" }}
             {{- $size := $xr.spec.parameters.size | default "small" }}
             {{- $nodeTypeMap := dict "small" "cache.t4g.micro" "medium" "cache.t4g.small" "large" "cache.t4g.medium" }}

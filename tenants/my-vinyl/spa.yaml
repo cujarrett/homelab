@@ -4,6 +4,7 @@ metadata:
   name: my-vinyl
 spec:
   parameters:
+    namespace: my-vinyl
     image: ghcr.io/cujarrett/my-vinyl:latest
     host: myvinyl.mattjarrett.dev
     tlsIssuer: letsencrypt-prod
@@ -12,7 +13,7 @@ spec:
     replicas: 1
     apiProxy:
       enabled: true
-      upstream: my-vinyl-api.my-vinyl-api.svc.cluster.local
+      upstream: my-vinyl-api.my-vinyl.svc.cluster.local
     cpuRequest: "50m"
     cpuLimit: "200m"
     memoryRequest: "64Mi"

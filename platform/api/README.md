@@ -3,20 +3,18 @@
 Crossplane composition that deploys an API server (Go, Node, GraphQL, etc.) with optional object storage and cache resources.
 
 ## What it provisions
-- **Namespace** — derived from `metadata.name` (name = namespace)
 - **Deployment** — runs the API server with conditional init containers that block startup until bindings are ready
 - **Service** — ClusterIP on port 80 → container port (default 8080)
 - **XObjectStorage** *(optional)* — platform primitive that provisions object storage and injects credentials at `/bindings/object-storage`
 - **XCache** *(optional)* — platform primitive that provisions a cache cluster and injects credentials at `/bindings/cache`
 
-When optional integrations are enabled, the platform provisions the resource and writes a servicebinding.io-compliant Secret into the app namespace automatically. Each init container blocks app startup until its binding secret is ready — the app never starts with missing credentials.
-
-The binding secret is mounted at `$SERVICE_BINDING_ROOT/<binding>/`. Each file in that directory is one key.
+The namespace is owned by the tenant — created by `namespace.yaml` in the tenant directory, not by this composition.
 
 ## Parameters
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
+| `namespace` | yes | — | Tenant namespace to deploy into. Must already exist. |
 | `image` | yes | — | Container image (`ghcr.io/owner/api:sha-abc123`). CI builds on merge to main and commits the new tag back to trigger sync. |
 | `port` | no | `8080` | Port the container listens on. Service always exposes port 80 → this targetPort. |
 | `host` | no | — | Hostname for the Ingress. If omitted, no Ingress is created. |
@@ -37,6 +35,7 @@ metadata:
   name: foo
 spec:
   parameters:
+    namespace: foo
     image: ghcr.io/owner/foo:main
     port: 8080
     host: foo.local.lab
@@ -46,11 +45,11 @@ spec:
 # Deploys into namespace: foo
 ```
 
-## Binding secret
+Instance files live in [`tenants/`](../../tenants/).
 
-When optional integrations are enabled, Crossplane creates a Secret and mounts it into the container at `$SERVICE_BINDING_ROOT/<binding>/`. Each file in that directory is one key. The app reads the file contents at runtime.
+## Binding secrets
 
-Per the [servicebinding.io spec](https://servicebinding.io/spec/core/1.1.0/), each binding MUST contain a `type` file that identifies the **abstract protocol classification** (what client to use), and SHOULD contain a `provider` file that identifies the implementation. Well-known key names (`host`, `port`, `uri`, `username`, `password`) have spec-defined meanings and MUST be used when the value matches.
+When optional integrations are enabled, the platform writes a servicebinding.io-compliant Secret into the namespace and mounts it at `$SERVICE_BINDING_ROOT/<binding>/`. Each file in that directory is one key. The app reads file contents at runtime — no env vars required.
 
 ### `/bindings/object-storage/`
 
@@ -77,7 +76,6 @@ Per the [servicebinding.io spec](https://servicebinding.io/spec/core/1.1.0/), ea
 ```bash
 # XR status — SYNCED=composition ran, READY=all children healthy
 kubectl get xapi foo
-kubectl get xobjectstorage foo-object-storage
 
 # Detailed conditions — shows exactly WHY something is not ready
 kubectl get xapi foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
@@ -85,14 +83,10 @@ kubectl get xapi foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
 # Pod status — init container blocks startup until binding secret is ready
 kubectl get pods -n foo
 
-# Binding secret — confirm all 6 keys are present with correct values
-kubectl get secret foo-object-storage -n foo \
+# Binding secret — confirm all keys are present
+kubectl get secret foo-cache -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 
 # Hit the Ingress
 curl https://foo.local.lab/health
 ```
-
-## Prerequisites
-
-The underlying cloud providers must be installed and credentials must be available in the cluster before any XApi XR with `objectStorage.enabled: true` or `cache.enabled: true` will reconcile successfully.

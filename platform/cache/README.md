@@ -10,7 +10,7 @@ Consumed by `XApi` when `cache.enabled: true`. Can also be used standalone or by
 
 ## Binding secret
 
-Secret name equals the XR name; namespace is the XR name with `-cache` stripped (e.g. `foo-cache` → secret in namespace `foo`).
+Secret name equals the XR name; namespace comes from the explicit `namespace` parameter passed by the parent `XApi`.
 
 All keys are automatically wired — no manual credential handling required.
 
@@ -28,6 +28,7 @@ All keys are automatically wired — no manual credential handling required.
 | `region` | no | `us-east-1` | Cloud region for the cache cluster (prod only) |
 | `size` | no | `small` | T-shirt size for the cache cluster (prod only): `small`, `medium`, `large` |
 | `environment` | no | `test` | `prod` uses AWS ElastiCache; `test` uses in-cluster Redis |
+| `namespace` | yes | — | Namespace to write the binding Secret into. Passed automatically by `XApi`. |
 
 ## Example
 

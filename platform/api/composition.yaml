@@ -19,7 +19,7 @@ spec:
           template: |
             {{- $xr := .observed.composite.resource }}
             {{- $name := $xr.metadata.name }}
-            {{- $ns := $name }}
+            {{- $ns := $xr.spec.parameters.namespace }}
             {{- $env := $xr.spec.parameters.environment | default "test" }}
             {{- /* `and` avoids nil-pointer if the key is absent */ -}}
             {{- $objectStorageEnabled := and $xr.spec.parameters.objectStorage $xr.spec.parameters.objectStorage.enabled }}
@@ -50,15 +50,6 @@ spec:
             {{- if $xr.spec.parameters.topicRef }}{{- $topicRefName = $xr.spec.parameters.topicRef.name }}{{- end }}
             {{- $subscriptionRefName := "" }}
             {{- if $xr.spec.parameters.subscriptionRef }}{{- $subscriptionRefName = $xr.spec.parameters.subscriptionRef.name }}{{- end }}
-            # --- Namespace ---
-            apiVersion: v1
-            kind: Namespace
-            metadata:
-              name: {{ $ns }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: namespace
-                gotemplating.fn.crossplane.io/ready: "True"
-            ---
             # --- Service ---
             apiVersion: v1
             kind: Service
@@ -218,6 +209,7 @@ spec:
             spec:
               parameters:
                 environment: {{ $env }}
+                namespace: {{ $ns }}
             {{- end }}
             ---
             # release: monitoring matches the Prometheus operator's serviceMonitorSelector

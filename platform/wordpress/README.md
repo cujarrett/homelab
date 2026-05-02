@@ -3,12 +3,13 @@
 Crossplane composition that deploys a self-contained WordPress site with MariaDB.
 
 ## What it provisions
-- **Namespace** — isolated per app
 - **MariaDB PVC** — persistent storage for the database
 - **MariaDB StatefulSet + Service** — database backend; credentials derived from the XR UID (no secrets in Git)
 - **WordPress PVC** — persistent storage for `wp-content` (uploads, themes, plugins)
 - **WordPress Deployment + Service** — Apache/PHP WordPress container; seeds `wp-content` from the image on first run
 - **Ingress** — Traefik `websecure` with cert-manager TLS
+
+The namespace is owned by the tenant — created by `namespace.yaml` in the tenant directory.
 
 ## Parameters
 
@@ -40,4 +41,4 @@ spec:
     dataRetention: retain
 ```
 
-Instance files live in [`platform/xrs/wordpress/`](../xrs/wordpress/).
+Instance files live in [`tenants/`](../../tenants/).
