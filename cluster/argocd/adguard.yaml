@@ -1,17 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: traefik
+  name: adguard
   namespace: argocd
 spec:
   project: infrastructure
   source:
     repoURL: https://github.com/cujarrett/homelab.git
     targetRevision: main
-    path: apps/traefik
+    path: cluster/adguard
   destination:
     server: https://kubernetes.default.svc
-    namespace: kube-system
+    namespace: adguard
   syncPolicy:
     automated:
       prune: true

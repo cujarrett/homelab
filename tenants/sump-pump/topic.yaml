@@ -1,0 +1,12 @@
+apiVersion: platform.local.lab/v1alpha1
+kind: XTopic
+metadata:
+  name: home-appliances
+spec:
+  parameters:
+    streamName: HOME-APPLIANCES
+    subjects:
+      - "home.appliance.>"
+    retention: limits
+    maxAge: "720h"
+    replicas: 3

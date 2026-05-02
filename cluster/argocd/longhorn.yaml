@@ -1,17 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: cert-manager
+  name: longhorn
   namespace: argocd
 spec:
   project: infrastructure
   source:
     repoURL: https://github.com/cujarrett/homelab.git
     targetRevision: main
-    path: apps/cert-manager
+    path: cluster/longhorn
   destination:
     server: https://kubernetes.default.svc
-    namespace: cert-manager
+    namespace: longhorn-system
   syncPolicy:
     automated:
       prune: true

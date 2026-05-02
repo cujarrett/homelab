@@ -1,17 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: monitoring
+  name: cloudflare
   namespace: argocd
 spec:
-  project: observability
+  project: infrastructure
   source:
     repoURL: https://github.com/cujarrett/homelab.git
     targetRevision: main
-    path: apps/monitoring
+    path: cluster/cloudflare
   destination:
     server: https://kubernetes.default.svc
-    namespace: monitoring
+    namespace: cloudflare
   syncPolicy:
     automated:
       prune: true

@@ -1,0 +1,203 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-sump-pump
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  sump-pump.json: |-
+    {
+      "title": "Sump Pump",
+      "uid": "sump-pump",
+      "editable": true,
+      "graphTooltip": 1,
+      "time": { "from": "now-24h", "to": "now" },
+      "timepicker": {},
+      "refresh": "30s",
+      "schemaVersion": 38,
+      "annotations": {
+        "list": [
+          {
+            "name": "Pump running",
+            "enable": true,
+            "hide": false,
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "expr": "sump_pump_running == 1",
+            "step": "60s",
+            "useValueForTime": false,
+            "iconColor": "blue",
+            "titleFormat": "Running"
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Current State",
+          "description": "Whether the sump pump is currently running.",
+          "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "value_and_name",
+            "justifyMode": "center"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "mappings": [
+                { "type": "value", "options": { "0": { "text": "Idle", "color": "green" }, "1": { "text": "Running", "color": "blue" } } }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "blue", "value": 1 }] }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sump_pump_running",
+              "legendFormat": "state",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Current Watts",
+          "description": "Live power draw from the sump pump.",
+          "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "colorMode": "none",
+            "graphMode": "none",
+            "textMode": "value_and_name",
+            "justifyMode": "center"
+          },
+          "fieldConfig": {
+            "defaults": { "unit": "watt", "decimals": 1 }
+          },
+          "targets": [
+            {
+              "expr": "sump_pump_watts",
+              "legendFormat": "watts",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Runs Today",
+          "description": "Number of times the pump has run in the last 24 hours.",
+          "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "reduceOptions": { "calcs": ["sum"] },
+            "colorMode": "none",
+            "graphMode": "none",
+            "textMode": "value_and_name",
+            "justifyMode": "center"
+          },
+          "fieldConfig": {
+            "defaults": { "unit": "short", "decimals": 0 }
+          },
+          "targets": [
+            {
+              "expr": "increase(sump_pump_runs_total[$__range])",
+              "legendFormat": "runs",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Runs This Week",
+          "description": "Number of times the pump has run in the last 7 days.",
+          "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "reduceOptions": { "calcs": ["sum"] },
+            "colorMode": "none",
+            "graphMode": "none",
+            "textMode": "value_and_name",
+            "justifyMode": "center"
+          },
+          "fieldConfig": {
+            "defaults": { "unit": "short", "decimals": 0 }
+          },
+          "targets": [
+            {
+              "expr": "increase(sump_pump_runs_total[7d])",
+              "legendFormat": "runs",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "Power Draw",
+          "description": "Wattage over time. Each spike is a pump run cycle.",
+          "gridPos": { "x": 0, "y": 4, "w": 24, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "watt",
+              "decimals": 1,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 20,
+                "lineInterpolation": "smooth"
+              },
+              "color": { "mode": "fixed", "fixedColor": "blue" }
+            }
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false },
+            "tooltip": { "mode": "single" }
+          },
+          "targets": [
+            {
+              "expr": "sump_pump_watts",
+              "legendFormat": "watts"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "Run Frequency",
+          "description": "Number of pump runs per hour. Spikes during storms or snowmelt indicate high groundwater.",
+          "gridPos": { "x": 0, "y": 12, "w": 24, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "lineInterpolation": "smooth",
+                "drawStyle": "bars"
+              },
+              "color": { "mode": "fixed", "fixedColor": "green" }
+            }
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false },
+            "tooltip": { "mode": "single" }
+          },
+          "targets": [
+            {
+              "expr": "increase(sump_pump_runs_total[1h])",
+              "legendFormat": "runs/hr"
+            }
+          ]
+        }
+      ]
+    }
