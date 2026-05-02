@@ -35,7 +35,7 @@ spec:
                 spec:
                   resources:
                     requests:
-                      storage: 5Gi
+                      storage: 2Gi
         grafana:
           nodeSelector:
             node-role.kubernetes.io/worker: worker
@@ -55,7 +55,7 @@ spec:
               org_role: Viewer
           persistence:
             enabled: true
-            size: 5Gi
+            size: 2Gi
           additionalDataSources:
             - name: Loki
               type: loki
