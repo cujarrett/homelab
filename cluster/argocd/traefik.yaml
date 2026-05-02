@@ -1,17 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: blog
+  name: traefik
   namespace: argocd
 spec:
-  project: workloads
+  project: infrastructure
   source:
     repoURL: https://github.com/cujarrett/homelab.git
     targetRevision: main
-    path: apps/blog
+    path: cluster/traefik
   destination:
     server: https://kubernetes.default.svc
-    namespace: blog
+    namespace: kube-system
   syncPolicy:
     automated:
       prune: true

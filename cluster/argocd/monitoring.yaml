@@ -1,17 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: longhorn
+  name: monitoring
   namespace: argocd
 spec:
-  project: infrastructure
+  project: observability
   source:
     repoURL: https://github.com/cujarrett/homelab.git
     targetRevision: main
-    path: apps/longhorn
+    path: cluster/monitoring
   destination:
     server: https://kubernetes.default.svc
-    namespace: longhorn-system
+    namespace: monitoring
   syncPolicy:
     automated:
       prune: true

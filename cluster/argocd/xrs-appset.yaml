@@ -8,11 +8,11 @@ spec:
     - git:
         repoURL: https://github.com/cujarrett/homelab.git
         revision: main
-        files:
-          - path: "platform/xrs/**/*.yaml"
+        directories:
+          - path: "tenants/*"
   template:
     metadata:
-      name: "{{metadata.name}}"
+      name: "{{path.basename}}"
       finalizers:
         - resources-finalizer.argocd.argoproj.io
     spec:
@@ -21,16 +21,15 @@ spec:
       source:
         repoURL: https://github.com/cujarrett/homelab.git
         targetRevision: main
-        path: "platform/xrs/{{path[2]}}"
-        directory:
-          include: "{{path.filename}}"
+        path: "{{path}}"
       destination:
         server: https://kubernetes.default.svc
-        namespace: "{{metadata.name}}"
+        namespace: "{{path.basename}}"
       syncPolicy:
         automated:
           prune: true
           selfHeal: true
         syncOptions:
           - CreateNamespace=true
+          - ServerSideApply=true
           - allowEmpty=true

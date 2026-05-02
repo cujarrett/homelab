@@ -1,0 +1,16 @@
+apiVersion: platform.local.lab/v1alpha1
+kind: XApi
+metadata:
+  name: sump-pump-bridge
+spec:
+  parameters:
+    image: ghcr.io/cujarrett/sump-pump-bridge:main
+    port: 8080
+    # NOTE: Shelly devices can't validate custom CA certs. When configuring
+    # the Shelly webhook, POST to http://192.168.10.10x/webhook with the
+    # Traefik `web` entrypoint, or use the ClusterIP directly from a NodePort.
+    host: sump-pump-bridge.local.lab
+    tlsIssuer: local-lab-ca-issuer
+    environment: test
+    topicRef:
+      name: home-appliances

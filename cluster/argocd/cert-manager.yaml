@@ -1,17 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: cloudflare
+  name: cert-manager
   namespace: argocd
 spec:
   project: infrastructure
   source:
     repoURL: https://github.com/cujarrett/homelab.git
     targetRevision: main
-    path: apps/cloudflare
+    path: cluster/cert-manager
   destination:
     server: https://kubernetes.default.svc
-    namespace: cloudflare
+    namespace: cert-manager
   syncPolicy:
     automated:
       prune: true

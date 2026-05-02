@@ -34,7 +34,7 @@ spec:
                   node-role.kubernetes.io/worker: worker
     - repoURL: https://github.com/cujarrett/homelab.git
       targetRevision: main
-      path: apps/nats
+      path: cluster/nats
   destination:
     server: https://kubernetes.default.svc
     namespace: nats
