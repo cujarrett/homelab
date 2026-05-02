@@ -14,6 +14,12 @@ spec:
       values: |
         kubeApiServer:
           enabled: false
+        kubelet:
+          serviceMonitor:
+            metricRelabelings:
+              - sourceLabels: [__name__]
+                regex: "apiserver_.+_bucket|etcd_.+_bucket|workqueue_.+_bucket|prober_.+_bucket|scheduler_.+_bucket|kubelet_runtime_operations_duration_seconds_bucket"
+                action: drop
         grafana:
           serviceMonitor:
             enabled: false
@@ -74,7 +80,7 @@ spec:
           prometheusSpec:
             nodeSelector:
               node-role.kubernetes.io/worker: worker
-            retention: 30d
+            retention: 365d
             scrapeInterval: "60s"
             evaluationInterval: "60s"
             resources:
@@ -87,7 +93,7 @@ spec:
                 spec:
                   resources:
                     requests:
-                      storage: 20Gi
+                      storage: 25Gi
           ingress:
             enabled: false
   destination:
