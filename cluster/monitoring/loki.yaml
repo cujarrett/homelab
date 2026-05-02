@@ -36,6 +36,8 @@ spec:
             delete_request_store: filesystem
         singleBinary:
           replicas: 1
+          nodeSelector:
+            node-role.kubernetes.io/worker: worker
           persistence:
             enabled: true
             size: 2Gi
