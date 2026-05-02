@@ -74,6 +74,14 @@ spec:
               folderAnnotation: grafana_folder
               provider:
                 foldersFromFilesStructure: true
+          extraVolumes:
+            - name: playlist-kiosk
+              configMap:
+                name: grafana-playlist-kiosk
+          extraVolumeMounts:
+            - name: playlist-kiosk
+              mountPath: /etc/grafana/provisioning/playlists
+              readOnly: true
           ingress:
             enabled: false
         prometheus:
