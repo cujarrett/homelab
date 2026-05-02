@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-node-vitals-kiosk
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  node-vitals-kiosk.json: |-
+    {
+      "title": "Node Vitals",
+      "uid": "node-vitals-kiosk",
+      "editable": true,
+      "graphTooltip": 0,
+      "time": { "from": "now-30m", "to": "now" },
+      "timepicker": {},
+      "refresh": "30s",
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "id": 1, "type": "timeseries", "title": "CPU %",
+          "gridPos": { "x": 0, "y": 0, "w": 8, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "decimals": 1, "custom": { "lineWidth": 2, "fillOpacity": 10, "lineInterpolation": "smooth" } } },
+          "options": { "legend": { "displayMode": "list", "placement": "right", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+          "targets": [
+            { "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.100:9100\",mode=\"idle\"}[2m])) * 100)", "legendFormat": "ctrl-1", "refId": "A" },
+            { "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.101:9100\",mode=\"idle\"}[2m])) * 100)", "legendFormat": "work-1", "refId": "B" },
+            { "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.102:9100\",mode=\"idle\"}[2m])) * 100)", "legendFormat": "work-2", "refId": "C" },
+            { "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.103:9100\",mode=\"idle\"}[2m])) * 100)", "legendFormat": "work-3", "refId": "D" }
+          ]
+        },
+        {
+          "id": 2, "type": "timeseries", "title": "Memory %",
+          "gridPos": { "x": 8, "y": 0, "w": 8, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "decimals": 1, "custom": { "lineWidth": 2, "fillOpacity": 10, "lineInterpolation": "smooth" } } },
+          "options": { "legend": { "displayMode": "list", "placement": "right", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+          "targets": [
+            { "expr": "(1 - node_memory_MemAvailable_bytes{instance=\"192.168.10.100:9100\"} / node_memory_MemTotal_bytes{instance=\"192.168.10.100:9100\"}) * 100", "legendFormat": "ctrl-1", "refId": "A" },
+            { "expr": "(1 - node_memory_MemAvailable_bytes{instance=\"192.168.10.101:9100\"} / node_memory_MemTotal_bytes{instance=\"192.168.10.101:9100\"}) * 100", "legendFormat": "work-1", "refId": "B" },
+            { "expr": "(1 - node_memory_MemAvailable_bytes{instance=\"192.168.10.102:9100\"} / node_memory_MemTotal_bytes{instance=\"192.168.10.102:9100\"}) * 100", "legendFormat": "work-2", "refId": "C" },
+            { "expr": "(1 - node_memory_MemAvailable_bytes{instance=\"192.168.10.103:9100\"} / node_memory_MemTotal_bytes{instance=\"192.168.10.103:9100\"}) * 100", "legendFormat": "work-3", "refId": "D" }
+          ]
+        },
+        {
+          "id": 3, "type": "timeseries", "title": "CPU °C",
+          "gridPos": { "x": 16, "y": 0, "w": 8, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "celsius", "decimals": 1, "custom": { "lineWidth": 2, "fillOpacity": 10, "lineInterpolation": "smooth" } } },
+          "options": { "legend": { "displayMode": "list", "placement": "right", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+          "targets": [
+            { "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.100:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}", "legendFormat": "ctrl-1", "refId": "A" },
+            { "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.101:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}", "legendFormat": "work-1", "refId": "B" },
+            { "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.102:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}", "legendFormat": "work-2", "refId": "C" },
+            { "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.103:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}", "legendFormat": "work-3", "refId": "D" }
+          ]
+        }
+      ]
+    }
