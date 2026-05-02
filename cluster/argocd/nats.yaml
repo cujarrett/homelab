@@ -32,6 +32,12 @@ spec:
               spec:
                 nodeSelector:
                   node-role.kubernetes.io/worker: worker
+          natsBox:
+            podTemplate:
+              merge:
+                spec:
+                  nodeSelector:
+                    node-role.kubernetes.io/worker: worker
     - repoURL: https://github.com/cujarrett/homelab.git
       targetRevision: main
       path: cluster/nats
