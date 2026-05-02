@@ -1,0 +1,12 @@
+apiVersion: platform.local.lab/v1alpha1
+kind: XApi
+metadata:
+  name: sump-pump-consumer
+spec:
+  parameters:
+    namespace: sump-pump
+    image: ghcr.io/cujarrett/sump-pump-consumer:main
+    port: 8080
+    environment: test
+    subscriptionRef:
+      name: sump-pump-monitor
