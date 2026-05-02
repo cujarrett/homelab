@@ -8,298 +8,83 @@ metadata:
 data:
   web-traffic-kiosk.json: |-
     {
-      "annotations": {
-        "list": [
-          {
-            "builtIn": 1,
-            "datasource": {
-              "type": "grafana",
-              "uid": "-- Grafana --"
-            },
-            "enable": true,
-            "hide": true,
-            "iconColor": "rgba(0, 211, 255, 1)",
-            "name": "Annotations & Alerts",
-            "type": "dashboard"
-          }
-        ]
-      },
-      "editable": true,
-      "fiscalYearStartMonth": 0,
-      "graphTooltip": 0,
-      "links": [],
-      "panels": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "description": "Requests in the last 24 hours",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "fixedColor": "blue",
-                "mode": "fixed"
-              },
-              "decimals": 0,
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "blue",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 6,
-            "x": 0,
-            "y": 0
-          },
-          "id": 1,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "text": {},
-            "textMode": "value_and_name",
-            "wideLayout": true
-          },
-          "pluginVersion": "12.4.2",
-          "targets": [
-            {
-              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[24h]))",
-              "instant": true,
-              "legendFormat": "requests last 24h",
-              "refId": "A"
-            }
-          ],
-          "title": "blog.mattjarrett.dev",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "description": "Each point shows how many requests were received in the previous 1-hour window. Refreshes every 5 minutes.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 15,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "smooth",
-                "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "showValues": false,
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "decimals": 0,
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": [
-              { "matcher": { "id": "byName", "options": "mattjarrett.dev" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
-              { "matcher": { "id": "byName", "options": "blog.mattjarrett.dev" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
-              { "matcher": { "id": "byName", "options": "blog 2xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }, { "id": "custom.lineWidth", "value": 1 }] },
-              { "matcher": { "id": "byName", "options": "blog 4xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }, { "id": "custom.lineStyle", "value": { "dash": [8, 8], "fill": "dash" } }, { "id": "custom.lineWidth", "value": 1 }] },
-              { "matcher": { "id": "byName", "options": "mattjarrett.dev 2xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }, { "id": "custom.lineWidth", "value": 1 }] },
-              { "matcher": { "id": "byName", "options": "mattjarrett.dev 4xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }, { "id": "custom.lineStyle", "value": { "dash": [8, 8], "fill": "dash" } }, { "id": "custom.lineWidth", "value": 1 }] }
-            ]
-          },
-          "gridPos": {
-            "h": 6,
-            "w": 18,
-            "x": 6,
-            "y": 0
-          },
-          "id": 3,
-          "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "tooltip": {
-              "hideZeros": false,
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "pluginVersion": "12.4.2",
-          "targets": [
-            {
-              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[1h]))",
-              "legendFormat": "blog.mattjarrett.dev",
-              "refId": "A"
-            },
-            {
-              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes\"}[1h]))",
-              "legendFormat": "mattjarrett.dev",
-              "refId": "B"            },
-            {
-              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\",code=~\"2..\"}[1h]))",
-              "legendFormat": "blog 2xx",
-              "refId": "C"
-            },
-            {
-              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\",code=~\"4..\"}[1h]))",
-              "legendFormat": "blog 4xx",
-              "refId": "D"
-            },
-            {
-              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes\",code=~\"2..\"}[1h]))",
-              "legendFormat": "mattjarrett.dev 2xx",
-              "refId": "E"
-            },
-            {
-              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes\",code=~\"4..\"}[1h]))",
-              "legendFormat": "mattjarrett.dev 4xx",
-              "refId": "F"            }
-          ],
-          "title": "Requests per Hour",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "description": "Page requests in the last 24 hours (assets excluded)",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "fixedColor": "green",
-                "mode": "fixed"
-              },
-              "decimals": 0,
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 6,
-            "x": 0,
-            "y": 3
-          },
-          "id": 2,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "text": {},
-            "textMode": "value_and_name",
-            "wideLayout": true
-          },
-          "pluginVersion": "12.4.2",
-          "targets": [
-            {
-              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes\"}[24h]))",
-              "instant": true,
-              "legendFormat": "requests last 24h",
-              "refId": "A"
-            }
-          ],
-          "title": "mattjarrett.dev",
-          "type": "stat"
-        }
-      ],
-      "preload": false,
-      "refresh": "5m",
-      "schemaVersion": 42,
-      "tags": [],
-      "templating": {
-        "list": []
-      },
-      "time": {
-        "from": "now-24h",
-        "to": "now"
-      },
-      "timepicker": {
-        "hidden": true
-      },
-      "timezone": "browser",
       "title": "Web Traffic — Kiosk",
       "uid": "web-traffic-kiosk",
-      "version": 2,
-      "weekStart": ""
+      "editable": true,
+      "graphTooltip": 0,
+      "time": { "from": "now-24h", "to": "now" },
+      "timepicker": { "hidden": true },
+      "refresh": "5m",
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "id": 1, "type": "stat", "title": "blog.mattjarrett.dev",
+          "description": "Requests in the last 24 hours",
+          "gridPos": { "x": 0, "y": 0, "w": 3, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "fixedColor": "blue", "mode": "fixed" } } },
+          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
+        },
+        {
+          "id": 2, "type": "stat", "title": "mattjarrett.dev",
+          "description": "Requests in the last 24 hours",
+          "gridPos": { "x": 3, "y": 0, "w": 3, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "fixedColor": "green", "mode": "fixed" } } },
+          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes|web-mattjarrett-dev.*@kubernetes\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
+        },
+        {
+          "id": 3, "type": "stat", "title": "mattjarrett.com",
+          "description": "Requests in the last 24 hours",
+          "gridPos": { "x": 6, "y": 0, "w": 3, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "fixedColor": "orange", "mode": "fixed" } } },
+          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
+        },
+        {
+          "id": 4, "type": "stat", "title": "myvinyl.mattjarrett.dev",
+          "description": "Requests in the last 24 hours",
+          "gridPos": { "x": 9, "y": 0, "w": 3, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "fixedColor": "purple", "mode": "fixed" } } },
+          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"my-vinyl-my-vinyl.*@kubernetes\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
+        },
+        {
+          "id": 5, "type": "stat", "title": "jspollock.mattjarrett.dev",
+          "description": "Requests in the last 24 hours",
+          "gridPos": { "x": 12, "y": 0, "w": 3, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "fixedColor": "yellow", "mode": "fixed" } } },
+          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"js-pollock-js-pollock.*@kubernetes\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
+        },
+        {
+          "id": 6, "type": "timeseries", "title": "Requests / hr — All Sites",
+          "description": "Requests per 1-hour window for all public sites.",
+          "gridPos": { "x": 15, "y": 0, "w": 9, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": { "unit": "short", "decimals": 0, "custom": { "lineWidth": 2, "fillOpacity": 15, "lineInterpolation": "smooth" } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "blog" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "mattjarrett.dev" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "mattjarrett.com" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "myvinyl" }, "properties": [{ "id": "color", "value": { "fixedColor": "purple", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "jspollock" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] }
+            ]
+          },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+          "targets": [
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[1h]))", "legendFormat": "blog", "refId": "A" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes|web-mattjarrett-dev.*@kubernetes\"}[1h]))", "legendFormat": "mattjarrett.dev", "refId": "B" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes\"}[1h]))", "legendFormat": "mattjarrett.com", "refId": "C" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"my-vinyl-my-vinyl.*@kubernetes\"}[1h]))", "legendFormat": "myvinyl", "refId": "D" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"js-pollock-js-pollock.*@kubernetes\"}[1h]))", "legendFormat": "jspollock", "refId": "E" }
+          ]
+        }
+      ]
     }

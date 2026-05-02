@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-cluster-health-kiosk
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  cluster-health-kiosk.json: |-
+    {
+      "title": "Cluster Health",
+      "uid": "cluster-health-kiosk",
+      "editable": true,
+      "graphTooltip": 0,
+      "time": { "from": "now-30m", "to": "now" },
+      "timepicker": {},
+      "refresh": "30s",
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "id": 1, "type": "stat", "title": "Nodes Ready",
+          "gridPos": { "x": 0, "y": 0, "w": 4, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 1 }, { "color": "green", "value": 4 }] } } },
+          "targets": [{ "expr": "count(kube_node_status_condition{condition=\"Ready\",status=\"true\"} == 1)", "legendFormat": "ready", "instant": true, "refId": "A" }]
+        },
+        {
+          "id": 2, "type": "stat", "title": "Running Pods",
+          "gridPos": { "x": 4, "y": 0, "w": 4, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] } } },
+          "targets": [{ "expr": "count(kube_pod_status_phase{phase=\"Running\"} == 1)", "legendFormat": "running", "instant": true, "refId": "A" }]
+        },
+        {
+          "id": 3, "type": "stat", "title": "Not-OK Pods",
+          "description": "Pods in Failed, Pending, or Unknown phase. Should be 0.",
+          "gridPos": { "x": 8, "y": 0, "w": 4, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } } },
+          "targets": [{ "expr": "count(kube_pod_status_phase{phase=~\"Failed|Pending|Unknown\"} == 1) or vector(0)", "legendFormat": "not-ok", "instant": true, "refId": "A" }]
+        },
+        {
+          "id": 4, "type": "stat", "title": "PVCs Bound",
+          "gridPos": { "x": 12, "y": 0, "w": 4, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] } } },
+          "targets": [{ "expr": "count(kube_persistentvolumeclaim_status_phase{phase=\"Bound\"} == 1)", "legendFormat": "bound", "instant": true, "refId": "A" }]
+        },
+        {
+          "id": 5, "type": "stat", "title": "Container Restarts (1h)",
+          "description": "Total container restarts across all pods in the last hour.",
+          "gridPos": { "x": 16, "y": 0, "w": 4, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }] } } },
+          "targets": [{ "expr": "sum(increase(kube_pod_container_status_restarts_total[1h]))", "legendFormat": "restarts", "instant": true, "refId": "A" }]
+        },
+        {
+          "id": 6, "type": "stat", "title": "Unschedulable Nodes",
+          "description": "Nodes cordoned or tainted unschedulable. Should be 0.",
+          "gridPos": { "x": 20, "y": 0, "w": 4, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } } },
+          "targets": [{ "expr": "count(kube_node_spec_unschedulable == 1) or vector(0)", "legendFormat": "unschedulable", "instant": true, "refId": "A" }]
+        }
+      ]
+    }
