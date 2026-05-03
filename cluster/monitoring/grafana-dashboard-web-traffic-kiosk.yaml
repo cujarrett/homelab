@@ -36,7 +36,6 @@ data:
           "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes|web-mattjarrett-dev.*@kubernetes\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
         },
         {
-        {
           "id": 4, "type": "stat", "title": "myvinyl.mattjarrett.dev",
           "description": "Requests in the last 24 hours",
           "gridPos": { "x": 6, "y": 0, "w": 3, "h": 5 },
