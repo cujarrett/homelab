@@ -88,6 +88,7 @@ spec:
           prometheusSpec:
             nodeSelector:
               node-role.kubernetes.io/worker: worker
+            enableAdminAPI: true
             retention: 365d
             scrapeInterval: "60s"
             evaluationInterval: "60s"
