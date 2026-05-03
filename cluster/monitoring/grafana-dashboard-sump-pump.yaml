@@ -416,7 +416,7 @@ data:
           "pluginVersion": "12.4.2",
           "targets": [
             {
-              "expr": "sump_pump_watts{job=\"sump-pump-consumer\"} / 1000 * 0.16",
+              "expr": "sump_pump_last_run_watts{job=\"sump-pump-consumer\"} / 1000 * 0.16",
               "instant": true,
               "legendFormat": "cost/hr",
               "refId": "A"
@@ -698,7 +698,7 @@ data:
           "pluginVersion": "12.4.2",
           "targets": [
             {
-              "expr": "sump_pump_watts{job=\"sump-pump-consumer\"} / 1000 * 0.16",
+              "expr": "sump_pump_last_run_watts{job=\"sump-pump-consumer\"} / 1000 * 0.16",
               "legendFormat": "$/hr",
               "refId": "A"
             }
