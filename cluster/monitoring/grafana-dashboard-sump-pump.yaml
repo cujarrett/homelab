@@ -40,10 +40,10 @@ data:
           "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "reduceOptions": { "calcs": ["lastNotNull"], "values": false },
             "colorMode": "background",
             "graphMode": "none",
-            "textMode": "value_and_name",
+            "textMode": "value",
             "justifyMode": "center"
           },
           "fieldConfig": {
@@ -71,10 +71,10 @@ data:
           "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "reduceOptions": { "calcs": ["lastNotNull"], "values": false },
             "colorMode": "none",
             "graphMode": "none",
-            "textMode": "value_and_name",
+            "textMode": "value",
             "justifyMode": "center"
           },
           "fieldConfig": {
@@ -96,10 +96,10 @@ data:
           "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
-            "reduceOptions": { "calcs": ["sum"] },
+            "reduceOptions": { "calcs": ["sum"], "values": false },
             "colorMode": "none",
             "graphMode": "none",
-            "textMode": "value_and_name",
+            "textMode": "value",
             "justifyMode": "center"
           },
           "fieldConfig": {
@@ -121,10 +121,10 @@ data:
           "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
-            "reduceOptions": { "calcs": ["sum"] },
+            "reduceOptions": { "calcs": ["sum"], "values": false },
             "colorMode": "none",
             "graphMode": "none",
-            "textMode": "value_and_name",
+            "textMode": "value",
             "justifyMode": "center"
           },
           "fieldConfig": {
@@ -146,10 +146,10 @@ data:
           "gridPos": { "x": 16, "y": 0, "w": 8, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "reduceOptions": { "calcs": ["lastNotNull"], "values": false },
             "colorMode": "none",
             "graphMode": "none",
-            "textMode": "value_and_name",
+            "textMode": "value",
             "justifyMode": "center"
           },
           "fieldConfig": {
@@ -208,7 +208,7 @@ data:
                 "lineWidth": 2,
                 "fillOpacity": 15,
                 "lineInterpolation": "smooth",
-                "drawStyle": "bars"
+                "drawStyle": "line"
               },
               "color": { "mode": "fixed", "fixedColor": "green" }
             }
