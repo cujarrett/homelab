@@ -555,7 +555,7 @@ data:
           "pluginVersion": "12.4.2",
           "targets": [
             {
-              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h])",
+              "expr": "sum(increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]))",
               "legendFormat": "runs/hr",
               "refId": "A"
             }
