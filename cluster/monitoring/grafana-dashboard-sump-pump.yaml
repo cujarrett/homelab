@@ -274,7 +274,7 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 4,
+            "w": 3,
             "x": 12,
             "y": 0
           },
@@ -313,6 +313,60 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "description": "Average time between pump runs over the last hour.",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": 0 }
+                ]
+              },
+              "unit": "dtdurations"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 3,
+            "x": 15,
+            "y": 0
+          },
+          "id": 10,
+          "options": {
+            "colorMode": "none",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [ "lastNotNull" ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "12.4.2",
+          "targets": [
+            {
+              "expr": "1 / rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h])",
+              "instant": true,
+              "legendFormat": "avg gap",
+              "refId": "A"
+            }
+          ],
+          "title": "Avg Time Between Runs",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "description": "How long ago the sump pump last turned on.",
           "fieldConfig": {
             "defaults": {
@@ -337,8 +391,8 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 4,
-            "x": 16,
+            "w": 3,
+            "x": 18,
             "y": 0
           },
           "id": 7,
@@ -393,8 +447,8 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 4,
-            "x": 20,
+            "w": 3,
+            "x": 21,
             "y": 0
           },
           "id": 8,
