@@ -23,7 +23,7 @@ data:
             "enable": true,
             "hide": false,
             "datasource": { "type": "prometheus", "uid": "prometheus" },
-            "expr": "sump_pump_running == 1",
+            "expr": "sump_pump_running{job=\"sump-pump-consumer\"} == 1",
             "step": "60s",
             "useValueForTime": false,
             "iconColor": "blue",
@@ -57,7 +57,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sump_pump_running",
+              "expr": "sump_pump_running{job=\"sump-pump-consumer\"}",
               "legendFormat": "state",
               "instant": true
             }
@@ -82,7 +82,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sump_pump_watts",
+              "expr": "sump_pump_watts{job=\"sump-pump-consumer\"}",
               "legendFormat": "watts",
               "instant": true
             }
@@ -107,7 +107,7 @@ data:
           },
           "targets": [
             {
-              "expr": "increase(sump_pump_runs_total[$__range])",
+              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[$__range])",
               "legendFormat": "runs",
               "instant": true
             }
@@ -132,7 +132,7 @@ data:
           },
           "targets": [
             {
-              "expr": "increase(sump_pump_runs_total[7d])",
+              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[7d])",
               "legendFormat": "runs",
               "instant": true
             }
@@ -157,7 +157,7 @@ data:
           },
           "targets": [
             {
-              "expr": "time() - sump_pump_last_run_timestamp_unix",
+              "expr": "time() - sump_pump_last_run_timestamp_unix{job=\"sump-pump-consumer\"}",
               "legendFormat": "ago",
               "instant": true
             }
@@ -188,7 +188,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sump_pump_watts",
+              "expr": "sump_pump_watts{job=\"sump-pump-consumer\"}",
               "legendFormat": "watts"
             }
           ]
@@ -219,7 +219,7 @@ data:
           },
           "targets": [
             {
-              "expr": "increase(sump_pump_runs_total[1h])",
+              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h])",
               "legendFormat": "runs/hr"
             }
           ]
