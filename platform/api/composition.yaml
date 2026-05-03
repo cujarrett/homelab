@@ -58,12 +58,13 @@ spec:
               namespace: {{ $ns }}
               labels:
                 app: xapi
+                app.kubernetes.io/instance: {{ $name }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: service
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               selector:
-                app: xapi
+                app.kubernetes.io/instance: {{ $name }}
               ports:
                 - name: http
                   port: 80
@@ -82,6 +83,7 @@ spec:
               namespace: {{ $ns }}
               labels:
                 app: xapi
+                app.kubernetes.io/instance: {{ $name }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: deployment
                 gotemplating.fn.crossplane.io/ready: "True"
@@ -89,11 +91,12 @@ spec:
               replicas: 1
               selector:
                 matchLabels:
-                  app: xapi
+                  app.kubernetes.io/instance: {{ $name }}
               template:
                 metadata:
                   labels:
                     app: xapi
+                    app.kubernetes.io/instance: {{ $name }}
                 spec:
                   nodeSelector:
                     node-role.kubernetes.io/worker: worker
@@ -228,7 +231,7 @@ spec:
             spec:
               selector:
                 matchLabels:
-                  app: xapi
+                  app.kubernetes.io/instance: {{ $name }}
               endpoints:
                 - port: metrics
                   path: /metrics
