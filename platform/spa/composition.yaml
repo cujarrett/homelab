@@ -111,10 +111,16 @@ spec:
                     }
 
                     {{- if $apiProxyEnabled }}
-                    # API proxy: routes /api/ to in-cluster service (no public exposure needed)
+                    # API proxy: routes /api to in-cluster service (no public exposure needed)
+                    location = /api {
+                        proxy_pass http://{{ $params.apiProxy.upstream }}/collection;
+                        proxy_set_header Host $host;
+                        proxy_set_header X-Real-IP $remote_addr;
+                        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                        proxy_set_header X-Forwarded-Proto $scheme;
+                    }
                     location /api/ {
-                        rewrite ^/api/(.*)$ /collection/$1 break;
-                        proxy_pass http://{{ $params.apiProxy.upstream }};
+                        proxy_pass http://{{ $params.apiProxy.upstream }}/;
                         proxy_set_header Host $host;
                         proxy_set_header X-Real-IP $remote_addr;
                         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
