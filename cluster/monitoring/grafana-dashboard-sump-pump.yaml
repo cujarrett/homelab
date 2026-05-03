@@ -547,12 +547,13 @@ data:
                 "matcher": { "id": "byName", "options": "run" },
                 "properties": [
                   { "id": "custom.drawStyle", "value": "bars" },
-                  { "id": "custom.barAlignment", "value": 0 },
-                  { "id": "custom.fillOpacity", "value": 25 },
+                  { "id": "custom.fillOpacity", "value": 15 },
                   { "id": "custom.lineWidth", "value": 0 },
-                  { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } },
-                  { "id": "custom.scaleDistribution", "value": { "type": "linear" } },
+                  { "id": "custom.axisPlacement", "value": "right" },
+                  { "id": "custom.axisSoftMin", "value": 0 },
                   { "id": "custom.axisSoftMax", "value": 1 },
+                  { "id": "custom.axisLabel", "value": "" },
+                  { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } },
                   { "id": "custom.hideFrom", "value": { "legend": true, "tooltip": false, "viz": false } }
                 ]
               }
@@ -586,7 +587,7 @@ data:
               "refId": "A"
             },
             {
-              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[30s]) > 0",
+              "expr": "sump_pump_running{job=\"sump-pump-consumer\"}",
               "legendFormat": "run",
               "refId": "B"
             }
@@ -767,11 +768,13 @@ data:
                 "matcher": { "id": "byName", "options": "run" },
                 "properties": [
                   { "id": "custom.drawStyle", "value": "bars" },
-                  { "id": "custom.barAlignment", "value": 0 },
-                  { "id": "custom.fillOpacity", "value": 25 },
+                  { "id": "custom.fillOpacity", "value": 15 },
                   { "id": "custom.lineWidth", "value": 0 },
-                  { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } },
+                  { "id": "custom.axisPlacement", "value": "right" },
+                  { "id": "custom.axisSoftMin", "value": 0 },
                   { "id": "custom.axisSoftMax", "value": 1 },
+                  { "id": "custom.axisLabel", "value": "" },
+                  { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } },
                   { "id": "custom.hideFrom", "value": { "legend": true, "tooltip": false, "viz": false } }
                 ]
               }
@@ -805,7 +808,7 @@ data:
               "refId": "A"
             },
             {
-              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[30s]) > 0",
+              "expr": "sump_pump_running{job=\"sump-pump-consumer\"}",
               "legendFormat": "run",
               "refId": "B"
             }
