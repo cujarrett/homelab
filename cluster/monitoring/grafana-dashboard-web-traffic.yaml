@@ -128,7 +128,6 @@ data:
           "targets": [{ "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes|web-mattjarrett-dev.*@kubernetes\",code=~\"2..\"}[5m])) / sum(rate(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes|web-mattjarrett-dev.*@kubernetes\"}[5m]))", "legendFormat": "Success Rate", "instant": true }]
         },
         {
-        {
           "id": 14, "type": "stat", "title": "myvinyl.mattjarrett.dev — Success Rate",
           "gridPos": { "x": 12, "y": 13, "w": 6, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
