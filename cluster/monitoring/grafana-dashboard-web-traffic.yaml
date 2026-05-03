@@ -75,7 +75,6 @@ data:
           "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes|web-mattjarrett-dev.*@kubernetes\",code=~\"$status_code\"}[$__range]))", "legendFormat": "requests", "instant": true }]
         },
         {
-        {
           "id": 4, "type": "stat", "title": "myvinyl.mattjarrett.dev",
           "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
