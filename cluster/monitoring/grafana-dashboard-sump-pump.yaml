@@ -27,12 +27,12 @@ data:
               "type": "prometheus",
               "uid": "prometheus"
             },
-            "enable": true,
+            "enable": false,
             "expr": "sump_pump_running{job=\"sump-pump-consumer\"} == 1",
             "hide": false,
             "iconColor": "blue",
             "name": "Pump running",
-            "step": "60s",
+            "step": "15s",
             "titleFormat": "Running",
             "useValueForTime": false
           }
@@ -638,7 +638,18 @@ data:
               },
               "unit": "short"
             },
-            "overrides": []
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "run" },
+                "properties": [
+                  { "id": "custom.drawStyle", "value": "bars" },
+                  { "id": "custom.barAlignment", "value": 0 },
+                  { "id": "custom.fillOpacity", "value": 80 },
+                  { "id": "custom.lineWidth", "value": 0 },
+                  { "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }
+                ]
+              }
+            ]
           },
           "gridPos": {
             "h": 8,
@@ -666,6 +677,11 @@ data:
               "expr": "rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600",
               "legendFormat": "runs/hr",
               "refId": "A"
+            },
+            {
+              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[30s]) > 0",
+              "legendFormat": "run",
+              "refId": "B"
             }
           ],
           "title": "Run Frequency",
