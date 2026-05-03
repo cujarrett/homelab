@@ -587,7 +587,7 @@ data:
               "refId": "A"
             },
             {
-              "expr": "sump_pump_running{job=\"sump-pump-consumer\"}",
+              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1m]) > 0",
               "legendFormat": "run",
               "refId": "B"
             }
@@ -808,7 +808,7 @@ data:
               "refId": "A"
             },
             {
-              "expr": "sump_pump_running{job=\"sump-pump-consumer\"}",
+              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1m]) > 0",
               "legendFormat": "run",
               "refId": "B"
             }
