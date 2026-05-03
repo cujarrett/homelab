@@ -107,7 +107,7 @@ data:
           },
           "targets": [
             {
-              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[$__range])",
+              "expr": "sum(increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[$__range]))",
               "legendFormat": "runs",
               "instant": true
             }
@@ -132,7 +132,7 @@ data:
           },
           "targets": [
             {
-              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[7d])",
+              "expr": "sum(increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[7d]))",
               "legendFormat": "runs",
               "instant": true
             }
