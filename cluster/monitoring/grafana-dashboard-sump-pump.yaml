@@ -236,7 +236,7 @@ data:
           "pluginVersion": "12.4.2",
           "targets": [
             {
-              "expr": "sum(increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[$__range]))",
+              "expr": "sum(increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1d]))",
               "instant": true,
               "legendFormat": "runs",
               "refId": "A"
