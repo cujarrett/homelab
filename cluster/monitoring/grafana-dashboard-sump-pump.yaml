@@ -299,13 +299,13 @@ data:
           "pluginVersion": "12.4.2",
           "targets": [
             {
-              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1d])",
+              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[$__range])",
               "instant": true,
               "legendFormat": "runs",
               "refId": "A"
             }
           ],
-          "title": "Runs Today",
+          "title": "Runs",
           "type": "stat"
         },
         {
@@ -359,7 +359,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Avg Time Between Runs",
+          "title": "Avg Gap",
           "type": "stat"
         },
         {
@@ -422,7 +422,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Time Since Last Run",
+          "title": "Since Last Run",
           "type": "stat"
         },
         {
@@ -476,7 +476,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Cost / Hour",
+          "title": "Cost/hr",
           "type": "stat"
         },
         {
