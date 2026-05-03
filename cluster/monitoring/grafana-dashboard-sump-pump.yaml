@@ -362,7 +362,7 @@ data:
           "pluginVersion": "12.4.2",
           "targets": [
             {
-              "expr": "time() - sump_pump_last_run_timestamp_unix{job=\"sump-pump-consumer\"}",
+              "expr": "time() - sump_pump_last_completed_run_timestamp_unix{job=\"sump-pump-consumer\"}",
               "instant": true,
               "legendFormat": "ago",
               "refId": "A"
