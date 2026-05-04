@@ -468,11 +468,6 @@ data:
               "expr": "sump_pump_last_run_watts{job=\"sump-pump-consumer\"}",
               "legendFormat": "watts",
               "refId": "A"
-            },
-            {
-              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[5m]) > 0",
-              "legendFormat": "run",
-              "refId": "B"
             }
           ],
           "title": "Power Draw",
@@ -541,19 +536,7 @@ data:
               },
               "unit": "short"
             },
-            "overrides": [
-              {
-                "matcher": { "id": "byName", "options": "run" },
-                "properties": [
-                  { "id": "custom.drawStyle", "value": "bars" },
-                  { "id": "custom.barAlignment", "value": 0 },
-                  { "id": "custom.fillOpacity", "value": 80 },
-                  { "id": "custom.lineWidth", "value": 0 },
-                  { "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } },
-                  { "id": "custom.hideFrom", "value": { "legend": true, "tooltip": true, "viz": false } }
-                ]
-              }
-            ]
+            "overrides": []
           },
           "gridPos": {
             "h": 8,
@@ -571,21 +554,16 @@ data:
             },
             "tooltip": {
               "hideZeros": false,
-              "mode": "none",
+              "mode": "single",
               "sort": "none"
             }
           },
           "pluginVersion": "12.4.2",
           "targets": [
             {
-              "expr": "rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600",
+              "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)",
               "legendFormat": "runs/hr",
               "refId": "A"
-            },
-            {
-              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[5m]) > 0",
-              "legendFormat": "run",
-              "refId": "B"
             }
           ],
           "title": "Runs per Hour",
