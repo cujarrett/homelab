@@ -261,7 +261,7 @@ Three platform types are defined under `platform/`:
 | XRD | Kind | Namespace | Notes |
 |---|---|---|---|
 | `xwordpressplatforms.platform.local.lab` | `XWordPressPlatform` | `mattjarrett-com` | MariaDB StatefulSet + WordPress Deployment; credentials from XR UID |
-| `xspas.platform.local.lab` | `XSpa` | `mattjarrett-dev` | nginx + Angular SPA; nginx config generated via go-templating function |
+| `xspas.platform.local.lab` | `XSpa` | `mattjarrett-dev` | nginx + Angular SPA; nginx config generated via go-templating function — **app repos must NOT include an nginx.conf; composition owns it entirely** |
 | `xapis.platform.local.lab` | `XApi` | — | Generic REST API (no active instance) |
 
 ### GitOps flow for XR instances
