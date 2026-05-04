@@ -45,6 +45,25 @@ spec:
 
 Instance files live in [`tenants/`](../../tenants/).
 
+## App repo contract
+
+App repos ship a static build into `nginx:alpine`. **Do not add an `nginx.conf` to the app repo or `COPY` one in the Dockerfile.** The composition mounts its ConfigMap directly over `/etc/nginx/conf.d/default.conf` at runtime, overwriting anything baked into the image. Security headers, probe blocking, caching rules, and the API proxy are all owned here.
+
+A correct app Dockerfile looks like:
+
+```dockerfile
+FROM node:24-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=build /app/dist/foo/browser /usr/share/nginx/html
+EXPOSE 80
+```
+
 ## Operations
 
 ```bash
