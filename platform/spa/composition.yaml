@@ -110,6 +110,26 @@ spec:
                         return 404;
                     }
 
+                    # PHP info/debug probes without extension (complements the *.php block)
+                    location ~* ^/(phpinfo|php-info|pinfo|server-info|server-status)(/|$) {
+                        return 404;
+                    }
+
+                    # Bare /env probe — complements the \.env[^/]* block (no leading dot)
+                    location ~* ^/env(/|$) {
+                        return 404;
+                    }
+
+                    # WordPress REST API probes
+                    location ~* ^/wp-json(/|$) {
+                        return 404;
+                    }
+
+                    # cPanel SSO / OpenID probes
+                    location ~* ^/openid_connect(/|$) {
+                        return 404;
+                    }
+
                     {{- if $apiProxyEnabled }}
                     # API proxy: routes /api/ to in-cluster service (no public exposure needed)
                     location /api/ {
