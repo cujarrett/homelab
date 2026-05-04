@@ -458,7 +458,7 @@ data:
             },
             "tooltip": {
               "hideZeros": false,
-              "mode": "none",
+              "mode": "single",
               "sort": "none"
             }
           },
@@ -625,22 +625,7 @@ data:
               },
               "unit": "currencyUSD"
             },
-            "overrides": [
-              {
-                "matcher": { "id": "byName", "options": "run" },
-                "properties": [
-                  { "id": "custom.drawStyle", "value": "bars" },
-                  { "id": "custom.fillOpacity", "value": 15 },
-                  { "id": "custom.lineWidth", "value": 0 },
-                  { "id": "custom.axisPlacement", "value": "right" },
-                  { "id": "custom.axisSoftMin", "value": 0 },
-                  { "id": "custom.axisSoftMax", "value": 1 },
-                  { "id": "custom.axisLabel", "value": "" },
-                  { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } },
-                  { "id": "custom.hideFrom", "value": { "legend": true, "tooltip": true, "viz": false } }
-                ]
-              }
-            ]
+            "overrides": []
           },
           "gridPos": {
             "h": 8,
@@ -658,7 +643,7 @@ data:
             },
             "tooltip": {
               "hideZeros": false,
-              "mode": "none",
+              "mode": "single",
               "sort": "none"
             }
           },
@@ -668,11 +653,6 @@ data:
               "expr": "sump_pump_last_run_watts{job=\"sump-pump-consumer\"} / 1000 * 0.16",
               "legendFormat": "$/hr",
               "refId": "A"
-            },
-            {
-              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[5m]) > 0",
-              "legendFormat": "run",
-              "refId": "B"
             }
           ],
           "title": "Cost per Hour",
