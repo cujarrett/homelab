@@ -84,8 +84,8 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 4,
-            "w": 8,
+            "h": 3,
+            "w": 4,
             "x": 0,
             "y": 0
           },
@@ -124,6 +124,69 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "description": "Rolling runs per hour based on the last 60 minutes.",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 1,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 4,
+            "x": 4,
+            "y": 0
+          },
+          "id": 3,
+          "options": {
+            "colorMode": "none",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "12.4.2",
+          "targets": [
+            {
+              "expr": "rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600",
+              "instant": true,
+              "legendFormat": "runs/hr",
+              "refId": "A"
+            }
+          ],
+          "title": "Runs / Hour",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "description": "Live power draw from the sump pump.",
           "fieldConfig": {
             "defaults": {
@@ -147,8 +210,8 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 4,
-            "w": 8,
+            "h": 3,
+            "w": 4,
             "x": 8,
             "y": 0
           },
@@ -187,69 +250,6 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Rolling runs per hour based on the last 60 minutes.",
-          "fieldConfig": {
-            "defaults": {
-              "decimals": 1,
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 6,
-            "x": 0,
-            "y": 4
-          },
-          "id": 3,
-          "options": {
-            "colorMode": "none",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
-          },
-          "pluginVersion": "12.4.2",
-          "targets": [
-            {
-              "expr": "rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600",
-              "instant": true,
-              "legendFormat": "runs/hr",
-              "refId": "A"
-            }
-          ],
-          "title": "Runs / Hour",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Number of times the pump has run in the last 24 hours.",
           "fieldConfig": {
             "defaults": {
@@ -273,10 +273,10 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 4,
-            "w": 6,
+            "h": 3,
+            "w": 4,
             "x": 12,
-            "y": 4
+            "y": 0
           },
           "id": 4,
           "options": {
@@ -313,128 +313,6 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Estimated electricity cost per hour based on current wattage at $0.16/kWh.",
-          "fieldConfig": {
-            "defaults": {
-              "decimals": 4,
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "currencyUSD"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 8,
-            "x": 16,
-            "y": 0
-          },
-          "id": 8,
-          "options": {
-            "colorMode": "none",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
-          },
-          "pluginVersion": "12.4.2",
-          "targets": [
-            {
-              "expr": "sump_pump_last_run_watts{job=\"sump-pump-consumer\"} / 1000 * 0.16",
-              "instant": true,
-              "legendFormat": "cost/hr",
-              "refId": "A"
-            }
-          ],
-          "title": "Cost/hr",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "description": "Current hour precipitation in millimeters from Open-Meteo.",
-          "fieldConfig": {
-            "defaults": {
-              "decimals": 1,
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "blue",
-                    "value": 0.1
-                  }
-                ]
-              },
-              "unit": "lengthin"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 6,
-            "x": 6,
-            "y": 4
-          },
-          "id": 10,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
-          },
-          "pluginVersion": "12.4.2",
-          "targets": [
-            {
-              "expr": "weather_precipitation_mm{job=\"weather-exporter\"} * 0.03937",
-              "instant": true,
-              "legendFormat": "in",
-              "refId": "A"
-            }
-          ],
-          "title": "Rain this Hour",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Approximate total rainfall in the last 24 hours.",
           "fieldConfig": {
             "defaults": {
@@ -458,10 +336,10 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 4,
-            "w": 6,
-            "x": 18,
-            "y": 4
+            "h": 3,
+            "w": 4,
+            "x": 16,
+            "y": 0
           },
           "id": 12,
           "options": {
@@ -498,48 +376,10 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Wattage over time. Each spike is a pump run cycle.",
+          "description": "Estimated electricity cost per hour based on current wattage at $0.16/kWh.",
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "fixedColor": "blue",
-                "mode": "fixed"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 20,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "smooth",
-                "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "showValues": false,
-                "spanNulls": true,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "decimals": 1,
+              "decimals": 4,
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
@@ -547,155 +387,48 @@ data:
                   {
                     "color": "green",
                     "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
                   }
                 ]
               },
-              "unit": "watt"
+              "unit": "currencyUSD"
             },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "run"
-                },
-                "properties": [
-                  {
-                    "id": "custom.drawStyle",
-                    "value": "bars"
-                  },
-                  {
-                    "id": "custom.fillOpacity",
-                    "value": 15
-                  },
-                  {
-                    "id": "custom.lineWidth",
-                    "value": 0
-                  },
-                  {
-                    "id": "custom.axisPlacement",
-                    "value": "right"
-                  },
-                  {
-                    "id": "custom.axisSoftMin",
-                    "value": 0
-                  },
-                  {
-                    "id": "custom.axisSoftMax",
-                    "value": 1
-                  },
-                  {
-                    "id": "custom.axisLabel",
-                    "value": ""
-                  },
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "green",
-                      "mode": "fixed"
-                    }
-                  },
-                  {
-                    "id": "custom.hideFrom",
-                    "value": {
-                      "legend": true,
-                      "tooltip": true,
-                      "viz": false
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "in/hr"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "lengthin"
-                  },
-                  {
-                    "id": "custom.axisPlacement",
-                    "value": "right"
-                  },
-                  {
-                    "id": "custom.axisLabel",
-                    "value": "rainfall (in/hr)"
-                  },
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "super-light-blue",
-                      "mode": "fixed"
-                    }
-                  },
-                  {
-                    "id": "custom.drawStyle",
-                    "value": "line"
-                  },
-                  {
-                    "id": "custom.lineWidth",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.fillOpacity",
-                    "value": 10
-                  },
-                  {
-                    "id": "custom.lineInterpolation",
-                    "value": "smooth"
-                  },
-                  {
-                    "id": "custom.spanNulls",
-                    "value": true
-                  },
-                  {
-                    "id": "custom.axisSoftMin",
-                    "value": 0
-                  }
-                ]
-              }
-            ]
+            "overrides": []
           },
           "gridPos": {
-            "h": 7,
-            "w": 24,
-            "x": 0,
-            "y": 8
+            "h": 3,
+            "w": 4,
+            "x": 20,
+            "y": 0
           },
-          "id": 5,
+          "id": 8,
           "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+            "colorMode": "none",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
             },
-            "tooltip": {
-              "hideZeros": false,
-              "mode": "multi",
-              "sort": "none"
-            }
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
           },
           "pluginVersion": "12.4.2",
           "targets": [
             {
-              "expr": "sump_pump_last_run_watts{job=\"sump-pump-consumer\"}",
-              "legendFormat": "watts",
+              "expr": "sump_pump_last_run_watts{job=\"sump-pump-consumer\"} / 1000 * 0.16",
+              "instant": true,
+              "legendFormat": "cost/hr",
               "refId": "A"
-            },
-            {
-              "expr": "max(weather_precipitation_mm{job=\"weather-exporter\"}) * 0.03937",
-              "legendFormat": "in/hr",
-              "refId": "B"
             }
           ],
-          "title": "Power Draw",
-          "type": "timeseries"
+          "title": "Cost/hr",
+          "type": "stat"
         },
         {
           "datasource": {
@@ -818,7 +551,7 @@ data:
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 23
+            "y": 3
           },
           "id": 6,
           "options": {
@@ -855,11 +588,11 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Estimated electricity cost per hour based on live wattage at $0.16/kWh.",
+          "description": "Wattage over time. Each spike is a pump run cycle.",
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "yellow",
+                "fixedColor": "blue",
                 "mode": "fixed"
               },
               "custom": {
@@ -871,7 +604,7 @@ data:
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
                 "drawStyle": "line",
-                "fillOpacity": 15,
+                "fillOpacity": 20,
                 "gradientMode": "none",
                 "hideFrom": {
                   "legend": false,
@@ -896,7 +629,7 @@ data:
                   "mode": "off"
                 }
               },
-              "decimals": 4,
+              "decimals": 1,
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
@@ -904,10 +637,14 @@ data:
                   {
                     "color": "green",
                     "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
                   }
                 ]
               },
-              "unit": "currencyUSD"
+              "unit": "watt"
             },
             "overrides": [
               {
@@ -967,9 +704,9 @@ data:
             "h": 7,
             "w": 24,
             "x": 0,
-            "y": 31
+            "y": 11
           },
-          "id": 11,
+          "id": 5,
           "options": {
             "legend": {
               "calcs": [],
@@ -983,27 +720,20 @@ data:
               "sort": "none"
             }
           },
+          "pluginVersion": "12.4.2",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sump_pump_last_run_watts{job=\"sump-pump-consumer\"} / 1000 * 0.16",
-              "legendFormat": "$/hr",
+              "expr": "sump_pump_last_run_watts{job=\"sump-pump-consumer\"}",
+              "legendFormat": "watts",
               "refId": "A"
             },
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "max(weather_precipitation_mm{job=\"weather-exporter\"}) * 0.03937",
               "legendFormat": "in/hr",
               "refId": "B"
             }
           ],
-          "title": "Cost per Hour",
+          "title": "Power Draw",
           "type": "timeseries"
         }
       ],
@@ -1015,13 +745,13 @@ data:
         "list": []
       },
       "time": {
-        "from": "now-15m",
+        "from": "now-3h",
         "to": "now"
       },
       "timepicker": {},
       "timezone": "browser",
       "title": "Sump Pump",
       "uid": "sump-pump",
-      "version": 10,
+      "version": 77,
       "weekStart": ""
     }
