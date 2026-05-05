@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: weather-exporter
+  namespace: sump-pump
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: weather-exporter
+  template:
+    metadata:
+      labels:
+        app: weather-exporter
+    spec:
+      containers:
+        - name: weather-exporter
+          image: ghcr.io/cujarrett/weather-exporter:main
+          ports:
+            - name: metrics
+              containerPort: 8080
+          env:
+            - name: LATITUDE
+              value: "40.5142"
+            - name: LONGITUDE
+              value: "-88.9906"
+            - name: TIMEZONE
+              value: "America/Chicago"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+      securityContext:
+        runAsNonRoot: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: weather-exporter
+  namespace: sump-pump
+  labels:
+    app: weather-exporter
+spec:
+  selector:
+    app: weather-exporter
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: metrics

@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: weather-exporter
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - sump-pump
+  selector:
+    matchLabels:
+      app: weather-exporter
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 10m
