@@ -379,7 +379,7 @@ data:
                   { "color": "blue", "value": 0.1 }
                 ]
               },
-              "unit": "lengthmm"
+              "unit": "lengthin"
             },
             "overrides": []
           },
@@ -408,9 +408,9 @@ data:
           "pluginVersion": "12.4.2",
           "targets": [
             {
-              "expr": "weather_precipitation_mm{job=\"weather-exporter\"}",
+              "expr": "weather_precipitation_mm{job=\"weather-exporter\"} * 0.03937",
               "instant": true,
-              "legendFormat": "mm",
+              "legendFormat": "in",
               "refId": "A"
             }
           ],
@@ -496,9 +496,9 @@ data:
                 ]
               },
               {
-                "matcher": { "id": "byName", "options": "precipitation mm" },
+                "matcher": { "id": "byName", "options": "precipitation in" },
                 "properties": [
-                  { "id": "unit", "value": "lengthmm" },
+                  { "id": "unit", "value": "lengthin" },
                   { "id": "custom.axisPlacement", "value": "right" },
                   { "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } },
                   { "id": "custom.drawStyle", "value": "bars" },
@@ -536,8 +536,8 @@ data:
               "refId": "A"
             },
             {
-              "expr": "weather_precipitation_mm{job=\"weather-exporter\"}",
-              "legendFormat": "precipitation mm",
+              "expr": "weather_precipitation_mm{job=\"weather-exporter\"} * 0.03937",
+              "legendFormat": "precipitation in",
               "refId": "B"
             }
           ],
@@ -609,9 +609,9 @@ data:
             },
             "overrides": [
               {
-                "matcher": { "id": "byName", "options": "precipitation mm" },
+                "matcher": { "id": "byName", "options": "precipitation in" },
                 "properties": [
-                  { "id": "unit", "value": "lengthmm" },
+                  { "id": "unit", "value": "lengthin" },
                   { "id": "custom.axisPlacement", "value": "right" },
                   { "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } },
                   { "id": "custom.drawStyle", "value": "bars" },
@@ -648,8 +648,8 @@ data:
               "refId": "A"
             },
             {
-              "expr": "weather_precipitation_mm{job=\"weather-exporter\"}",
-              "legendFormat": "precipitation mm",
+              "expr": "weather_precipitation_mm{job=\"weather-exporter\"} * 0.03937",
+              "legendFormat": "precipitation in",
               "refId": "B"
             }
           ],
@@ -754,8 +754,8 @@ data:
               "refId": "A"
             },
             {
-              "expr": "weather_precipitation_mm{job=\"weather-exporter\"}",
-              "legendFormat": "precipitation mm",
+              "expr": "weather_precipitation_mm{job=\"weather-exporter\"} * 0.03937",
+              "legendFormat": "precipitation in",
               "refId": "B"
             }
           ],
@@ -778,6 +778,6 @@ data:
       "timezone": "browser",
       "title": "Sump Pump",
       "uid": "sump-pump",
-      "version": 9,
+      "version": 10,
       "weekStart": ""
     }
