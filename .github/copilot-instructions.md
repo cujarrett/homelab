@@ -93,7 +93,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `blog` | Ghost (Deployment) | `blog.mattjarrett.dev` via Cloudflare Tunnel; 2Gi content PVC |
 | `my-vinyl` | XSpa + XApi + XCache | `myvinyl.mattjarrett.dev` via Cloudflare Tunnel |
 | `js-pollock` | XSpa | `jspollock.mattjarrett.dev` via Cloudflare Tunnel |
-| `sump-pump` | XApi ×2 + XTopic + XSubscription | IoT sump pump bridge + consumer; images not yet published |
+| `sump-pump` | XApi ×2 + XTopic + XSubscription | IoT sump pump bridge + consumer |
 
 ## Internal Hostnames (`.local.lab`)
 All use `local-lab-ca-issuer` (self-signed CA), TLS via Traefik `websecure` entrypoint.
