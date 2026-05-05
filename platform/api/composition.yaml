@@ -44,6 +44,7 @@ spec:
             {{- end }}
             {{- $host := $xr.spec.parameters.host | default "" }}
             {{- $tlsIssuer := $xr.spec.parameters.tlsIssuer | default "local-lab-ca-issuer" }}
+            {{- $metricsPort := $xr.spec.parameters.metricsPort | default 9090 }}
             {{- $secretRefName := "" }}
             {{- if $xr.spec.parameters.secretRef }}{{- $secretRefName = $xr.spec.parameters.secretRef.name }}{{- end }}
             {{- $topicRefName := "" }}
@@ -70,8 +71,8 @@ spec:
                   port: 80
                   targetPort: {{ $xr.spec.parameters.port | default 8080 }}
                 - name: metrics
-                  port: 9090
-                  targetPort: 9090
+                  port: {{ $metricsPort }}
+                  targetPort: {{ $metricsPort }}
             ---
             # --- Deployment ---
             # Init containers poll for each binding's "type" file — last key written,

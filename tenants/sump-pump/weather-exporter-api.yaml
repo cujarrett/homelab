@@ -1,0 +1,11 @@
+apiVersion: platform.local.lab/v1alpha1
+kind: XApi
+metadata:
+  name: weather-exporter
+spec:
+  parameters:
+    namespace: sump-pump
+    image: ghcr.io/cujarrett/weather-exporter:main
+    port: 8080
+    metricsPort: 8080
+    environment: test
