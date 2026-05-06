@@ -584,6 +584,45 @@ data:
           ],
           "title": "Power Draw",
           "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "transparent", "value": null },
+                  { "color": "blue", "value": 1 }
+                ]
+              },
+              "mappings": [
+                { "type": "value", "options": { "0": { "text": "" }, "1": { "text": "Running" } } }
+              ],
+              "custom": { "fillOpacity": 80, "lineWidth": 0, "spanNulls": false }
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 4, "w": 24, "x": 0, "y": 19 },
+          "id": 23,
+          "options": {
+            "alignValue": "center",
+            "legend": { "displayMode": "hidden", "placement": "bottom" },
+            "mergeValues": true,
+            "rowHeight": 0.9,
+            "showValue": "auto",
+            "tooltip": { "mode": "single", "sort": "none" }
+          },
+          "targets": [
+            {
+              "expr": "sump_pump_running{job=\"sump-pump-consumer\"}",
+              "legendFormat": "Pump",
+              "refId": "A"
+            }
+          ],
+          "title": "Run Timeline",
+          "type": "state-timeline"
         }
       ],
       "preload": false,
