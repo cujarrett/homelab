@@ -396,3 +396,46 @@ spec:
                   X-Frame-Options: "SAMEORIGIN"
                   Referrer-Policy: "strict-origin-when-cross-origin"
                   X-XSS-Protection: "1; mode=block"
+                  Strict-Transport-Security: "max-age=31536000; includeSubDomains"
+                  Permissions-Policy: "camera=(), microphone=(), geolocation=(), payment=()"
+            ---
+            # --- xmlrpc.php block Middleware ---
+            # Rejects all external requests to xmlrpc.php at Traefik before they reach PHP.
+            # The mu-plugin also disables XML-RPC at the WordPress level; this adds a
+            # Traefik-layer block so bots get 403 without consuming a PHP worker.
+            apiVersion: traefik.io/v1alpha1
+            kind: Middleware
+            metadata:
+              name: {{ $name }}-xmlrpc-block
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: xmlrpc-block-middleware
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              ipAllowList:
+                sourceRange:
+                  - "127.0.0.1/32"
+            ---
+            # --- IngressRoute: block xmlrpc.php at priority 200 (beats the rate-limit route at 100) ---
+            apiVersion: traefik.io/v1alpha1
+            kind: IngressRoute
+            metadata:
+              name: {{ $name }}-xmlrpc-block
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: xmlrpc-block-ingressroute
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              entryPoints:
+                - websecure
+              routes:
+                - match: "Host(`{{ $params.host }}`) && Path(`/xmlrpc.php`)"
+                  kind: Rule
+                  priority: 200
+                  middlewares:
+                    - name: {{ $name }}-xmlrpc-block
+                  services:
+                    - name: {{ $name }}-wordpress
+                      port: 80
+              tls:
+                secretName: wordpress-tls
