@@ -589,41 +589,38 @@ data:
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": {
-              "color": { "mode": "thresholds" },
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "transparent", "value": null },
-                  { "color": "blue", "value": 1 }
-                ]
+              "color": { "fixedColor": "blue", "mode": "fixed" },
+              "custom": {
+                "drawStyle": "bars",
+                "barWidthFactor": 0.9,
+                "fillOpacity": 80,
+                "lineWidth": 0,
+                "spanNulls": false,
+                "hideFrom": { "legend": false, "tooltip": false, "viz": false }
               },
-              "mappings": [
-                { "type": "value", "options": { "0": { "text": "" }, "1": { "text": "Running" } } }
-              ],
-              "custom": { "fillOpacity": 80, "lineWidth": 0 }
+              "mappings": [],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
+              "unit": "short",
+              "decimals": 0,
+              "min": 0
             },
             "overrides": []
           },
           "gridPos": { "h": 4, "w": 24, "x": 0, "y": 19 },
           "id": 23,
           "options": {
-            "alignValue": "center",
-            "legend": { "displayMode": "hidden", "placement": "bottom" },
-            "mergeValues": true,
-            "rowHeight": 0.9,
-            "showValue": "auto",
-            "spanNulls": true,
-            "tooltip": { "mode": "single", "sort": "none" }
+            "legend": { "displayMode": "hidden", "placement": "bottom", "showLegend": false },
+            "tooltip": { "hideZeros": true, "mode": "single", "sort": "none" }
           },
           "targets": [
             {
-              "expr": "sump_pump_running{job=\"sump-pump-consumer\"}",
-              "legendFormat": "Pump",
+              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1m])",
+              "legendFormat": "runs",
               "refId": "A"
             }
           ],
           "title": "Run Timeline",
-          "type": "state-timeline"
+          "type": "timeseries"
         }
       ],
       "preload": false,
