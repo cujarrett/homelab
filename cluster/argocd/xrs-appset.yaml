@@ -9,7 +9,9 @@ spec:
         repoURL: https://github.com/cujarrett/homelab-tenants.git
         revision: main
         directories:
-          - path: "tenants/*"
+          - path: "*"
+          - path: ".github"
+            exclude: true
   template:
     metadata:
       name: "{{path.basename}}"
