@@ -45,6 +45,7 @@ spec:
             {{- $host := $xr.spec.parameters.host | default "" }}
             {{- $tlsIssuer := $xr.spec.parameters.tlsIssuer | default "local-lab-ca-issuer" }}
             {{- $metricsPort := $xr.spec.parameters.metricsPort | default 9090 }}
+            {{- $scrapeInterval := $xr.spec.parameters.scrapeInterval | default "60s" }}
             {{- $secretRefName := "" }}
             {{- if $xr.spec.parameters.secretRef }}{{- $secretRefName = $xr.spec.parameters.secretRef.name }}{{- end }}
             {{- $topicRefName := "" }}
@@ -236,7 +237,7 @@ spec:
               endpoints:
                 - port: metrics
                   path: /metrics
-                  interval: 60s
+                  interval: {{ $scrapeInterval }}
             {{- if $host }}
             ---
             # tlsIssuer: local-lab-ca-issuer for .local.lab; letsencrypt-prod for public hosts
