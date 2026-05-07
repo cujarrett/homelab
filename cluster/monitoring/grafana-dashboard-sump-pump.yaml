@@ -587,47 +587,36 @@ data:
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "description": "Each spike represents one pump run. Height of 1 = one run occurred in the last 2-minute window.",
           "fieldConfig": {
             "defaults": {
-              "color": { "mode": "thresholds" },
+              "color": { "fixedColor": "blue", "mode": "fixed" },
               "custom": {
-                "fillOpacity": 70,
-                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-                "lineWidth": 0,
+                "drawStyle": "bars",
+                "fillOpacity": 80,
+                "lineWidth": 1,
                 "spanNulls": false
               },
-              "mappings": [
-                {
-                  "options": {
-                    "0": { "color": "green", "index": 0, "text": "Idle" },
-                    "1": { "color": "blue", "index": 1, "text": "Running" }
-                  },
-                  "type": "value"
-                }
-              ],
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+              "max": 1,
+              "min": 0
             },
             "overrides": []
           },
           "gridPos": { "h": 4, "w": 24, "x": 0, "y": 19 },
           "id": 23,
           "options": {
-            "alignValue": "left",
             "legend": { "displayMode": "hidden", "placement": "bottom", "showLegend": false },
-            "mergeValues": true,
-            "rowHeight": 0.9,
-            "showValue": "auto",
-            "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" }
+            "tooltip": { "mode": "single", "sort": "none" }
           },
           "targets": [
             {
-              "expr": "max by(job) (sump_pump_running{job=\"sump-pump-consumer\"})",
-              "legendFormat": "Pump",
+              "expr": "increase(max by(job) (sump_pump_runs_total{job=\"sump-pump-consumer\"})[2m:10s])",
+              "legendFormat": "Run",
               "refId": "A"
             }
           ],
           "title": "Run Timeline",
-          "type": "state-timeline"
+          "type": "timeseries"
         }
       ],
       "preload": false,
