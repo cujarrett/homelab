@@ -10,6 +10,10 @@
 #     --old-url     https://old-site.example.com \
 #     --new-url     https://mattjarrett.com        (public domain — Cloudflare Tunnel routes this to the cluster)
 #
+# NOTE — Lightsail Bitnami backups: the siteurl in the dump is http://127.0.0.1,
+# not the real domain. Use --old-url http://127.0.0.1 when restoring from a
+# Lightsail snapshot, even if the site was live at the real domain before backup.
+#
 # Required backup-dir contents:
 #   wordpress-backup.sql   (database dump)
 #   wp-content/            (directory) OR wp-content.tar.gz
