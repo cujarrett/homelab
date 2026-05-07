@@ -2,22 +2,19 @@
 
 ## Current State
 
-| Node | Role | Version |
-|---|---|---|
-| `ctrl-1` | control-plane | `v1.34.6+k3s1` |
-| `work-1` | worker | `v1.34.6+k3s1` |
-| `work-2` | worker | `v1.34.6+k3s1` |
-| `work-3` | worker | `v1.34.6+k3s1` |
+All 4 nodes on `v1.34.6+k3s1`. The system-upgrade-controller now tracks the stable channel automatically — no manual version tracking needed.
 
 Check current stable: `curl -sI https://update.k3s.io/v1-release/channels/stable | grep location`
+Check upgrade jobs: `kubectl get jobs -n system-upgrade`
+Check plan status: `kubectl get plan -n system-upgrade -o wide`
 
 ---
 
 ## Two Options
 
-**Option A — Automated (system-upgrade-controller):** GitOps-native, tracks the stable channel automatically. Add it as an ArgoCD app and it handles future upgrades too. More setup, better long-term.
+**Option A — Automated (system-upgrade-controller):** ✅ Implemented. `cluster/system-upgrade/` is live as an ArgoCD app. Upgrades happen automatically when k3s stable advances.
 
-**Option B — Manual (install script over SSH):** Run one command per node. Good for a one-time upgrade to latest stable right now.
+**Option B — Manual (install script over SSH):** Emergency fallback — see commands below.
 
 ---
 
