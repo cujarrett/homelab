@@ -124,7 +124,7 @@ data:
           "pluginVersion": "12.4.2",
           "targets": [
             {
-              "expr": "sump_pump_running{job=\"sump-pump-consumer\"}",
+              "expr": "max(sump_pump_running{job=\"sump-pump-consumer\"})",
               "instant": true,
               "legendFormat": "state",
               "refId": "A"
@@ -187,7 +187,7 @@ data:
           "pluginVersion": "12.4.2",
           "targets": [
             {
-              "expr": "rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600",
+              "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)",
               "instant": true,
               "legendFormat": "runs/hr",
               "refId": "A"
@@ -250,7 +250,7 @@ data:
           "pluginVersion": "12.4.2",
           "targets": [
             {
-              "expr": "sump_pump_watts{job=\"sump-pump-consumer\"}",
+              "expr": "max(sump_pump_watts{job=\"sump-pump-consumer\"})",
               "instant": true,
               "legendFormat": "watts",
               "refId": "A"
@@ -313,7 +313,7 @@ data:
           "pluginVersion": "12.4.2",
           "targets": [
             {
-              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[24h])",
+              "expr": "sum(increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[24h]))",
               "instant": true,
               "legendFormat": "runs",
               "refId": "A"
@@ -435,7 +435,7 @@ data:
           "pluginVersion": "12.4.2",
           "targets": [
             {
-              "expr": "sump_pump_last_run_watts{job=\"sump-pump-consumer\"} / 1000 * 0.16",
+              "expr": "max(sump_pump_last_run_watts{job=\"sump-pump-consumer\"}) / 1000 * 0.16",
               "instant": true,
               "legendFormat": "cost/hr",
               "refId": "A"
@@ -579,8 +579,8 @@ data:
           },
           "pluginVersion": "12.4.2",
           "targets": [
-            { "expr": "sump_pump_last_run_watts{job=\"sump-pump-consumer\"}", "legendFormat": "watts", "refId": "A" },
-            { "expr": "sump_pump_last_run_watts{job=\"sump-pump-consumer\"} / 1000 * 0.16", "legendFormat": "cost/hr", "refId": "B" }
+            { "expr": "max(sump_pump_last_run_watts{job=\"sump-pump-consumer\"})", "legendFormat": "watts", "refId": "A" },
+            { "expr": "max(sump_pump_last_run_watts{job=\"sump-pump-consumer\"}) / 1000 * 0.16", "legendFormat": "cost/hr", "refId": "B" }
           ],
           "title": "Power Draw",
           "type": "timeseries"
@@ -614,7 +614,7 @@ data:
           },
           "targets": [
             {
-              "expr": "increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[2m])",
+              "expr": "sum(increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[2m]))",
               "legendFormat": "runs",
               "refId": "A"
             }
@@ -638,6 +638,6 @@ data:
       "timezone": "browser",
       "title": "Sump Pump",
       "uid": "sump-pump",
-      "version": 77,
+      "version": 78,
       "weekStart": ""
     }
