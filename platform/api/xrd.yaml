@@ -51,6 +51,10 @@ spec:
                       type: integer
                       default: 9090
                       description: "Port the container exposes Prometheus metrics on. Defaults to 9090. Set to match port if the app serves metrics on the same port as the app (e.g. 8080)."
+                    scrapeInterval:
+                      type: string
+                      default: "60s"
+                      description: "Prometheus scrape interval for the ServiceMonitor. Defaults to 60s. Reduce for apps that emit short-lived state changes (e.g. 10s for sump-pump-consumer)."
                     host:
                       type: string
                       description: "Hostname for the Ingress. If omitted, no Ingress is created."
