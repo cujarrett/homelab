@@ -621,7 +621,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sump_pump_running{job=\"sump-pump-consumer\"}",
+              "expr": "max by(job) (sump_pump_running{job=\"sump-pump-consumer\"})",
               "legendFormat": "Pump",
               "refId": "A"
             }
