@@ -614,7 +614,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[2m]))",
+              "expr": "sum(increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[$__rate_interval]))",
               "legendFormat": "runs",
               "refId": "A"
             }
