@@ -21,6 +21,7 @@ spec:
             {{- $namespace := .observed.composite.resource.metadata.namespace }}
             {{- $uid := .observed.composite.resource.metadata.uid }}
             {{- $params := .observed.composite.resource.spec.parameters }}
+            {{- $observedResources := .observed.resources | default dict }}
             # --- MariaDB credentials Secret ---
             # Passwords derived from the XR's immutable UID (sha256, hex-truncated).
             # No human input, nothing sensitive in Git.
@@ -43,8 +44,8 @@ spec:
             # storageClassName is frozen on first creation: once bound, a PVC's storageClassName
             # is immutable. We read back the observed value so reconciles are always no-ops.
             {{- $mariadbSC := "longhorn-retain" }}
-            {{- if (index .observed.resources "mariadb-pvc") }}
-            {{-   $mariadbSC = (index .observed.resources "mariadb-pvc").resource.spec.storageClassName }}
+            {{- if (index $observedResources "mariadb-pvc") }}
+            {{-   $mariadbSC = (index $observedResources "mariadb-pvc").resource.spec.storageClassName }}
             {{- else if eq $params.dataRetention "delete" }}
             {{-   $mariadbSC = "longhorn-delete" }}
             {{- end }}
@@ -65,8 +66,8 @@ spec:
             ---
             # --- WordPress wp-content PVC ---
             {{- $wpSC := "longhorn-retain" }}
-            {{- if (index .observed.resources "wordpress-pvc") }}
-            {{-   $wpSC = (index .observed.resources "wordpress-pvc").resource.spec.storageClassName }}
+            {{- if (index $observedResources "wordpress-pvc") }}
+            {{-   $wpSC = (index $observedResources "wordpress-pvc").resource.spec.storageClassName }}
             {{- else if eq $params.dataRetention "delete" }}
             {{-   $wpSC = "longhorn-delete" }}
             {{- end }}
