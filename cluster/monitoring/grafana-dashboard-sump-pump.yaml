@@ -616,6 +616,7 @@ data:
             {
               "expr": "sum(increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[$__interval]))",
               "legendFormat": "runs",
+              "interval": "1m",
               "refId": "A"
             }
           ],
