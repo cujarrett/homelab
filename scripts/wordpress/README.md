@@ -128,3 +128,41 @@ Log in at `https://mattjarrett.com/wp-admin` with your original credentials.
 - **Credentials carry over** from the dump — your existing admin username/password will work after import.
 - **Media** is in `wp-content/uploads/` — the script restores the whole `wp-content` tree so nothing is lost.
 - **Plugins/themes** are restored from `wp-content` but may need reactivation from wp-admin if the database references are stale.
+
+---
+
+## Gotchas
+
+**Lightsail Bitnami backups store `http://127.0.0.1` as the siteurl, not the real domain.**
+Even if your site was live at `https://mattjarrett.com` before you snapshotted it, the dump will have `http://127.0.0.1` baked into `wp_options`. Pass `--old-url http://127.0.0.1` when restoring from a Lightsail snapshot.
+
+```bash
+./scripts/restore-wordpress.sh \
+  --backup-dir  ~/Desktop/wp-backup \
+  --namespace   mattjarrett-com \
+  --instance    mattjarrett-com \
+  --old-url     http://127.0.0.1 \
+  --new-url     https://mattjarrett.com
+```
+
+**Traefik caches broken routers and won't recover on its own.**
+If Traefik loaded the Ingress before the `Middleware` resource existed, it marks that router as errored and holds it there. Kubernetes change events don't trigger re-evaluation in Traefik v3. After the XR is fully synced (`READY: True`), restart Traefik:
+
+```bash
+kubectl rollout restart daemonset/traefik -n kube-system
+```
+
+If the rollout hangs, the DaemonSet update strategy may be set to `maxSurge: 1` which conflicts with host port binding. Patch it first:
+
+```bash
+kubectl patch daemonset traefik -n kube-system \
+  --type=json \
+  -p='[{"op":"replace","path":"/spec/updateStrategy/rollingUpdate/maxUnavailable","value":1},{"op":"replace","path":"/spec/updateStrategy/rollingUpdate/maxSurge","value":0}]'
+```
+
+**After a cluster wipe, the PVC is gone but the PV may survive.**
+If using `longhorn-retain`, the PV enters `Released` state. Rebind it before running the restore script — otherwise the script imports data into a fresh empty volume and the old data is still sitting in the released PV.
+
+1. Clear the `claimRef` on the PV: `kubectl patch pv <pv-name> --type=json -p='[{"op":"remove","path":"/spec/claimRef"}]'`
+2. Set the PVC's Crossplane annotation so it's recognized as managed: `kubectl annotate pvc <pvc-name> -n <namespace> crossplane.io/composition-resource-name=wordpress-pvc`
+3. Confirm the XR is `SYNCED: True` before running the restore script.
