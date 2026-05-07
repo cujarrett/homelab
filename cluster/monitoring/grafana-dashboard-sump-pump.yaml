@@ -42,7 +42,7 @@ data:
               "uid": "prometheus"
             },
             "enable": false,
-            "expr": "weather_precipitation_mm{job=\"weather-exporter\"} > 0",
+            "expr": "max by(job) (weather_precipitation_mm{job=\"weather-exporter\"}) > 0",
             "hide": false,
             "iconColor": "super-light-blue",
             "name": "Raining",
@@ -376,7 +376,7 @@ data:
           "pluginVersion": "12.4.2",
           "targets": [
             {
-              "expr": "sum_over_time(weather_precipitation_mm{job=\"weather-exporter\"}[24h:1h]) * 0.03937",
+              "expr": "sum_over_time(max by(job) (weather_precipitation_mm{job=\"weather-exporter\"})[24h:1h]) * 0.03937",
               "instant": true,
               "legendFormat": "in",
               "refId": "A"
