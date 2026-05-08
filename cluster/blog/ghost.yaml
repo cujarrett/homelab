@@ -49,6 +49,19 @@ spec:
               value: sqlite3
             - name: database__connection__filename
               value: /var/lib/ghost/content/data/ghost.db
+            - name: mail__transport
+              value: SMTP
+            - name: mail__options__service
+              value: Gmail
+            - name: mail__options__auth__user
+              value: cujarrett@gmail.com
+            - name: mail__options__auth__pass
+              valueFrom:
+                secretKeyRef:
+                  name: ghost-smtp
+                  key: smtp-password
+            - name: mail__from
+              value: cujarrett@gmail.com
           ports:
             - containerPort: 2368
           volumeMounts:
