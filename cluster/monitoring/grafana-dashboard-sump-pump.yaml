@@ -21,34 +21,6 @@ data:
             "iconColor": "rgba(0, 211, 255, 1)",
             "name": "Annotations & Alerts",
             "type": "dashboard"
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "prometheus"
-            },
-            "enable": false,
-            "expr": "sump_pump_running{job=\"sump-pump-consumer\"} == 1",
-            "hide": false,
-            "iconColor": "blue",
-            "name": "Pump running",
-            "step": "15s",
-            "titleFormat": "Running",
-            "useValueForTime": false
-          },
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "prometheus"
-            },
-            "enable": false,
-            "expr": "max by(job) (weather_precipitation_mm{job=\"weather-exporter\"}) > 0",
-            "hide": false,
-            "iconColor": "super-light-blue",
-            "name": "Raining",
-            "step": "1h",
-            "titleFormat": "Rain",
-            "useValueForTime": false
           }
         ]
       },
@@ -844,13 +816,13 @@ data:
         "list": []
       },
       "time": {
-        "from": "now-30m",
+        "from": "now-1h",
         "to": "now"
       },
       "timepicker": {},
       "timezone": "browser",
       "title": "Sump Pump",
       "uid": "sump-pump",
-      "version": 146,
+      "version": 148,
       "weekStart": ""
     }
