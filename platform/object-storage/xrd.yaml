@@ -28,5 +28,6 @@ spec:
                       description: "Cloud region for the bucket."
                     environment:
                       type: string
-                      default: test
-                      description: "Runtime environment (prod or test). Reserved for future routing (e.g. in-cluster MinIO for test). Currently passed through from XApi but does not alter provisioning."
+                      default: cluster
+                      enum: [cluster, cloud]
+                      description: "Runtime environment. cloud provisions AWS S3; cluster is reserved for future in-cluster MinIO routing. Currently passed through from XApi but does not alter provisioning."
