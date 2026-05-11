@@ -13,7 +13,7 @@ Consumed by `XApi` when `objectStorage.enabled: true`. Can also be used standalo
 | Parameter | Required | Default | Description |
 |---|---|---|---|
 | `region` | no | `us-east-1` | Cloud region for the bucket |
-| `environment` | no | `test` | Pass-through from `XApi`|
+| `environment` | no | `cluster` | Pass-through from `XApi`|
 | `namespace` | yes | — | Namespace to write the binding Secret into. Passed automatically by `XApi`. |
 
 ## Binding secret
