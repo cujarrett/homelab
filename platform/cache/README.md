@@ -5,8 +5,8 @@ Crossplane platform primitive that provisions a Redis-compatible cache cluster a
 Consumed by `XApi` when `cache.enabled: true`. Can also be used standalone or by other platform compositions.
 
 ## What it provisions
-- `environment: test` — **in-cluster cache cluster** + binding Secret; no cloud resources
-- `environment: prod` — **cloud-managed cache cluster** + binding Secret
+- `environment: cluster` — **in-cluster cache cluster** + binding Secret; no cloud resources
+- `environment: cloud` — **cloud-managed cache cluster** + binding Secret
 
 ## Binding secret
 
@@ -17,7 +17,7 @@ All keys are automatically wired — no manual credential handling required.
 | Key | Value |
 |---|---|
 | `type` | `redis` |
-| `provider` | `aws` (prod) or `in-cluster` (test) |
+| `provider` | `aws` (cloud) or `in-cluster` (cluster) |
 | `host` | Cache endpoint hostname |
 | `port` | Cache port (`6379`) |
 
@@ -25,9 +25,9 @@ All keys are automatically wired — no manual credential handling required.
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `region` | no | `us-east-1` | Cloud region for the cache cluster (prod only) |
-| `size` | no | `small` | T-shirt size for the cache cluster (prod only): `small`, `medium`, `large` |
-| `environment` | no | `test` | `prod` uses AWS ElastiCache; `test` uses in-cluster Redis |
+| `region` | no | `us-east-1` | Cloud region for the cache cluster (cloud only) |
+| `size` | no | `small` | T-shirt size for the cache cluster (cloud only): `small`, `medium`, `large` |
+| `environment` | no | `cluster` | `cloud` uses AWS ElastiCache; `cluster` uses in-cluster Redis |
 | `namespace` | yes | — | Namespace to write the binding Secret into. Passed automatically by `XApi`. |
 
 ## Example
@@ -39,7 +39,7 @@ metadata:
   name: foo-cache
 spec:
   parameters:
-    environment: test   # in-cluster Redis — no AWS resources provisioned
+    environment: cluster   # in-cluster Redis — no AWS resources provisioned
 # Secret written to: foo/foo-cache
 ```
 
@@ -50,7 +50,7 @@ metadata:
   name: foo-cache
 spec:
   parameters:
-    environment: prod  # explicit prod — provisions AWS ElastiCache
+    environment: cloud  # explicit cloud — provisions AWS ElastiCache
     region: us-east-1
     size: small   # small=cache.t4g.micro | medium=cache.t4g.small | large=cache.t4g.medium
 # Secret written to: foo/foo-cache
