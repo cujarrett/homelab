@@ -9,7 +9,7 @@ spec:
   mode: Pipeline
   pipeline:
     - step: render-cache
-      # environment: test → in-cluster Redis; prod → AWS ElastiCache
+      # environment: cluster → in-cluster Redis; cloud → AWS ElastiCache
       functionRef:
         name: function-go-templating
       input:
@@ -20,7 +20,7 @@ spec:
           template: |
             {{- $xr := .observed.composite.resource }}
             {{- $name := $xr.metadata.name }}
-            {{- $env := $xr.spec.parameters.environment | default "test" }}
+            {{- $env := $xr.spec.parameters.environment | default "cluster" }}
             {{- $ns := $xr.spec.parameters.namespace }}
             {{- $region := $xr.spec.parameters.region | default "us-east-1" }}
             {{- $size := $xr.spec.parameters.size | default "small" }}
@@ -36,7 +36,7 @@ spec:
                 {{- end }}
               {{- end }}
             {{- end }}
-            {{- if eq $env "test" }}
+            {{- if eq $env "cluster" }}
             ---
             apiVersion: apps/v1
             kind: Deployment
@@ -80,7 +80,7 @@ spec:
                 - port: 6379
                   targetPort: 6379
             ---
-            # Same secret shape as prod so XApi mounts it identically in both environments
+            # Same secret shape as cloud so XApi mounts it identically in both environments
             apiVersion: v1
             kind: Secret
             metadata:
