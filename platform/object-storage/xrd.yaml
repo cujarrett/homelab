@@ -30,3 +30,8 @@ spec:
                     namespace:
                       type: string
                       description: "Namespace to write the binding Secret into."
+                    dataRetention:
+                      type: string
+                      default: delete
+                      enum: [retain, delete]
+                      description: "AWS resource reclaim behavior when the XR is deleted. delete=Crossplane deletes the S3 bucket and IAM user (data is unrecoverable); retain=Crossplane orphans them (resources persist in AWS, data recoverable)."

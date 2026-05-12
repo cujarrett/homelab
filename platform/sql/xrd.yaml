@@ -41,3 +41,8 @@ spec:
                     namespace:
                       type: string
                       description: "Namespace to write the binding Secret into. Passed automatically by XApi."
+                    dataRetention:
+                      type: string
+                      default: delete
+                      enum: [retain, delete]
+                      description: "PVC reclaim behavior when the XR is deleted. retain=longhorn-retain (PVC survives XR deletion, data recoverable); delete=longhorn-delete (PVC wiped on XR deletion, data is unrecoverable). Intentionally destructive when set to delete."

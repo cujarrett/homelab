@@ -20,7 +20,11 @@ spec:
           template: |
             {{- $xr := .observed.composite.resource }}
             {{- $name := $xr.metadata.name }}
+            {{- $uid := $xr.metadata.uid }}
             {{- $env := $xr.spec.parameters.environment | default "cluster" }}
+            {{- $dataRetention := $xr.spec.parameters.dataRetention | default "retain" }}
+            {{- $storageClass := "longhorn-retain" }}
+            {{- if eq $dataRetention "delete" }}{{- $storageClass = "longhorn-delete" }}{{- end }}
             {{- $ns := $xr.spec.parameters.namespace }}
             {{- $region := $xr.spec.parameters.region | default "us-east-1" }}
             {{- $size := $xr.spec.parameters.size | default "small" }}
@@ -48,7 +52,7 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               accessModes: [ReadWriteOnce]
-              storageClassName: longhorn
+              storageClassName: {{ $storageClass }}
               resources:
                 requests:
                   storage: 5Gi
@@ -95,6 +99,11 @@ spec:
                         # PGDATA must point to a subdirectory so initdb doesn't refuse.
                         - name: PGDATA
                           value: /var/lib/postgresql/data/pgdata
+                      readinessProbe:
+                        exec:
+                          command: ["pg_isready", "-U", "app"]
+                        initialDelaySeconds: 5
+                        periodSeconds: 10
                       volumeMounts:
                         - name: data
                           mountPath: /var/lib/postgresql/data
@@ -135,7 +144,7 @@ spec:
               port: "5432"
               database: {{ $name }}
               username: app
-              password: changeme
+              password: "{{ printf "%s-db" $uid | sha256sum | trunc 32 }}"
             ---
             # Seed credentials used by both the Deployment env vars and the binding Secret
             apiVersion: v1
@@ -148,7 +157,7 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
             stringData:
               username: app
-              password: changeme
+              password: "{{ printf "%s-db" $uid | sha256sum | trunc 32 }}"
             {{- else }}
             ---
             # Provider writes endpoint/username/password to {name}-rds-conn once RDS is up
@@ -167,6 +176,8 @@ spec:
                 engineVersion: "16"
                 instanceClass: {{ $instanceClass }}
                 allocatedStorage: 20
+                # WARNING: skipFinalSnapshot=true means deleting this XR drops the RDS instance
+                # with no snapshot. Intentional for homelab cost management — data is unrecoverable.
                 skipFinalSnapshot: true
                 publiclyAccessible: false
                 username: app

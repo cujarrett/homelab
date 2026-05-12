@@ -64,6 +64,18 @@ spec:
                       image: redis:7-alpine
                       ports:
                         - containerPort: 6379
+                      resources:
+                        requests:
+                          cpu: "50m"
+                          memory: "32Mi"
+                        limits:
+                          cpu: "200m"
+                          memory: "64Mi"
+                      readinessProbe:
+                        tcpSocket:
+                          port: 6379
+                        initialDelaySeconds: 5
+                        periodSeconds: 10
             ---
             apiVersion: v1
             kind: Service
