@@ -1,0 +1,42 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: xnosqls.platform.local.lab
+spec:
+  group: platform.local.lab
+  scope: Cluster
+  names:
+    kind: XNoSql
+    plural: xnosqls
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [parameters]
+              properties:
+                parameters:
+                  type: object
+                  required: [namespace]
+                  properties:
+                    region:
+                      type: string
+                      default: us-east-1
+                      description: "AWS region for the DynamoDB table."
+                    partitionKey:
+                      type: string
+                      default: id
+                      description: "Partition key attribute name."
+                    partitionKeyType:
+                      type: string
+                      default: S
+                      enum: [S, N, B]
+                      description: "Partition key type. S=string, N=number, B=binary."
+                    namespace:
+                      type: string
+                      description: "Namespace to write the binding Secret into. Passed automatically by XApi."

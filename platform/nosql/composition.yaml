@@ -1,0 +1,187 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xnosql
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: XNoSql
+  mode: Pipeline
+  pipeline:
+    - step: load-environment-configs
+      # Injects aws-platform-config (contains dynamoDbPolicyArn) before P&T runs.
+      functionRef:
+        name: function-environment-configs
+      input:
+        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+        kind: Input
+        spec:
+          environmentConfigs:
+            - type: Reference
+              ref:
+                name: aws-platform-config
+
+    - step: render-aws-resources
+      # P&T aggregates connectionDetails across Table, User, and AccessKey before
+      # the go-templating step builds the binding Secret.
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: table
+            base:
+              apiVersion: dynamodb.aws.upbound.io/v1beta1
+              kind: Table
+              spec:
+                forProvider:
+                  region: ""
+                  billingMode: PAY_PER_REQUEST
+                  hashKey: ""
+                  attribute:
+                    - name: ""
+                      type: S
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              # External name = table name; deterministic so the IAM ABAC policy
+              # can scope to arn:aws:dynamodb:{region}:*:table/${aws:PrincipalTag/Table}.
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.annotations["crossplane.io/external-name"]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.partitionKey
+                toFieldPath: spec.forProvider.hashKey
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.partitionKey
+                toFieldPath: spec.forProvider.attribute[0].name
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.partitionKeyType
+                toFieldPath: spec.forProvider.attribute[0].type
+              # Tags used by ABAC policy and for console visibility
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.Table
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.App
+            connectionDetails:
+              - type: FromValue
+                name: type
+                value: dynamodb
+              - type: FromValue
+                name: provider
+                value: aws
+              # atProvider.id = table name after creation
+              - type: FromFieldPath
+                name: tableName
+                fromFieldPath: status.atProvider.id
+              - type: FromFieldPath
+                name: region
+                fromFieldPath: spec.forProvider.region
+
+          - name: user
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: User
+              spec:
+                forProvider:
+                  # /crossplane/ path groups all Crossplane-managed IAM users in the console
+                  path: /crossplane/
+            patches:
+              # Table tag: ABAC policy uses aws:PrincipalTag/Table to scope to this table.
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.Table
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.App
+
+          - name: access-key
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: AccessKey
+              spec:
+                forProvider:
+                  # matchControllerRef binds this AccessKey to the User above
+                  userSelector:
+                    matchControllerRef: true
+                writeConnectionSecretToRef:
+                  name: ""
+                  namespace: ""
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.writeConnectionSecretToRef.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s-iam"
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.namespace
+                toFieldPath: spec.writeConnectionSecretToRef.namespace
+            connectionDetails:
+              - type: FromConnectionSecretKey
+                name: username
+                fromConnectionSecretKey: username
+              - type: FromConnectionSecretKey
+                name: password
+                fromConnectionSecretKey: password
+
+          - name: abac-policy-attachment
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: UserPolicyAttachment
+              spec:
+                forProvider:
+                  policyArn: ""
+                  userSelector:
+                    matchControllerRef: true
+            patches:
+              # ARN of the shared DynamoDB ABAC policy stored in aws-platform-config EnvironmentConfig.
+              # The policy grants dynamodb:* scoped to arn:aws:dynamodb:{region}:*:table/${aws:PrincipalTag/Table}.
+              - type: FromEnvironmentFieldPath
+                fromFieldPath: dynamoDbPolicyArn
+                toFieldPath: spec.forProvider.policyArn
+
+    - step: create-binding-secret
+      # Writes the binding Secret only once IAM credentials are available.
+      # Same deferred pattern as XObjectStorage.
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $cd := .desired.composite.connectionDetails | default dict -}}
+            {{- $username := index $cd "username" | toString -}}
+            {{- $password := index $cd "password" | toString -}}
+            {{- if and $username $password -}}
+            {{- $xr := .observed.composite.resource -}}
+            {{- $name := $xr.metadata.name -}}
+            {{- $ns := $xr.spec.parameters.namespace -}}
+            {{- $tableName := index $cd "tableName" | toString | b64dec | default $name -}}
+            {{- $region := index $cd "region" | toString | b64dec | default "us-east-1" -}}
+            ---
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: binding-secret
+                gotemplating.fn.crossplane.io/ready: "True"
+            type: Opaque
+            stringData:
+              type: dynamodb
+              provider: aws
+              tableName: {{ $tableName }}
+              region: {{ $region }}
+              accessKeyId: {{ $username | b64dec }}
+              secretAccessKey: {{ $password | b64dec }}
+            {{- end -}}

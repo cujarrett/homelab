@@ -1,0 +1,191 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xsql
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: XSql
+  mode: Pipeline
+  pipeline:
+    - step: render-database
+      # environment: cluster → in-cluster Postgres; cloud → AWS RDS Postgres
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $env := $xr.spec.parameters.environment | default "cluster" }}
+            {{- $ns := $xr.spec.parameters.namespace }}
+            {{- $region := $xr.spec.parameters.region | default "us-east-1" }}
+            {{- $size := $xr.spec.parameters.size | default "small" }}
+            {{- $instanceClassMap := dict "small" "db.t4g.micro" "medium" "db.t4g.small" "large" "db.t4g.medium" }}
+            {{- $instanceClass := get $instanceClassMap $size | default "db.t4g.micro" }}
+            {{- $rdsReady := "False" }}
+            {{- $rdsConn := dict }}
+            {{- with index (.observed.resources | default dict) "rds-instance" }}
+              {{- $rdsConn = .connectionDetails | default dict }}
+              {{- range (.resource.status.conditions | default list) }}
+                {{- if and (eq .type "Ready") (eq .status "True") }}
+                  {{- $rdsReady = "True" }}
+                {{- end }}
+              {{- end }}
+            {{- end }}
+            {{- if eq $env "cluster" }}
+            ---
+            apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: {{ $name }}-postgres
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: postgres-pvc
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              accessModes: [ReadWriteOnce]
+              storageClassName: longhorn
+              resources:
+                requests:
+                  storage: 5Gi
+            ---
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: {{ $name }}-postgres
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: postgres-deployment
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              replicas: 1
+              selector:
+                matchLabels:
+                  app: {{ $name }}-postgres
+              template:
+                metadata:
+                  labels:
+                    app: {{ $name }}-postgres
+                spec:
+                  nodeSelector:
+                    node-role.kubernetes.io/worker: worker
+                  containers:
+                    - name: postgres
+                      image: postgres:16-alpine
+                      ports:
+                        - containerPort: 5432
+                      env:
+                        - name: POSTGRES_DB
+                          value: {{ $name }}
+                        - name: POSTGRES_USER
+                          valueFrom:
+                            secretKeyRef:
+                              name: {{ $name }}-pg-credentials
+                              key: username
+                        - name: POSTGRES_PASSWORD
+                          valueFrom:
+                            secretKeyRef:
+                              name: {{ $name }}-pg-credentials
+                              key: password
+                      volumeMounts:
+                        - name: data
+                          mountPath: /var/lib/postgresql/data
+                  volumes:
+                    - name: data
+                      persistentVolumeClaim:
+                        claimName: {{ $name }}-postgres
+            ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: {{ $name }}-postgres
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: postgres-service
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                app: {{ $name }}-postgres
+              ports:
+                - port: 5432
+                  targetPort: 5432
+            ---
+            # Same secret shape as cloud so XApi mounts it identically in both environments
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: database-secret
+                gotemplating.fn.crossplane.io/ready: "True"
+            stringData:
+              type: postgresql
+              provider: in-cluster
+              host: {{ $name }}-postgres.{{ $ns }}.svc.cluster.local
+              port: "5432"
+              database: {{ $name }}
+              username: app
+              password: changeme
+            ---
+            # Seed credentials used by both the Deployment env vars and the binding Secret
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $name }}-pg-credentials
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: postgres-credentials
+                gotemplating.fn.crossplane.io/ready: "True"
+            stringData:
+              username: app
+              password: changeme
+            {{- else }}
+            ---
+            # Provider writes endpoint/username/password to {name}-rds-conn once RDS is up
+            apiVersion: rds.aws.upbound.io/v1beta2
+            kind: Instance
+            metadata:
+              name: {{ $name }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: rds-instance
+                gotemplating.fn.crossplane.io/ready: {{ $rdsReady | quote }}
+            spec:
+              forProvider:
+                region: {{ $region }}
+                dbName: {{ $name | replace "-" "_" }}
+                engine: postgres
+                engineVersion: "16"
+                instanceClass: {{ $instanceClass }}
+                allocatedStorage: 20
+                skipFinalSnapshot: true
+                publiclyAccessible: false
+                username: app
+              writeConnectionSecretToRef:
+                name: {{ $name }}-rds-conn
+                namespace: {{ $ns }}
+            {{- if $rdsConn }}
+            ---
+            # type/provider not published by the provider; added here for servicebinding.io compliance
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: database-secret
+                gotemplating.fn.crossplane.io/ready: "True"
+            stringData:
+              type: postgresql
+              provider: aws
+              host: {{ index $rdsConn "endpoint" | default "" }}
+              port: {{ index $rdsConn "port" | default "5432" }}
+              database: {{ $name | replace "-" "_" }}
+              username: {{ index $rdsConn "username" | default "app" }}
+              password: {{ index $rdsConn "password" | default "" }}
+            {{- end }}
+            {{- end }}
