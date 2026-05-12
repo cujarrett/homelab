@@ -21,10 +21,10 @@ Secret name equals the XR name; namespace comes from the `namespace` parameter p
 |---|---|
 | `type` | `dynamodb` |
 | `provider` | `aws` |
-| `tableName` | Table name |
+| `table-name` | Table name |
 | `region` | AWS region |
-| `accessKeyId` | IAM access key ID (scoped to this table) |
-| `secretAccessKey` | IAM secret access key |
+| `access-key-id` | IAM access key ID (scoped to this table) |
+| `secret-access-key` | IAM secret access key |
 
 Apps configure the AWS SDK from these keys. No custom endpoint required — the SDK resolves the DynamoDB endpoint from `region` automatically.
 
@@ -32,7 +32,7 @@ Apps configure the AWS SDK from these keys. No custom endpoint required — the 
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `namespace` | yes | — | Namespace to write the binding Secret into. Passed automatically by `XApi`. |
+| `namespace` | yes | — | Namespace to write the binding Secret into. |
 | `region` | no | `us-east-1` | AWS region for the DynamoDB table |
 | `partitionKey` | no | `id` | Partition key attribute name |
 | `partitionKeyType` | no | `S` | Partition key type: `S`=string, `N`=number, `B`=binary |

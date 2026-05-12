@@ -39,6 +39,7 @@ metadata:
   name: foo-cache
 spec:
   parameters:
+    namespace: foo
     environment: cluster   # in-cluster Redis — no AWS resources provisioned
 # Secret written to: foo/foo-cache
 ```
@@ -50,6 +51,7 @@ metadata:
   name: foo-cache
 spec:
   parameters:
+    namespace: foo
     environment: cloud  # explicit cloud — provisions AWS ElastiCache
     region: us-east-1
     size: small   # small=cache.t4g.micro | medium=cache.t4g.small | large=cache.t4g.medium

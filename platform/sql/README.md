@@ -28,7 +28,7 @@ Secret name equals the XR name; namespace comes from the `namespace` parameter p
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `namespace` | yes | — | Namespace to write the binding Secret into. Passed automatically by `XApi`. |
+| `namespace` | yes | — | Namespace to write the binding Secret into. |
 | `environment` | no | `cluster` | `cloud` provisions AWS RDS Postgres; `cluster` provisions in-cluster Postgres |
 | `region` | no | `us-east-1` | Cloud region for the RDS instance (cloud only) |
 | `size` | no | `small` | T-shirt size for the RDS instance (cloud only): `small=db.t4g.micro`, `medium=db.t4g.small`, `large=db.t4g.medium` |
