@@ -173,7 +173,7 @@ spec:
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: binding-secret
                 gotemplating.fn.crossplane.io/ready: "True"
-            type: Opaque
+            type: servicebinding.io/s3
             stringData:
               type: s3
               provider: aws
