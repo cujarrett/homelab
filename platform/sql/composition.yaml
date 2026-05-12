@@ -91,6 +91,10 @@ spec:
                             secretKeyRef:
                               name: {{ $name }}-pg-credentials
                               key: password
+                        # Longhorn volumes have a lost+found dir at the root mount point.
+                        # PGDATA must point to a subdirectory so initdb doesn't refuse.
+                        - name: PGDATA
+                          value: /var/lib/postgresql/data/pgdata
                       volumeMounts:
                         - name: data
                           mountPath: /var/lib/postgresql/data
