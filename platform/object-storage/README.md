@@ -2,9 +2,7 @@
 
 Provisions object storage and exposes connection details as a [servicebinding.io](https://servicebinding.io)-compliant Secret.
 
-Standalone resource with a lifecycle independent of any one API. Bind to an `XApi` via `objectStorageRef.name`.
-
-See also: [`XSql`](../sql/README.md) · [`XNoSql`](../nosql/README.md) · [`XCache`](../cache/README.md) · [`XApi`](../api/README.md)
+Standalone resource with a lifecycle independent of any one API. Bind to an [`XApi`](../api/README.md) via `objectStorageRef.name`.
 
 ## What it provisions
 - **Object storage bucket** — scoped to this XR instance; credentials cannot access another instance's bucket
@@ -42,7 +40,6 @@ metadata:
 spec:
   parameters:
     namespace: foo
-    region: us-east-1
 # Secret "foo-assets" is written to namespace "foo".
 ```
 
