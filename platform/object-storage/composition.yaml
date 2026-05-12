@@ -51,15 +51,8 @@ spec:
                 fromFieldPath: metadata.name
                 toFieldPath: spec.forProvider.tags.App
               - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
+                fromFieldPath: spec.parameters.namespace
                 toFieldPath: spec.forProvider.tags.Namespace
-                transforms:
-                  - type: string
-                    string:
-                      type: Regexp
-                      regexp:
-                        match: '^(.+)-object-storage$'
-                        group: 1
             connectionDetails:
               # FromValue: literal constant, not read from the provider
               - type: FromValue
@@ -96,15 +89,8 @@ spec:
                 fromFieldPath: metadata.name
                 toFieldPath: spec.forProvider.tags.App
               - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
+                fromFieldPath: spec.parameters.namespace
                 toFieldPath: spec.forProvider.tags.Namespace
-                transforms:
-                  - type: string
-                    string:
-                      type: Regexp
-                      regexp:
-                        match: '^(.+)-object-storage$'
-                        group: 1
 
           - name: access-key
             base:
@@ -128,17 +114,10 @@ spec:
                     string:
                       type: Format
                       fmt: "%s-iam"
-              # Strip "-object-storage" to derive the app namespace
+              # Use explicit namespace parameter instead of deriving from XR name
               - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
+                fromFieldPath: spec.parameters.namespace
                 toFieldPath: spec.writeConnectionSecretToRef.namespace
-                transforms:
-                  - type: string
-                    string:
-                      type: Regexp
-                      regexp:
-                        match: '^(.+)-object-storage$'
-                        group: 1
             connectionDetails:
               # Promote credentials from the intermediate secret to the XR connection secret
               - type: FromConnectionSecretKey
@@ -182,7 +161,7 @@ spec:
             {{- if and $username $password -}}
             {{- $xr := .observed.composite.resource -}}
             {{- $name := $xr.metadata.name -}}
-            {{- $namespace := regexReplaceAll "-object-storage$" $name "" -}}
+            {{- $ns := $xr.spec.parameters.namespace -}}
             {{- $bucket := index $cd "bucket" | toString | b64dec | default $name -}}
             {{- $region := index $cd "region" | toString | b64dec | default "us-east-1" -}}
             ---
@@ -190,7 +169,7 @@ spec:
             kind: Secret
             metadata:
               name: {{ $name }}
-              namespace: {{ $namespace }}
+              namespace: {{ $ns }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: binding-secret
                 gotemplating.fn.crossplane.io/ready: "True"

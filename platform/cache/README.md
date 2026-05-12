@@ -2,7 +2,7 @@
 
 Crossplane platform primitive that provisions a Redis-compatible cache cluster and exposes connection details as a [servicebinding.io](https://servicebinding.io)-compliant Secret.
 
-Consumed by `XApi` when `cache.enabled: true`. Can also be used standalone or by other platform compositions.
+Owned by `XApi` — created and deleted with it when `cache.enabled: true`. Not intended for standalone use.
 
 ## What it provisions
 - `environment: cluster` — **in-cluster cache cluster** + binding Secret; no cloud resources

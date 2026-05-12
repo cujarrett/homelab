@@ -22,24 +22,26 @@ spec:
                 parameters:
                   type: object
                   properties:
-                    objectStorage:
+                    objectStorageRef:
                       type: object
-                      description: "Object storage options. If omitted, no bucket is created."
+                      description: "Reference to an existing XObjectStorage instance to bind. The platform mounts its Secret at /bindings/object-storage/."
+                      required: [name]
                       properties:
-                        enabled:
-                          type: boolean
-                          default: false
+                        name:
+                          type: string
+                          description: "metadata.name of the XObjectStorage instance."
                     cache:
                       type: object
-                      description: "Cache options. If omitted, no cache is created."
+                      description: "Cache options. Lifecycle tied to this XApi. If omitted, no cache is created."
                       properties:
                         enabled:
                           type: boolean
                           default: false
                     environment:
                       type: string
-                      default: test
-                      description: "Runtime environment (prod or test). Controls whether cache bindings use managed cloud resources (prod) or in-cluster equivalents (test)."
+                      default: cluster
+                      enum: [cluster, cloud]
+                      description: "Runtime environment. Controls XCache only: cluster=in-cluster Redis, cloud=AWS ElastiCache."
                     image:
                       type: string
                       description: "Container image for the API (e.g. ghcr.io/owner/api:sha-abc123). CI builds and pushes this on merge to main, then commits the new tag back here to trigger an ArgoCD sync."
