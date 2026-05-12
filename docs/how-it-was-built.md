@@ -773,7 +773,7 @@ curl -sk https://adguard.local.lab -o /dev/null -w "%{http_code}"
 <a id="crossplane"></a>
 ## 14 — Install Crossplane
 
-Running `helm install` for each app works fine for a handful of services, but it doesn't give you a reusable, self-service API. Crossplane extends Kubernetes so you can define infrastructure (databases, apps, DNS records, cloud resources) as custom Kubernetes resources — the same declarative model you use for Deployments and Services. This is the foundation that makes the `XWordPressPlatform` XR in step 16 possible.
+Running `helm install` for each app works fine for a handful of services, but it doesn't give you a reusable, self-service API. Crossplane extends Kubernetes so you can define infrastructure (databases, apps, DNS records, cloud resources) as custom Kubernetes resources — the same declarative model you use for Deployments and Services. This is the foundation that makes the `XWordpress` XR in step 16 possible.
 
 ```bash
 helm repo add crossplane-stable https://charts.crossplane.io/stable && helm repo update
