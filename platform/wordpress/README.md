@@ -1,4 +1,4 @@
-# XWordPressPlatform Platform
+# XWordpress
 
 Crossplane composition that deploys a self-contained WordPress site with MariaDB.
 
@@ -29,7 +29,7 @@ The namespace is owned by the tenant — created by `namespace.yaml` in the tena
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
-kind: XWordPressPlatform
+kind: XWordpress
 metadata:
   name: foo
   namespace: foo

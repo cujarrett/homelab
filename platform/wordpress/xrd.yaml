@@ -1,13 +1,13 @@
 apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
-  name: xwordpressplatforms.platform.local.lab
+  name: xwordpresses.platform.local.lab
 spec:
   scope: Namespaced
   group: platform.local.lab
   names:
-    kind: XWordPressPlatform
-    plural: xwordpressplatforms
+    kind: XWordpress
+    plural: xwordpresses
   versions:
     - name: v1alpha1
       served: true

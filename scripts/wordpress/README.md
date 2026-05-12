@@ -1,6 +1,6 @@
 # WordPress Restore Guide
 
-How to get a backup from an existing WordPress site and restore it into the homelab `XWordPressPlatform` stack.
+How to get a backup from an existing WordPress site and restore it into the homelab `XWordpress` stack.
 
 ---
 
