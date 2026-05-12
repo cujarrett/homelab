@@ -76,6 +76,10 @@ spec:
                         return 404;
                     }
 
+                    location ~* /\.ssh(/|$) {
+                        return 404;
+                    }
+
                     location ~* /\.vscode(/|$) {
                         return 404;
                     }
