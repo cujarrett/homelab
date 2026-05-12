@@ -30,6 +30,22 @@ spec:
                         name:
                           type: string
                           description: "metadata.name of the XObjectStorage instance."
+                    sqlRef:
+                      type: object
+                      description: "Reference to an existing XSql instance to bind. The platform mounts its Secret at /bindings/sql/."
+                      required: [name]
+                      properties:
+                        name:
+                          type: string
+                          description: "metadata.name of the XSql instance."
+                    nosqlRef:
+                      type: object
+                      description: "Reference to an existing XNoSql instance to bind. The platform mounts its Secret at /bindings/nosql/."
+                      required: [name]
+                      properties:
+                        name:
+                          type: string
+                          description: "metadata.name of the XNoSql instance."
                     cache:
                       type: object
                       description: "Cache options. Lifecycle tied to this XApi. If omitted, no cache is created."
