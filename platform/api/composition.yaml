@@ -99,9 +99,9 @@ spec:
                 spec:
                   nodeSelector:
                     node-role.kubernetes.io/worker: worker
-                  {{- if or $objectStorageEnabled $cacheEnabled $sqlEnabled $nosqlEnabled }}
+                  {{- if or $objectStorageRefName $sqlRefName $nosqlRefName $cacheEnabled }}
                   initContainers:
-                    {{- if $objectStorageEnabled }}
+                    {{- if $objectStorageRefName }}
                     - name: wait-for-object-storage-binding
                       image: busybox:1.36
                       command:
@@ -111,6 +111,30 @@ spec:
                       volumeMounts:
                         - name: object-storage-binding
                           mountPath: /bindings/object-storage
+                          readOnly: true
+                    {{- end }}
+                    {{- if $sqlRefName }}
+                    - name: wait-for-sql-binding
+                      image: busybox:1.36
+                      command:
+                        - sh
+                        - -c
+                        - "until [ -f /bindings/sql/type ]; do echo waiting for sql binding; sleep 5; done"
+                      volumeMounts:
+                        - name: sql-binding
+                          mountPath: /bindings/sql
+                          readOnly: true
+                    {{- end }}
+                    {{- if $nosqlRefName }}
+                    - name: wait-for-nosql-binding
+                      image: busybox:1.36
+                      command:
+                        - sh
+                        - -c
+                        - "until [ -f /bindings/nosql/type ]; do echo waiting for nosql binding; sleep 5; done"
+                      volumeMounts:
+                        - name: nosql-binding
+                          mountPath: /bindings/nosql
                           readOnly: true
                     {{- end }}
                     {{- if $cacheEnabled }}
@@ -123,30 +147,6 @@ spec:
                       volumeMounts:
                         - name: cache-binding
                           mountPath: /bindings/cache
-                          readOnly: true
-                    {{- end }}
-                    {{- if $sqlEnabled }}
-                    - name: wait-for-sql-binding
-                      image: busybox:1.36
-                      command:
-                        - sh
-                        - -c
-                        - "until [ -f /bindings/sql/type ]; do echo waiting for sql binding; sleep 5; done"
-                      volumeMounts:
-                        - name: sql-binding
-                          mountPath: /bindings/sql
-                          readOnly: true
-                    {{- end }}
-                    {{- if $nosqlEnabled }}
-                    - name: wait-for-nosql-binding
-                      image: busybox:1.36
-                      command:
-                        - sh
-                        - -c
-                        - "until [ -f /bindings/nosql/type ]; do echo waiting for nosql binding; sleep 5; done"
-                      volumeMounts:
-                        - name: nosql-binding
-                          mountPath: /bindings/nosql
                           readOnly: true
                     {{- end }}
                   {{- end }}
@@ -183,11 +183,21 @@ spec:
                         - secretRef:
                             name: {{ $secretRefName }}
                       {{- end }}
-                      {{- if or $objectStorageEnabled $cacheEnabled $sqlEnabled $nosqlEnabled }}
+                      {{- if or $objectStorageRefName $sqlRefName $nosqlRefName $cacheEnabled }}
                       volumeMounts:
-                        {{- if $objectStorageEnabled }}
+                        {{- if $objectStorageRefName }}
                         - name: object-storage-binding
                           mountPath: /bindings/object-storage
+                          readOnly: true
+                        {{- end }}
+                        {{- if $sqlRefName }}
+                        - name: sql-binding
+                          mountPath: /bindings/sql
+                          readOnly: true
+                        {{- end }}
+                        {{- if $nosqlRefName }}
+                        - name: nosql-binding
+                          mountPath: /bindings/nosql
                           readOnly: true
                         {{- end }}
                         {{- if $cacheEnabled }}
@@ -195,24 +205,25 @@ spec:
                           mountPath: /bindings/cache
                           readOnly: true
                         {{- end }}
-                        {{- if $sqlEnabled }}
-                        - name: sql-binding
-                          mountPath: /bindings/sql
-                          readOnly: true
-                        {{- end }}
-                        {{- if $nosqlEnabled }}
-                        - name: nosql-binding
-                          mountPath: /bindings/nosql
-                          readOnly: true
-                        {{- end }}
                       {{- end }}
-                  {{- if or $objectStorageEnabled $cacheEnabled $sqlEnabled $nosqlEnabled }}
+                  {{- if or $objectStorageRefName $sqlRefName $nosqlRefName $cacheEnabled }}
                   volumes:
-                    {{- if $objectStorageEnabled }}
-                    # optional: true avoids pod failure before the secret exists
+                    {{- if $objectStorageRefName }}
                     - name: object-storage-binding
                       secret:
-                        secretName: {{ $name }}-object-storage
+                        secretName: {{ $objectStorageRefName }}
+                        optional: true
+                    {{- end }}
+                    {{- if $sqlRefName }}
+                    - name: sql-binding
+                      secret:
+                        secretName: {{ $sqlRefName }}
+                        optional: true
+                    {{- end }}
+                    {{- if $nosqlRefName }}
+                    - name: nosql-binding
+                      secret:
+                        secretName: {{ $nosqlRefName }}
                         optional: true
                     {{- end }}
                     {{- if $cacheEnabled }}
@@ -221,32 +232,7 @@ spec:
                         secretName: {{ $name }}-cache
                         optional: true
                     {{- end }}
-                    {{- if $sqlEnabled }}
-                    - name: sql-binding
-                      secret:
-                        secretName: {{ $name }}-sql
-                        optional: true
-                    {{- end }}
-                    {{- if $nosqlEnabled }}
-                    - name: nosql-binding
-                      secret:
-                        secretName: {{ $name }}-nosql
-                        optional: true
-                    {{- end }}
                   {{- end }}
-            {{- if $objectStorageEnabled }}
-            ---
-            apiVersion: platform.local.lab/v1alpha1
-            kind: XObjectStorage
-            metadata:
-              name: {{ $name }}-object-storage
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: object-storage
-                gotemplating.fn.crossplane.io/ready: {{ $objStorageReady | quote }}
-            spec:
-              parameters:
-                environment: {{ $env }}
-            {{- end }}
             {{- if $cacheEnabled }}
             ---
             apiVersion: platform.local.lab/v1alpha1
@@ -260,39 +246,6 @@ spec:
               parameters:
                 environment: {{ $env }}
                 namespace: {{ $ns }}
-            {{- end }}
-            {{- if $sqlEnabled }}
-            ---
-            apiVersion: platform.local.lab/v1alpha1
-            kind: XSql
-            metadata:
-              name: {{ $name }}-sql
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: sql
-                gotemplating.fn.crossplane.io/ready: {{ $sqlReady | quote }}
-            spec:
-              parameters:
-                environment: {{ $env }}
-                namespace: {{ $ns }}
-                {{- if and $xr.spec.parameters.sql $xr.spec.parameters.sql.size }}
-                size: {{ $xr.spec.parameters.sql.size }}
-                {{- end }}
-            {{- end }}
-            {{- if $nosqlEnabled }}
-            ---
-            apiVersion: platform.local.lab/v1alpha1
-            kind: XNoSql
-            metadata:
-              name: {{ $name }}-nosql
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: nosql
-                gotemplating.fn.crossplane.io/ready: {{ $nosqlReady | quote }}
-            spec:
-              parameters:
-                namespace: {{ $ns }}
-                {{- if and $xr.spec.parameters.nosql $xr.spec.parameters.nosql.partitionKey }}
-                partitionKey: {{ $xr.spec.parameters.nosql.partitionKey }}
-                {{- end }}
             {{- end }}
             ---
             # release: monitoring matches the Prometheus operator's serviceMonitorSelector
