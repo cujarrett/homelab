@@ -89,6 +89,7 @@ spec:
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: cache-secret
                 gotemplating.fn.crossplane.io/ready: "True"
+            type: servicebinding.io/redis
             stringData:
               type: redis
               provider: in-cluster
@@ -125,6 +126,7 @@ spec:
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: cache-secret
                 gotemplating.fn.crossplane.io/ready: "True"
+            type: servicebinding.io/redis
             stringData:
               type: redis
               provider: aws
