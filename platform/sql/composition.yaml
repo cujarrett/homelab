@@ -127,6 +127,7 @@ spec:
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: database-secret
                 gotemplating.fn.crossplane.io/ready: "True"
+            type: servicebinding.io/postgresql
             stringData:
               type: postgresql
               provider: in-cluster
@@ -183,6 +184,7 @@ spec:
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: database-secret
                 gotemplating.fn.crossplane.io/ready: "True"
+            type: servicebinding.io/postgresql
             stringData:
               type: postgresql
               provider: aws
