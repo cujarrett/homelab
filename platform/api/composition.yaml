@@ -20,7 +20,7 @@ spec:
             {{- $xr := .observed.composite.resource }}
             {{- $name := $xr.metadata.name }}
             {{- $ns := $xr.spec.parameters.namespace }}
-            {{- $env := $xr.spec.parameters.environment | default "cluster" }}
+            {{- $env := ($xr.spec.parameters.cache | default dict).environment | default "cluster" }}
             {{- /* Refs point to standalone resources created outside this XApi. */ -}}
             {{- /* The binding Secret already exists in $ns — just mount it.    */ -}}
             {{- $objectStorageRefName := "" }}

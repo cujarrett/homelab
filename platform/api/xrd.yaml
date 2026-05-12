@@ -53,11 +53,11 @@ spec:
                         enabled:
                           type: boolean
                           default: false
-                    environment:
-                      type: string
-                      default: cluster
-                      enum: [cluster, cloud]
-                      description: "Runtime environment. Controls XCache only: cluster=in-cluster Redis, cloud=AWS ElastiCache."
+                        environment:
+                          type: string
+                          default: cluster
+                          enum: [cluster, cloud]
+                          description: "Cache backend: cluster=in-cluster Redis, cloud=AWS ElastiCache."
                     image:
                       type: string
                       description: "Container image for the API (e.g. ghcr.io/owner/api:sha-abc123). CI builds and pushes this on merge to main, then commits the new tag back here to trigger an ArgoCD sync."
