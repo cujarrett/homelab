@@ -176,12 +176,12 @@ spec:
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: binding-secret
                 gotemplating.fn.crossplane.io/ready: "True"
-            type: Opaque
+            type: servicebinding.io/dynamodb
             stringData:
               type: dynamodb
               provider: aws
-              tableName: {{ $tableName }}
+              table-name: {{ $tableName }}
               region: {{ $region }}
-              accessKeyId: {{ $username | b64dec }}
-              secretAccessKey: {{ $password | b64dec }}
+              access-key-id: {{ $username | b64dec }}
+              secret-access-key: {{ $password | b64dec }}
             {{- end -}}
