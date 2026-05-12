@@ -20,19 +20,10 @@ spec:
             {{- $xr := .observed.composite.resource }}
             {{- $name := $xr.metadata.name }}
             {{- $ns := $xr.spec.parameters.namespace }}
-            {{- $env := $xr.spec.parameters.environment | default "test" }}
-            {{- /* `and` avoids nil-pointer if the key is absent */ -}}
-            {{- $objectStorageEnabled := and $xr.spec.parameters.objectStorage $xr.spec.parameters.objectStorage.enabled }}
+            {{- $env := $xr.spec.parameters.environment | default "cluster" }}
+            {{- $objectStorageRefName := "" }}
+            {{- if $xr.spec.parameters.objectStorageRef }}{{- $objectStorageRefName = $xr.spec.parameters.objectStorageRef.name }}{{- end }}
             {{- $cacheEnabled := and $xr.spec.parameters.cache $xr.spec.parameters.cache.enabled }}
-            {{- $objStorageReady := "False" }}
-            {{- $objStorageObserved := index (.observed.resources | default dict) "object-storage" }}
-            {{- if $objStorageObserved }}
-              {{- range ($objStorageObserved.resource.status.conditions | default list) }}
-                {{- if and (eq .type "Ready") (eq .status "True") }}
-                  {{- $objStorageReady = "True" }}
-                {{- end }}
-              {{- end }}
-            {{- end }}
             {{- $cacheReady := "False" }}
             {{- $cacheObserved := index (.observed.resources | default dict) "cache" }}
             {{- if $cacheObserved }}
@@ -102,9 +93,9 @@ spec:
                 spec:
                   nodeSelector:
                     node-role.kubernetes.io/worker: worker
-                  {{- if or $objectStorageEnabled $cacheEnabled }}
+                  {{- if or $objectStorageRefName $cacheEnabled }}
                   initContainers:
-                    {{- if $objectStorageEnabled }}
+                    {{- if $objectStorageRefName }}
                     - name: wait-for-object-storage-binding
                       image: busybox:1.36
                       command:
@@ -162,9 +153,9 @@ spec:
                         - secretRef:
                             name: {{ $secretRefName }}
                       {{- end }}
-                      {{- if or $objectStorageEnabled $cacheEnabled }}
+                      {{- if or $objectStorageRefName $cacheEnabled }}
                       volumeMounts:
-                        {{- if $objectStorageEnabled }}
+                        {{- if $objectStorageRefName }}
                         - name: object-storage-binding
                           mountPath: /bindings/object-storage
                           readOnly: true
@@ -175,13 +166,13 @@ spec:
                           readOnly: true
                         {{- end }}
                       {{- end }}
-                  {{- if or $objectStorageEnabled $cacheEnabled }}
+                  {{- if or $objectStorageRefName $cacheEnabled }}
                   volumes:
-                    {{- if $objectStorageEnabled }}
-                    # optional: true avoids pod failure before the secret exists
+                    {{- if $objectStorageRefName }}
+                    # Binding Secret is written by the standalone XObjectStorage instance
                     - name: object-storage-binding
                       secret:
-                        secretName: {{ $name }}-object-storage
+                        secretName: {{ $objectStorageRefName }}
                         optional: true
                     {{- end }}
                     {{- if $cacheEnabled }}
@@ -191,19 +182,6 @@ spec:
                         optional: true
                     {{- end }}
                   {{- end }}
-            {{- if $objectStorageEnabled }}
-            ---
-            apiVersion: platform.local.lab/v1alpha1
-            kind: XObjectStorage
-            metadata:
-              name: {{ $name }}-object-storage
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: object-storage
-                gotemplating.fn.crossplane.io/ready: {{ $objStorageReady | quote }}
-            spec:
-              parameters:
-                environment: {{ $env }}
-            {{- end }}
             {{- if $cacheEnabled }}
             ---
             apiVersion: platform.local.lab/v1alpha1
