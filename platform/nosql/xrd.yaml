@@ -40,3 +40,8 @@ spec:
                     namespace:
                       type: string
                       description: "Namespace to write the binding Secret into. Passed automatically by XApi."
+                    dataRetention:
+                      type: string
+                      default: delete
+                      enum: [retain, delete]
+                      description: "AWS resource reclaim behavior when the XR is deleted. delete=Crossplane deletes the DynamoDB table and IAM user (data is unrecoverable); retain=Crossplane orphans them (resources persist in AWS, data recoverable)."

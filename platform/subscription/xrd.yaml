@@ -32,6 +32,9 @@ spec:
                         name:
                           type: string
                           description: metadata.name of the XTopic instance (e.g. foo-events).
+                        streamName:
+                          type: string
+                          description: "NATS stream name as defined in the XTopic's spec.parameters.streamName. Defaults to topicRef.name uppercased when omitted. Set explicitly when the XTopic's streamName differs from its metadata.name."
                     filterSubject:
                       type: string
                       description: >

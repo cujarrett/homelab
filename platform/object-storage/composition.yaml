@@ -40,6 +40,16 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.region
                 toFieldPath: spec.forProvider.region
+              # dataRetention: delete → deletionPolicy: Delete (bucket removed when XR deleted)
+              # dataRetention: retain → deletionPolicy: Orphan (bucket persists in AWS)
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.dataRetention
+                toFieldPath: spec.deletionPolicy
+                transforms:
+                  - type: map
+                    map:
+                      delete: Delete
+                      retain: Orphan
               # Set a deterministic bucket name (= XR name) so the composition can tag the IAM
               # user with the exact bucket name for principal-tag-based ABAC (aws:PrincipalTag).
               # aws:ResourceTag does not work for S3 — IAM never populates it from S3 bucket tags.
@@ -91,6 +101,14 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.namespace
                 toFieldPath: spec.forProvider.tags.Namespace
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.dataRetention
+                toFieldPath: spec.deletionPolicy
+                transforms:
+                  - type: map
+                    map:
+                      delete: Delete
+                      retain: Orphan
 
           - name: access-key
             base:

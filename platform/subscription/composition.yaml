@@ -21,7 +21,9 @@ spec:
             {{- $name := $xr.metadata.name }}
             {{- $params := $xr.spec.parameters }}
             {{- /* Derive stream name from topicRef.name: foo-events → FOO-EVENTS */}}
-            {{- $stream := $params.topicRef.name | upper }}
+            {{- /* Use explicit streamName if provided; fall back to uppercased topicRef.name.
+                 This handles XTopics whose streamName differs from their metadata.name. */}}
+            {{- $stream := ($params.topicRef.streamName | default ($params.topicRef.name | upper)) }}
             # --- Consumer ---
             # Durable pull consumer — NATS remembers this cursor's position across
             # pod restarts and redeployments. The XApi that reads this subscription

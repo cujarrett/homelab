@@ -95,6 +95,9 @@ spec:
                         name:
                           type: string
                           description: "metadata.name of the XTopic instance (e.g. foo-events)."
+                        streamName:
+                          type: string
+                          description: "NATS stream name as defined in the XTopic's spec.parameters.streamName. Defaults to topicRef.name uppercased when omitted. Set explicitly when the XTopic's streamName differs from its metadata.name."
                     namespace:
                       type: string
                       description: "Namespace to deploy into. Must already exist (created by the tenant's namespace.yaml)."
@@ -106,6 +109,30 @@ spec:
                         name:
                           type: string
                           description: "metadata.name of the XSubscription instance (e.g. nms-metrics-consumer)."
+                    replicas:
+                      type: integer
+                      default: 1
+                      description: "Number of API replicas."
+                    healthCheckPath:
+                      type: string
+                      default: "/healthz"
+                      description: "Path the container serves for readiness probes. Returns HTTP 200."
+                    cpuRequest:
+                      type: string
+                      default: "50m"
+                      description: "CPU request for the API container."
+                    cpuLimit:
+                      type: string
+                      default: "200m"
+                      description: "CPU limit for the API container."
+                    memoryRequest:
+                      type: string
+                      default: "32Mi"
+                      description: "Memory request for the API container."
+                    memoryLimit:
+                      type: string
+                      default: "64Mi"
+                      description: "Memory limit for the API container."
                   required: [image, namespace]
               required:
                 - parameters

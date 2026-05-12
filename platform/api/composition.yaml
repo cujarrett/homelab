@@ -43,10 +43,16 @@ spec:
             {{- $tlsIssuer := $xr.spec.parameters.tlsIssuer | default "local-lab-ca-issuer" }}
             {{- $metricsPort := $xr.spec.parameters.metricsPort | default 9090 }}
             {{- $scrapeInterval := $xr.spec.parameters.scrapeInterval | default "60s" }}
+            {{- $replicas := $xr.spec.parameters.replicas | default 1 }}
+            {{- $healthCheckPath := $xr.spec.parameters.healthCheckPath | default "/healthz" }}
             {{- $secretRefName := "" }}
             {{- if $xr.spec.parameters.secretRef }}{{- $secretRefName = $xr.spec.parameters.secretRef.name }}{{- end }}
             {{- $topicRefName := "" }}
-            {{- if $xr.spec.parameters.topicRef }}{{- $topicRefName = $xr.spec.parameters.topicRef.name }}{{- end }}
+            {{- $topicStreamName := "" }}
+            {{- if $xr.spec.parameters.topicRef }}
+            {{- $topicRefName = $xr.spec.parameters.topicRef.name }}
+            {{- $topicStreamName = ($xr.spec.parameters.topicRef.streamName | default ($xr.spec.parameters.topicRef.name | upper)) }}
+            {{- end }}
             {{- $subscriptionRefName := "" }}
             {{- if $xr.spec.parameters.subscriptionRef }}{{- $subscriptionRefName = $xr.spec.parameters.subscriptionRef.name }}{{- end }}
             # --- Service ---
@@ -87,7 +93,7 @@ spec:
                 gotemplating.fn.crossplane.io/composition-resource-name: deployment
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
-              replicas: 1
+              replicas: {{ $replicas }}
               selector:
                 matchLabels:
                   app.kubernetes.io/instance: {{ $name }}
@@ -156,6 +162,19 @@ spec:
                       imagePullPolicy: Always
                       ports:
                         - containerPort: {{ $xr.spec.parameters.port | default 8080 }}
+                      resources:
+                        requests:
+                          cpu: {{ $xr.spec.parameters.cpuRequest | default "50m" }}
+                          memory: {{ $xr.spec.parameters.memoryRequest | default "32Mi" }}
+                        limits:
+                          cpu: {{ $xr.spec.parameters.cpuLimit | default "200m" }}
+                          memory: {{ $xr.spec.parameters.memoryLimit | default "64Mi" }}
+                      readinessProbe:
+                        httpGet:
+                          path: {{ $healthCheckPath }}
+                          port: {{ $xr.spec.parameters.port | default 8080 }}
+                        initialDelaySeconds: 5
+                        periodSeconds: 10
                       env:
                         # servicebinding.io convention: $SERVICE_BINDING_ROOT/<binding>/<key>
                         - name: SERVICE_BINDING_ROOT
@@ -166,7 +185,7 @@ spec:
                         - name: NATS_URL
                           value: "nats://nats.nats.svc.cluster.local:4222"
                         - name: NATS_STREAM
-                          value: {{ $topicRefName | upper | quote }}
+                          value: {{ $topicStreamName | quote }}
                       {{- end }}
                       {{- if $subscriptionRefName }}
                         # XSubscription wiring: injected automatically from subscriptionRef.

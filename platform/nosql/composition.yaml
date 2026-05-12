@@ -46,6 +46,16 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.region
                 toFieldPath: spec.forProvider.region
+              # dataRetention: delete → deletionPolicy: Delete (table removed when XR deleted)
+              # dataRetention: retain → deletionPolicy: Orphan (table persists in AWS)
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.dataRetention
+                toFieldPath: spec.deletionPolicy
+                transforms:
+                  - type: map
+                    map:
+                      delete: Delete
+                      retain: Orphan
               # External name = table name; deterministic so the IAM ABAC policy
               # can scope to arn:aws:dynamodb:{region}:*:table/${aws:PrincipalTag/Table}.
               - type: FromCompositeFieldPath
@@ -98,6 +108,14 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.name
                 toFieldPath: spec.forProvider.tags.App
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.dataRetention
+                toFieldPath: spec.deletionPolicy
+                transforms:
+                  - type: map
+                    map:
+                      delete: Delete
+                      retain: Orphan
 
           - name: access-key
             base:
