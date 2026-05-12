@@ -73,7 +73,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | Storage | Longhorn | Three StorageClasses: `longhorn` (default, Delete), `longhorn-retain` (Retain — use for stateful platform XRs), `longhorn-delete` (explicit Delete) |
 | DNS | AdGuard Home | Runs in `adguard` namespace, pinned to node `ctrl-1` via nodeSelector, hostPort 53 UDP |
 | External Access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; token from secret `cloudflare-tunnel-token` |
-| Platform Abstraction | Crossplane | Three XR types: `XWordPressPlatform`, `XSpa`, `XApi` — all use `function-patch-and-transform` + `function-go-templating` |
+| Platform Abstraction | Crossplane | Three XR types: `XWordpress`, `XSpa`, `XApi` — all use `function-patch-and-transform` + `function-go-templating` |
 
 ## Namespaces & Applications
 | Namespace | App | Notes |
@@ -88,7 +88,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `cert-manager` | cert-manager | TLS issuers |
 | `crossplane-system` | Crossplane | Platform compositions, XRDs, providers |
 | `nats` | NATS + NACK | JetStream cluster (3 replicas), NACK controller for Stream/Consumer CRDs |
-| `mattjarrett-com` | WordPress (XWordPressPlatform) | `mattjarrett.com` via Cloudflare Tunnel; 7Gi wp-content, 1Gi MariaDB |
+| `mattjarrett-com` | WordPress (XWordpress) | `mattjarrett.com` via Cloudflare Tunnel; 7Gi wp-content, 1Gi MariaDB |
 | `mattjarrett-dev` | Angular SPA (XSpa) | `mattjarrett.dev` via Cloudflare Tunnel |
 | `blog` | Ghost (Deployment) | `blog.mattjarrett.dev` via Cloudflare Tunnel; 2Gi content PVC |
 | `my-vinyl` | XSpa + XApi + XCache | `myvinyl.mattjarrett.dev` via Cloudflare Tunnel |
@@ -260,7 +260,7 @@ Three platform types are defined under `platform/`:
 
 | XRD | Kind | Namespace | Notes |
 |---|---|---|---|
-| `xwordpressplatforms.platform.local.lab` | `XWordPressPlatform` | `mattjarrett-com` | MariaDB StatefulSet + WordPress Deployment; credentials from XR UID |
+| `xwordpresses.platform.local.lab` | `XWordpress` | `mattjarrett-com` | MariaDB StatefulSet + WordPress Deployment; credentials from XR UID |
 | `xspas.platform.local.lab` | `XSpa` | `mattjarrett-dev` | nginx + Angular SPA; nginx config generated via go-templating function — **app repos must NOT include an nginx.conf; composition owns it entirely** |
 | `xapis.platform.local.lab` | `XApi` | — | Generic REST API (no active instance) |
 
@@ -278,7 +278,7 @@ XR instance files live under `platform/xrs/`:
 ```bash
 # 1. Delete the XR — Crossplane cascade-deletes all composed resources
 kubectl delete xspa <name> -n <namespace>
-# or: kubectl delete xwordpressplatform <name> -n <namespace>
+# or: kubectl delete xwordpress <name> -n <namespace>
 
 # 2. Remove the file from git and push — ArgoCD prunes the Application
 git rm platform/xrs/<type>/<name>.yaml && git commit -m "..." && git push
