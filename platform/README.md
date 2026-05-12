@@ -14,7 +14,7 @@ Crossplane-based internal developer platform. Declare what your app needs; the p
 | [`XCache`](cache/README.md) | Redis — in-cluster or AWS ElastiCache; owned by `XApi` |
 | [`XTopic`](topic/README.md) | NATS JetStream stream (durable, replicated) |
 | [`XSubscription`](subscription/README.md) | Durable NATS consumer cursor |
-| [`XWordPressPlatform`](wordpress/README.md) | Full WordPress stack |
+| [`XWordpress`](wordpress/README.md) | Full WordPress stack |
 
 Data resources (`XObjectStorage`, `XSql`, `XNoSql`) have lifecycles independent of any one `XApi`. Create them once, reference them by name.
 
