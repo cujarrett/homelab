@@ -78,6 +78,63 @@ spec:
                   port: {{ $metricsPort }}
                   targetPort: {{ $metricsPort }}
             ---
+            # --- ServiceAccount ---
+            # Dedicated SA per XApi instance — pods do not use the namespace default SA.
+            apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: serviceaccount
+                gotemplating.fn.crossplane.io/ready: "True"
+            {{- $boundSecrets := list }}
+            {{- if $objectStorageRefName }}{{- $boundSecrets = append $boundSecrets $objectStorageRefName }}{{- end }}
+            {{- if $sqlRefName }}{{- $boundSecrets = append $boundSecrets $sqlRefName }}{{- end }}
+            {{- if $nosqlRefName }}{{- $boundSecrets = append $boundSecrets $nosqlRefName }}{{- end }}
+            {{- if $cacheEnabled }}{{- $boundSecrets = append $boundSecrets (printf "%s-cache" $name) }}{{- end }}
+            {{- if $secretRefName }}{{- $boundSecrets = append $boundSecrets $secretRefName }}{{- end }}
+            {{- if $boundSecrets }}
+            ---
+            # --- Role ---
+            # Grants get only on the exact Secrets this instance mounts or injects.
+            # Prevents a compromised container from reading other Secrets in the namespace.
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: Role
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: role
+                gotemplating.fn.crossplane.io/ready: "True"
+            rules:
+              - apiGroups: [""]
+                resources: ["secrets"]
+                verbs: ["get"]
+                resourceNames:
+                  {{- range $boundSecrets }}
+                  - {{ . | quote }}
+                  {{- end }}
+            ---
+            # --- RoleBinding ---
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: RoleBinding
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: rolebinding
+                gotemplating.fn.crossplane.io/ready: "True"
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: Role
+              name: {{ $name }}
+            subjects:
+              - kind: ServiceAccount
+                name: {{ $name }}
+                namespace: {{ $ns }}
+            {{- end }}
+            ---
             # --- Deployment ---
             # Init containers poll for each binding's "type" file — last key written,
             # confirming all binding keys are available before the app starts.
@@ -103,6 +160,7 @@ spec:
                     app: xapi
                     app.kubernetes.io/instance: {{ $name }}
                 spec:
+                  serviceAccountName: {{ $name }}
                   nodeSelector:
                     node-role.kubernetes.io/worker: worker
                   {{- if or $objectStorageRefName $sqlRefName $nosqlRefName $cacheEnabled }}
