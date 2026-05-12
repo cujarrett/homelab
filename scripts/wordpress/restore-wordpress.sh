@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # restore-wordpress.sh
-# Restores a WordPress site into the XWordPressPlatform stack.
+# Restores a WordPress site into the XWordpress stack.
 #
 # Usage:
 #   ./scripts/restore-wordpress.sh \
