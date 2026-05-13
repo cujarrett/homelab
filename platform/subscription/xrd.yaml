@@ -74,3 +74,4 @@ spec:
                         Go duration. Unacked messages are redelivered after this timeout.
                         e.g. 30s, 5m. Defaults to 30s.
                       default: "30s"
+                      pattern: "^[0-9]+(ns|us|ms|s|m|h)$"

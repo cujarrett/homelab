@@ -58,6 +58,7 @@ spec:
                         (e.g. 720h = 30 days, 24h = 1 day). Empty string means unlimited.
                         Maps to Kafka's log.retention.ms.
                       default: "720h"
+                      pattern: "^$|^[0-9]+(ns|us|ms|s|m|h)$"
                     maxBytes:
                       type: integer
                       description: >
