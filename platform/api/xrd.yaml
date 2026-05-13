@@ -73,6 +73,7 @@ spec:
                       type: string
                       default: "60s"
                       description: "Prometheus scrape interval for the ServiceMonitor. Defaults to 60s. Reduce for apps that emit short-lived state changes (e.g. 10s for sump-pump-consumer)."
+                      pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
                     host:
                       type: string
                       description: "Hostname for the Ingress. If omitted, no Ingress is created."
