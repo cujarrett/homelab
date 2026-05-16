@@ -36,18 +36,13 @@ spec:
               kind: Table
               spec:
                 forProvider:
-                  region: ""
+                  region: "us-east-1"
                   billingMode: PAY_PER_REQUEST
                   hashKey: ""
                   attribute:
                     - name: ""
                       type: S
             patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.region
-                toFieldPath: spec.forProvider.region
-              # dataRetention: delete → deletionPolicy: Delete (table removed when XR deleted)
-              # dataRetention: retain → deletionPolicy: Orphan (table persists in AWS)
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.dataRetention
                 toFieldPath: spec.deletionPolicy

@@ -53,7 +53,7 @@ spec:
                         enabled:
                           type: boolean
                           default: false
-                        environment:
+                        backend:
                           type: string
                           default: cluster
                           enum: [cluster, cloud]
@@ -68,10 +68,12 @@ spec:
                     metricsPort:
                       type: integer
                       default: 9090
+                      x-advanced: true
                       description: "Port the container exposes Prometheus metrics on. Defaults to 9090. Set to match port if the app serves metrics on the same port as the app (e.g. 8080)."
                     scrapeInterval:
                       type: string
                       default: "60s"
+                      x-advanced: true
                       description: "Prometheus scrape interval for the ServiceMonitor. Defaults to 60s. Reduce for apps that emit short-lived state changes (e.g. 10s for sump-pump-consumer)."
                       pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
                     host:
@@ -80,6 +82,10 @@ spec:
                     tlsIssuer:
                       type: string
                       default: local-lab-ca-issuer
+                      enum:
+                        - local-lab-ca-issuer
+                        - letsencrypt-staging
+                        - letsencrypt-prod
                       description: "cert-manager ClusterIssuer for TLS."
                     secretRef:
                       type: object
@@ -114,26 +120,12 @@ spec:
                       type: integer
                       default: 1
                       description: "Number of API replicas."
-                    healthCheckPath:
+                    size:
                       type: string
-                      default: "/healthz"
-                      description: "Path the container serves for readiness probes. Returns HTTP 200."
-                    cpuRequest:
-                      type: string
-                      default: "50m"
-                      description: "CPU request for the API container."
-                    cpuLimit:
-                      type: string
-                      default: "200m"
-                      description: "CPU limit for the API container."
-                    memoryRequest:
-                      type: string
-                      default: "32Mi"
-                      description: "Memory request for the API container."
-                    memoryLimit:
-                      type: string
-                      default: "64Mi"
-                      description: "Memory limit for the API container."
+                      default: sm
+                      enum: [xs, sm, md, lg]
+                      x-enumLabels: ["Extra Small", "Small", "Medium", "Large"]
+                      description: "Container resource size. xs=25m/100m cpu, 32Mi/64Mi mem. sm=50m/200m cpu, 64Mi/128Mi mem. md=100m/500m cpu, 128Mi/256Mi mem. lg=250m/1000m cpu, 256Mi/512Mi mem."
                   required: [image, namespace]
               required:
                 - parameters

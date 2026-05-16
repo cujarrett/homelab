@@ -52,11 +52,11 @@ spec:
               # file storage survives pod restarts — memory is faster but ephemeral
               storage: file
               # Raft replication across NATS cluster — Kafka replication.factor equivalent
-              replicas: {{ $params.replicas | default 3 }}
+              replicas: 3
               # Go duration string — Kafka log.retention.ms equivalent
               maxAge: {{ $params.maxAge | default "720h" }}
               # -1 = unlimited — Kafka log.retention.bytes equivalent
-              maxBytes: {{ $params.maxBytes | default -1 }}
+              maxBytes: -1
               maxConsumers: -1
               maxMsgs: -1
               discard: old

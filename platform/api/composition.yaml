@@ -20,7 +20,7 @@ spec:
             {{- $xr := .observed.composite.resource }}
             {{- $name := $xr.metadata.name }}
             {{- $ns := $xr.spec.parameters.namespace }}
-            {{- $env := ($xr.spec.parameters.cache | default dict).environment | default "cluster" }}
+            {{- $env := ($xr.spec.parameters.cache | default dict).backend | default "cluster" }}
             {{- /* Refs point to standalone resources created outside this XApi. */ -}}
             {{- /* The binding Secret already exists in $ns — just mount it.    */ -}}
             {{- $objectStorageRefName := "" }}
@@ -44,7 +44,10 @@ spec:
             {{- $metricsPort := $xr.spec.parameters.metricsPort | default 9090 }}
             {{- $scrapeInterval := $xr.spec.parameters.scrapeInterval | default "60s" }}
             {{- $replicas := $xr.spec.parameters.replicas | default 1 }}
-            {{- $healthCheckPath := $xr.spec.parameters.healthCheckPath | default "/healthz" }}
+            {{- $healthCheckPath := "/healthz" }}
+            {{- $sizeResourceMap := dict "xs" (dict "cpuReq" "25m" "cpuLim" "100m" "memReq" "32Mi" "memLim" "64Mi") "sm" (dict "cpuReq" "50m" "cpuLim" "200m" "memReq" "64Mi" "memLim" "128Mi") "md" (dict "cpuReq" "100m" "cpuLim" "500m" "memReq" "128Mi" "memLim" "256Mi") "lg" (dict "cpuReq" "250m" "cpuLim" "1000m" "memReq" "256Mi" "memLim" "512Mi") }}
+            {{- $sizeKey := $xr.spec.parameters.size | default "sm" }}
+            {{- $sizeRes := get $sizeResourceMap $sizeKey | default (get $sizeResourceMap "sm") }}
             {{- $secretRefName := "" }}
             {{- if $xr.spec.parameters.secretRef }}{{- $secretRefName = $xr.spec.parameters.secretRef.name }}{{- end }}
             {{- $topicRefName := "" }}
@@ -222,11 +225,11 @@ spec:
                         - containerPort: {{ $xr.spec.parameters.port | default 8080 }}
                       resources:
                         requests:
-                          cpu: {{ $xr.spec.parameters.cpuRequest | default "50m" }}
-                          memory: {{ $xr.spec.parameters.memoryRequest | default "32Mi" }}
+                          cpu: {{ get $sizeRes "cpuReq" }}
+                          memory: {{ get $sizeRes "memReq" }}
                         limits:
-                          cpu: {{ $xr.spec.parameters.cpuLimit | default "200m" }}
-                          memory: {{ $xr.spec.parameters.memoryLimit | default "64Mi" }}
+                          cpu: {{ get $sizeRes "cpuLim" }}
+                          memory: {{ get $sizeRes "memLim" }}
                       readinessProbe:
                         httpGet:
                           path: {{ $healthCheckPath }}
@@ -321,7 +324,7 @@ spec:
                 gotemplating.fn.crossplane.io/ready: {{ $cacheReady | quote }}
             spec:
               parameters:
-                environment: {{ $env }}
+                backend: {{ $env }}
                 namespace: {{ $ns }}
             {{- end }}
             ---

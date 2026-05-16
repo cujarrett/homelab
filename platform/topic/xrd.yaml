@@ -59,19 +59,3 @@ spec:
                         Maps to Kafka's log.retention.ms.
                       default: "720h"
                       pattern: "^$|^[0-9]+(ns|us|ms|s|m|h)$"
-                    maxBytes:
-                      type: integer
-                      description: >
-                        Maximum total stream size in bytes. -1 for unlimited.
-                        When exceeded, oldest messages are discarded.
-                        Maps to Kafka's log.retention.bytes.
-                      default: -1
-                      minimum: -1
-                    replicas:
-                      type: integer
-                      description: >
-                        Number of NATS cluster nodes that store a copy of each message.
-                        Must be <= NATS cluster size (3). Higher = more durability.
-                        Maps to Kafka's replication.factor.
-                      default: 3
-                      minimum: 1

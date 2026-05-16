@@ -55,30 +55,17 @@ spec:
                     contentSecurityPolicy:
                       type: string
                       default: "default-src 'self'; frame-ancestors 'none'; base-uri 'self';"
+                      x-advanced: true
                       description: >
                         Value for the Content-Security-Policy response header.
                         Override with app-specific origins (e.g. Google Fonts, external APIs).
                         Default is a strict policy suitable for SPAs with no external dependencies.
-                    healthCheckPath:
+                    size:
                       type: string
-                      default: "/healthz"
-                      description: "Path served by nginx for readiness probes. Returns HTTP 200."
-                    cpuRequest:
-                      type: string
-                      default: "50m"
-                      description: "CPU request for the nginx container."
-                    cpuLimit:
-                      type: string
-                      default: "200m"
-                      description: "CPU limit for the nginx container."
-                    memoryRequest:
-                      type: string
-                      default: "32Mi"
-                      description: "Memory request for the nginx container."
-                    memoryLimit:
-                      type: string
-                      default: "64Mi"
-                      description: "Memory limit for the nginx container."
+                      default: sm
+                      enum: [xs, sm, md, lg]
+                      x-enumLabels: ["Extra Small", "Small", "Medium", "Large"]
+                      description: "Container resource size. xs=25m/100m cpu, 32Mi/64Mi mem. sm=50m/200m cpu, 64Mi/128Mi mem. md=100m/500m cpu, 128Mi/256Mi mem. lg=250m/1000m cpu, 256Mi/512Mi mem."
                     namespace:
                       type: string
                       description: "Namespace to deploy into. Must already exist (created by the tenant's namespace.yaml)."
