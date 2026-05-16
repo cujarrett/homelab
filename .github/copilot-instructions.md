@@ -320,6 +320,36 @@ Applications from the `workloads` project can live in any namespace (`sourceName
 - cert-manager annotation on all Ingresses: `cert-manager.io/cluster-issuer: local-lab-ca-issuer` (internal) or `letsencrypt-prod` (public)
 - XSpa compositions use `gotemplating.fn.crossplane.io/ready: "True"` on go-templating resources to avoid false `Ready=False` on the XR
 
+## Go App Conventions
+
+All homelab Go services follow the same layout. When editing or creating a Go app:
+
+- **Build tool: `just`, not `make`** — every Go repo has a `justfile` at the root
+- **Standard recipes** (always the same across all apps):
+  | Recipe | What it does |
+  |---|---|
+  | `just ci` | `lint → test → build` (run this before pushing) |
+  | `just lint` | `go mod tidy -diff` + `golangci-lint run` |
+  | `just test` | `go test -race ./...` |
+  | `just build` | `go build -o <app-name> .` |
+  | `just run` | `go run .` |
+- **Binary name = repo name** — always pass `-o <repo-name>` to `go build`
+- **Race detector always on** — `go test -race ./...`, not `go test ./...`
+- **Stdlib only** — no HTTP frameworks; stdlib `net/http` + `slog`
+- **Graceful shutdown** via `signal.NotifyContext`
+- **/healthz route required** on every app — Kubernetes readiness probe hits `/healthz`
+
+Go apps in this workspace:
+| Repo | Binary | Notes |
+|---|---|---|
+| `my-vinyl-api` | `my-vinyl-api` | REST API for my-vinyl SPA |
+| `sump-pump-bridge` | `sump-pump-bridge` | IoT bridge, publishes to NATS |
+| `sump-pump-consumer` | `sump-pump-consumer` | NATS consumer, exposes Prometheus metrics |
+| `weather-exporter` | `weather-exporter` | Weather Prometheus exporter |
+| `launchpad-api` | `launchpad-api` | BFF for Launchpad UI |
+
+To scaffold a new Go API, use the prompt: `.github/prompts/new-go-api.prompt.md`
+
 ## Common Commands
 ```bash
 # Check all PVCs
