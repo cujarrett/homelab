@@ -365,7 +365,7 @@ spec:
               entryPoints:
                 - websecure
               routes:
-                - match: "Host(`{{ $params.host }}`) && (Path(`/wp-login.php`) || Path(`/xmlrpc.php`) || PathPrefix(`/wp-admin/`))"
+                - match: "Host(`{{ $params.host }}`) && (Path(`/wp-login.php`) || Path(`/xmlrpc.php`))"
                   kind: Rule
                   priority: 100
                   middlewares:
