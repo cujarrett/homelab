@@ -21,6 +21,9 @@ spec:
             {{- $params := .observed.composite.resource.spec.parameters }}
             {{- $namespace := $params.namespace }}
             {{- $apiProxyEnabled := and $params.apiProxy $params.apiProxy.enabled }}
+            {{- $sizeResourceMap := dict "xs" (dict "cpuReq" "25m" "cpuLim" "100m" "memReq" "32Mi" "memLim" "64Mi") "sm" (dict "cpuReq" "50m" "cpuLim" "200m" "memReq" "64Mi" "memLim" "128Mi") "md" (dict "cpuReq" "100m" "cpuLim" "500m" "memReq" "128Mi" "memLim" "256Mi") "lg" (dict "cpuReq" "250m" "cpuLim" "1000m" "memReq" "256Mi" "memLim" "512Mi") }}
+            {{- $sizeKey := $params.size | default "sm" }}
+            {{- $sizeRes := get $sizeResourceMap $sizeKey | default (get $sizeResourceMap "sm") }}
             # --- nginx ConfigMap ---
             # Generated from XR params so the SPA image stays generic across instances.
             apiVersion: v1
@@ -40,7 +43,7 @@ spec:
                     root /usr/share/nginx/html;
                     index index.html;
 
-                    location {{ $params.healthCheckPath }} {
+                    location /healthz {
                         access_log off;
                         return 200 'ok';
                         add_header Content-Type text/plain always;
@@ -200,14 +203,14 @@ spec:
                         - containerPort: 80
                       resources:
                         requests:
-                          cpu: {{ $params.cpuRequest | default "50m" }}
-                          memory: {{ $params.memoryRequest | default "32Mi" }}
+                          cpu: {{ get $sizeRes "cpuReq" }}
+                          memory: {{ get $sizeRes "memReq" }}
                         limits:
-                          cpu: {{ $params.cpuLimit | default "200m" }}
-                          memory: {{ $params.memoryLimit | default "64Mi" }}
+                          cpu: {{ get $sizeRes "cpuLim" }}
+                          memory: {{ get $sizeRes "memLim" }}
                       readinessProbe:
                         httpGet:
-                          path: {{ $params.healthCheckPath | default "/healthz" }}
+                          path: /healthz
                           port: 80
                         initialDelaySeconds: 5
                         periodSeconds: 10

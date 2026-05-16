@@ -35,13 +35,8 @@ spec:
               kind: Bucket
               spec:
                 forProvider:
-                  region: ""
+                  region: "us-east-1"
             patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.region
-                toFieldPath: spec.forProvider.region
-              # dataRetention: delete → deletionPolicy: Delete (bucket removed when XR deleted)
-              # dataRetention: retain → deletionPolicy: Orphan (bucket persists in AWS)
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.dataRetention
                 toFieldPath: spec.deletionPolicy

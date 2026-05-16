@@ -24,20 +24,17 @@ spec:
                   type: object
                   required: [namespace]
                   properties:
-                    region:
-                      type: string
-                      default: us-east-1
-                      description: "Cloud region for the RDS instance (cloud only)."
                     size:
                       type: string
-                      default: small
-                      enum: [small, medium, large]
-                      description: "Size for the RDS instance (cloud only). small=db.t4g.micro, medium=db.t4g.small, large=db.t4g.medium."
-                    environment:
+                      default: sm
+                      enum: [xs, sm, md, lg]
+                      x-enumLabels: ["Extra Small", "Small", "Medium", "Large"]
+                      description: "Size for the RDS instance (cloud only). xs=db.t4g.micro, sm=db.t4g.small, md=db.t4g.medium, lg=db.t4g.large."
+                    backend:
                       type: string
                       default: cluster
                       enum: [cluster, cloud]
-                      description: "Runtime environment. cloud provisions AWS RDS Postgres; cluster provisions in-cluster Postgres."
+                      description: "Backend to provision. cloud provisions AWS RDS Postgres; cluster provisions in-cluster Postgres."
                     namespace:
                       type: string
                       description: "Namespace to write the binding Secret into. Passed automatically by XApi."

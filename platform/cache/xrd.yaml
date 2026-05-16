@@ -22,20 +22,17 @@ spec:
                 parameters:
                   type: object
                   properties:
-                    region:
-                      type: string
-                      default: us-east-1
-                      description: "Cloud region for the cache cluster."
                     size:
                       type: string
-                      default: small
-                      enum: [small, medium, large]
-                      description: "Size for the cache cluster (cloud only). small=cache.t4g.micro, medium=cache.t4g.small, large=cache.t4g.medium."
-                    environment:
+                      default: sm
+                      enum: [xs, sm, md, lg]
+                      x-enumLabels: ["Extra Small", "Small", "Medium", "Large"]
+                      description: "Size for the cache cluster (cloud only). xs=cache.t4g.micro, sm=cache.t4g.small, md=cache.t4g.medium, lg=cache.t4g.medium."
+                    backend:
                       type: string
                       default: cluster
                       enum: [cluster, cloud]
-                      description: "Runtime environment. cloud provisions AWS ElastiCache; cluster provisions in-cluster Redis."
+                      description: "Backend to provision. cloud provisions AWS ElastiCache; cluster provisions in-cluster Redis."
                     namespace:
                       type: string
                       description: "Namespace to deploy into. Must already exist (created by the tenant's namespace.yaml)."

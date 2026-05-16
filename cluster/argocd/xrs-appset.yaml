@@ -6,7 +6,7 @@ metadata:
 spec:
   generators:
     - git:
-        repoURL: https://github.com/cujarrett/homelab-tenants.git
+        repoURL: https://github.com/cujarrett/homelab-workspaces.git
         revision: main
         directories:
           - path: "*"
@@ -21,7 +21,7 @@ spec:
       revisionHistoryLimit: 5
       project: workloads
       source:
-        repoURL: https://github.com/cujarrett/homelab-tenants.git
+        repoURL: https://github.com/cujarrett/homelab-workspaces.git
         targetRevision: main
         path: "{{path}}"
       destination:

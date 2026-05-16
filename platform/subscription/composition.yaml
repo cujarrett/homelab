@@ -45,6 +45,6 @@ spec:
               filterSubject: {{ $params.filterSubject | default ">" | quote }}
               deliverPolicy: {{ $params.deliverPolicy | default "all" }}
               ackPolicy: {{ $params.ackPolicy | default "explicit" }}
-              ackWait: {{ $params.ackWait | default "30s" | quote }}
+              ackWait: "30s"
               maxAckPending: -1
 
