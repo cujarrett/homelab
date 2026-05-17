@@ -36,6 +36,7 @@ spec:
                     replicas:
                       type: integer
                       default: 1
+                      minimum: 1
                       description: "Number of WordPress replicas. Stateless uploads are on the shared PVC — do not scale above 1 without a shared filesystem."
                     cpuRequest:
                       type: string
