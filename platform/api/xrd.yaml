@@ -84,9 +84,9 @@ spec:
                       default: local-lab-ca-issuer
                       enum:
                         - local-lab-ca-issuer
-                        - letsencrypt-staging
                         - letsencrypt-prod
-                      description: "cert-manager ClusterIssuer for TLS."
+                      x-enumLabels: ["Internal (homelab only)", "External (public internet)"]
+                      description: "Certificate issuer. Internal for services only on the homelab network. External for services exposed via Cloudflare Tunnel to the public internet."
                     secretRef:
                       type: object
                       description: "Optional reference to a pre-existing Secret in the app namespace to inject into the API container via envFrom."
@@ -125,7 +125,7 @@ spec:
                       default: sm
                       enum: [xs, sm, md, lg]
                       x-enumLabels: ["Extra Small", "Small", "Medium", "Large"]
-                      description: "Container resource size. xs=25m/100m cpu, 32Mi/64Mi mem. sm=50m/200m cpu, 64Mi/128Mi mem. md=100m/500m cpu, 128Mi/256Mi mem. lg=250m/1000m cpu, 256Mi/512Mi mem."
+                      description: "Compute tier for the container. Choose based on expected traffic — Extra Small suits low-traffic or background services; Large suits high-throughput workloads."
                   required: [image, namespace]
               required:
                 - parameters
