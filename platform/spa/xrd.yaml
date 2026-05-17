@@ -39,19 +39,15 @@ spec:
                     tlsIssuer:
                       type: string
                       default: "local-lab-ca-issuer"
-                      description: >
-                        cert-manager ClusterIssuer name.
-                        Use local-lab-ca-issuer for .local.lab internal hosts.
-                        Use letsencrypt-prod for public hosts via Cloudflare Tunnel.
+                      description: "Certificate issuer. Internal for services only on the homelab network. External for services exposed to the public internet."
+                      x-enumLabels: ["Internal (homelab only)", "External (public internet)"]
                       enum:
                         - local-lab-ca-issuer
-                        - letsencrypt-staging
                         - letsencrypt-prod
                     imagePullSecret:
                       type: string
-                      description: >
-                        Name of the Kubernetes Secret containing registry credentials
-                        (e.g. ghcr-pull-secret for private GHCR images). Omit for public images.
+                      x-advanced: true
+                      description: "Override the registry pull secret for this deployment. Leave empty — the namespace service account is pre-configured with pull access by the platform."
                     contentSecurityPolicy:
                       type: string
                       default: "default-src 'self'; frame-ancestors 'none'; base-uri 'self';"
@@ -65,13 +61,13 @@ spec:
                       default: sm
                       enum: [xs, sm, md, lg]
                       x-enumLabels: ["Extra Small", "Small", "Medium", "Large"]
-                      description: "Container resource size. xs=25m/100m cpu, 32Mi/64Mi mem. sm=50m/200m cpu, 64Mi/128Mi mem. md=100m/500m cpu, 128Mi/256Mi mem. lg=250m/1000m cpu, 256Mi/512Mi mem."
+                      description: "Compute tier for the container. Choose based on expected traffic — Extra Small suits low-traffic or background services; Large suits high-throughput workloads."
                     namespace:
                       type: string
                       description: "Namespace to deploy into. Must already exist (created by the tenant's namespace.yaml)."
                     apiProxy:
                       type: object
-                      description: "Optional API proxy. When enabled, nginx proxies /api/ to an in-cluster service, keeping the API off the public internet."
+                      description: "Use when this SPA has a companion XApi. Nginx routes /api/* requests to it in-cluster — the API never needs its own public hostname or Cloudflare Tunnel entry. Only the SPA is internet-facing; the API stays cluster-internal."
                       properties:
                         enabled:
                           type: boolean
