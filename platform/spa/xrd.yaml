@@ -35,6 +35,7 @@ spec:
                     replicas:
                       type: integer
                       default: 1
+                      minimum: 1
                       description: "Number of nginx replicas. Stateless — safe to scale freely."
                     tlsIssuer:
                       type: string

@@ -64,10 +64,12 @@ spec:
                     port:
                       type: integer
                       default: 8080
+                      minimum: 1
                       description: "Port the container listens on. Service always exposes port 80 → this targetPort."
                     metricsPort:
                       type: integer
                       default: 9090
+                      minimum: 1
                       x-advanced: true
                       description: "Port the container exposes Prometheus metrics on. Defaults to 9090. Set to match port if the app serves metrics on the same port as the app (e.g. 8080)."
                     scrapeInterval:
@@ -119,6 +121,7 @@ spec:
                     replicas:
                       type: integer
                       default: 1
+                      minimum: 1
                       description: "Number of API replicas."
                     size:
                       type: string
