@@ -35,7 +35,7 @@ spec:
     replicas: 3
 ```
 
-Instance files live in [`tenants/`](../../tenants/).
+Instance files live in [`workspaces/`](../../homelab-workspaces/).
 
 ## Kafka / AWS equivalent concepts
 

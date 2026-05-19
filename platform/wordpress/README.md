@@ -41,4 +41,4 @@ spec:
     dataRetention: retain
 ```
 
-Instance files live in [`tenants/`](../../tenants/).
+Instance files live in [`workspaces/`](../../homelab-workspaces/).

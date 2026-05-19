@@ -43,7 +43,7 @@ spec:
     host: foo.local.lab
 ```
 
-Instance files live in [`tenants/`](../../tenants/).
+Instance files live in [`workspaces/`](../../homelab-workspaces/).
 
 ## App repo contract
 

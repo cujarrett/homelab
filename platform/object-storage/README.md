@@ -54,7 +54,7 @@ spec:
       name: foo-assets
 ```
 
-Instance files live in [`homelab-tenants/`](../../../homelab-tenants/).
+Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 
 ## Operations
 

@@ -56,7 +56,7 @@ spec:
       environment: cluster   # cluster=in-cluster Redis, cloud=AWS ElastiCache
 ```
 
-Instance files live in [`homelab-tenants/`](../../../homelab-tenants/).
+Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 
 ## Binding secrets
 
