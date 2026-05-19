@@ -42,7 +42,7 @@ If all checks pass, state "All files safe to commit." If any issue is found, des
 
 ## Overview
 A 4-node k3s Kubernetes homelab managed entirely via GitOps with ArgoCD.
-All workloads are defined as manifests in this repo under `cluster/`, `platform/`, `tenants/`, and `scripts/`.
+All workloads are defined as manifests in this repo under `cluster/`, `platform/`, `homelab-workspaces/`, and `scripts/`.
 GitHub repo: `https://github.com/cujarrett/homelab.git` (branch: `main`)
 
 ## Hardware & Network

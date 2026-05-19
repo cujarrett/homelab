@@ -6,7 +6,7 @@ A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering a
 
 [How it was built](https://blog.mattjarrett.dev/homelab/)
 
-[homelab-tenants](https://github.com/cujarrett/homelab-tenants) — XR instance files for all tenant apps
+[Homelab Platform Workspaces](https://github.com/cujarrett/homelab-workspaces) — XR instance files for all workspaces
 
 ## Platform Stack
 

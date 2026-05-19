@@ -68,7 +68,7 @@ spec:
       name: foo-db
 ```
 
-Instance files live in [`homelab-tenants/`](../../../homelab-tenants/).
+Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 
 ## Operations
 
