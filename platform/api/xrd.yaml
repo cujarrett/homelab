@@ -70,12 +70,10 @@ spec:
                       type: integer
                       default: 9090
                       minimum: 1
-                      x-advanced: true
                       description: "Port the container exposes Prometheus metrics on. Defaults to 9090. Set to match port if the app serves metrics on the same port as the app (e.g. 8080)."
                     scrapeInterval:
                       type: string
                       default: "60s"
-                      x-advanced: true
                       description: "Prometheus scrape interval for the ServiceMonitor. Defaults to 60s. Reduce for apps that emit short-lived state changes (e.g. 10s for sump-pump-consumer)."
                       pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
                     host:
@@ -87,7 +85,6 @@ spec:
                       enum:
                         - local-lab-ca-issuer
                         - letsencrypt-prod
-                      x-enumLabels: ["Internal (homelab only)", "External (public internet)"]
                       description: "Certificate issuer. Internal for services only on the homelab network. External for services exposed via Cloudflare Tunnel to the public internet."
                     secretRef:
                       type: object
@@ -127,7 +124,6 @@ spec:
                       type: string
                       default: sm
                       enum: [xs, sm, md, lg]
-                      x-enumLabels: ["Extra Small", "Small", "Medium", "Large"]
                       description: "Compute tier for the container. Choose based on expected traffic — Extra Small suits low-traffic or background services; Large suits high-throughput workloads."
                   required: [image, namespace]
               required:
