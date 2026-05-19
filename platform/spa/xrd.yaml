@@ -24,11 +24,12 @@ spec:
                   properties:
                     image:
                       type: string
-                      description: >
-                        Container image for the SPA (e.g. ghcr.io/owner/app:sha-abc123).
-                        Expected to be an nginx-based image with the built Angular app already
-                        copied into /usr/share/nginx/html. CI on the source repo builds and
-                        pushes this on merge to main, then commits the new tag back here.
+                      description: >-
+                        Container image (e.g. ghcr.io/owner/app:sha-abc123). Managed by CI —
+                        set on first create, then updated automatically on each merge to main.
+                    repo:
+                      type: string
+                      description: "GitHub repository URL for this app's source code (e.g. https://github.com/owner/app)."
                     host:
                       type: string
                       description: "Ingress hostname (e.g. myapp.local.lab or myapp.example.com)."
@@ -44,9 +45,6 @@ spec:
                       enum:
                         - local-lab-ca-issuer
                         - letsencrypt-prod
-                    imagePullSecret:
-                      type: string
-                      description: "Override the registry pull secret for this deployment. Leave empty — the namespace service account is pre-configured with pull access by the platform."
                     contentSecurityPolicy:
                       type: string
                       default: "default-src 'self'; frame-ancestors 'none'; base-uri 'self';"

@@ -60,7 +60,12 @@ spec:
                           description: "Cache backend: cluster=in-cluster Redis, cloud=AWS ElastiCache."
                     image:
                       type: string
-                      description: "Container image for the API (e.g. ghcr.io/owner/api:sha-abc123). CI builds and pushes this on merge to main, then commits the new tag back here to trigger an ArgoCD sync."
+                      description: >-
+                        Container image (e.g. ghcr.io/owner/api:sha-abc123). Managed by CI —
+                        set on first create, then updated automatically on each merge to main.
+                    repo:
+                      type: string
+                      description: "GitHub repository URL for this app's source code (e.g. https://github.com/owner/api)."
                     port:
                       type: integer
                       default: 8080
