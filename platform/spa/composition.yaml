@@ -191,10 +191,6 @@ spec:
                 spec:
                   nodeSelector:
                     node-role.kubernetes.io/worker: worker
-                  {{- if $params.imagePullSecret }}
-                  imagePullSecrets:
-                    - name: {{ $params.imagePullSecret }}
-                  {{- end }}
                   containers:
                     - name: spa
                       image: {{ $params.image }}
