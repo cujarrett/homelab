@@ -1,7 +1,7 @@
 apiVersion: monitoring.coreos.com/v1
 kind: Prometheus
 metadata:
-  name: sump-pump-archive
+  name: sump-pump
   namespace: monitoring
 spec:
   nodeSelector:
@@ -20,10 +20,10 @@ spec:
   # Don't match any PodMonitors or PrometheusRules.
   podMonitorSelector:
     matchLabels:
-      prometheus: sump-pump-archive
+      prometheus: sump-pump
   ruleSelector:
     matchLabels:
-      prometheus: sump-pump-archive
+      prometheus: sump-pump
   securityContext:
     fsGroup: 2000
     runAsGroup: 2000
@@ -47,12 +47,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: prometheus-sump-pump-archive
+  name: prometheus-sump-pump
   namespace: monitoring
 spec:
   selector:
     app.kubernetes.io/name: prometheus
-    prometheus: sump-pump-archive
+    prometheus: sump-pump
   ports:
     - name: web
       port: 9090
