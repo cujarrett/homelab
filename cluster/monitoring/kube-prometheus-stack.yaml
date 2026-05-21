@@ -18,11 +18,8 @@ spec:
           serviceMonitor:
             metricRelabelings:
               - sourceLabels: [__name__]
-                regex: "apiserver_.+_bucket|etcd_.+_bucket|workqueue_.+_bucket|prober_.+_bucket|scheduler_.+_bucket|kubelet_runtime_operations_duration_seconds_bucket"
+                regex: "apiserver_.+|etcd_.+|workqueue_.+_bucket|prober_.+_bucket|scheduler_.+_bucket|kubelet_runtime_operations_duration_seconds_bucket|container_blkio_device_usage_total|storage_operation_duration_seconds_bucket|rest_client_request_duration_seconds_bucket|kubernetes_feature_enabled"
                 action: drop
-        grafana:
-          serviceMonitor:
-            enabled: false
         prometheusOperator:
           serviceMonitor:
             selfMonitor: false
@@ -37,6 +34,8 @@ spec:
                     requests:
                       storage: 2Gi
         grafana:
+          serviceMonitor:
+            enabled: false
           nodeSelector:
             node-role.kubernetes.io/worker: worker
           deploymentStrategy:
@@ -60,6 +59,12 @@ spec:
             - name: Loki
               type: loki
               url: http://loki.monitoring.svc.cluster.local:3100
+              access: proxy
+              isDefault: false
+            - name: Sump Pump Archive
+              uid: sump-pump-archive
+              type: prometheus
+              url: http://prometheus-sump-pump-archive.monitoring.svc.cluster.local:9090
               access: proxy
               isDefault: false
           resources:
@@ -89,7 +94,7 @@ spec:
             nodeSelector:
               node-role.kubernetes.io/worker: worker
             enableAdminAPI: true
-            retention: 365d
+            retention: 30d
             scrapeInterval: "60s"
             evaluationInterval: "60s"
             resources:

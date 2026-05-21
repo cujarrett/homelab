@@ -1,0 +1,59 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: sump-pump-archive
+  namespace: monitoring
+spec:
+  nodeSelector:
+    node-role.kubernetes.io/worker: worker
+  retention: 18250d
+  scrapeInterval: 30s
+  evaluationInterval: 30s
+  # Only pick up ServiceMonitors in the sump-pump namespace.
+  # The XApi composition stamps all ServiceMonitors with release: monitoring.
+  serviceMonitorSelector:
+    matchLabels:
+      release: monitoring
+  serviceMonitorNamespaceSelector:
+    matchNames:
+      - sump-pump
+  # Don't match any PodMonitors or PrometheusRules.
+  podMonitorSelector:
+    matchLabels:
+      prometheus: sump-pump-archive
+  ruleSelector:
+    matchLabels:
+      prometheus: sump-pump-archive
+  securityContext:
+    fsGroup: 2000
+    runAsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+  resources:
+    requests:
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+  storage:
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
+---
+# Service so Grafana can reach the archive Prometheus at a stable DNS name.
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-sump-pump-archive
+  namespace: monitoring
+spec:
+  selector:
+    app.kubernetes.io/name: prometheus
+    prometheus: sump-pump-archive
+  ports:
+    - name: web
+      port: 9090
+      targetPort: 9090
