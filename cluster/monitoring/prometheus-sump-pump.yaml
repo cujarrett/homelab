@@ -1,22 +1,59 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-sump-pump
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-sump-pump
+rules:
+  - apiGroups: [""]
+    resources: [nodes, "nodes/metrics", services, endpoints, pods]
+    verbs: [get, list, watch]
+  - apiGroups: [discovery.k8s.io]
+    resources: [endpointslices]
+    verbs: [get, list, watch]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses]
+    verbs: [get, list, watch]
+  - nonResourceURLs: ["/metrics", "/metrics/cadvisor"]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-sump-pump
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-sump-pump
+subjects:
+  - kind: ServiceAccount
+    name: prometheus-sump-pump
+    namespace: monitoring
+---
 apiVersion: monitoring.coreos.com/v1
 kind: Prometheus
 metadata:
   name: sump-pump
   namespace: monitoring
 spec:
+  serviceAccountName: prometheus-sump-pump
   nodeSelector:
     node-role.kubernetes.io/worker: worker
   retention: 18250d
   scrapeInterval: 30s
   evaluationInterval: 30s
   # Only pick up ServiceMonitors in the sump-pump namespace.
-  # The XApi composition stamps all ServiceMonitors with release: monitoring.
+  # kubernetes.io/metadata.name is auto-applied to every namespace (k8s 1.21+).
   serviceMonitorSelector:
     matchLabels:
       release: monitoring
   serviceMonitorNamespaceSelector:
-    matchNames:
-      - sump-pump
+    matchLabels:
+      kubernetes.io/metadata.name: sump-pump
   # Don't match any PodMonitors or PrometheusRules.
   podMonitorSelector:
     matchLabels:
