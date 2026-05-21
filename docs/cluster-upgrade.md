@@ -9,7 +9,7 @@ How to upgrade k3s when you get a release notification email from GitHub.
 Confirm the stable channel has resolved to the version in the email:
 
 ```bash
-curl -sI https://update.k3s.io/v1-release/channels/stable | grep location
+curl -sv https://update.k3s.io/v1-release/channels/stable 2>&1 | grep location
 ```
 
 Check current node versions:
