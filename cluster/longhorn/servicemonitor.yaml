@@ -16,3 +16,7 @@ spec:
     - port: manager
       path: /metrics
       interval: 30s
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: "longhorn_rest_client_.+_bucket|longhorn_workqueue_.+_bucket"
+          action: drop
