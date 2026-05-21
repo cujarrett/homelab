@@ -128,6 +128,18 @@ spec:
                         return 404;
                     }
 
+                    # Secret store / credential file name probes
+                    # Covers the exact patterns observed returning 200 in access logs:
+                    # /secrets.json, /serviceAccountKey.json, /config/secrets.yml
+                    location ~* (secrets\.(json|yaml|yml)|serviceAccountKey\.json|credentials\.json|database\.yml|\.npmrc|\.yarnrc)$ {
+                        return 404;
+                    }
+
+                    # Crypto material probes
+                    location ~* \.(key|pem|p12|pfx|crt|cer|der)$ {
+                        return 404;
+                    }
+
                     # PHP info/debug probes without extension (complements the *.php block)
                     location ~* ^/(phpinfo|php-info|pinfo|server-info|server-status)(/|$) {
                         return 404;
