@@ -80,6 +80,7 @@ SSH access: `ssh pi@192.168.10.10x`
 |---|---|---|
 | `argocd` | ArgoCD | Ingress at `argocd.local.lab` |
 | `monitoring` | kube-prometheus-stack | Prometheus (365d retention, 35Gi), Grafana (2Gi), Alertmanager (2Gi) |
+| `monitoring` | prometheus-sump-pump | Dedicated long-term Prometheus for sump pump + weather data (18250d retention, 2Gi PVC, `local-path`, pinned to `work-1`); Grafana datasource UID `sump-pump-archive` |
 | `monitoring` | Loki | SingleBinary mode, filesystem storage, 2Gi PVC, 30d retention |
 | `monitoring` | Promtail | DaemonSet log shipper → Loki at `http://loki.monitoring.svc.cluster.local:3100` |
 | `longhorn-system` | Longhorn | Ingress at `longhorn.local.lab` |
@@ -93,7 +94,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `blog` | Ghost (Deployment) | `blog.mattjarrett.dev` via Cloudflare Tunnel; 2Gi content PVC |
 | `my-vinyl` | XSpa + XApi + XCache | `myvinyl.mattjarrett.dev` via Cloudflare Tunnel |
 | `js-pollock` | XSpa | `jspollock.mattjarrett.dev` via Cloudflare Tunnel |
-| `sump-pump` | XApi ×2 + XTopic + XSubscription | IoT sump pump bridge + consumer |
+| `sump-pump` | XApi ×2 + XTopic + XSubscription | IoT sump pump bridge + consumer + weather-exporter |
 
 ## Internal Hostnames (`.local.lab`)
 All use `local-lab-ca-issuer` (self-signed CA), TLS via Traefik `websecure` entrypoint.
@@ -164,7 +165,8 @@ kubectl delete certificaterequest -n <namespace> --all
 **API token permissions needed:** Cloudflare Zero Trust → Argo Tunnel (Legacy) → Edit
 
 ## Monitoring Stack Details
-- **Prometheus**: `monitoring-kube-prometheus-prometheus`, port 9090, 365d retention, 35Gi PVC
+- **Prometheus (main)**: `monitoring-kube-prometheus-prometheus`, port 9090, 365d retention, 35Gi PVC
+- **Prometheus (sump-pump)**: `prometheus-sump-pump`, port 9090, 18250d retention, 2Gi PVC (`local-path`, pinned to `work-1`); scrapes sump-pump-bridge, sump-pump-consumer, weather-exporter; Grafana datasource UID `sump-pump-archive`; **PVC mounts at `prometheus-db/` subdirectory** — migration jobs must write blocks there, not to the PVC root
 - **Grafana**: admin secret `grafana-admin-secret`, anonymous viewer access enabled, Loki datasource configured, dashboards loaded via sidecar from all namespaces, playlist provisioned via ConfigMap
 - **Loki**: StatefulSet `loki`, SingleBinary, filesystem, 2Gi PVC (`storage-loki-0`), 30d retention, compactor enabled
 - **Promtail**: DaemonSet, ships logs to Loki
