@@ -101,7 +101,7 @@ spec:
                           value: /var/lib/postgresql/data/pgdata
                       readinessProbe:
                         exec:
-                          command: ["pg_isready", "-U", "app"]
+                          command: ["pg_isready", "-U", "app", "-d", "{{ $name }}"]
                         initialDelaySeconds: 5
                         periodSeconds: 10
                       volumeMounts:
