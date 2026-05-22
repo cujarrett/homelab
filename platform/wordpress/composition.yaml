@@ -327,9 +327,18 @@ spec:
                 add_filter('wp_sitemaps_add_provider', function($provider, $name) {
                     return ($name === 'users') ? false : $provider;
                 }, 10, 2);
+                // Block canonical redirect for /?author= queries.
+                // Without this, /?author=2 emits a 301 to /author/<slug>/ which leaks
+                // the username before template_redirect fires.
+                add_filter('redirect_canonical', function($redirect_url, $requested_url) {
+                    if (isset($_GET['author'])) {
+                        return false;
+                    }
+                    return $redirect_url;
+                }, 10, 2);
                 // Disable author archive pages (/author/<slug>/) to prevent username enumeration
                 add_action('template_redirect', function() {
-                    if (is_author()) {
+                    if (is_author() || isset($_GET['author'])) {
                         global $wp_query;
                         $wp_query->set_404();
                         status_header(404);
@@ -348,8 +357,8 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               rateLimit:
-                average: 10
-                burst: 20
+                average: 5
+                burst: 10
                 period: 1m
             ---
             # --- IngressRoute applying rate limit to sensitive WordPress endpoints ---
