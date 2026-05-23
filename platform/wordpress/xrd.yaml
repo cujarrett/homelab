@@ -38,22 +38,14 @@ spec:
                       default: 1
                       minimum: 1
                       description: "Number of WordPress replicas. Stateless uploads are on the shared PVC — do not scale above 1 without a shared filesystem."
-                    cpuRequest:
+                    size:
                       type: string
-                      default: "500m"
-                      description: "CPU request for the WordPress container."
-                    cpuLimit:
-                      type: string
-                      default: "1000m"
-                      description: "CPU limit for the WordPress container."
-                    memoryRequest:
-                      type: string
-                      default: "256Mi"
-                      description: "Memory request for the WordPress container."
-                    memoryLimit:
-                      type: string
-                      default: "512Mi"
-                      description: "Memory limit for the WordPress container."
+                      default: "sm"
+                      enum:
+                        - sm
+                        - md
+                        - lg
+                      description: "Resource sizing tier for WordPress and MariaDB containers. sm: light traffic / staging. md: typical personal site. lg: high traffic or media-heavy."
                     dataRetention:
                       type: string
                       default: "retain"
