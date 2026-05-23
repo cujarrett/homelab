@@ -10,6 +10,8 @@ metadata:
   namespace: adguard
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: adguard-home
