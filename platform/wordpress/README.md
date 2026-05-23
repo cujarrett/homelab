@@ -16,14 +16,19 @@ The namespace is owned by the tenant — created by `namespace.yaml` in the tena
 | Parameter | Required | Default | Description |
 |---|---|---|---|
 | `host` | yes | — | Ingress hostname. Must match WordPress `siteurl`/`home` in the DB — changing requires a DB search-replace. |
+| `size` | no | `sm` | Resource tier for WordPress and MariaDB containers. See table below. |
 | `storageSize` | no | `10Gi` | `wp-content` PVC size (uploads, themes, plugins) |
 | `dbStorageSize` | no | `5Gi` | MariaDB PVC size |
 | `replicas` | no | `1` | WordPress pod replicas |
-| `cpuRequest` | no | `500m` | CPU reserved for the WordPress container |
-| `cpuLimit` | no | `1000m` | Max CPU (burst for image resize/thumbnail generation) |
-| `memoryRequest` | no | `256Mi` | RAM reserved for the WordPress container |
-| `memoryLimit` | no | `512Mi` | Max RAM before OOMKill |
 | `dataRetention` | no | `retain` | `retain` — keep PV on XR delete (uses `longhorn` StorageClass). `delete` — wipe PV on XR delete (uses `longhorn-delete` StorageClass). |
+
+### Size tiers
+
+| Size | WP CPU request/limit | WP Memory request/limit | DB CPU request/limit | DB Memory request/limit |
+|---|---|---|---|---|
+| `sm` | 100m / 500m | 256Mi / 512Mi | 100m / 500m | 256Mi / 512Mi |
+| `md` | 250m / 1500m | 512Mi / 1024Mi | 100m / 500m | 256Mi / 512Mi |
+| `lg` | 500m / 2000m | 1Gi / 2Gi | 200m / 1000m | 512Mi / 1Gi |
 
 ## Example instance
 
@@ -38,6 +43,7 @@ spec:
     host: foo.example.com
     storageSize: "10Gi"
     dbStorageSize: "1Gi"
+    size: sm
     dataRetention: retain
 ```
 

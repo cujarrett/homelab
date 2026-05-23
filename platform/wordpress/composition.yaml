@@ -22,6 +22,20 @@ spec:
             {{- $uid := .observed.composite.resource.metadata.uid }}
             {{- $params := .observed.composite.resource.spec.parameters }}
             {{- $observedResources := .observed.resources | default dict }}
+            {{- $size := $params.size | default "sm" }}
+            {{- $wpCPUReq := "100m" }}{{- $wpCPULim := "500m" }}
+            {{- $wpMemReq := "256Mi" }}{{- $wpMemLim := "512Mi" }}
+            {{- $dbCPUReq := "100m" }}{{- $dbCPULim := "500m" }}
+            {{- $dbMemReq := "256Mi" }}{{- $dbMemLim := "512Mi" }}
+            {{- if eq $size "md" }}
+            {{-   $wpCPUReq = "250m" }}{{- $wpCPULim = "1500m" }}
+            {{-   $wpMemReq = "512Mi" }}{{- $wpMemLim = "1024Mi" }}
+            {{- else if eq $size "lg" }}
+            {{-   $wpCPUReq = "500m" }}{{- $wpCPULim = "2000m" }}
+            {{-   $wpMemReq = "1Gi" }}{{- $wpMemLim = "2Gi" }}
+            {{-   $dbCPUReq = "200m" }}{{- $dbCPULim = "1000m" }}
+            {{-   $dbMemReq = "512Mi" }}{{- $dbMemLim = "1Gi" }}
+            {{- end }}
             # --- MariaDB credentials Secret ---
             # Passwords derived from the XR's immutable UID (sha256, hex-truncated).
             # No human input, nothing sensitive in Git.
@@ -139,11 +153,11 @@ spec:
                           name: mysql
                       resources:
                         requests:
-                          cpu: "100m"
-                          memory: "256Mi"
+                          cpu: {{ $dbCPUReq }}
+                          memory: {{ $dbMemReq }}
                         limits:
-                          cpu: "500m"
-                          memory: "512Mi"
+                          cpu: {{ $dbCPULim }}
+                          memory: {{ $dbMemLim }}
                       volumeMounts:
                         - name: data
                           mountPath: /var/lib/mysql
@@ -233,11 +247,11 @@ spec:
                         - containerPort: 80
                       resources:
                         requests:
-                          cpu: {{ $params.cpuRequest | default "500m" }}
-                          memory: {{ $params.memoryRequest | default "256Mi" }}
+                          cpu: {{ $wpCPUReq }}
+                          memory: {{ $wpMemReq }}
                         limits:
-                          cpu: {{ $params.cpuLimit | default "1000m" }}
-                          memory: {{ $params.memoryLimit | default "512Mi" }}
+                          cpu: {{ $wpCPULim }}
+                          memory: {{ $wpMemLim }}
                       volumeMounts:
                         - name: wp-content
                           mountPath: /var/www/html/wp-content
