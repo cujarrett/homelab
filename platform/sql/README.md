@@ -4,8 +4,6 @@ Crossplane platform primitive that provisions a Postgres relational database and
 
 Standalone resource with a lifecycle independent of any one API. Bind to an `XApi` via `sqlRef.name`.
 
-See also: [`XNoSql`](../nosql/README.md) · [`XCache`](../cache/README.md) · [`XObjectStorage`](../object-storage/README.md) · [`XApi`](../api/README.md)
-
 ## What it provisions
 - `environment: cluster` — **in-cluster Postgres** (Deployment + PVC on Longhorn) + binding Secret; no cloud resources
 - `environment: cloud` — **AWS RDS Postgres** instance + binding Secret

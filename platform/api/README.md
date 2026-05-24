@@ -2,8 +2,6 @@
 
 Crossplane composition that deploys an API server (Go, Node, GraphQL, etc.) with optional bindings to platform data resources.
 
-See also: [`XCache`](../cache/README.md) · [`XObjectStorage`](../object-storage/README.md) · [`XSql`](../sql/README.md) · [`XNoSql`](../nosql/README.md)
-
 ## What it provisions
 - **Deployment** — runs the API server with conditional init containers that block startup until bindings are ready
 - **Service** — ClusterIP on port 80 → container port (default 8080)

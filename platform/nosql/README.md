@@ -4,8 +4,6 @@ Crossplane platform primitive that provisions an AWS DynamoDB table and exposes 
 
 Standalone resource with a lifecycle independent of any one API. Bind to an `XApi` via `nosqlRef.name`.
 
-See also: [`XSql`](../sql/README.md) · [`XCache`](../cache/README.md) · [`XObjectStorage`](../object-storage/README.md) · [`XApi`](../api/README.md)
-
 ## What it provisions
 - **AWS DynamoDB table** — always cloud; no in-cluster equivalent
 - **Scoped IAM user + access key** — credentials locked to this table via ABAC policy
