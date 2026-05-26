@@ -54,6 +54,7 @@ spec:
                         access_log off;
                         return 200 'ok';
                         add_header Content-Type text/plain always;
+                        add_header Access-Control-Allow-Origin '*' always;
                     }
 
                     # no-cache: browser always refetches the entry point
