@@ -43,6 +43,13 @@ spec:
                     root /usr/share/nginx/html;
                     index index.html;
 
+                    # Block known vulnerability scanners — return 403 and close cheaply.
+                    # TLM-Audit-Scanner: bulk credential/config scanner.
+                    # python-requests: generic scraper/scanner (no legit browser sends this UA raw).
+                    if ($http_user_agent ~* "TLM-Audit-Scanner|python-requests/") {
+                        return 403;
+                    }
+
                     location /healthz {
                         access_log off;
                         return 200 'ok';
