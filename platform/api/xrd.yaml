@@ -125,6 +125,10 @@ spec:
                       default: 1
                       minimum: 1
                       description: "Number of API replicas."
+                    readinessCheckPath:
+                      type: string
+                      default: /healthz
+                      description: "HTTP path the readiness probe hits. Defaults to /healthz. Set to /readyz for apps that gate readiness on external dependencies (e.g. service bindings)."
                     size:
                       type: string
                       default: sm
