@@ -150,7 +150,23 @@ spec:
                     }
 
                     # Crypto material probes
-                    location ~* \.(key|pem|p12|pfx|crt|cer|der)$ {
+                    location ~* \.(key|pem|p12|pfx|crt|cer|der|pub)$ {
+                        return 404;
+                    }
+
+                    # SSH key files accessed outside .ssh/ directories (e.g. /devops/id_dsa, /pki/id_ecdsa)
+                    location ~* /(id_rsa|id_dsa|id_ecdsa|id_ed25519)(\.pub)?$ {
+                        return 404;
+                    }
+
+                    # Files using .env as a suffix extension (not dotfile) — e.g. smtp.env, database.env
+                    # The (^|/)\.env[^/]* block above only catches dotfiles like .env, .env.local
+                    location ~* [^/]\.env$ {
+                        return 404;
+                    }
+
+                    # SQL dump files — api_keys.sql, tokens.sql, etc.
+                    location ~* \.(sql|bak|backup|dump)$ {
                         return 404;
                     }
 
