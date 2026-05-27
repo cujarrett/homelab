@@ -72,7 +72,7 @@ spec:
                         # stylesheet links as a render-performance trick. The onload attribute is an
                         # inline event handler blocked by strict script-src CSP. Strip it at serve
                         # time so the link becomes a plain <link rel="stylesheet"> — no unsafe-inline needed.
-                        sub_filter ' media="print" onload="this.media=''all''"' '';
+                        sub_filter " media=\"print\" onload=\"this.media='all'\"" "";
                         sub_filter_once off;
                     }
 
