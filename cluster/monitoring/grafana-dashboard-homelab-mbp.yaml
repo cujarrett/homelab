@@ -645,7 +645,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "avg by(node)(node_thermal_zone_temp{node=\"ctrl-1\", zone=\"0\"})",
+              "expr": "node_thermal_zone_temp{instance=~\"192.168.10.100:.*\", zone=\"0\"}",
               "legendFormat": "ctrl-1",
               "refId": "A"
             }
@@ -716,7 +716,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "avg by(node)(node_thermal_zone_temp{node=\"work-1\", zone=\"0\"})",
+              "expr": "node_thermal_zone_temp{instance=~\"192.168.10.101:.*\", zone=\"0\"}",
               "legendFormat": "work-1",
               "refId": "A"
             }
@@ -787,7 +787,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "avg by(node)(node_thermal_zone_temp{node=\"work-2\", zone=\"0\"})",
+              "expr": "node_thermal_zone_temp{instance=~\"192.168.10.102:.*\", zone=\"0\"}",
               "legendFormat": "work-2",
               "refId": "A"
             }
@@ -858,7 +858,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "avg by(node)(node_thermal_zone_temp{node=\"work-3\", zone=\"0\"})",
+              "expr": "node_thermal_zone_temp{instance=~\"192.168.10.103:.*\", zone=\"0\"}",
               "legendFormat": "work-3",
               "refId": "A"
             }
@@ -1082,9 +1082,36 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "(1 - avg by(node)(rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))) * 100",
-              "legendFormat": "{{node}}",
+              "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{instance=~\"192.168.10.100:.*\", mode=\"idle\"}[5m]))) * 100",
+              "legendFormat": "ctrl-1",
               "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{instance=~\"192.168.10.101:.*\", mode=\"idle\"}[5m]))) * 100",
+              "legendFormat": "work-1",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{instance=~\"192.168.10.102:.*\", mode=\"idle\"}[5m]))) * 100",
+              "legendFormat": "work-2",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{instance=~\"192.168.10.103:.*\", mode=\"idle\"}[5m]))) * 100",
+              "legendFormat": "work-3",
+              "refId": "D"
             }
           ],
           "title": "CPU Usage per Node",
@@ -1181,9 +1208,36 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "(1 - avg by (node)(node_memory_MemAvailable_bytes) / avg by (node)(node_memory_MemTotal_bytes)) * 100",
-              "legendFormat": "{{node}}",
+              "expr": "(1 - node_memory_MemAvailable_bytes{instance=~\"192.168.10.100:.*\"} / node_memory_MemTotal_bytes{instance=~\"192.168.10.100:.*\"}) * 100",
+              "legendFormat": "ctrl-1",
               "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "(1 - node_memory_MemAvailable_bytes{instance=~\"192.168.10.101:.*\"} / node_memory_MemTotal_bytes{instance=~\"192.168.10.101:.*\"}) * 100",
+              "legendFormat": "work-1",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "(1 - node_memory_MemAvailable_bytes{instance=~\"192.168.10.102:.*\"} / node_memory_MemTotal_bytes{instance=~\"192.168.10.102:.*\"}) * 100",
+              "legendFormat": "work-2",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "(1 - node_memory_MemAvailable_bytes{instance=~\"192.168.10.103:.*\"} / node_memory_MemTotal_bytes{instance=~\"192.168.10.103:.*\"}) * 100",
+              "legendFormat": "work-3",
+              "refId": "D"
             }
           ],
           "title": "Memory Usage per Node",
@@ -1384,9 +1438,36 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "avg by(node)(rate(node_network_receive_bytes_total{device=\"eth0\"}[5m]))",
-              "legendFormat": "{{node}}",
+              "expr": "rate(node_network_receive_bytes_total{instance=~\"192.168.10.100:.*\", device=\"eth0\"}[5m])",
+              "legendFormat": "ctrl-1",
               "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "rate(node_network_receive_bytes_total{instance=~\"192.168.10.101:.*\", device=\"eth0\"}[5m])",
+              "legendFormat": "work-1",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "rate(node_network_receive_bytes_total{instance=~\"192.168.10.102:.*\", device=\"eth0\"}[5m])",
+              "legendFormat": "work-2",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "rate(node_network_receive_bytes_total{instance=~\"192.168.10.103:.*\", device=\"eth0\"}[5m])",
+              "legendFormat": "work-3",
+              "refId": "D"
             }
           ],
           "title": "Network Receive per Node",
@@ -1481,9 +1562,36 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "avg by(node)(rate(node_network_transmit_bytes_total{device=\"eth0\"}[5m]))",
-              "legendFormat": "{{node}}",
+              "expr": "rate(node_network_transmit_bytes_total{instance=~\"192.168.10.100:.*\", device=\"eth0\"}[5m])",
+              "legendFormat": "ctrl-1",
               "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "rate(node_network_transmit_bytes_total{instance=~\"192.168.10.101:.*\", device=\"eth0\"}[5m])",
+              "legendFormat": "work-1",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "rate(node_network_transmit_bytes_total{instance=~\"192.168.10.102:.*\", device=\"eth0\"}[5m])",
+              "legendFormat": "work-2",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "rate(node_network_transmit_bytes_total{instance=~\"192.168.10.103:.*\", device=\"eth0\"}[5m])",
+              "legendFormat": "work-3",
+              "refId": "D"
             }
           ],
           "title": "Network Transmit per Node",
