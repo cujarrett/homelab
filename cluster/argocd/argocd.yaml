@@ -25,6 +25,8 @@ spec:
           params:
             server.insecure: "true"
             application.namespaces: "*"
+          cm:
+            timeout.reconciliation: 60s
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
