@@ -39,7 +39,7 @@ spec:
         node-role.kubernetes.io/worker: worker
       containers:
         - name: ghost
-          image: ghost:5-alpine
+          image: ghost:6.19.1-alpine
           env:
             - name: url
               value: https://blog.mattjarrett.dev
