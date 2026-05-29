@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-launchpad-kiosk
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  launchpad-kiosk.json: |-
+    {
+      "title": "Launchpad — Kiosk",
+      "uid": "launchpad-kiosk",
+      "editable": true,
+      "graphTooltip": 0,
+      "time": { "from": "now-1h", "to": "now" },
+      "timepicker": { "hidden": true },
+      "refresh": "1m",
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "id": 1, "type": "stat", "title": "Guest Workspaces",
+          "description": "Active guest sandbox workspaces (max 5).",
+          "gridPos": { "x": 0, "y": 0, "w": 6, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 4 }, { "color": "red", "value": 5 } ] }
+            }
+          },
+          "targets": [{ "expr": "launchpad_guest_workspace_count", "legendFormat": "workspaces", "instant": true, "refId": "A" }]
+        },
+        {
+          "id": 2, "type": "stat", "title": "Guest Resources",
+          "description": "Total resources across all active guest workspaces.",
+          "gridPos": { "x": 6, "y": 0, "w": 6, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "color": { "fixedColor": "blue", "mode": "fixed" }
+            }
+          },
+          "targets": [{ "expr": "launchpad_guest_resource_count", "legendFormat": "resources", "instant": true, "refId": "A" }]
+        },
+        {
+          "id": 3, "type": "timeseries", "title": "Workspace & Resource Usage",
+          "description": "Active guest workspaces and total resources over the last hour.",
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "custom": { "lineWidth": 2, "fillOpacity": 15, "lineInterpolation": "smooth" }
+            },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "workspaces" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "resources" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] }
+            ]
+          },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+          "targets": [
+            { "expr": "launchpad_guest_workspace_count", "legendFormat": "workspaces", "refId": "A" },
+            { "expr": "launchpad_guest_resource_count", "legendFormat": "resources", "refId": "B" }
+          ]
+        }
+      ]
+    }
