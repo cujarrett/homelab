@@ -1,0 +1,193 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-orphans
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  orphans.json: |-
+    {
+      "title": "Orphaned Resources",
+      "uid": "homelab-orphans",
+      "editable": true,
+      "graphTooltip": 1,
+      "time": { "from": "now-6h", "to": "now" },
+      "timepicker": {},
+      "refresh": "5m",
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Released PVs",
+          "description": "PersistentVolumes in Released state — no longer bound to a PVC. Safe to delete if the data is no longer needed.",
+          "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "sum(kube_persistentvolume_status_phase{phase=\"Released\"}) or vector(0)", "legendFormat": "released PVs", "instant": true }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Failed PVs",
+          "description": "PersistentVolumes in Failed state — provisioning or reclaim errors.",
+          "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "sum(kube_persistentvolume_status_phase{phase=\"Failed\"}) or vector(0)", "legendFormat": "failed PVs", "instant": true }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Terminating Namespaces",
+          "description": "Namespaces stuck in Terminating — usually means a finalizer is blocking deletion.",
+          "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "sum(kube_namespace_status_phase{phase=\"Terminating\"}) or vector(0)", "legendFormat": "terminating namespaces", "instant": true }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Degraded ArgoCD Apps",
+          "description": "ArgoCD apps in Degraded health state.",
+          "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "count(argocd_app_info{health_status=\"Degraded\"}) or vector(0)", "legendFormat": "degraded apps", "instant": true }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "table",
+          "title": "Released & Failed PVs",
+          "description": "PersistentVolumes not in Bound state.",
+          "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "sortBy": [{ "displayName": "phase", "desc": false }], "footer": { "show": false } },
+          "fieldConfig": {
+            "defaults": { "custom": { "align": "left" } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "Value" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "Time" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "__name__" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "job" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "instance" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "phase" }, "properties": [
+                { "id": "custom.width", "value": 100 },
+                { "id": "mappings", "value": [
+                  { "type": "value", "options": { "Released": { "text": "Released", "color": "yellow", "index": 0 }, "Failed": { "text": "Failed", "color": "red", "index": 1 } } }
+                ] },
+                { "id": "custom.displayMode", "value": "color-text" }
+              ] }
+            ]
+          },
+          "targets": [
+            { "expr": "kube_persistentvolume_status_phase{phase=~\"Released|Failed\"} == 1", "instant": true, "legendFormat": "", "format": "table", "refId": "A" }
+          ],
+          "transformations": [
+            { "id": "filterFieldsByName", "options": { "include": { "names": ["persistentvolume", "phase"] } } }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "table",
+          "title": "Terminating Namespaces",
+          "description": "Namespaces stuck in Terminating phase.",
+          "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "footer": { "show": false } },
+          "fieldConfig": {
+            "defaults": { "custom": { "align": "left" } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "Value" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "Time" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "__name__" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "job" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "instance" }, "properties": [ { "id": "custom.hidden", "value": true } ] }
+            ]
+          },
+          "targets": [
+            { "expr": "kube_namespace_status_phase{phase=\"Terminating\"} == 1", "instant": true, "legendFormat": "", "format": "table", "refId": "A" }
+          ],
+          "transformations": [
+            { "id": "filterFieldsByName", "options": { "include": { "names": ["namespace", "phase"] } } }
+          ]
+        },
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "Released PV Count Over Time",
+          "description": "Trend of Released PVs. A rising count means PVs are not being cleaned up after workspace deletion.",
+          "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "custom": { "lineWidth": 2, "fillOpacity": 10, "lineInterpolation": "smooth" },
+              "color": { "fixedColor": "yellow", "mode": "fixed" }
+            }
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false },
+            "tooltip": { "mode": "single" }
+          },
+          "targets": [
+            { "expr": "sum(kube_persistentvolume_status_phase{phase=\"Released\"}) or vector(0)", "legendFormat": "released PVs", "refId": "A" }
+          ]
+        },
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "Container Restarts (All Namespaces)",
+          "description": "Total container restart rate per namespace. Sustained restarts may indicate a stuck or crashlooping workload.",
+          "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "custom": { "lineWidth": 2, "fillOpacity": 8, "lineInterpolation": "smooth" }
+            }
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            { "expr": "sum by (namespace) (increase(kube_pod_container_status_restarts_total[1h])) > 0", "legendFormat": "{{namespace}}", "refId": "A" }
+          ]
+        }
+      ]
+    }
