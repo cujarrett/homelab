@@ -214,6 +214,44 @@ data:
           "targets": [
             { "expr": "longhorn_volume_actual_size_bytes", "legendFormat": "{{volume}}" }
           ]
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+          "id": 105,
+          "title": "Guest Sandbox",
+          "type": "row"
+        },
+        {
+          "id": 10,
+          "type": "stat",
+          "title": "Active Guest Workspaces",
+          "description": "Number of live guest sandbox workspaces (max 5).",
+          "gridPos": { "x": 0, "y": 35, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 4 }, { "color": "red", "value": 5 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "launchpad_guest_workspace_count", "legendFormat": "workspaces", "instant": true }
+          ]
+        },
+        {
+          "id": 11,
+          "type": "stat",
+          "title": "Guest Resource Count",
+          "description": "Total resources across all active guest workspaces.",
+          "gridPos": { "x": 6, "y": 35, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "none", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
+          "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 } },
+          "targets": [
+            { "expr": "launchpad_guest_resource_count", "legendFormat": "resources", "instant": true }
+          ]
         }
       ]
     }
