@@ -19,7 +19,7 @@ data:
       "panels": [
         {
           "id": 1, "type": "stat", "title": "Runs / Hour",
-          "description": "Rolling runs per hour based on the last 60 minutes.",
+          "description": "Rolling sump pump runs per hour based on the last 60 minutes.",
           "gridPos": { "x": 0, "y": 0, "w": 4, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "sump-pump-archive" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "none", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
@@ -28,18 +28,39 @@ data:
         },
         {
           "id": 2, "type": "timeseries", "title": "Runs per Hour",
-          "description": "Pump run rate over time.",
+          "description": "Pump run rate with rainfall overlay.",
           "gridPos": { "x": 4, "y": 0, "w": 20, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "sump-pump-archive" },
           "fieldConfig": {
             "defaults": {
               "unit": "short", "decimals": 1,
               "color": { "fixedColor": "green", "mode": "fixed" },
-              "custom": { "lineWidth": 2, "fillOpacity": 15, "lineInterpolation": "smooth" }
-            }
+              "custom": { "lineWidth": 2, "fillOpacity": 15, "lineInterpolation": "smooth", "drawStyle": "line", "spanNulls": true }
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "in/hr" },
+                "properties": [
+                  { "id": "unit", "value": "lengthin" },
+                  { "id": "decimals", "value": 3 },
+                  { "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } },
+                  { "id": "custom.drawStyle", "value": "bars" },
+                  { "id": "custom.lineWidth", "value": 0 },
+                  { "id": "custom.fillOpacity", "value": 50 },
+                  { "id": "custom.axisPlacement", "value": "right" },
+                  { "id": "custom.axisLabel", "value": "rainfall (in/hr)" },
+                  { "id": "custom.axisSoftMin", "value": 0 },
+                  { "id": "custom.axisSoftMax", "value": 0.1 },
+                  { "id": "custom.spanNulls", "value": true }
+                ]
+              }
+            ]
           },
-          "options": { "legend": { "displayMode": "hidden", "showLegend": false }, "tooltip": { "mode": "single", "sort": "none" } },
-          "targets": [{ "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)", "legendFormat": "runs/hr", "refId": "A" }]
+          "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "none" } },
+          "targets": [
+            { "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)", "legendFormat": "runs/hr", "refId": "A" },
+            { "expr": "max(weather_precipitation_mm{job=\"weather-exporter\"}) * 0.03937", "legendFormat": "in/hr", "refId": "B" }
+          ]
         }
       ]
     }
