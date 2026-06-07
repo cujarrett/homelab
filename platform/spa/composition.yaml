@@ -116,7 +116,7 @@ spec:
                         return 404;
                     }
 
-                    location ~* (\.htaccess|\.htpasswd|\.gitconfig|\.DS_Store|wp-config\.php|phpinfo\.php|settings\.py|settings\.json|settings\.yaml|config\.json|config\.php|config\.yaml|config\.rb|web\.config|composer\.(json|lock)|package(-lock)?\.json|yarn\.lock|Dockerfile|docker-compose\.yml|readme\.md|README\.md|wlwmanifest\.xml|xmlrpc\.php)$ {
+                    location ~* (\.htaccess|\.htpasswd|\.gitconfig|\.gitmodules|\.gitlab-ci\.yml|\.DS_Store|wp-config\.php|phpinfo\.php|settings\.py|settings\.json|settings\.yaml|config\.json|config\.php|config\.yaml|config\.rb|web\.config|composer\.(json|lock)|package(-lock)?\.json|yarn\.lock|Dockerfile|docker-compose\.yml|readme\.md|README\.md|wlwmanifest\.xml|xmlrpc\.php)$ {
                         return 404;
                     }
 
@@ -133,12 +133,13 @@ spec:
                     }
 
                     # Endpoint/framework probes (Spring Boot, Symfony, Magento, etc.)
-                    location ~* (^/actuator(/|$)|^/swagger(/|$)|^/openapi(/|$)|^/v2/_catalog(/|$)|^/v3/api-docs(/|$)|^/console(/|$)|^/telescope(/|$)|^/server-status$|^/_profiler(/|$)|^/_environment(/|$)|^/rest/(V[0-9]+|default)(/|$)) {
+                    # Note: _profiler intentionally has no ^ anchor — matches nested paths like /symfony/public/_profiler/
+                    location ~* (^/actuator(/|$)|^/swagger(/|$)|^/openapi(/|$)|^/v2/_catalog(/|$)|^/v3/api-docs(/|$)|^/console(/|$)|^/telescope(/|$)|^/server-status$|/_profiler(/|$)|^/_environment(/|$)|^/rest/(V[0-9]+|default)(/|$)) {
                         return 404;
                     }
 
                     # Config/secret file probes not covered above
-                    location ~* (application\.(yml|yaml|properties)|appsettings(\.[^.]+)?\.json|terraform\.tfstate(\.backup)?|serverless\.yml|connectionstrings\.config|\.composer/) {
+                    location ~* (application\.(yml|yaml|properties)|aws\.(yml|yaml)|s3\.(yml|yaml)|appsettings(\.[^.]+)?\.json|terraform\.tfstate(\.backup)?|serverless\.yml|connectionstrings\.config|\.composer/) {
                         return 404;
                     }
 
@@ -146,6 +147,13 @@ spec:
                     # Covers the exact patterns observed returning 200 in access logs:
                     # /secrets.json, /serviceAccountKey.json, /config/secrets.yml
                     location ~* (secrets\.(json|yaml|yml)|serviceAccountKey\.json|credentials\.json|database\.yml|\.npmrc|\.yarnrc)$ {
+                        return 404;
+                    }
+
+                    # GCP / Firebase / cloud service-account key file probes
+                    # These returned 200 via SPA catch-all in access logs — no real files served,
+                    # but scanners treat 200 as a hit and escalate probing.
+                    location ~* (gcp[_\-]?\.json|gcp[_\-]?key[^/]*\.json|gcloud[^/]*\.json|firebase[^/]*\.json|google[^/]*service[^/]*\.json|service[_\-]account[^/]*\.json|sa[_\-]key\.json|sa[_\-]private[^/]*\.json|keyfile\.json|client[_\-]?secret\.json|google[_\-]?services\.json|key\.json)$ {
                         return 404;
                     }
 
@@ -186,8 +194,8 @@ spec:
                         return 404;
                     }
 
-                    # Bare /env probe — complements the \.env[^/]* block (no leading dot)
-                    location ~* ^/env(/|$) {
+                    # Bare /env probe and env.* file variants — complements the \.env[^/]* block
+                    location ~* ^/env(/|\.) {
                         return 404;
                     }
 
