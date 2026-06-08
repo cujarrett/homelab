@@ -8,570 +8,1147 @@ metadata:
 data:
   sump-pump.json: |-
     {
-      "annotations": {
-        "list": [
-          {
-            "builtIn": 1,
-            "datasource": {"type": "grafana", "uid": "-- Grafana --"},
+      "annotations": [
+        {
+          "kind": "AnnotationQuery",
+          "spec": {
+            "builtIn": true,
             "enable": true,
             "hide": true,
             "iconColor": "rgba(0, 211, 255, 1)",
             "name": "Annotations & Alerts",
-            "type": "dashboard"
+            "query": {
+              "datasource": {
+                "name": "-- Grafana --"
+              },
+              "group": "grafana",
+              "kind": "DataQuery",
+              "spec": {},
+              "version": "v0"
+            }
           }
-        ]
-      },
-      "editable": true,
-      "fiscalYearStartMonth": 0,
-      "graphTooltip": 1,
-      "links": [],
-      "panels": [
-        {
-          "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-          "description": "Whether the sump pump is currently running.",
-          "fieldConfig": {
-            "defaults": {
-              "mappings": [
-                {
-                  "options": {
-                    "0": {"color": "green", "index": 0, "text": "Idle"},
-                    "1": {"color": "blue", "index": 1, "text": "Running"}
-                  },
-                  "type": "value"
-                }
-              ],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {"color": "green", "value": null},
-                  {"color": "blue", "value": 1}
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {"h": 3, "w": 4, "x": 0, "y": 0},
-          "id": 1,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
-          },
-          "targets": [
-            {
-              "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-              "expr": "max(sump_pump_running{job=\"sump-pump-consumer\"})",
-              "instant": true,
-              "legendFormat": "state",
-              "refId": "A"
-            }
-          ],
-          "title": "Current State",
-          "type": "stat"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-          "description": "Current hour outdoor temperature.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {"mode": "thresholds"},
-              "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {"color": "blue", "value": null},
-                  {"color": "green", "value": 32},
-                  {"color": "yellow", "value": 80},
-                  {"color": "red", "value": 95}
-                ]
-              },
-              "unit": "fahrenheit"
-            },
-            "overrides": []
-          },
-          "gridPos": {"h": 3, "w": 3, "x": 4, "y": 0},
-          "id": 24,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
-          },
-          "targets": [
-            {
-              "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-              "expr": "max(weather_temperature_fahrenheit{job=\"weather-exporter\"})",
-              "instant": true,
-              "legendFormat": "\u00b0F",
-              "refId": "A"
-            }
-          ],
-          "title": "Current Temp",
-          "type": "stat"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-          "description": "Live power draw from the sump pump.",
-          "fieldConfig": {
-            "defaults": {
-              "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {"color": "green", "value": null},
-                  {"color": "red", "value": 80}
-                ]
-              },
-              "unit": "watt"
-            },
-            "overrides": []
-          },
-          "gridPos": {"h": 3, "w": 3, "x": 7, "y": 0},
-          "id": 2,
-          "options": {
-            "colorMode": "none",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
-          },
-          "targets": [
-            {
-              "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-              "expr": "max(sump_pump_watts{job=\"sump-pump-consumer\"})",
-              "instant": true,
-              "legendFormat": "watts",
-              "refId": "A"
-            }
-          ],
-          "title": "Current Watts",
-          "type": "stat"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-          "description": "Rolling runs per hour based on the last 60 minutes.",
-          "fieldConfig": {
-            "defaults": {
-              "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {"color": "green", "value": null},
-                  {"color": "red", "value": 80}
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {"h": 3, "w": 3, "x": 10, "y": 0},
-          "id": 3,
-          "options": {
-            "colorMode": "none",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
-          },
-          "targets": [
-            {
-              "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-              "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)",
-              "instant": true,
-              "legendFormat": "runs/hr",
-              "refId": "A"
-            }
-          ],
-          "title": "Runs / Hour",
-          "type": "stat"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-          "description": "Number of times the pump has run in the last 24 hours.",
-          "fieldConfig": {
-            "defaults": {
-              "decimals": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {"color": "green", "value": null},
-                  {"color": "red", "value": 80}
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {"h": 3, "w": 3, "x": 13, "y": 0},
-          "id": 4,
-          "options": {
-            "colorMode": "none",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
-          },
-          "targets": [
-            {
-              "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-              "expr": "sum(increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[24h]))",
-              "instant": true,
-              "legendFormat": "runs",
-              "refId": "A"
-            }
-          ],
-          "title": "Runs in Last 24h",
-          "type": "stat"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-          "description": "Approximate total rainfall in the last 24 hours.",
-          "fieldConfig": {
-            "defaults": {
-              "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {"color": "green", "value": null},
-                  {"color": "blue", "value": 0.1}
-                ]
-              },
-              "unit": "lengthin"
-            },
-            "overrides": []
-          },
-          "gridPos": {"h": 3, "w": 4, "x": 16, "y": 0},
-          "id": 12,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
-          },
-          "targets": [
-            {
-              "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-              "expr": "sum_over_time(max by(job) (weather_precipitation_mm{job=\"weather-exporter\"})[24h:1h]) * 0.03937",
-              "instant": true,
-              "legendFormat": "in",
-              "refId": "A"
-            }
-          ],
-          "title": "Rain Last 24h",
-          "type": "stat"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-          "description": "Estimated electricity cost per hour based on current wattage at $0.16/kWh.",
-          "fieldConfig": {
-            "defaults": {
-              "decimals": 4,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {"color": "green", "value": null}
-                ]
-              },
-              "unit": "currencyUSD"
-            },
-            "overrides": []
-          },
-          "gridPos": {"h": 3, "w": 4, "x": 20, "y": 0},
-          "id": 8,
-          "options": {
-            "colorMode": "none",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
-          },
-          "targets": [
-            {
-              "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-              "expr": "max(sump_pump_last_run_watts{job=\"sump-pump-consumer\"}) / 1000 * 0.16",
-              "instant": true,
-              "legendFormat": "cost/hr",
-              "refId": "A"
-            }
-          ],
-          "title": "Cost/hr",
-          "type": "stat"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-          "description": "Runs per hour with rainfall overlay.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {"fixedColor": "green", "mode": "fixed"},
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 15,
-                "gradientMode": "none",
-                "hideFrom": {"legend": false, "tooltip": false, "viz": false},
-                "insertNulls": false,
-                "lineInterpolation": "smooth",
-                "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": {"type": "linear"},
-                "showPoints": "auto",
-                "showValues": false,
-                "spanNulls": true,
-                "stacking": {"group": "A", "mode": "none"},
-                "thresholdsStyle": {"mode": "off"}
-              },
-              "decimals": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {"color": "green", "value": null},
-                  {"color": "red", "value": 80}
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": [
-              {
-                "matcher": {"id": "byName", "options": "in/hr"},
-                "properties": [
-                  {"id": "unit", "value": "lengthin"},
-                  {"id": "custom.axisPlacement", "value": "right"},
-                  {"id": "custom.axisLabel", "value": "rainfall (in/hr)"},
-                  {"id": "color", "value": {"fixedColor": "blue", "mode": "fixed"}},
-                  {"id": "decimals", "value": 3},
-                  {"id": "custom.drawStyle", "value": "bars"},
-                  {"id": "custom.lineWidth", "value": 0},
-                  {"id": "custom.fillOpacity", "value": 50},
-                  {"id": "custom.spanNulls", "value": true},
-                  {"id": "custom.axisSoftMin", "value": 0},
-                  {"id": "custom.axisSoftMax", "value": 0.1}
-                ]
-              },
-              {
-                "matcher": {"id": "byName", "options": "\u00b0F"},
-                "properties": [
-                  {"id": "unit", "value": "fahrenheit"},
-                  {"id": "decimals", "value": 1},
-                  {"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}},
-                  {"id": "custom.lineWidth", "value": 2},
-                  {"id": "custom.lineInterpolation", "value": "smooth"},
-                  {"id": "custom.fillOpacity", "value": 0},
-                  {"id": "custom.spanNulls", "value": true}
-                ]
-              }
-            ]
-          },
-          "gridPos": {"h": 22, "w": 24, "x": 0, "y": 3},
-          "id": 21,
-          "options": {
-            "legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true},
-            "tooltip": {"hideZeros": false, "mode": "multi", "sort": "none"}
-          },
-          "targets": [
-            {
-              "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-              "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)",
-              "legendFormat": "runs/hr",
-              "refId": "A"
-            },
-            {
-              "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-              "expr": "max(weather_precipitation_mm{job=\"weather-exporter\"}) * 0.03937",
-              "legendFormat": "in/hr",
-              "refId": "B"
-            },
-            {
-              "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-              "expr": "max(weather_temperature_fahrenheit{job=\"weather-exporter\"})",
-              "legendFormat": "\u00b0F",
-              "refId": "C"
-            }
-          ],
-          "title": "Runs per Hour",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-          "description": "Power draw and electricity cost over time.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {"fixedColor": "blue", "mode": "fixed"},
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 20,
-                "gradientMode": "none",
-                "hideFrom": {"legend": false, "tooltip": false, "viz": false},
-                "insertNulls": false,
-                "lineInterpolation": "smooth",
-                "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": {"type": "linear"},
-                "showPoints": "auto",
-                "showValues": false,
-                "spanNulls": true,
-                "stacking": {"group": "A", "mode": "none"},
-                "thresholdsStyle": {"mode": "off"}
-              },
-              "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {"color": "green", "value": null},
-                  {"color": "red", "value": 80}
-                ]
-              },
-              "unit": "watt"
-            },
-            "overrides": [
-              {
-                "matcher": {"id": "byName", "options": "cost/hr"},
-                "properties": [
-                  {"id": "unit", "value": "currencyUSD"},
-                  {"id": "decimals", "value": 4},
-                  {"id": "color", "value": {"fixedColor": "yellow", "mode": "fixed"}},
-                  {"id": "custom.axisPlacement", "value": "right"},
-                  {"id": "custom.axisLabel", "value": "cost/hr"},
-                  {"id": "custom.axisSoftMin", "value": 0}
-                ]
-              }
-            ]
-          },
-          "gridPos": {"h": 6, "w": 12, "x": 0, "y": 25},
-          "id": 22,
-          "options": {
-            "legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true},
-            "tooltip": {"hideZeros": false, "mode": "multi", "sort": "none"}
-          },
-          "targets": [
-            {
-              "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-              "expr": "max(sump_pump_last_run_watts{job=\"sump-pump-consumer\"})",
-              "legendFormat": "watts",
-              "refId": "A"
-            },
-            {
-              "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-              "expr": "max(sump_pump_last_run_watts{job=\"sump-pump-consumer\"}) / 1000 * 0.16",
-              "legendFormat": "cost/hr",
-              "refId": "B"
-            }
-          ],
-          "title": "Power Draw",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-          "description": "Each spike represents one pump run. Height of 1 = one run occurred in the last 2-minute window.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {"fixedColor": "green", "mode": "fixed"},
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "bars",
-                "fillOpacity": 80,
-                "gradientMode": "none",
-                "hideFrom": {"legend": false, "tooltip": false, "viz": false},
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {"type": "linear"},
-                "showPoints": "auto",
-                "showValues": false,
-                "spanNulls": false,
-                "stacking": {"group": "A", "mode": "none"},
-                "thresholdsStyle": {"mode": "off"}
-              },
-              "decimals": 0,
-              "max": 1,
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {"color": "green", "value": null},
-                  {"color": "red", "value": 80}
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 25},
-          "id": 23,
-          "options": {
-            "legend": {"calcs": [], "displayMode": "hidden", "placement": "bottom", "showLegend": false},
-            "tooltip": {"hideZeros": false, "mode": "single", "sort": "none"}
-          },
-          "targets": [
-            {
-              "datasource": {"type": "prometheus", "uid": "sump-pump-archive"},
-              "expr": "increase(max by(job) (sump_pump_runs_total{job=\"sump-pump-consumer\"})[2m:10s])",
-              "legendFormat": "Run",
-              "refId": "A"
-            }
-          ],
-          "title": "Run Timeline",
-          "type": "timeseries"
         }
       ],
-      "schemaVersion": 38,
+      "cursorSync": "Crosshair",
+      "editable": true,
+      "elements": {
+        "panel-1": {
+          "kind": "Panel",
+          "spec": {
+            "data": {
+              "kind": "QueryGroup",
+              "spec": {
+                "queries": [
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "hidden": false,
+                      "query": {
+                        "datasource": {
+                          "name": "sump-pump-archive"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                          "expr": "max(sump_pump_running{job=\"sump-pump-consumer\"})",
+                          "instant": true,
+                          "legendFormat": "state"
+                        },
+                        "version": "v0"
+                      },
+                      "refId": "A"
+                    }
+                  }
+                ],
+                "queryOptions": {},
+                "transformations": []
+              }
+            },
+            "description": "Whether the sump pump is currently running.",
+            "id": 1,
+            "links": [],
+            "title": "Current State",
+            "vizConfig": {
+              "group": "stat",
+              "kind": "VizConfig",
+              "spec": {
+                "fieldConfig": {
+                  "defaults": {
+                    "mappings": [
+                      {
+                        "options": {
+                          "0": {
+                            "color": "green",
+                            "index": 0,
+                            "text": "Idle"
+                          },
+                          "1": {
+                            "color": "blue",
+                            "index": 1,
+                            "text": "Running"
+                          }
+                        },
+                        "type": "value"
+                      }
+                    ],
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        { "color": "green", "value": 0 },
+                        { "color": "blue", "value": 1 }
+                      ]
+                    },
+                    "unit": "short"
+                  },
+                  "overrides": []
+                },
+                "options": {
+                  "colorMode": "background",
+                  "graphMode": "none",
+                  "justifyMode": "center",
+                  "orientation": "auto",
+                  "percentChangeColorMode": "standard",
+                  "reduceOptions": {
+                    "calcs": ["lastNotNull"],
+                    "fields": "",
+                    "values": false
+                  },
+                  "showPercentChange": false,
+                  "textMode": "value",
+                  "wideLayout": true
+                }
+              },
+              "version": "13.0.1+security-01"
+            }
+          }
+        },
+        "panel-12": {
+          "kind": "Panel",
+          "spec": {
+            "data": {
+              "kind": "QueryGroup",
+              "spec": {
+                "queries": [
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "hidden": false,
+                      "query": {
+                        "datasource": {
+                          "name": "sump-pump-archive"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                          "expr": "sum_over_time(max by(job) (weather_precipitation_mm{job=\"weather-exporter\"})[24h:1h]) * 0.03937",
+                          "instant": true,
+                          "legendFormat": "in"
+                        },
+                        "version": "v0"
+                      },
+                      "refId": "A"
+                    }
+                  }
+                ],
+                "queryOptions": {},
+                "transformations": []
+              }
+            },
+            "description": "Approximate total rainfall in the last 24 hours.",
+            "id": 12,
+            "links": [],
+            "title": "Rain Last 24h",
+            "vizConfig": {
+              "group": "stat",
+              "kind": "VizConfig",
+              "spec": {
+                "fieldConfig": {
+                  "defaults": {
+                    "decimals": 1,
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        { "color": "green", "value": 0 },
+                        { "color": "blue", "value": 0.1 }
+                      ]
+                    },
+                    "unit": "lengthin"
+                  },
+                  "overrides": []
+                },
+                "options": {
+                  "colorMode": "background",
+                  "graphMode": "none",
+                  "justifyMode": "center",
+                  "orientation": "auto",
+                  "percentChangeColorMode": "standard",
+                  "reduceOptions": {
+                    "calcs": ["lastNotNull"],
+                    "fields": "",
+                    "values": false
+                  },
+                  "showPercentChange": false,
+                  "textMode": "value",
+                  "wideLayout": true
+                }
+              },
+              "version": "13.0.1+security-01"
+            }
+          }
+        },
+        "panel-2": {
+          "kind": "Panel",
+          "spec": {
+            "data": {
+              "kind": "QueryGroup",
+              "spec": {
+                "queries": [
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "hidden": false,
+                      "query": {
+                        "datasource": {
+                          "name": "sump-pump-archive"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                          "expr": "max(sump_pump_watts{job=\"sump-pump-consumer\"})",
+                          "instant": true,
+                          "legendFormat": "watts"
+                        },
+                        "version": "v0"
+                      },
+                      "refId": "A"
+                    }
+                  }
+                ],
+                "queryOptions": {},
+                "transformations": []
+              }
+            },
+            "description": "Live power draw from the sump pump.",
+            "id": 2,
+            "links": [],
+            "title": "Current Watts",
+            "vizConfig": {
+              "group": "stat",
+              "kind": "VizConfig",
+              "spec": {
+                "fieldConfig": {
+                  "defaults": {
+                    "decimals": 1,
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        { "color": "green", "value": 0 },
+                        { "color": "red", "value": 80 }
+                      ]
+                    },
+                    "unit": "watt"
+                  },
+                  "overrides": []
+                },
+                "options": {
+                  "colorMode": "none",
+                  "graphMode": "none",
+                  "justifyMode": "center",
+                  "orientation": "auto",
+                  "percentChangeColorMode": "standard",
+                  "reduceOptions": {
+                    "calcs": ["lastNotNull"],
+                    "fields": "",
+                    "values": false
+                  },
+                  "showPercentChange": false,
+                  "textMode": "value",
+                  "wideLayout": true
+                }
+              },
+              "version": "13.0.1+security-01"
+            }
+          }
+        },
+        "panel-21": {
+          "kind": "Panel",
+          "spec": {
+            "data": {
+              "kind": "QueryGroup",
+              "spec": {
+                "queries": [
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "hidden": false,
+                      "query": {
+                        "datasource": {
+                          "name": "sump-pump-archive"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                          "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)",
+                          "legendFormat": "runs/hr"
+                        },
+                        "version": "v0"
+                      },
+                      "refId": "A"
+                    }
+                  },
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "hidden": false,
+                      "query": {
+                        "datasource": {
+                          "name": "sump-pump-archive"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                          "expr": "max(weather_precipitation_mm{job=\"weather-exporter\"}) * 0.03937",
+                          "legendFormat": "in/hr"
+                        },
+                        "version": "v0"
+                      },
+                      "refId": "B"
+                    }
+                  },
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "hidden": false,
+                      "query": {
+                        "datasource": {
+                          "name": "sump-pump-archive"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                          "expr": "max(weather_temperature_fahrenheit{job=\"weather-exporter\"})",
+                          "legendFormat": "\u00b0F"
+                        },
+                        "version": "v0"
+                      },
+                      "refId": "C"
+                    }
+                  }
+                ],
+                "queryOptions": {},
+                "transformations": []
+              }
+            },
+            "description": "Runs per hour with rainfall overlay.",
+            "id": 21,
+            "links": [],
+            "title": "Runs per Hour",
+            "vizConfig": {
+              "group": "timeseries",
+              "kind": "VizConfig",
+              "spec": {
+                "fieldConfig": {
+                  "defaults": {
+                    "color": {
+                      "fixedColor": "green",
+                      "mode": "fixed"
+                    },
+                    "custom": {
+                      "axisBorderShow": false,
+                      "axisCenteredZero": false,
+                      "axisColorMode": "text",
+                      "axisLabel": "",
+                      "axisPlacement": "auto",
+                      "barAlignment": 0,
+                      "barWidthFactor": 0.6,
+                      "drawStyle": "line",
+                      "fillOpacity": 15,
+                      "gradientMode": "none",
+                      "hideFrom": {
+                        "legend": false,
+                        "tooltip": false,
+                        "viz": false
+                      },
+                      "insertNulls": false,
+                      "lineInterpolation": "smooth",
+                      "lineWidth": 2,
+                      "pointSize": 5,
+                      "scaleDistribution": {
+                        "type": "linear"
+                      },
+                      "showPoints": "auto",
+                      "showValues": false,
+                      "spanNulls": true,
+                      "stacking": {
+                        "group": "A",
+                        "mode": "none"
+                      },
+                      "thresholdsStyle": {
+                        "mode": "off"
+                      }
+                    },
+                    "decimals": 0,
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        { "color": "green", "value": 0 },
+                        { "color": "red", "value": 80 }
+                      ]
+                    },
+                    "unit": "short"
+                  },
+                  "overrides": [
+                    {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "in/hr"
+                      },
+                      "properties": [
+                        { "id": "unit", "value": "lengthin" },
+                        { "id": "custom.axisPlacement", "value": "right" },
+                        { "id": "custom.axisLabel", "value": "rainfall (in/hr)" },
+                        { "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } },
+                        { "id": "decimals", "value": 2 },
+                        { "id": "custom.drawStyle", "value": "bars" },
+                        { "id": "custom.lineWidth", "value": 0 },
+                        { "id": "custom.fillOpacity", "value": 50 },
+                        { "id": "custom.spanNulls", "value": true },
+                        { "id": "custom.axisSoftMin", "value": 0 },
+                        { "id": "custom.axisSoftMax", "value": 0.1 }
+                      ]
+                    },
+                    {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "\u00b0F"
+                      },
+                      "properties": [
+                        { "id": "unit", "value": "fahrenheit" },
+                        { "id": "decimals", "value": 1 },
+                        { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } },
+                        { "id": "custom.lineWidth", "value": 2 },
+                        { "id": "custom.lineInterpolation", "value": "smooth" },
+                        { "id": "custom.fillOpacity", "value": 0 },
+                        { "id": "custom.spanNulls", "value": true }
+                      ]
+                    }
+                  ]
+                },
+                "options": {
+                  "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                  },
+                  "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                  },
+                  "tooltip": {
+                    "hideZeros": false,
+                    "mode": "multi",
+                    "sort": "none"
+                  }
+                }
+              },
+              "version": "13.0.1+security-01"
+            }
+          }
+        },
+        "panel-22": {
+          "kind": "Panel",
+          "spec": {
+            "data": {
+              "kind": "QueryGroup",
+              "spec": {
+                "queries": [
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "hidden": false,
+                      "query": {
+                        "datasource": {
+                          "name": "sump-pump-archive"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                          "expr": "max(sump_pump_last_run_watts{job=\"sump-pump-consumer\"})",
+                          "legendFormat": "watts"
+                        },
+                        "version": "v0"
+                      },
+                      "refId": "A"
+                    }
+                  },
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "hidden": false,
+                      "query": {
+                        "datasource": {
+                          "name": "sump-pump-archive"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                          "expr": "max(sump_pump_last_run_watts{job=\"sump-pump-consumer\"}) / 1000 * 0.16",
+                          "legendFormat": "cost/hr"
+                        },
+                        "version": "v0"
+                      },
+                      "refId": "B"
+                    }
+                  }
+                ],
+                "queryOptions": {},
+                "transformations": []
+              }
+            },
+            "description": "Power draw and electricity cost over time.",
+            "id": 22,
+            "links": [],
+            "title": "Power Draw",
+            "vizConfig": {
+              "group": "timeseries",
+              "kind": "VizConfig",
+              "spec": {
+                "fieldConfig": {
+                  "defaults": {
+                    "color": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    },
+                    "custom": {
+                      "axisBorderShow": false,
+                      "axisCenteredZero": false,
+                      "axisColorMode": "text",
+                      "axisLabel": "",
+                      "axisPlacement": "auto",
+                      "barAlignment": 0,
+                      "barWidthFactor": 0.6,
+                      "drawStyle": "line",
+                      "fillOpacity": 20,
+                      "gradientMode": "none",
+                      "hideFrom": {
+                        "legend": false,
+                        "tooltip": false,
+                        "viz": false
+                      },
+                      "insertNulls": false,
+                      "lineInterpolation": "smooth",
+                      "lineWidth": 2,
+                      "pointSize": 5,
+                      "scaleDistribution": {
+                        "type": "linear"
+                      },
+                      "showPoints": "auto",
+                      "showValues": false,
+                      "spanNulls": true,
+                      "stacking": {
+                        "group": "A",
+                        "mode": "none"
+                      },
+                      "thresholdsStyle": {
+                        "mode": "off"
+                      }
+                    },
+                    "decimals": 1,
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        { "color": "green", "value": 0 },
+                        { "color": "red", "value": 80 }
+                      ]
+                    },
+                    "unit": "watt"
+                  },
+                  "overrides": [
+                    {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "cost/hr"
+                      },
+                      "properties": [
+                        { "id": "unit", "value": "currencyUSD" },
+                        { "id": "decimals", "value": 4 },
+                        { "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } },
+                        { "id": "custom.axisPlacement", "value": "right" },
+                        { "id": "custom.axisLabel", "value": "cost/hr" },
+                        { "id": "custom.axisSoftMin", "value": 0 }
+                      ]
+                    }
+                  ]
+                },
+                "options": {
+                  "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                  },
+                  "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                  },
+                  "tooltip": {
+                    "hideZeros": false,
+                    "mode": "multi",
+                    "sort": "none"
+                  }
+                }
+              },
+              "version": "13.0.1+security-01"
+            }
+          }
+        },
+        "panel-23": {
+          "kind": "Panel",
+          "spec": {
+            "data": {
+              "kind": "QueryGroup",
+              "spec": {
+                "queries": [
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "hidden": false,
+                      "query": {
+                        "datasource": {
+                          "name": "sump-pump-archive"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                          "expr": "increase(max by(job) (sump_pump_runs_total{job=\"sump-pump-consumer\"})[2m:10s])",
+                          "legendFormat": "Run"
+                        },
+                        "version": "v0"
+                      },
+                      "refId": "A"
+                    }
+                  }
+                ],
+                "queryOptions": {},
+                "transformations": []
+              }
+            },
+            "description": "Each spike represents one pump run. Height of 1 = one run occurred in the last 2-minute window.",
+            "id": 23,
+            "links": [],
+            "title": "Run Timeline",
+            "vizConfig": {
+              "group": "timeseries",
+              "kind": "VizConfig",
+              "spec": {
+                "fieldConfig": {
+                  "defaults": {
+                    "color": {
+                      "fixedColor": "green",
+                      "mode": "fixed"
+                    },
+                    "custom": {
+                      "axisBorderShow": false,
+                      "axisCenteredZero": false,
+                      "axisColorMode": "text",
+                      "axisLabel": "",
+                      "axisPlacement": "auto",
+                      "barAlignment": 0,
+                      "barWidthFactor": 0.6,
+                      "drawStyle": "bars",
+                      "fillOpacity": 80,
+                      "gradientMode": "none",
+                      "hideFrom": {
+                        "legend": false,
+                        "tooltip": false,
+                        "viz": false
+                      },
+                      "insertNulls": false,
+                      "lineInterpolation": "linear",
+                      "lineWidth": 1,
+                      "pointSize": 5,
+                      "scaleDistribution": {
+                        "type": "linear"
+                      },
+                      "showPoints": "auto",
+                      "showValues": false,
+                      "spanNulls": false,
+                      "stacking": {
+                        "group": "A",
+                        "mode": "none"
+                      },
+                      "thresholdsStyle": {
+                        "mode": "off"
+                      }
+                    },
+                    "decimals": 0,
+                    "max": 1,
+                    "min": 0,
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        { "color": "green", "value": 0 },
+                        { "color": "red", "value": 80 }
+                      ]
+                    }
+                  },
+                  "overrides": []
+                },
+                "options": {
+                  "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                  },
+                  "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom",
+                    "showLegend": false
+                  },
+                  "tooltip": {
+                    "hideZeros": false,
+                    "mode": "single",
+                    "sort": "none"
+                  }
+                }
+              },
+              "version": "13.0.1+security-01"
+            }
+          }
+        },
+        "panel-24": {
+          "kind": "Panel",
+          "spec": {
+            "data": {
+              "kind": "QueryGroup",
+              "spec": {
+                "queries": [
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "hidden": false,
+                      "query": {
+                        "datasource": {
+                          "name": "sump-pump-archive"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                          "expr": "max(weather_temperature_fahrenheit{job=\"weather-exporter\"})",
+                          "instant": true,
+                          "legendFormat": "\u00b0F"
+                        },
+                        "version": "v0"
+                      },
+                      "refId": "A"
+                    }
+                  }
+                ],
+                "queryOptions": {},
+                "transformations": []
+              }
+            },
+            "description": "Current hour outdoor temperature.",
+            "id": 24,
+            "links": [],
+            "title": "Current Temp",
+            "vizConfig": {
+              "group": "stat",
+              "kind": "VizConfig",
+              "spec": {
+                "fieldConfig": {
+                  "defaults": {
+                    "color": {
+                      "mode": "thresholds"
+                    },
+                    "decimals": 1,
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        { "color": "blue", "value": 0 },
+                        { "color": "green", "value": 32 },
+                        { "color": "yellow", "value": 80 },
+                        { "color": "red", "value": 95 }
+                      ]
+                    },
+                    "unit": "fahrenheit"
+                  },
+                  "overrides": []
+                },
+                "options": {
+                  "colorMode": "background",
+                  "graphMode": "none",
+                  "justifyMode": "center",
+                  "orientation": "auto",
+                  "percentChangeColorMode": "standard",
+                  "reduceOptions": {
+                    "calcs": ["lastNotNull"],
+                    "fields": "",
+                    "values": false
+                  },
+                  "showPercentChange": false,
+                  "textMode": "value",
+                  "wideLayout": true
+                }
+              },
+              "version": "13.0.1+security-01"
+            }
+          }
+        },
+        "panel-3": {
+          "kind": "Panel",
+          "spec": {
+            "data": {
+              "kind": "QueryGroup",
+              "spec": {
+                "queries": [
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "hidden": false,
+                      "query": {
+                        "datasource": {
+                          "name": "sump-pump-archive"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                          "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)",
+                          "instant": true,
+                          "legendFormat": "runs/hr"
+                        },
+                        "version": "v0"
+                      },
+                      "refId": "A"
+                    }
+                  }
+                ],
+                "queryOptions": {},
+                "transformations": []
+              }
+            },
+            "description": "Rolling runs per hour based on the last 60 minutes.",
+            "id": 3,
+            "links": [],
+            "title": "Runs / Hour",
+            "vizConfig": {
+              "group": "stat",
+              "kind": "VizConfig",
+              "spec": {
+                "fieldConfig": {
+                  "defaults": {
+                    "decimals": 1,
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        { "color": "green", "value": 0 },
+                        { "color": "red", "value": 80 }
+                      ]
+                    },
+                    "unit": "short"
+                  },
+                  "overrides": []
+                },
+                "options": {
+                  "colorMode": "none",
+                  "graphMode": "none",
+                  "justifyMode": "center",
+                  "orientation": "auto",
+                  "percentChangeColorMode": "standard",
+                  "reduceOptions": {
+                    "calcs": ["lastNotNull"],
+                    "fields": "",
+                    "values": false
+                  },
+                  "showPercentChange": false,
+                  "textMode": "value",
+                  "wideLayout": true
+                }
+              },
+              "version": "13.0.1+security-01"
+            }
+          }
+        },
+        "panel-4": {
+          "kind": "Panel",
+          "spec": {
+            "data": {
+              "kind": "QueryGroup",
+              "spec": {
+                "queries": [
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "hidden": false,
+                      "query": {
+                        "datasource": {
+                          "name": "sump-pump-archive"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                          "expr": "sum(increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[24h]))",
+                          "instant": true,
+                          "legendFormat": "runs"
+                        },
+                        "version": "v0"
+                      },
+                      "refId": "A"
+                    }
+                  }
+                ],
+                "queryOptions": {},
+                "transformations": []
+              }
+            },
+            "description": "Number of times the pump has run in the last 24 hours.",
+            "id": 4,
+            "links": [],
+            "title": "Runs in Last 24h",
+            "vizConfig": {
+              "group": "stat",
+              "kind": "VizConfig",
+              "spec": {
+                "fieldConfig": {
+                  "defaults": {
+                    "decimals": 0,
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        { "color": "green", "value": 0 },
+                        { "color": "red", "value": 80 }
+                      ]
+                    },
+                    "unit": "short"
+                  },
+                  "overrides": []
+                },
+                "options": {
+                  "colorMode": "none",
+                  "graphMode": "none",
+                  "justifyMode": "center",
+                  "orientation": "auto",
+                  "percentChangeColorMode": "standard",
+                  "reduceOptions": {
+                    "calcs": ["sum"],
+                    "fields": "",
+                    "values": false
+                  },
+                  "showPercentChange": false,
+                  "textMode": "value",
+                  "wideLayout": true
+                }
+              },
+              "version": "13.0.1+security-01"
+            }
+          }
+        },
+        "panel-8": {
+          "kind": "Panel",
+          "spec": {
+            "data": {
+              "kind": "QueryGroup",
+              "spec": {
+                "queries": [
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "hidden": false,
+                      "query": {
+                        "datasource": {
+                          "name": "sump-pump-archive"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                          "expr": "max(sump_pump_last_run_watts{job=\"sump-pump-consumer\"}) / 1000 * 0.16",
+                          "instant": true,
+                          "legendFormat": "cost/hr"
+                        },
+                        "version": "v0"
+                      },
+                      "refId": "A"
+                    }
+                  }
+                ],
+                "queryOptions": {},
+                "transformations": []
+              }
+            },
+            "description": "Estimated electricity cost per hour based on current wattage at $0.16/kWh.",
+            "id": 8,
+            "links": [],
+            "title": "Cost/hr",
+            "vizConfig": {
+              "group": "stat",
+              "kind": "VizConfig",
+              "spec": {
+                "fieldConfig": {
+                  "defaults": {
+                    "decimals": 4,
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        { "color": "green", "value": 0 }
+                      ]
+                    },
+                    "unit": "currencyUSD"
+                  },
+                  "overrides": []
+                },
+                "options": {
+                  "colorMode": "none",
+                  "graphMode": "none",
+                  "justifyMode": "center",
+                  "orientation": "auto",
+                  "percentChangeColorMode": "standard",
+                  "reduceOptions": {
+                    "calcs": ["lastNotNull"],
+                    "fields": "",
+                    "values": false
+                  },
+                  "showPercentChange": false,
+                  "textMode": "value",
+                  "wideLayout": true
+                }
+              },
+              "version": "13.0.1+security-01"
+            }
+          }
+        }
+      },
+      "layout": {
+        "kind": "GridLayout",
+        "spec": {
+          "items": [
+            {
+              "kind": "GridLayoutItem",
+              "spec": {
+                "element": { "kind": "ElementReference", "name": "panel-1" },
+                "height": 3,
+                "width": 4,
+                "x": 0,
+                "y": 0
+              }
+            },
+            {
+              "kind": "GridLayoutItem",
+              "spec": {
+                "element": { "kind": "ElementReference", "name": "panel-24" },
+                "height": 3,
+                "width": 3,
+                "x": 4,
+                "y": 0
+              }
+            },
+            {
+              "kind": "GridLayoutItem",
+              "spec": {
+                "element": { "kind": "ElementReference", "name": "panel-2" },
+                "height": 3,
+                "width": 3,
+                "x": 7,
+                "y": 0
+              }
+            },
+            {
+              "kind": "GridLayoutItem",
+              "spec": {
+                "element": { "kind": "ElementReference", "name": "panel-3" },
+                "height": 3,
+                "width": 3,
+                "x": 10,
+                "y": 0
+              }
+            },
+            {
+              "kind": "GridLayoutItem",
+              "spec": {
+                "element": { "kind": "ElementReference", "name": "panel-4" },
+                "height": 3,
+                "width": 3,
+                "x": 13,
+                "y": 0
+              }
+            },
+            {
+              "kind": "GridLayoutItem",
+              "spec": {
+                "element": { "kind": "ElementReference", "name": "panel-12" },
+                "height": 3,
+                "width": 4,
+                "x": 16,
+                "y": 0
+              }
+            },
+            {
+              "kind": "GridLayoutItem",
+              "spec": {
+                "element": { "kind": "ElementReference", "name": "panel-8" },
+                "height": 3,
+                "width": 4,
+                "x": 20,
+                "y": 0
+              }
+            },
+            {
+              "kind": "GridLayoutItem",
+              "spec": {
+                "element": { "kind": "ElementReference", "name": "panel-21" },
+                "height": 14,
+                "width": 24,
+                "x": 0,
+                "y": 3
+              }
+            },
+            {
+              "kind": "GridLayoutItem",
+              "spec": {
+                "element": { "kind": "ElementReference", "name": "panel-23" },
+                "height": 3,
+                "width": 24,
+                "x": 0,
+                "y": 17
+              }
+            },
+            {
+              "kind": "GridLayoutItem",
+              "spec": {
+                "element": { "kind": "ElementReference", "name": "panel-22" },
+                "height": 11,
+                "width": 24,
+                "x": 0,
+                "y": 20
+              }
+            }
+          ]
+        }
+      },
+      "links": [],
+      "liveNow": false,
+      "preload": false,
       "tags": [],
-      "time": {"from": "now-24h", "to": "now"},
-      "timepicker": {},
-      "timezone": "browser",
+      "timeSettings": {
+        "autoRefresh": "30s",
+        "autoRefreshIntervals": [
+          "5s",
+          "10s",
+          "30s",
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ],
+        "fiscalYearStartMonth": 0,
+        "from": "now-24h",
+        "hideTimepicker": false,
+        "timezone": "browser",
+        "to": "now"
+      },
       "title": "Sump Pump",
-      "uid": "sump-pump",
-      "version": 1,
-      "refresh": "30s"
+      "variables": []
     }
