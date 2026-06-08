@@ -290,7 +290,7 @@ data:
             "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" }
           },
           "targets": [
-            { "datasource": { "type": "prometheus", "uid": "sump-pump-archive" }, "expr": "increase(max by(job) (sump_pump_runs_total{job=\"sump-pump-consumer\"})[$__rate_interval])", "legendFormat": "Run", "refId": "A" }
+            { "datasource": { "type": "prometheus", "uid": "sump-pump-archive" }, "expr": "increase(max by(job) (sump_pump_runs_total{job=\"sump-pump-consumer\"})[1m:10s])", "legendFormat": "Run", "refId": "A" }
           ],
           "title": "Run Timeline",
           "type": "timeseries"
