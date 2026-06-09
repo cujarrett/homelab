@@ -1,0 +1,9 @@
+apiVersion: platform.local.lab/v1alpha1
+kind: XApi
+metadata:
+  name: APP_NAME
+spec:
+  parameters:
+    namespace: APP_WORKSPACE
+    image: ghcr.io/cujarrett/APP_NAME:main
+    port: APP_PORT
