@@ -44,6 +44,8 @@ spec:
   isCA: true
   commonName: local-lab-ca
   secretName: local-lab-ca-secret
+  duration: 87600h # 10 years
+  renewBefore: 720h # 30 days
   privateKey:
     algorithm: ECDSA
     size: 256
