@@ -91,8 +91,43 @@ The concepts you need before touching the cluster.
 - Injection is opt-in per namespace via the `linkerd.io/inject: enabled` annotation. No annotation = no sidecar = not in the mesh.
 - mTLS is automatic once a pod is meshed. You don't configure it. You verify it.
 
+**Your public traffic topology:**
+
+All public hostnames enter the cluster through Cloudflare Tunnel, not directly to Traefik.
+The full path is:
+
+```
+Internet
+  → Cloudflare Edge
+  → cloudflared (Deployment, cloudflare namespace, 2 replicas)
+  → Traefik (DaemonSet, kube-system, https://192.168.10.101:443)
+  → backend pod (js-pollock, blog, my-vinyl, mattjarrett-com, etc.)
+```
+
+Public hostnames and their backend namespaces:
+
+| Hostname | Namespace |
+|---|---|
+| `mattjarrett.com` | `mattjarrett-com` |
+| `mattjarrett.dev` | `mattjarrett-dev` |
+| `blog.mattjarrett.dev` | `blog` |
+| `myvinyl.mattjarrett.dev` | `my-vinyl` |
+| `jspollock.mattjarrett.dev` | `js-pollock` |
+| `launchpad.mattjarrett.dev` | `launchpad` |
+| `demo1.mattjarrett.dev` | `launchpad` (or tenant namespace) |
+| `demo1-api.mattjarrett.dev` | `launchpad` (or tenant namespace) |
+
+The mesh only sees traffic *between pods inside the cluster*. The cloudflared → Traefik
+leg is outside the mesh until you inject both (Phase 6). Until then:
+- Real traffic from the internet flows through your public sites and generates real metrics
+- The source identity on every request will appear as Traefik (unmeshed) — not cloudflared
+- mTLS is not enforced on the cloudflared → Traefik leg until Traefik is meshed
+
+This is fine. The mesh still secures and observes everything from Traefik inward.
+
 **Exit criteria:** You can explain the difference between the control plane and the data
-plane to someone else, without notes.
+plane to someone else, without notes. You can draw the full traffic path from internet to
+backend pod, marking which legs are inside the mesh and which aren't.
 
 ---
 
@@ -183,10 +218,21 @@ linkerd viz -n js-pollock stat deployment
 This shows success rate, RPS, and p50/p95/p99 latency. If traffic is flowing through
 Traefik to the nginx pod, you'll see real numbers here.
 
+**What to expect with Cloudflare tunnel traffic:**
+
+`jspollock.mattjarrett.dev` is routed via Cloudflare Tunnel → Traefik → the `js-pollock`
+pod. When you run `linkerd viz edges -n js-pollock`, you'll see the edge from Traefik
+marked `×` (no mTLS identity) because Traefik is not yet meshed. That's expected at this
+phase — Traefik is the unmeshed entry point. The `√` you're looking for is on pod-to-pod
+edges *within* the namespace, not the Traefik ingress edge.
+
+The golden metrics in `linkerd viz stat` will show real numbers driven by actual internet
+traffic hitting `jspollock.mattjarrett.dev`. No need to generate synthetic load.
+
 **Exit criteria:**
 - Pods in `js-pollock` show `2/2 READY`
-- `linkerd viz edges` shows `√` (mTLS) on all edges
-- `linkerd viz stat deployment -n js-pollock` returns metrics without errors
+- `linkerd viz stat deployment -n js-pollock` returns real RPS metrics from Cloudflare tunnel traffic
+- You understand why the Traefik→js-pollock edge shows `×` and what will fix it (Phase 6)
 
 ---
 
@@ -205,6 +251,13 @@ linkerd viz top -n js-pollock deployment/js-pollock
 The `tap` output shows individual requests in real time — method, path, status code,
 response time. This is the thing you wished you had the last time you were debugging a
 slow endpoint.
+
+For public-facing services (`js-pollock`, `blog`, `my-vinyl`, etc.), you'll see real
+requests from internet users routed through Cloudflare Tunnel. The `src` field in tap
+output will show Traefik's pod IP as the caller — not cloudflared's IP, and not the
+original client IP. That's because Traefik is the last hop before the backend pod, and
+it's not yet meshed so it has no Linkerd identity. The `dst` will be the backend pod.
+This is correct and expected until Phase 6.
 
 ```bash
 # Mesh the blog namespace too (Ghost blog)
@@ -349,15 +402,24 @@ kubectl rollout restart statefulset -n nats
 Opaque ports still get mTLS — Linkerd encrypts the TCP stream — it just skips the HTTP
 parsing and doesn't emit route-level metrics for that port. That's fine for NATS.
 
-**Exclude Longhorn and cert-manager:**
+**Exclude Longhorn, cert-manager, and cloudflare:**
 
-These system namespaces do things that interact badly with sidecar injection (Longhorn
-uses host-network paths; cert-manager webhook timing is sensitive). Leave them unmeshed.
+These namespaces interact badly with sidecar injection or need separate validation before
+meshing. Leave them unmeshed for now. Longhorn uses host-network paths; cert-manager
+webhook timing is sensitive; `cloudflared` establishes an outbound-only tunnel to
+Cloudflare's edge — injecting a proxy here needs explicit validation that the tunnel
+connection survives, and the mesh gives you nothing useful (there's no pod-to-pod traffic
+in that namespace to observe or secure).
 
 ```bash
 kubectl annotate namespace longhorn-system linkerd.io/inject=disabled
 kubectl annotate namespace cert-manager linkerd.io/inject=disabled
+kubectl annotate namespace cloudflare linkerd.io/inject=disabled
 ```
+
+If you later want to mesh `cloudflare` to make the cloudflared→Traefik leg visible in the
+topology, do it deliberately: inject it alone, restart the `cloudflared` Deployment, and
+confirm your public hostnames still respond before proceeding.
 
 **Exit criteria:**
 - `linkerd viz stat deployments -A` shows metrics for all your application namespaces
