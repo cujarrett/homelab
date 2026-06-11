@@ -29,7 +29,7 @@ data:
               "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 4 }, { "color": "red", "value": 5 } ] }
             }
           },
-          "targets": [{ "expr": "launchpad_guest_workspace_count", "legendFormat": "workspaces", "instant": true, "refId": "A" }]
+          "targets": [{ "expr": "sum(launchpad_guest_workspace_count)", "legendFormat": "workspaces", "instant": true, "refId": "A" }]
         },
         {
           "id": 4, "type": "stat", "title": "Guest Workspaces (24h peak)",
@@ -43,7 +43,7 @@ data:
               "color": { "fixedColor": "green", "mode": "fixed" }
             }
           },
-          "targets": [{ "expr": "max_over_time(launchpad_guest_workspace_count[24h])", "legendFormat": "peak 24h", "instant": true, "refId": "A" }]
+          "targets": [{ "expr": "max_over_time(sum(launchpad_guest_workspace_count)[24h:1m])", "legendFormat": "peak 24h", "instant": true, "refId": "A" }]
         },
         {
           "id": 2, "type": "stat", "title": "Guest Resources (now)",
@@ -57,7 +57,7 @@ data:
               "color": { "fixedColor": "blue", "mode": "fixed" }
             }
           },
-          "targets": [{ "expr": "launchpad_guest_resource_count", "legendFormat": "resources", "instant": true, "refId": "A" }]
+          "targets": [{ "expr": "sum(launchpad_guest_resource_count)", "legendFormat": "resources", "instant": true, "refId": "A" }]
         },
         {
           "id": 5, "type": "stat", "title": "Guest Resources (24h peak)",
@@ -71,7 +71,7 @@ data:
               "color": { "fixedColor": "blue", "mode": "fixed" }
             }
           },
-          "targets": [{ "expr": "max_over_time(launchpad_guest_resource_count[24h])", "legendFormat": "peak 24h", "instant": true, "refId": "A" }]
+          "targets": [{ "expr": "max_over_time(sum(launchpad_guest_resource_count)[24h:1m])", "legendFormat": "peak 24h", "instant": true, "refId": "A" }]
         },
         {
           "id": 3, "type": "timeseries", "title": "Workspace & Resource Usage",
@@ -90,8 +90,8 @@ data:
           },
           "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
           "targets": [
-            { "expr": "launchpad_guest_workspace_count", "legendFormat": "workspaces", "refId": "A" },
-            { "expr": "launchpad_guest_resource_count", "legendFormat": "resources", "refId": "B" }
+            { "expr": "sum(launchpad_guest_workspace_count)", "legendFormat": "workspaces", "refId": "A" },
+            { "expr": "sum(launchpad_guest_resource_count)", "legendFormat": "resources", "refId": "B" }
           ]
         }
       ]
