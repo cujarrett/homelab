@@ -125,6 +125,57 @@ leg is outside the mesh until you inject both (Phase 6). Until then:
 
 This is fine. The mesh still secures and observes everything from Traefik inward.
 
+**Traffic path diagrams:**
+
+After Phase 3 (first namespace meshed, Traefik not yet meshed):
+
+```mermaid
+flowchart LR
+    A(["🌐 Internet"])
+    B["Cloudflare Edge"]
+    C["cloudflared\ncloudflare ns\n2 replicas"]
+    D["Traefik\nkube-system\nDaemonSet"]
+    E["backend pod\ne.g. js-pollock\n2/2 READY"]
+
+    A -->|"HTTPS\n☁️ outside cluster"| B
+    B -->|"tunnel\n☁️ outside cluster"| C
+    C -->|"plain HTTP\n❌ no mTLS\nunmeshed → unmeshed"| D
+    D -->|"plain HTTP\n❌ no mTLS\nunmeshed → meshed"| E
+
+    subgraph mesh ["🔒 Linkerd mesh"]
+        E
+    end
+
+    style mesh fill:#e8f5e9,stroke:#43a047
+```
+
+After Phase 6 (Traefik meshed, cloudflare namespace excluded):
+
+```mermaid
+flowchart LR
+    A(["🌐 Internet"])
+    B["Cloudflare Edge"]
+    C["cloudflared\ncloudflare ns\n⛔ inject=disabled"]
+    D["Traefik\nkube-system\npod annotation injected"]
+    E["backend pod\ne.g. js-pollock\n2/2 READY"]
+
+    A -->|"HTTPS\n☁️ outside cluster"| B
+    B -->|"tunnel\n☁️ outside cluster"| C
+    C -->|"plain HTTP\n❌ no mTLS\nunmeshed → meshed"| D
+    D -->|"mTLS ✅\nmeshed → meshed"| E
+
+    subgraph mesh ["🔒 Linkerd mesh"]
+        D
+        E
+    end
+
+    style mesh fill:#e8f5e9,stroke:#43a047
+```
+
+The cloudflared → Traefik leg never gets mTLS in this plan — `cloudflare` namespace is
+explicitly excluded. That's acceptable: that connection carries tunnel-encrypted traffic
+from Cloudflare's edge, not raw internet traffic.
+
 **Exit criteria:** You can explain the difference between the control plane and the data
 plane to someone else, without notes. You can draw the full traffic path from internet to
 backend pod, marking which legs are inside the mesh and which aren't.
@@ -136,9 +187,8 @@ backend pod, marking which legs are inside the mesh and which aren't.
 Install the CLI, validate prerequisites, and deploy the control plane.
 
 ```bash
-# Install the Linkerd CLI (ARM64 Mac)
-curl --proto '=https' --tlsv1.2 -sSfL https://run.linkerd.io/install | sh
-export PATH=$PATH:$HOME/.linkerd2/bin
+# Install the Linkerd CLI via Homebrew (installs stable, manages PATH automatically)
+brew install linkerd
 
 # Verify the CLI
 linkerd version
