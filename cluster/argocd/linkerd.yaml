@@ -7,15 +7,15 @@ spec:
   project: cluster
   sources:
     # Linkerd CRDs — must be applied before the control plane
-    - repoURL: https://helm.linkerd.io/stable
+    - repoURL: https://helm.linkerd.io/edge
       chart: linkerd-crds
-      targetRevision: 25.10.7
+      targetRevision: 2025.10.7
       helm:
         releaseName: linkerd-crds
     # Linkerd control plane — reads identity issuer Secret from cert-manager
-    - repoURL: https://helm.linkerd.io/stable
+    - repoURL: https://helm.linkerd.io/edge
       chart: linkerd-control-plane
-      targetRevision: 25.10.7
+      targetRevision: 2025.10.7
       helm:
         releaseName: linkerd-control-plane
         values: |
