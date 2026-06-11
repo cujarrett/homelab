@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trust-manager
+  namespace: argocd
+spec:
+  project: cluster
+  source:
+    repoURL: https://charts.jetstack.io
+    chart: trust-manager
+    targetRevision: 0.16.0
+    helm:
+      releaseName: trust-manager
+      values: |
+        app:
+          trust:
+            namespace: cert-manager
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

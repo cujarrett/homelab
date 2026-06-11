@@ -32,7 +32,7 @@ data:
             }
           },
           "targets": [
-            { "expr": "launchpad_guest_workspace_count", "legendFormat": "workspaces", "instant": true }
+            { "expr": "sum(launchpad_guest_workspace_count)", "legendFormat": "workspaces", "instant": true }
           ]
         },
         {
@@ -45,7 +45,7 @@ data:
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "none", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 } },
           "targets": [
-            { "expr": "launchpad_guest_resource_count", "legendFormat": "resources", "instant": true }
+            { "expr": "sum(launchpad_guest_resource_count)", "legendFormat": "resources", "instant": true }
           ]
         },
         {
@@ -70,8 +70,8 @@ data:
             "tooltip": { "mode": "multi", "sort": "desc" }
           },
           "targets": [
-            { "expr": "launchpad_guest_workspace_count", "legendFormat": "workspaces", "refId": "A" },
-            { "expr": "launchpad_guest_resource_count", "legendFormat": "resources", "refId": "B" }
+            { "expr": "sum(launchpad_guest_workspace_count)", "legendFormat": "workspaces", "refId": "A" },
+            { "expr": "sum(launchpad_guest_resource_count)", "legendFormat": "resources", "refId": "B" }
           ]
         }
       ]
