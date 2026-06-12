@@ -10,5 +10,9 @@ spec:
       group: ""
       port: 80
   rules:
-    - timeouts:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      timeouts:
         request: 30s
