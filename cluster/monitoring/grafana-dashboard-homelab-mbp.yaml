@@ -76,7 +76,7 @@ data:
           "gridPos": {
             "h": 3,
             "w": 3,
-            "x": 0,
+            "x": 6,
             "y": 0
           },
           "id": 6,
@@ -159,7 +159,7 @@ data:
           "gridPos": {
             "h": 3,
             "w": 3,
-            "x": 3,
+            "x": 9,
             "y": 0
           },
           "id": 16,
@@ -259,8 +259,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 6,
+            "w": 3,
+            "x": 3,
             "y": 0
           },
           "id": 101,
@@ -307,70 +307,6 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "blue",
-                "mode": "fixed"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 3,
-            "x": 10,
-            "y": 0
-          },
-          "id": 2,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "12.4.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sum(kube_pod_status_phase{phase=\"Running\"})",
-              "legendFormat": "",
-              "refId": "A"
-            }
-          ],
-          "title": "Pods Running",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
                 "mode": "thresholds"
               },
               "mappings": [],
@@ -394,7 +330,7 @@ data:
           "gridPos": {
             "h": 3,
             "w": 3,
-            "x": 13,
+            "x": 15,
             "y": 0
           },
           "id": 3,
@@ -466,8 +402,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 16,
+            "w": 3,
+            "x": 18,
             "y": 0
           },
           "id": 4,
@@ -542,8 +478,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 20,
+            "w": 3,
+            "x": 21,
             "y": 0
           },
           "id": 5,
@@ -616,8 +552,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 0,
+            "w": 3,
+            "x": 12,
             "y": 3
           },
           "id": 7,
@@ -687,8 +623,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 6,
+            "w": 3,
+            "x": 15,
             "y": 3
           },
           "id": 8,
@@ -758,8 +694,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 12,
+            "w": 3,
+            "x": 18,
             "y": 3
           },
           "id": 9,
@@ -829,8 +765,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 18,
+            "w": 3,
+            "x": 21,
             "y": 3
           },
           "id": 10,
@@ -911,131 +847,6 @@ data:
                 }
               },
               "mappings": [],
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 5,
-            "w": 8,
-            "x": 0,
-            "y": 6
-          },
-          "id": 204,
-          "options": {
-            "legend": {
-              "calcs": [
-                "mean",
-                "max",
-                "lastNotNull"
-              ],
-              "displayMode": "table",
-              "placement": "bottom",
-              "showLegend": false
-            },
-            "tooltip": {
-              "hideZeros": false,
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "pluginVersion": "12.4.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "count by(node) (kube_pod_info{node=\"ctrl-1\"})",
-              "legendFormat": "ctrl-1",
-              "refId": "A"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "count by(node) (kube_pod_info{node=\"work-1\"})",
-              "legendFormat": "work-1",
-              "refId": "B"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "count by(node) (kube_pod_info{node=\"work-2\"})",
-              "legendFormat": "work-2",
-              "refId": "C"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "count by(node) (kube_pod_info{node=\"work-3\"})",
-              "legendFormat": "work-3",
-              "refId": "D"
-            }
-          ],
-          "title": "Pod Count over Time per Node",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 10,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "smooth",
-                "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "never",
-                "showValues": false,
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
               "max": 100,
               "min": 0,
               "thresholds": {
@@ -1053,8 +864,8 @@ data:
           },
           "gridPos": {
             "h": 5,
-            "w": 8,
-            "x": 8,
+            "w": 12,
+            "x": 0,
             "y": 6
           },
           "id": 11,
@@ -1179,8 +990,8 @@ data:
           },
           "gridPos": {
             "h": 5,
-            "w": 8,
-            "x": 16,
+            "w": 12,
+            "x": 12,
             "y": 6
           },
           "id": 12,
@@ -1304,7 +1115,7 @@ data:
           "gridPos": {
             "h": 4,
             "w": 8,
-            "x": 0,
+            "x": 16,
             "y": 11
           },
           "id": 13,
@@ -1410,7 +1221,7 @@ data:
           "gridPos": {
             "h": 4,
             "w": 8,
-            "x": 8,
+            "x": 0,
             "y": 11
           },
           "id": 14,
@@ -1534,7 +1345,7 @@ data:
           "gridPos": {
             "h": 4,
             "w": 8,
-            "x": 16,
+            "x": 8,
             "y": 11
           },
           "id": 15,
@@ -1668,9 +1479,9 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 12,
+            "w": 24,
             "x": 0,
-            "y": 15
+            "y": 18
           },
           "id": 17,
           "options": {
@@ -1734,144 +1545,7 @@ data:
           "title": "Disk Usage per Node (%)",
           "type": "timeseries"
         },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "axisSoftMin": 0,
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 8,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "smooth",
-                "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "never",
-                "showValues": false,
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "transparent",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "bytes"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 12,
-            "x": 12,
-            "y": 15
-          },
-          "id": 18,
-          "options": {
-            "legend": {
-              "calcs": [
-                "mean",
-                "min",
-                "lastNotNull"
-              ],
-              "displayMode": "table",
-              "placement": "bottom",
-              "showLegend": false
-            },
-            "tooltip": {
-              "hideZeros": false,
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "pluginVersion": "12.4.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "node_filesystem_avail_bytes{instance=~\"192.168.10.100:.*\", mountpoint=\"/\", fstype!~\"tmpfs|rootfs|overlay\"}",
-              "legendFormat": "ctrl-1",
-              "refId": "A"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "node_filesystem_avail_bytes{instance=~\"192.168.10.101:.*\", mountpoint=\"/\", fstype!~\"tmpfs|rootfs|overlay\"}",
-              "legendFormat": "work-1",
-              "refId": "B"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "node_filesystem_avail_bytes{instance=~\"192.168.10.102:.*\", mountpoint=\"/\", fstype!~\"tmpfs|rootfs|overlay\"}",
-              "legendFormat": "work-2",
-              "refId": "C"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "node_filesystem_avail_bytes{instance=~\"192.168.10.103:.*\", mountpoint=\"/\", fstype!~\"tmpfs|rootfs|overlay\"}",
-              "legendFormat": "work-3",
-              "refId": "D"
-            }
-          ],
-          "title": "Disk Space Available per Node",
-          "type": "timeseries"
-        },
-        {
-          "collapsed": false,
-          "gridPos": {
-            "h": 1,
-            "w": 24,
-            "x": 0,
-            "y": 19
-          },
-          "id": 100,
-          "panels": [],
-          "title": "Cluster Availability",
-          "type": "row"
-        },
+
         {
           "datasource": {
             "type": "prometheus",
@@ -1898,9 +1572,9 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
+            "w": 3,
             "x": 0,
-            "y": 20
+            "y": 3
           },
           "id": 105,
           "options": {
@@ -1958,9 +1632,9 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 6,
-            "y": 20
+            "w": 3,
+            "x": 3,
+            "y": 3
           },
           "id": 106,
           "options": {
@@ -2018,9 +1692,9 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 12,
-            "y": 20
+            "w": 3,
+            "x": 6,
+            "y": 3
           },
           "id": 107,
           "options": {
@@ -2078,9 +1752,9 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 18,
-            "y": 20
+            "w": 3,
+            "x": 9,
+            "y": 3
           },
           "id": 108,
           "options": {
@@ -2154,9 +1828,9 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 6,
-            "y": 23
+            "w": 3,
+            "x": 12,
+            "y": 0
           },
           "id": 102,
           "options": {
@@ -2239,8 +1913,8 @@ data:
           "gridPos": {
             "h": 3,
             "w": 6,
-            "x": 12,
-            "y": 23
+            "x": 0,
+            "y": 15
           },
           "id": 103,
           "options": {
@@ -2329,8 +2003,8 @@ data:
           "gridPos": {
             "h": 3,
             "w": 6,
-            "x": 18,
-            "y": 23
+            "x": 6,
+            "y": 15
           },
           "id": 104,
           "options": {
@@ -2368,19 +2042,7 @@ data:
           "title": "PVCs Bound",
           "type": "stat"
         },
-        {
-          "collapsed": false,
-          "gridPos": {
-            "h": 1,
-            "w": 24,
-            "x": 0,
-            "y": 26
-          },
-          "id": 300,
-          "panels": [],
-          "title": "Crossplane Platform",
-          "type": "row"
-        },
+
         {
           "datasource": {
             "type": "prometheus",
@@ -2413,9 +2075,9 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 8,
-            "x": 0,
-            "y": 27
+            "w": 4,
+            "x": 12,
+            "y": 15
           },
           "id": 301,
           "options": {
@@ -2479,9 +2141,9 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 8,
-            "x": 8,
-            "y": 27
+            "w": 4,
+            "x": 16,
+            "y": 15
           },
           "id": 302,
           "options": {
@@ -2549,9 +2211,9 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 8,
-            "x": 16,
-            "y": 27
+            "w": 4,
+            "x": 20,
+            "y": 15
           },
           "id": 303,
           "options": {
@@ -2587,19 +2249,7 @@ data:
           "title": "Reconcile Errors/s",
           "type": "stat"
         },
-        {
-          "collapsed": false,
-          "gridPos": {
-            "h": 1,
-            "w": 24,
-            "x": 0,
-            "y": 30
-          },
-          "id": 304,
-          "panels": [],
-          "title": "Cluster SLO",
-          "type": "row"
-        },
+
         {
           "datasource": {
             "type": "prometheus",
@@ -2647,9 +2297,9 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 8,
+            "w": 3,
             "x": 0,
-            "y": 31
+            "y": 0
           },
           "id": 305,
           "options": {
