@@ -185,30 +185,32 @@ spec:
 
 ### Phase 5 — Traffic Policy
 
-Declare retry/timeout in YAML. App doesn't change.
+HTTPRoutes are **baked into the XApi and XSpa compositions** — every platform workload gets a 30s timeout automatically. XApi also gets retries on `502/503/504` (safe because Go handlers are stateless). No per-app YAML needed.
+
+For non-platform workloads (e.g. `blog`, which is a raw Deployment not an XApi), create a file in `cluster/linkerd/`:
 
 ```yaml
-# cluster/linkerd/httproute-my-vinyl-api.yaml
+# cluster/linkerd/httproute-blog.yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: my-vinyl-api-policy
-  namespace: my-vinyl
+  name: blog
+  namespace: blog
 spec:
   parentRefs:
-    - name: my-vinyl-api
+    - name: ghost
       kind: Service
-      group: core
+      group: ""
       port: 80
   rules:
     - timeouts:
-        request: 5s
-      retry:
-        codes: [500, 502, 503, 504]
-        limit: 3
+        request: 30s
 ```
 
-**Exit criteria:** Applied an HTTPRoute, confirmed via `linkerd viz stat` it's taking effect.
+**Exit criteria:** `linkerd viz stat` shows non-zero RPS for a meshed XApi. Confirm the HTTPRoute rendered by checking:
+```bash
+kubectl get httproute -n my-vinyl
+```
 
 ---
 
@@ -247,9 +249,11 @@ kubectl annotate namespace cloudflare linkerd.io/inject=disabled
 
 ### Phase 7 — Platform Integration
 
-**XApi/XSpa READMEs:** document that namespace-level `linkerd.io/inject: enabled` auto-injects pods. No composition change needed for the default case.
+**Already done (in compositions):**
+- `XApi` composition renders: HTTPRoute (30s timeout, retry 502/503/504 ×3)
+- `XSpa` composition renders: HTTPRoute (30s timeout)
 
-**Escape hatch in `XApi`:**
+**Still to do — injection escape hatch in `XApi`:**
 
 `platform/api/composition.yaml` pod template annotations:
 ```yaml
@@ -268,8 +272,10 @@ mesh:
       default: true
 ```
 
+**XApi/XSpa READMEs:** document that namespace-level `linkerd.io/inject: enabled` auto-injects pods, and that timeout/retry policy is automatic — no Linkerd knowledge required.
+
 **Exit criteria:**
-- New XApi in meshed namespace: `2/2 READY`, visible in `linkerd viz stat`
+- New XApi in meshed namespace: `2/2 READY`, visible in `linkerd viz stat`, HTTPRoute present
 - XApi with `mesh.enabled: false`: `1/1 READY`
 
 ---
@@ -279,8 +285,10 @@ mesh:
 | Component | Impact | Action |
 |---|---|---|
 | `XApi` Deployments | Auto-injected if namespace annotated | Add `mesh.enabled` escape hatch |
+| `XApi` HTTPRoute | 30s timeout + retry 502/503/504 rendered by composition | None — automatic |
 | `XApi` init containers | Cluster API calls, not pod-to-pod — unaffected | None |
 | `XSpa` (nginx) | Auto-injected, works fine | None |
+| `XSpa` HTTPRoute | 30s timeout rendered by composition | None — automatic |
 | `XWordpress` | MariaDB + WordPress both injected | Test DB connections |
 | NATS (`XTopic`/`XSubscription`) | Port 4222 must be opaque | Annotate namespace + service |
 | `XCache` (Redis) | Port 6379 may need opaque annotation | Annotate if proxy errors appear |
