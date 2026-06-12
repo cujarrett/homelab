@@ -23,6 +23,10 @@ spec:
         prometheusOperator:
           serviceMonitor:
             selfMonitor: false
+          admissionWebhooks:
+            patch:
+              podAnnotations:
+                linkerd.io/inject: disabled
         alertmanager:
           alertmanagerSpec:
             nodeSelector:
