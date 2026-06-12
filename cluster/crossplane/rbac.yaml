@@ -29,3 +29,6 @@ rules:
   - apiGroups: ["jetstream.nats.io"]
     resources: ["streams", "consumers", "streams/status", "consumers/status"]
     verbs: ["*"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["httproutes", "httproutes/status"]
+    verbs: ["*"]
