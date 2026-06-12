@@ -139,7 +139,7 @@ linkerd viz stat deployment -n js-pollock
 
 ---
 
-### Phase 4 — Observe the Mesh
+### Phase 4 — Observe the Mesh ✅
 
 ```bash
 # Live request stream — method, path, status, latency
@@ -188,7 +188,7 @@ spec:
 
 ---
 
-### Phase 5 — Traffic Policy
+### Phase 5 — Traffic Policy ✅
 
 HTTPRoutes are **baked into the XApi and XSpa compositions** — every platform workload gets a 30s timeout automatically. No per-app YAML needed.
 
