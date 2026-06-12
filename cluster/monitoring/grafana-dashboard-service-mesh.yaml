@@ -156,7 +156,7 @@ data:
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(rate(request_total{tls=\"true\",direction=\"inbound\"}[5m])) / sum(rate(request_total{direction=\"inbound\"}[5m])) * 100",
+              "expr": "sum(rate(request_total{tls=\"true\",direction=\"inbound\",namespace!~\"kube-system|kube-public|kube-node-lease|longhorn-system|cert-manager|cloudflare|linkerd|linkerd-viz|monitoring\"}[5m])) / sum(rate(request_total{direction=\"inbound\",namespace!~\"kube-system|kube-public|kube-node-lease|longhorn-system|cert-manager|cloudflare|linkerd|linkerd-viz|monitoring\"}[5m])) * 100",
               "instant": true,
               "legendFormat": "mTLS %",
               "refId": "A"
