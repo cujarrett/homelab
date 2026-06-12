@@ -219,11 +219,11 @@ kubectl get httproute -n my-vinyl
 
 ---
 
-### Phase 6 — Mesh the Whole Cluster
+### Phase 6 — Mesh the Whole Cluster ✅
 
 ```bash
 # Application namespaces
-for ns in mattjarrett-com mattjarrett-dev my-vinyl sump-pump; do
+for ns in mattjarrett-com mattjarrett-dev my-vinyl sump-pump launchpad; do
   kubectl annotate namespace $ns linkerd.io/inject=enabled
   kubectl rollout restart deployment -n $ns 2>/dev/null || true
   kubectl rollout restart statefulset -n $ns 2>/dev/null || true
@@ -252,7 +252,7 @@ kubectl annotate namespace cloudflare linkerd.io/inject=disabled
 
 ---
 
-### Phase 7 — Platform Integration
+### Phase 7 — Platform Integration ✅
 
 **Already done (in compositions):**
 - `XApi` composition renders: HTTPRoute (30s timeout)
