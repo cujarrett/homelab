@@ -134,6 +134,14 @@ spec:
                       default: sm
                       enum: [xs, sm, md, lg]
                       description: "Compute tier for the container. Choose based on expected traffic — Extra Small suits low-traffic or background services; Large suits high-throughput workloads."
+                    mesh:
+                      type: object
+                      description: "Service mesh options. Injection is controlled at the namespace level — set mesh.enabled to false only to opt this specific instance out."
+                      properties:
+                        enabled:
+                          type: boolean
+                          default: true
+                          description: "Set to false to disable proxy injection for this instance. Useful for apps with non-HTTP protocols or specific debugging needs."
                   required: [image, namespace]
               required:
                 - parameters

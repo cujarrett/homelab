@@ -162,6 +162,10 @@ spec:
                   labels:
                     app: xapi
                     app.kubernetes.io/instance: {{ $name }}
+                  {{- if and $xr.spec.parameters.mesh (eq $xr.spec.parameters.mesh.enabled false) }}
+                  annotations:
+                    linkerd.io/inject: disabled
+                  {{- end }}
                 spec:
                   serviceAccountName: {{ $name }}
                   nodeSelector:

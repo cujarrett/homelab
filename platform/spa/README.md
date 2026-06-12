@@ -28,6 +28,7 @@ The namespace is owned by the tenant — created by `namespace.yaml` in the tena
 | `memoryLimit` | no | `64Mi` | Memory limit |
 | `apiProxy.enabled` | no | `false` | Proxy `/api/` to an in-cluster service (keeps API off the public internet). |
 | `apiProxy.upstream` | no | — | FQDN of the upstream service (e.g. `my-api.my-tenant.svc.cluster.local`). |
+| `mesh.enabled` | no | `true` | Proxy injection follows the namespace annotation. No parameter needed for the default case. Not configurable per-instance on XSpa. |
 
 ## Example
 

@@ -28,6 +28,7 @@ The namespace is owned by the tenant — created by `namespace.yaml` in the tena
 | `secretRef.name` | no | — | Name of a pre-existing Secret to inject via `envFrom`. |
 | `topicRef.name` | no | — | Name of an `XTopic` this API publishes to. Platform injects `NATS_URL` and `NATS_STREAM` env vars. |
 | `subscriptionRef.name` | no | — | Name of an `XSubscription` this API consumes from. Platform injects `NATS_CONSUMER` env var. |
+| `mesh.enabled` | no | `true` | Set to `false` to opt this instance out of proxy injection. Namespace-level injection must be enabled for the mesh to work — this only opts out a single instance. |
 
 ## Example app
 
