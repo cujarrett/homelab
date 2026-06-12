@@ -185,7 +185,7 @@ spec:
 
 ### Phase 5 — Traffic Policy
 
-HTTPRoutes are **baked into the XApi and XSpa compositions** — every platform workload gets a 30s timeout automatically. XApi also gets retries on `502/503/504` (safe because Go handlers are stateless). No per-app YAML needed.
+HTTPRoutes are **baked into the XApi and XSpa compositions** — every platform workload gets a 30s timeout automatically. No per-app YAML needed.
 
 For non-platform workloads (e.g. `blog`, which is a raw Deployment not an XApi), create a file in `cluster/linkerd/`:
 
@@ -250,7 +250,7 @@ kubectl annotate namespace cloudflare linkerd.io/inject=disabled
 ### Phase 7 — Platform Integration
 
 **Already done (in compositions):**
-- `XApi` composition renders: HTTPRoute (30s timeout, retry 502/503/504 ×3)
+- `XApi` composition renders: HTTPRoute (30s timeout)
 - `XSpa` composition renders: HTTPRoute (30s timeout)
 
 **Still to do — injection escape hatch in `XApi`:**
@@ -285,7 +285,7 @@ mesh:
 | Component | Impact | Action |
 |---|---|---|
 | `XApi` Deployments | Auto-injected if namespace annotated | Add `mesh.enabled` escape hatch |
-| `XApi` HTTPRoute | 30s timeout + retry 502/503/504 rendered by composition | None — automatic |
+| `XApi` HTTPRoute | 30s timeout rendered by composition | None — automatic |
 | `XApi` init containers | Cluster API calls, not pod-to-pod — unaffected | None |
 | `XSpa` (nginx) | Auto-injected, works fine | None |
 | `XSpa` HTTPRoute | 30s timeout rendered by composition | None — automatic |
