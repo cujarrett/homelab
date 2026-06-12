@@ -54,9 +54,18 @@ data:
           "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"js-pollock-js-pollock.*@kubernetes\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
         },
         {
+          "id": 7, "type": "stat", "title": "launchpad.mattjarrett.dev",
+          "description": "Requests in the last 24 hours",
+          "gridPos": { "x": 12, "y": 0, "w": 3, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "fixedColor": "orange", "mode": "fixed" } } },
+          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"launchpad-launchpad.*@kubernetes\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
+        },
+        {
           "id": 6, "type": "timeseries", "title": "Requests / hr — All Sites",
           "description": "Requests per 1-hour window for all public sites.",
-          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 5 },
+          "gridPos": { "x": 15, "y": 0, "w": 9, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": { "unit": "short", "decimals": 0, "custom": { "lineWidth": 2, "fillOpacity": 15, "lineInterpolation": "smooth" } },
@@ -64,7 +73,8 @@ data:
               { "matcher": { "id": "byName", "options": "blog" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
               { "matcher": { "id": "byName", "options": "mattjarrett.dev" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
               { "matcher": { "id": "byName", "options": "myvinyl" }, "properties": [{ "id": "color", "value": { "fixedColor": "purple", "mode": "fixed" } }] },
-              { "matcher": { "id": "byName", "options": "jspollock" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] }
+              { "matcher": { "id": "byName", "options": "jspollock" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "launchpad" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] }
             ]
           },
           "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
@@ -72,7 +82,8 @@ data:
             { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[1h]))", "legendFormat": "blog", "refId": "A" },
             { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes|web-mattjarrett-dev.*@kubernetes\"}[1h]))", "legendFormat": "mattjarrett.dev", "refId": "B" },
             { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"my-vinyl-my-vinyl.*@kubernetes\"}[1h]))", "legendFormat": "myvinyl", "refId": "D" },
-            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"js-pollock-js-pollock.*@kubernetes\"}[1h]))", "legendFormat": "jspollock", "refId": "E" }
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"js-pollock-js-pollock.*@kubernetes\"}[1h]))", "legendFormat": "jspollock", "refId": "E" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"launchpad-launchpad.*@kubernetes\"}[1h]))", "legendFormat": "launchpad", "refId": "F" }
           ]
         }
       ]
