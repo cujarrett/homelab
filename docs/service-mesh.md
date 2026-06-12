@@ -156,26 +156,31 @@ linkerd viz stat deployments -n blog
 
 `tap` `src` field shows Traefik's pod IP (last unmeshed hop), not the original client IP. Expected until Phase 6.
 
-**ServiceMonitor for existing Grafana:**
+**PodMonitor for existing Grafana:**
 ```yaml
-# cluster/monitoring/linkerd-servicemonitor.yaml
+# cluster/monitoring/linkerd-podmonitor.yaml
 apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
+kind: PodMonitor
 metadata:
-  name: linkerd-controller
+  name: linkerd-proxy
   namespace: monitoring
   labels:
     release: kube-prometheus-stack
 spec:
+  # Scrapes the linkerd-proxy sidecar (port 4191) on every meshed pod.
+  # linkerd.io/control-plane-ns=linkerd is injected on all meshed pods automatically.
   namespaceSelector:
-    matchNames: [linkerd, linkerd-viz]
+    any: true
   selector:
     matchLabels:
-      linkerd.io/control-plane-component: controller
-  endpoints:
-    - port: admin-http
+      linkerd.io/control-plane-ns: linkerd
+  podMetricsEndpoints:
+    - port: linkerd-admin
       path: /metrics
+      interval: 60s
 ```
+
+> The viz extension has its own internal Prometheus. This PodMonitor gets proxy metrics into your main kube-prometheus-stack Prometheus instead.
 
 **Exit criteria:**
 - `linkerd viz tap` shows live traces
