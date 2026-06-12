@@ -29,6 +29,16 @@ spec:
     - repoURL: https://github.com/cujarrett/homelab.git
       targetRevision: main
       path: cluster/linkerd
+    # Linkerd viz extension — disable built-in Prometheus, use main stack instead
+    - repoURL: https://helm.linkerd.io/edge
+      chart: linkerd-viz
+      targetRevision: 2025.12.3
+      helm:
+        releaseName: linkerd-viz
+        values: |
+          prometheus:
+            enabled: false
+          prometheusUrl: http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
   destination:
     server: https://kubernetes.default.svc
     namespace: linkerd
