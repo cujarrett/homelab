@@ -4,7 +4,7 @@ metadata:
   name: linkerd-proxy
   namespace: monitoring
   labels:
-    release: kube-prometheus-stack
+    release: monitoring
 spec:
   # Scrape linkerd-proxy sidecars across all meshed namespaces.
   # The proxy exposes metrics on port 4191 (linkerd-admin) of every injected pod.
