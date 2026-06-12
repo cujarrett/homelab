@@ -9,7 +9,7 @@ spec:
     # Linkerd CRDs — must be applied before the control plane
     - repoURL: https://helm.linkerd.io/edge
       chart: linkerd-crds
-      targetRevision: 2025.10.7
+      targetRevision: 2025.12.3
       helm:
         releaseName: linkerd-crds
     # Linkerd control plane — reads identity issuer Secret from cert-manager
