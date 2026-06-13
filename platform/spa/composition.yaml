@@ -204,6 +204,11 @@ spec:
                         return 404;
                     }
 
+                    # RSS/Atom feed probes — not served by SPAs, return 404 instead of 200 via catch-all
+                    location ~* ^/feed(/|$) {
+                        return 404;
+                    }
+
                     # cPanel SSO / OpenID probes
                     location ~* ^/openid_connect(/|$) {
                         return 404;
