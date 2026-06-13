@@ -672,6 +672,81 @@ data:
           ],
           "title": "RPS by Namespace",
           "type": "timeseries"
+        },
+        {
+          "id": 20,
+          "type": "heatmap",
+          "title": "Response Latency Distribution",
+          "description": "Linkerd response latency histogram across all meshed services. X=time, Y=latency bucket (ms), color=request volume.",
+          "gridPos": {
+            "x": 0,
+            "y": 17,
+            "w": 24,
+            "h": 12
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "calculate": false,
+            "cellGap": 1,
+            "color": {
+              "exponent": 0.5,
+              "fill": "dark-orange",
+              "mode": "scheme",
+              "reverse": false,
+              "scale": "exponential",
+              "scheme": "Oranges",
+              "steps": 64
+            },
+            "exemplars": {
+              "color": "rgba(255,255,120,0.7)"
+            },
+            "filterValues": {
+              "le": 1e-09
+            },
+            "legend": {
+              "show": true
+            },
+            "rowsFrame": {
+              "layout": "auto"
+            },
+            "tooltip": {
+              "mode": "single",
+              "showColorScale": false,
+              "yHistogram": false
+            },
+            "yAxis": {
+              "axisPlacement": "left",
+              "reverse": false,
+              "unit": "ms"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum by (le) (increase(response_latency_ms_bucket[2m]))",
+              "format": "heatmap",
+              "legendFormat": "{{le}}",
+              "refId": "A"
+            }
+          ]
         }
       ],
       "preload": false,
