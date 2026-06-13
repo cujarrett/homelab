@@ -926,6 +926,90 @@ data:
             }
           ],
           "type": "table"
+        },
+        {
+          "id": 30,
+          "type": "heatmap",
+          "title": "Pump Wattage Distribution",
+          "description": "Distribution of wattage readings over time. Shows motor load variation \u2014 wider spread or drift upward can indicate pump wear.",
+          "gridPos": {
+            "x": 0,
+            "y": 31,
+            "w": 24,
+            "h": 10
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "sump-pump-archive"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "calculate": true,
+            "calculation": {
+              "xBuckets": {
+                "mode": "size",
+                "value": "10m"
+              },
+              "yBuckets": {
+                "mode": "count",
+                "value": "20"
+              }
+            },
+            "cellGap": 1,
+            "color": {
+              "exponent": 0.5,
+              "fill": "blue",
+              "mode": "scheme",
+              "reverse": false,
+              "scale": "exponential",
+              "scheme": "Blues",
+              "steps": 64
+            },
+            "exemplars": {
+              "color": "rgba(255,255,120,0.7)"
+            },
+            "filterValues": {
+              "le": 1e-09
+            },
+            "legend": {
+              "show": true
+            },
+            "rowsFrame": {
+              "layout": "auto"
+            },
+            "tooltip": {
+              "mode": "single",
+              "showColorScale": false,
+              "yHistogram": false
+            },
+            "yAxis": {
+              "axisPlacement": "left",
+              "reverse": false,
+              "unit": "watt"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "sump-pump-archive"
+              },
+              "expr": "sump_pump_watts{job=\"sump-pump-consumer\"}",
+              "legendFormat": "watts",
+              "refId": "A"
+            }
+          ]
         }
       ],
       "preload": false,
