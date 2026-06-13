@@ -247,114 +247,40 @@ data:
           "type": "timeseries"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "sump-pump-archive" },
-          "description": "Each spike represents one pump run. Height of 1 = one run occurred in the last 2-minute window.",
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "description": "One row per completed sump pump run. Start, duration, wattage, and electricity cost at $0.16/kWh.",
           "fieldConfig": {
-            "defaults": {
-              "color": { "fixedColor": "green", "mode": "fixed" },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "bars",
-                "fillOpacity": 80,
-                "gradientMode": "none",
-                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": { "type": "linear" },
-                "showPoints": "auto",
-                "showValues": false,
-                "spanNulls": false,
-                "stacking": { "group": "A", "mode": "none" },
-                "thresholdsStyle": { "mode": "off" }
-              },
-              "decimals": 0,
-              "mappings": [],
-              "max": 1,
-              "min": 0,
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }, { "color": "red", "value": 80 }] }
-            },
-            "overrides": []
-          },
-          "gridPos": { "h": 3, "w": 24, "x": 0, "y": 17 },
-          "id": 23,
-          "options": {
-            "legend": { "calcs": [], "displayMode": "hidden", "placement": "bottom", "showLegend": false },
-            "tooltip": { "hideZeros": false, "mode": "single", "sort": "none" }
-          },
-          "targets": [
-            { "datasource": { "type": "prometheus", "uid": "sump-pump-archive" }, "expr": "increase(max by(job) (sump_pump_runs_total{job=\"sump-pump-consumer\"})[1m:10s])", "legendFormat": "Run", "refId": "A" }
-          ],
-          "title": "Run Timeline",
-          "type": "timeseries"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "sump-pump-archive" },
-          "description": "Power draw and electricity cost over time.",
-          "fieldConfig": {
-            "defaults": {
-              "color": { "fixedColor": "blue", "mode": "fixed" },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 20,
-                "gradientMode": "none",
-                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-                "insertNulls": false,
-                "lineInterpolation": "smooth",
-                "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": { "type": "linear" },
-                "showPoints": "auto",
-                "showValues": false,
-                "spanNulls": true,
-                "stacking": { "group": "A", "mode": "none" },
-                "thresholdsStyle": { "mode": "off" }
-              },
-              "decimals": 1,
-              "mappings": [],
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }, { "color": "red", "value": 80 }] },
-              "unit": "watt"
-            },
+            "defaults": { "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
             "overrides": [
-              {
-                "matcher": { "id": "byName", "options": "cost/hr" },
-                "properties": [
-                  { "id": "unit", "value": "currencyUSD" },
-                  { "id": "decimals", "value": 4 },
-                  { "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } },
-                  { "id": "custom.axisPlacement", "value": "right" },
-                  { "id": "custom.axisLabel", "value": "cost/hr" },
-                  { "id": "custom.axisSoftMin", "value": 0 }
-                ]
-              }
+              { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "displayName", "value": "End" }, { "id": "custom.width", "value": 180 }] },
+              { "matcher": { "id": "byName", "options": "start" }, "properties": [{ "id": "displayName", "value": "Start" }, { "id": "custom.width", "value": 180 }] },
+              { "matcher": { "id": "byName", "options": "duration_s" }, "properties": [{ "id": "displayName", "value": "Duration" }, { "id": "unit", "value": "s" }, { "id": "custom.width", "value": 100 }, { "id": "decimals", "value": 0 }] },
+              { "matcher": { "id": "byName", "options": "watts" }, "properties": [{ "id": "displayName", "value": "Watts" }, { "id": "unit", "value": "watt" }, { "id": "custom.width", "value": 90 }, { "id": "decimals", "value": 1 }] },
+              { "matcher": { "id": "byName", "options": "cost_usd" }, "properties": [{ "id": "displayName", "value": "Cost" }, { "id": "unit", "value": "currencyUSD" }, { "id": "custom.width", "value": 90 }, { "id": "decimals", "value": 5 }] }
             ]
           },
-          "gridPos": { "h": 11, "w": 24, "x": 0, "y": 20 },
-          "id": 22,
+          "gridPos": { "h": 14, "w": 24, "x": 0, "y": 17 },
+          "id": 25,
           "options": {
-            "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
-            "tooltip": { "hideZeros": false, "mode": "multi", "sort": "none" }
+            "cellHeight": "sm",
+            "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false },
+            "showHeader": true,
+            "sortBy": [{ "desc": true, "displayName": "End" }]
           },
           "targets": [
-            { "datasource": { "type": "prometheus", "uid": "sump-pump-archive" }, "expr": "max(sump_pump_last_run_watts{job=\"sump-pump-consumer\"})", "legendFormat": "watts", "refId": "A" },
-            { "datasource": { "type": "prometheus", "uid": "sump-pump-archive" }, "expr": "max(sump_pump_last_run_watts{job=\"sump-pump-consumer\"}) / 1000 * 0.16", "legendFormat": "cost/hr", "refId": "B" }
+            {
+              "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+              "expr": "{namespace=\"sump-pump\"} |= \"run_complete\" | logfmt | duration_s != \"\"",
+              "queryType": "range",
+              "refId": "A"
+            }
           ],
-          "title": "Power Draw",
-          "type": "timeseries"
+          "title": "Run History",
+          "transformations": [
+            { "id": "extractFields", "options": { "format": "auto", "source": "labels" } },
+            { "id": "organize", "options": { "excludeByName": { "Line": true, "id": true, "tsNs": true, "labelTypes": true }, "indexByName": {}, "renameByName": {} } }
+          ],
+          "type": "table"
         }
       ],
       "preload": false,
