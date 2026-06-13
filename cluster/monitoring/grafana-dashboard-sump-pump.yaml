@@ -252,11 +252,11 @@ data:
           "fieldConfig": {
             "defaults": { "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
             "overrides": [
-              { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "displayName", "value": "End" }, { "id": "custom.width", "value": 180 }] },
               { "matcher": { "id": "byName", "options": "start" }, "properties": [{ "id": "displayName", "value": "Start" }, { "id": "custom.width", "value": 180 }] },
+              { "matcher": { "id": "byName", "options": "Time" }, "properties": [{ "id": "displayName", "value": "End" }, { "id": "custom.width", "value": 180 }] },
               { "matcher": { "id": "byName", "options": "duration_s" }, "properties": [{ "id": "displayName", "value": "Duration" }, { "id": "unit", "value": "s" }, { "id": "custom.width", "value": 100 }, { "id": "decimals", "value": 0 }] },
-              { "matcher": { "id": "byName", "options": "watts" }, "properties": [{ "id": "displayName", "value": "Watts" }, { "id": "unit", "value": "watt" }, { "id": "custom.width", "value": 90 }, { "id": "decimals", "value": 1 }] },
-              { "matcher": { "id": "byName", "options": "cost_usd" }, "properties": [{ "id": "displayName", "value": "Cost" }, { "id": "unit", "value": "currencyUSD" }, { "id": "custom.width", "value": 90 }, { "id": "decimals", "value": 5 }] }
+              { "matcher": { "id": "byName", "options": "cost_usd" }, "properties": [{ "id": "displayName", "value": "Cost" }, { "id": "unit", "value": "currencyUSD" }, { "id": "custom.width", "value": 90 }, { "id": "decimals", "value": 5 }] },
+              { "matcher": { "id": "byName", "options": "watts" }, "properties": [{ "id": "displayName", "value": "Watts" }, { "id": "unit", "value": "watt" }, { "id": "custom.width", "value": 90 }, { "id": "decimals", "value": 1 }] }
             ]
           },
           "gridPos": { "h": 14, "w": 24, "x": 0, "y": 17 },
@@ -278,7 +278,7 @@ data:
           "title": "Run History",
           "transformations": [
             { "id": "extractFields", "options": { "format": "auto", "source": "labels" } },
-            { "id": "organize", "options": { "excludeByName": { "Line": true, "id": true, "tsNs": true, "labelTypes": true }, "indexByName": {}, "renameByName": {} } }
+            { "id": "organize", "options": { "excludeByName": { "Line": true, "id": true, "tsNs": true, "labelTypes": true }, "indexByName": { "start": 0, "Time": 1, "duration_s": 2, "cost_usd": 3, "watts": 4 }, "renameByName": {} } }
           ],
           "type": "table"
         }
