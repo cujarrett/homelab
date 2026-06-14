@@ -13,9 +13,7 @@ spec:
     helm:
       releaseName: argocd
       values: |
-        global:
-          nodeSelector:
-            node-role.kubernetes.io/worker: worker
+        global: {}
         dex:
           enabled: false
         server:

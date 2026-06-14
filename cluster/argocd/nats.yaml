@@ -29,15 +29,11 @@ spec:
           # Pin pods to worker nodes, keep control plane clean
           podTemplate:
             merge:
-              spec:
-                nodeSelector:
-                  node-role.kubernetes.io/worker: worker
+              spec: {}
           natsBox:
             podTemplate:
               merge:
-                spec:
-                  nodeSelector:
-                    node-role.kubernetes.io/worker: worker
+                spec: {}
     - repoURL: https://github.com/cujarrett/homelab.git
       targetRevision: main
       path: cluster/nats

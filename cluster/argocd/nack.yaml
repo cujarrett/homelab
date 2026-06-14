@@ -17,8 +17,7 @@ spec:
             # Points the NACK controller at the in-cluster NATS service.
             # NACK reconciles Stream and Consumer CRDs against this server.
             url: nats://nats.nats.svc.cluster.local:4222
-        nodeSelector:
-          node-role.kubernetes.io/worker: worker
+
   destination:
     server: https://kubernetes.default.svc
     namespace: nats
