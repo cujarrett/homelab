@@ -730,6 +730,79 @@ data:
           ],
           "title": "Response Latency Distribution",
           "type": "heatmap"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Live service-to-service traffic topology from Linkerd proxy metrics. Nodes show inbound success rate (green=healthy, red=degraded). Edges show outbound request rate (req/s). Excludes proxy admin traffic (port 4191).",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 24,
+            "x": 0,
+            "y": 19
+          },
+          "id": 21,
+          "options": {
+            "edges": {
+              "mainStatUnit": "reqps"
+            },
+            "nodes": {
+              "mainStatUnit": "percent"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "label_replace(label_replace(label_replace(sum(rate(request_total{direction=\"outbound\",target_port!=\"4191\",deployment!=\"\"}[5m])) by (deployment,dst_deployment,dst_statefulset),\"target\",\"$1\",\"dst_deployment\",\"(.+)\"),\"target\",\"$1\",\"dst_statefulset\",\"(.+)\"),\"source\",\"$1\",\"deployment\",\"(.*)\")",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "edges"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "label_replace(label_replace(label_replace(label_replace(sum(rate(response_total{classification=\"success\",direction=\"inbound\",target_port!=\"4191\"}[5m])) by (deployment,statefulset) / sum(rate(response_total{direction=\"inbound\",target_port!=\"4191\"}[5m])) by (deployment,statefulset) * 100,\"id\",\"$1\",\"deployment\",\"(.+)\"),\"id\",\"$1\",\"statefulset\",\"(.+)\"),\"title\",\"$1\",\"deployment\",\"(.+)\"),\"title\",\"$1\",\"statefulset\",\"(.+)\")",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "nodes"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "deployment": true,
+                  "statefulset": true,
+                  "dst_deployment": true,
+                  "dst_statefulset": true
+                },
+                "renameByName": {
+                  "Value": "mainStat",
+                  "Value #edges": "mainStat",
+                  "Value #nodes": "mainStat"
+                }
+              }
+            }
+          ],
+          "title": "Service Traffic Topology",
+          "type": "nodeGraph"
         }
       ],
       "preload": false,
