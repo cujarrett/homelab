@@ -782,25 +782,7 @@ data:
               "refId": "nodes"
             }
           ],
-          "transformations": [
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {
-                  "Time": true,
-                  "deployment": true,
-                  "statefulset": true,
-                  "dst_deployment": true,
-                  "dst_statefulset": true
-                },
-                "renameByName": {
-                  "Value": "mainStat",
-                  "Value #edges": "mainStat",
-                  "Value #nodes": "mainStat"
-                }
-              }
-            }
-          ],
+          "transformations": [],
           "title": "Service Traffic Topology",
           "type": "nodeGraph"
         }
