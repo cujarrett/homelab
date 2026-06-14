@@ -16,7 +16,7 @@ cluster to match it.
 
 ARM64 architecture. NVMe SSD on each node. PoE+ power. All nodes on VLAN 10
 (`192.168.10.0/24`). Physical rack: GeeekPi DeskPi RackMate T0 Plus 10" 4U with a 1U
-LCD display on `work-1`.
+LCD display on `ctrl-1`.
 
 ---
 
