@@ -26,7 +26,8 @@ A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering a
 
 | Item | Qty |
 |---|---|
-| Raspberry Pi 5 8GB | 4 |
+| Raspberry Pi 5 16GB (Controller) | 1 |
+| Raspberry Pi 5 8GB (Workers) | 3 |
 | GeeekPi P31 M.2 NVMe PoE+ HAT (Pi 5) | 4 |
 | 256GB M.2 2230 NVMe SSD | 4 |
 | TP-Link GS305PP 8-Port PoE+ Switch | 1 |
