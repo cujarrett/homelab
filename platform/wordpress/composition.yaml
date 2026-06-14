@@ -122,8 +122,6 @@ spec:
                     app: mariadb
                     instance: {{ $name }}
                 spec:
-                  nodeSelector:
-                    node-role.kubernetes.io/worker: worker
                   containers:
                     - name: mariadb
                       image: mariadb:11
@@ -209,8 +207,6 @@ spec:
                     app: wordpress
                     instance: {{ $name }}
                 spec:
-                  nodeSelector:
-                    node-role.kubernetes.io/worker: worker
                   initContainers:
                     - name: init-wp-content
                       image: wordpress:6-apache

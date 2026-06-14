@@ -268,8 +268,6 @@ spec:
                     app: spa
                     instance: {{ $name }}
                 spec:
-                  nodeSelector:
-                    node-role.kubernetes.io/worker: worker
                   containers:
                     - name: spa
                       image: {{ $params.image }}

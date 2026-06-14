@@ -168,8 +168,6 @@ spec:
                   {{- end }}
                 spec:
                   serviceAccountName: {{ $name }}
-                  nodeSelector:
-                    node-role.kubernetes.io/worker: worker
                   {{- if or $objectStorageRefName $sqlRefName $nosqlRefName $cacheEnabled }}
                   initContainers:
                     {{- if $objectStorageRefName }}

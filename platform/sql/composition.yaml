@@ -77,8 +77,6 @@ spec:
                   labels:
                     app: {{ $name }}-postgres
                 spec:
-                  nodeSelector:
-                    node-role.kubernetes.io/worker: worker
                   containers:
                     - name: postgres
                       image: postgres:16-alpine
