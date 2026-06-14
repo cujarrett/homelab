@@ -57,8 +57,6 @@ spec:
                   labels:
                     app: {{ $name }}-redis
                 spec:
-                  nodeSelector:
-                    node-role.kubernetes.io/worker: worker
                   containers:
                     - name: redis
                       image: redis:7-alpine
