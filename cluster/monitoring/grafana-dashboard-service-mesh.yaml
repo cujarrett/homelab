@@ -767,22 +767,31 @@ data:
               "format": "table",
               "instant": true,
               "legendFormat": "",
-              "refId": "edges"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "editorMode": "code",
-              "expr": "label_replace(label_replace(sum(rate(response_total{classification=\"success\",direction=\"inbound\",target_port!=\"4191\"}[5m])) by (namespace) / sum(rate(response_total{direction=\"inbound\",target_port!=\"4191\"}[5m])) by (namespace) * 100,\"id\",\"$1\",\"namespace\",\"(.+)\"),\"title\",\"$1\",\"namespace\",\"(.+)\")",
-              "format": "table",
-              "instant": true,
-              "legendFormat": "",
-              "refId": "nodes"
+              "refId": "A"
             }
           ],
-          "transformations": [],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "namespace": true,
+                  "dst_namespace": true
+                },
+                "renameByName": {
+                  "Value": "mainStat"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "mode": "index",
+                "alias": "id"
+              }
+            }
+          ],
           "title": "Service Traffic Topology",
           "type": "nodeGraph"
         }
