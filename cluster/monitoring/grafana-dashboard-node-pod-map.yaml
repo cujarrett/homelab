@@ -1063,7 +1063,6 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 0,
               "max": 110,
               "min": 0,
               "thresholds": {
@@ -1087,7 +1086,7 @@ data:
                   }
                 ]
               },
-              "unit": "short"
+              "unit": "bytes"
             }
           },
           "gridPos": {
@@ -1128,13 +1127,13 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"ctrl-1\"}) / 1024 / 1024)",
+              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"ctrl-1\"}))",
               "instant": true,
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "ctrl-1  \u00b7  Memory (MiB)",
+          "title": "ctrl-1  \u00b7  Memory",
           "type": "bargauge"
         },
         {
@@ -1148,7 +1147,6 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 0,
               "max": 110,
               "min": 0,
               "thresholds": {
@@ -1172,7 +1170,7 @@ data:
                   }
                 ]
               },
-              "unit": "short"
+              "unit": "bytes"
             }
           },
           "gridPos": {
@@ -1213,13 +1211,13 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-1\"}) / 1024 / 1024)",
+              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-1\"}))",
               "instant": true,
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "work-1  \u00b7  Memory (MiB)",
+          "title": "work-1  \u00b7  Memory",
           "type": "bargauge"
         },
         {
@@ -1233,7 +1231,6 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 0,
               "max": 110,
               "min": 0,
               "thresholds": {
@@ -1257,7 +1254,7 @@ data:
                   }
                 ]
               },
-              "unit": "short"
+              "unit": "bytes"
             }
           },
           "gridPos": {
@@ -1298,13 +1295,13 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-2\"}) / 1024 / 1024)",
+              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-2\"}))",
               "instant": true,
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "work-2  \u00b7  Memory (MiB)",
+          "title": "work-2  \u00b7  Memory",
           "type": "bargauge"
         },
         {
@@ -1318,7 +1315,6 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 0,
               "max": 110,
               "min": 0,
               "thresholds": {
@@ -1342,7 +1338,7 @@ data:
                   }
                 ]
               },
-              "unit": "short"
+              "unit": "bytes"
             }
           },
           "gridPos": {
@@ -1383,13 +1379,13 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-3\"}) / 1024 / 1024)",
+              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-3\"}))",
               "instant": true,
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "work-3  \u00b7  Memory (MiB)",
+          "title": "work-3  \u00b7  Memory",
           "type": "bargauge"
         }
       ],
