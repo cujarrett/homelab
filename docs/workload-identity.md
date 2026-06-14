@@ -1,14 +1,18 @@
 # Workload Identity
 
-Static IAM keys in Kubernetes Secrets are a solved problem. You just have to actually solve it.
+Right now, every service that talks to AWS does it with a static access key sitting in a
+Kubernetes Secret. It was created once. It never rotates. If anything goes wrong, that key
+is valid until I notice — and "until I notice" is not a security model.
 
-Today every platform offering that touches AWS writes a long-lived access key pair into a
-binding Secret. That key never rotates unless you rotate it manually. If a pod is compromised,
-the key is valid indefinitely. SPIFFE and SPIRE exist to fix this by giving every workload a
-cryptographic identity — a short-lived X.509 certificate scoped to exactly that workload —
-that it can exchange for temporary AWS credentials at runtime.
+The fix is giving each workload its own short-lived identity instead of a shared password.
+A cert that proves "I am the my-vinyl-api pod, in the my-vinyl namespace, on this cluster"
+and expires in an hour. AWS sees the cert, checks that it was signed by a CA it trusts,
+and hands back temporary credentials. No key to leak. Nothing to rotate. The next cert is
+already being fetched before the old one expires.
 
-No static keys. No rotation scripts. No "we'll clean that up later."
+That's what this is. SPIFFE defines the identity format. SPIRE issues the certs. IAM Roles
+Anywhere is the AWS side that accepts them. Each piece is boring on its own — combined, they
+replace a class of credential problem entirely.
 
 ---
 
@@ -44,7 +48,7 @@ workaround. It works but it's a kludge.
 
 IAM Roles Anywhere is purely certificate-based. The workload presents its cert to AWS STS.
 AWS validates the chain against a trust anchor you registered. No inbound connection to your
-cluster. Designed for exactly this topology.
+cluster. Designed for exactly the type of topology between my homelab cluster and AWS.
 
 ---
 
@@ -72,14 +76,13 @@ The app-facing service binding path doesn't change. The platform swaps what's be
 | Offering | Auth mechanism | Changes |
 |---|---|---|
 | `XObjectStorage` | IAM Roles Anywhere | Replace static key with role ARN + SPIRE sidecar |
-| `XNoSql` | IAM Roles Anywhere | Same as above |
+| `XNoSql` | IAM Roles Anywhere | Replace static key with role ARN + SPIRE sidecar |
 | `XSql` (RDS) | IAM DB Auth + Roles Anywhere | IAM role grants `rds-db:connect`; no password |
 | `XSql` (in-cluster Postgres) | Linkerd mTLS | No AWS auth; mesh enforces identity |
 | `XCache` (in-cluster Redis) | Linkerd mTLS | No AWS auth; mesh enforces identity |
-| `XCache` (ElastiCache) | IAM Roles Anywhere | Same as XObjectStorage pattern |
+| `XCache` (ElastiCache) | IAM Roles Anywhere | Replace static key with role ARN + SPIRE sidecar |
 | `XTopic` | NATS JWT auth (separate) | Out of scope for this plan |
 | `XSubscription` | NATS JWT auth (separate) | Out of scope for this plan |
-| `XWordpress` | Out of scope | — |
 
 ---
 
