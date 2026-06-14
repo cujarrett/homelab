@@ -45,7 +45,7 @@ data:
                     "1": {
                       "color": "green",
                       "index": 0,
-                      "text": "✓"
+                      "text": "\u2713"
                     }
                   },
                   "type": "value"
@@ -56,13 +56,13 @@ data:
                     "result": {
                       "color": "red",
                       "index": 1,
-                      "text": "✗"
+                      "text": "\u2717"
                     }
                   },
                   "type": "special"
                 }
               ],
-              "noValue": "✗",
+              "noValue": "\u2717",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -288,7 +288,7 @@ data:
               "refId": "H"
             }
           ],
-          "title": "Network I/O — All Nodes",
+          "title": "Network I/O \u2014 All Nodes",
           "type": "timeseries"
         },
         {
@@ -380,7 +380,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "CPU °C"
+                  "options": "CPU \u00b0C"
                 },
                 "properties": [
                   {
@@ -412,7 +412,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "NVMe °C"
+                  "options": "NVMe \u00b0C"
                 },
                 "properties": [
                   {
@@ -435,6 +435,42 @@ data:
                         {
                           "color": "red",
                           "value": 70
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Pods"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 20
+                        },
+                        {
+                          "color": "red",
+                          "value": 30
                         }
                       ]
                     }
@@ -493,7 +529,7 @@ data:
                 "uid": "prometheus"
               },
               "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.100:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
-              "legendFormat": "CPU °C",
+              "legendFormat": "CPU \u00b0C",
               "refId": "C"
             },
             {
@@ -502,8 +538,18 @@ data:
                 "uid": "prometheus"
               },
               "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.100:9100\",chip=\"nvme_nvme0\",sensor=\"temp1\"}",
-              "legendFormat": "NVMe °C",
+              "legendFormat": "NVMe \u00b0C",
               "refId": "D"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "count(kube_pod_info{node=\"ctrl-1\"})",
+              "legendFormat": "Pods",
+              "refId": "E",
+              "instant": true
             }
           ],
           "title": "ctrl-1",
@@ -598,7 +644,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "CPU °C"
+                  "options": "CPU \u00b0C"
                 },
                 "properties": [
                   {
@@ -630,7 +676,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "NVMe °C"
+                  "options": "NVMe \u00b0C"
                 },
                 "properties": [
                   {
@@ -653,6 +699,42 @@ data:
                         {
                           "color": "red",
                           "value": 70
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Pods"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 20
+                        },
+                        {
+                          "color": "red",
+                          "value": 30
                         }
                       ]
                     }
@@ -711,7 +793,7 @@ data:
                 "uid": "prometheus"
               },
               "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.101:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
-              "legendFormat": "CPU °C",
+              "legendFormat": "CPU \u00b0C",
               "refId": "C"
             },
             {
@@ -720,8 +802,18 @@ data:
                 "uid": "prometheus"
               },
               "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.101:9100\",chip=\"nvme_nvme0\",sensor=\"temp1\"}",
-              "legendFormat": "NVMe °C",
+              "legendFormat": "NVMe \u00b0C",
               "refId": "D"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "count(kube_pod_info{node=\"work-1\"})",
+              "legendFormat": "Pods",
+              "refId": "E",
+              "instant": true
             }
           ],
           "title": "work-1",
@@ -816,7 +908,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "CPU °C"
+                  "options": "CPU \u00b0C"
                 },
                 "properties": [
                   {
@@ -848,7 +940,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "NVMe °C"
+                  "options": "NVMe \u00b0C"
                 },
                 "properties": [
                   {
@@ -871,6 +963,42 @@ data:
                         {
                           "color": "red",
                           "value": 70
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Pods"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 20
+                        },
+                        {
+                          "color": "red",
+                          "value": 30
                         }
                       ]
                     }
@@ -929,7 +1057,7 @@ data:
                 "uid": "prometheus"
               },
               "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.102:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
-              "legendFormat": "CPU °C",
+              "legendFormat": "CPU \u00b0C",
               "refId": "C"
             },
             {
@@ -938,8 +1066,18 @@ data:
                 "uid": "prometheus"
               },
               "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.102:9100\",chip=\"nvme_nvme0\",sensor=\"temp1\"}",
-              "legendFormat": "NVMe °C",
+              "legendFormat": "NVMe \u00b0C",
               "refId": "D"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "count(kube_pod_info{node=\"work-2\"})",
+              "legendFormat": "Pods",
+              "refId": "E",
+              "instant": true
             }
           ],
           "title": "work-2",
@@ -1034,7 +1172,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "CPU °C"
+                  "options": "CPU \u00b0C"
                 },
                 "properties": [
                   {
@@ -1066,7 +1204,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "NVMe °C"
+                  "options": "NVMe \u00b0C"
                 },
                 "properties": [
                   {
@@ -1089,6 +1227,42 @@ data:
                         {
                           "color": "red",
                           "value": 70
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Pods"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 20
+                        },
+                        {
+                          "color": "red",
+                          "value": 30
                         }
                       ]
                     }
@@ -1147,7 +1321,7 @@ data:
                 "uid": "prometheus"
               },
               "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.103:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
-              "legendFormat": "CPU °C",
+              "legendFormat": "CPU \u00b0C",
               "refId": "C"
             },
             {
@@ -1156,8 +1330,18 @@ data:
                 "uid": "prometheus"
               },
               "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.103:9100\",chip=\"nvme_nvme0\",sensor=\"temp1\"}",
-              "legendFormat": "NVMe °C",
+              "legendFormat": "NVMe \u00b0C",
               "refId": "D"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "count(kube_pod_info{node=\"work-3\"})",
+              "legendFormat": "Pods",
+              "refId": "E",
+              "instant": true
             }
           ],
           "title": "work-3",
@@ -1180,7 +1364,7 @@ data:
       },
       "timepicker": {},
       "timezone": "browser",
-      "title": "Homelab — Kiosk",
+      "title": "Homelab \u2014 Kiosk",
       "uid": "homelab-kiosk",
       "version": 4,
       "weekStart": ""

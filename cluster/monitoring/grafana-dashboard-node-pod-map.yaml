@@ -61,7 +61,41 @@ data:
                 ]
               },
               "unit": "percent"
-            }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Temp \u00b0C"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "celsius"
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 60
+                        },
+                        {
+                          "color": "red",
+                          "value": 75
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
           },
           "gridPos": {
             "h": 6,
@@ -118,6 +152,16 @@ data:
               "instant": true,
               "legendFormat": "Pods",
               "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.100:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
+              "legendFormat": "Temp \u00b0C",
+              "refId": "D",
+              "instant": true
             }
           ],
           "title": "ctrl-1",
@@ -188,6 +232,38 @@ data:
                     }
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Temp \u00b0C"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "celsius"
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 60
+                        },
+                        {
+                          "color": "red",
+                          "value": 75
+                        }
+                      ]
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -246,6 +322,16 @@ data:
               "instant": true,
               "legendFormat": "Pods",
               "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.101:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
+              "legendFormat": "Temp \u00b0C",
+              "refId": "D",
+              "instant": true
             }
           ],
           "title": "work-1",
@@ -316,6 +402,38 @@ data:
                     }
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Temp \u00b0C"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "celsius"
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 60
+                        },
+                        {
+                          "color": "red",
+                          "value": 75
+                        }
+                      ]
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -374,6 +492,16 @@ data:
               "instant": true,
               "legendFormat": "Pods",
               "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.102:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
+              "legendFormat": "Temp \u00b0C",
+              "refId": "D",
+              "instant": true
             }
           ],
           "title": "work-2",
@@ -444,6 +572,38 @@ data:
                     }
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Temp \u00b0C"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "celsius"
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 60
+                        },
+                        {
+                          "color": "red",
+                          "value": 75
+                        }
+                      ]
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -502,6 +662,16 @@ data:
               "instant": true,
               "legendFormat": "Pods",
               "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.103:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
+              "legendFormat": "Temp \u00b0C",
+              "refId": "D",
+              "instant": true
             }
           ],
           "title": "work-3",
@@ -1186,6 +1356,610 @@ data:
           ],
           "title": "work-3  \u00b7  Memory Saturation %",
           "type": "bargauge"
+        },
+        {
+          "id": 13,
+          "type": "bargauge",
+          "title": "ctrl-1  \u00b7  Raw CPU (no limits)",
+          "description": "Pods without CPU limits \u2014 raw CPU cores. Absent from the saturation rows above.",
+          "gridPos": {
+            "x": 0,
+            "y": 28,
+            "w": 6,
+            "h": 10
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 0.1
+                  },
+                  {
+                    "color": "orange",
+                    "value": 0.3
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.6
+                  }
+                ]
+              },
+              "unit": "short",
+              "decimals": 3,
+              "min": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "displayMode": "gradient",
+            "minVizHeight": 10,
+            "minVizWidth": 0,
+            "namePlacement": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "valueMode": "color"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"ctrl-1\"} unless on(pod) kube_pod_container_resource_limits{resource=\"cpu\",node=\"ctrl-1\"}))",
+              "legendFormat": "{{pod}}",
+              "refId": "A",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 17,
+          "type": "bargauge",
+          "title": "ctrl-1  \u00b7  Raw Memory (no limits)",
+          "description": "Pods without memory limits \u2014 raw working set bytes. Absent from the saturation rows above.",
+          "gridPos": {
+            "x": 0,
+            "y": 38,
+            "w": 6,
+            "h": 10
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 67108864
+                  },
+                  {
+                    "color": "orange",
+                    "value": 268435456
+                  },
+                  {
+                    "color": "red",
+                    "value": 536870912
+                  }
+                ]
+              },
+              "unit": "bytes",
+              "min": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "displayMode": "gradient",
+            "minVizHeight": 10,
+            "minVizWidth": 0,
+            "namePlacement": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "valueMode": "color"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"ctrl-1\"} unless on(pod) kube_pod_container_resource_limits{resource=\"memory\",node=\"ctrl-1\"}))",
+              "legendFormat": "{{pod}}",
+              "refId": "A",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 14,
+          "type": "bargauge",
+          "title": "work-1  \u00b7  Raw CPU (no limits)",
+          "description": "Pods without CPU limits \u2014 raw CPU cores. Absent from the saturation rows above.",
+          "gridPos": {
+            "x": 6,
+            "y": 28,
+            "w": 6,
+            "h": 10
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 0.1
+                  },
+                  {
+                    "color": "orange",
+                    "value": 0.3
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.6
+                  }
+                ]
+              },
+              "unit": "short",
+              "decimals": 3,
+              "min": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "displayMode": "gradient",
+            "minVizHeight": 10,
+            "minVizWidth": 0,
+            "namePlacement": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "valueMode": "color"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-1\"} unless on(pod) kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-1\"}))",
+              "legendFormat": "{{pod}}",
+              "refId": "A",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 18,
+          "type": "bargauge",
+          "title": "work-1  \u00b7  Raw Memory (no limits)",
+          "description": "Pods without memory limits \u2014 raw working set bytes. Absent from the saturation rows above.",
+          "gridPos": {
+            "x": 6,
+            "y": 38,
+            "w": 6,
+            "h": 10
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 67108864
+                  },
+                  {
+                    "color": "orange",
+                    "value": 268435456
+                  },
+                  {
+                    "color": "red",
+                    "value": 536870912
+                  }
+                ]
+              },
+              "unit": "bytes",
+              "min": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "displayMode": "gradient",
+            "minVizHeight": 10,
+            "minVizWidth": 0,
+            "namePlacement": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "valueMode": "color"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-1\"} unless on(pod) kube_pod_container_resource_limits{resource=\"memory\",node=\"work-1\"}))",
+              "legendFormat": "{{pod}}",
+              "refId": "A",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 15,
+          "type": "bargauge",
+          "title": "work-2  \u00b7  Raw CPU (no limits)",
+          "description": "Pods without CPU limits \u2014 raw CPU cores. Absent from the saturation rows above.",
+          "gridPos": {
+            "x": 12,
+            "y": 28,
+            "w": 6,
+            "h": 10
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 0.1
+                  },
+                  {
+                    "color": "orange",
+                    "value": 0.3
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.6
+                  }
+                ]
+              },
+              "unit": "short",
+              "decimals": 3,
+              "min": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "displayMode": "gradient",
+            "minVizHeight": 10,
+            "minVizWidth": 0,
+            "namePlacement": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "valueMode": "color"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-2\"} unless on(pod) kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-2\"}))",
+              "legendFormat": "{{pod}}",
+              "refId": "A",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 19,
+          "type": "bargauge",
+          "title": "work-2  \u00b7  Raw Memory (no limits)",
+          "description": "Pods without memory limits \u2014 raw working set bytes. Absent from the saturation rows above.",
+          "gridPos": {
+            "x": 12,
+            "y": 38,
+            "w": 6,
+            "h": 10
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 67108864
+                  },
+                  {
+                    "color": "orange",
+                    "value": 268435456
+                  },
+                  {
+                    "color": "red",
+                    "value": 536870912
+                  }
+                ]
+              },
+              "unit": "bytes",
+              "min": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "displayMode": "gradient",
+            "minVizHeight": 10,
+            "minVizWidth": 0,
+            "namePlacement": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "valueMode": "color"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-2\"} unless on(pod) kube_pod_container_resource_limits{resource=\"memory\",node=\"work-2\"}))",
+              "legendFormat": "{{pod}}",
+              "refId": "A",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 16,
+          "type": "bargauge",
+          "title": "work-3  \u00b7  Raw CPU (no limits)",
+          "description": "Pods without CPU limits \u2014 raw CPU cores. Absent from the saturation rows above.",
+          "gridPos": {
+            "x": 18,
+            "y": 28,
+            "w": 6,
+            "h": 10
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 0.1
+                  },
+                  {
+                    "color": "orange",
+                    "value": 0.3
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.6
+                  }
+                ]
+              },
+              "unit": "short",
+              "decimals": 3,
+              "min": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "displayMode": "gradient",
+            "minVizHeight": 10,
+            "minVizWidth": 0,
+            "namePlacement": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "valueMode": "color"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-3\"} unless on(pod) kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-3\"}))",
+              "legendFormat": "{{pod}}",
+              "refId": "A",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 20,
+          "type": "bargauge",
+          "title": "work-3  \u00b7  Raw Memory (no limits)",
+          "description": "Pods without memory limits \u2014 raw working set bytes. Absent from the saturation rows above.",
+          "gridPos": {
+            "x": 18,
+            "y": 38,
+            "w": 6,
+            "h": 10
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 67108864
+                  },
+                  {
+                    "color": "orange",
+                    "value": 268435456
+                  },
+                  {
+                    "color": "red",
+                    "value": 536870912
+                  }
+                ]
+              },
+              "unit": "bytes",
+              "min": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "displayMode": "gradient",
+            "minVizHeight": 10,
+            "minVizWidth": 0,
+            "namePlacement": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "valueMode": "color"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-3\"} unless on(pod) kube_pod_container_resource_limits{resource=\"memory\",node=\"work-3\"}))",
+              "legendFormat": "{{pod}}",
+              "refId": "A",
+              "instant": true
+            }
+          ]
         }
       ],
       "preload": false,
