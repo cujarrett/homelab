@@ -747,7 +747,7 @@ data:
                   }
                 ]
               },
-              "unit": "percent"
+              "unit": "short"
             }
           },
           "gridPos": {
@@ -786,15 +786,15 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "${datasource}"
               },
-              "expr": "sort_desc((sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"ctrl-1\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"cpu\",node=\"ctrl-1\"})) or (sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"ctrl-1\"} unless on(pod) kube_pod_container_resource_limits{resource=\"cpu\",node=\"ctrl-1\"}) / sum by(pod) (kube_pod_container_resource_requests{resource=\"cpu\",node=\"ctrl-1\"})) * 100)",
+              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"ctrl-1\"}) * 1000)",
               "instant": true,
-              "legendFormat": "{{pod}}",
+              "legendFormat": "{{{{pod}}}}",
               "refId": "A"
             }
           ],
-          "title": "ctrl-1  \u00b7  CPU % of Limit (or Request)",
+          "title": "ctrl-1  \u00b7  CPU (millicores)",
           "type": "bargauge"
         },
         {
@@ -832,7 +832,7 @@ data:
                   }
                 ]
               },
-              "unit": "percent"
+              "unit": "short"
             }
           },
           "gridPos": {
@@ -871,15 +871,15 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "${datasource}"
               },
-              "expr": "sort_desc((sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-1\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-1\"})) or (sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-1\"} unless on(pod) kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-1\"}) / sum by(pod) (kube_pod_container_resource_requests{resource=\"cpu\",node=\"work-1\"})) * 100)",
+              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-1\"}) * 1000)",
               "instant": true,
-              "legendFormat": "{{pod}}",
+              "legendFormat": "{{{{pod}}}}",
               "refId": "A"
             }
           ],
-          "title": "work-1  \u00b7  CPU % of Limit (or Request)",
+          "title": "work-1  \u00b7  CPU (millicores)",
           "type": "bargauge"
         },
         {
@@ -917,7 +917,7 @@ data:
                   }
                 ]
               },
-              "unit": "percent"
+              "unit": "short"
             }
           },
           "gridPos": {
@@ -956,15 +956,15 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "${datasource}"
               },
-              "expr": "sort_desc((sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-2\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-2\"})) or (sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-2\"} unless on(pod) kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-2\"}) / sum by(pod) (kube_pod_container_resource_requests{resource=\"cpu\",node=\"work-2\"})) * 100)",
+              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-2\"}) * 1000)",
               "instant": true,
-              "legendFormat": "{{pod}}",
+              "legendFormat": "{{{{pod}}}}",
               "refId": "A"
             }
           ],
-          "title": "work-2  \u00b7  CPU % of Limit (or Request)",
+          "title": "work-2  \u00b7  CPU (millicores)",
           "type": "bargauge"
         },
         {
@@ -1002,7 +1002,7 @@ data:
                   }
                 ]
               },
-              "unit": "percent"
+              "unit": "short"
             }
           },
           "gridPos": {
@@ -1041,15 +1041,15 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "${datasource}"
               },
-              "expr": "sort_desc((sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-3\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-3\"})) or (sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-3\"} unless on(pod) kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-3\"}) / sum by(pod) (kube_pod_container_resource_requests{resource=\"cpu\",node=\"work-3\"})) * 100)",
+              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-3\"}) * 1000)",
               "instant": true,
-              "legendFormat": "{{pod}}",
+              "legendFormat": "{{{{pod}}}}",
               "refId": "A"
             }
           ],
-          "title": "work-3  \u00b7  CPU % of Limit (or Request)",
+          "title": "work-3  \u00b7  CPU (millicores)",
           "type": "bargauge"
         },
         {
@@ -1063,7 +1063,7 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 1,
+              "decimals": 0,
               "max": 110,
               "min": 0,
               "thresholds": {
@@ -1087,7 +1087,7 @@ data:
                   }
                 ]
               },
-              "unit": "percent"
+              "unit": "short"
             }
           },
           "gridPos": {
@@ -1126,15 +1126,15 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "${datasource}"
               },
-              "expr": "sort_desc((sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"ctrl-1\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\",node=\"ctrl-1\"})) or (sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"ctrl-1\"} unless on(pod) kube_pod_container_resource_limits{resource=\"memory\",node=\"ctrl-1\"}) / sum by(pod) (kube_pod_container_resource_requests{resource=\"memory\",node=\"ctrl-1\"})) * 100)",
+              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"ctrl-1\"}) / 1024 / 1024)",
               "instant": true,
-              "legendFormat": "{{pod}}",
+              "legendFormat": "{{{{pod}}}}",
               "refId": "A"
             }
           ],
-          "title": "ctrl-1  \u00b7  Memory % of Limit (or Request)",
+          "title": "ctrl-1  \u00b7  Memory (MiB)",
           "type": "bargauge"
         },
         {
@@ -1148,7 +1148,7 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 1,
+              "decimals": 0,
               "max": 110,
               "min": 0,
               "thresholds": {
@@ -1172,7 +1172,7 @@ data:
                   }
                 ]
               },
-              "unit": "percent"
+              "unit": "short"
             }
           },
           "gridPos": {
@@ -1211,15 +1211,15 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "${datasource}"
               },
-              "expr": "sort_desc((sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-1\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\",node=\"work-1\"})) or (sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-1\"} unless on(pod) kube_pod_container_resource_limits{resource=\"memory\",node=\"work-1\"}) / sum by(pod) (kube_pod_container_resource_requests{resource=\"memory\",node=\"work-1\"})) * 100)",
+              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-1\"}) / 1024 / 1024)",
               "instant": true,
-              "legendFormat": "{{pod}}",
+              "legendFormat": "{{{{pod}}}}",
               "refId": "A"
             }
           ],
-          "title": "work-1  \u00b7  Memory % of Limit (or Request)",
+          "title": "work-1  \u00b7  Memory (MiB)",
           "type": "bargauge"
         },
         {
@@ -1233,7 +1233,7 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 1,
+              "decimals": 0,
               "max": 110,
               "min": 0,
               "thresholds": {
@@ -1257,7 +1257,7 @@ data:
                   }
                 ]
               },
-              "unit": "percent"
+              "unit": "short"
             }
           },
           "gridPos": {
@@ -1296,15 +1296,15 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "${datasource}"
               },
-              "expr": "sort_desc((sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-2\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\",node=\"work-2\"})) or (sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-2\"} unless on(pod) kube_pod_container_resource_limits{resource=\"memory\",node=\"work-2\"}) / sum by(pod) (kube_pod_container_resource_requests{resource=\"memory\",node=\"work-2\"})) * 100)",
+              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-2\"}) / 1024 / 1024)",
               "instant": true,
-              "legendFormat": "{{pod}}",
+              "legendFormat": "{{{{pod}}}}",
               "refId": "A"
             }
           ],
-          "title": "work-2  \u00b7  Memory % of Limit (or Request)",
+          "title": "work-2  \u00b7  Memory (MiB)",
           "type": "bargauge"
         },
         {
@@ -1318,7 +1318,7 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 1,
+              "decimals": 0,
               "max": 110,
               "min": 0,
               "thresholds": {
@@ -1342,7 +1342,7 @@ data:
                   }
                 ]
               },
-              "unit": "percent"
+              "unit": "short"
             }
           },
           "gridPos": {
@@ -1381,15 +1381,15 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "${datasource}"
               },
-              "expr": "sort_desc((sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-3\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\",node=\"work-3\"})) or (sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-3\"} unless on(pod) kube_pod_container_resource_limits{resource=\"memory\",node=\"work-3\"}) / sum by(pod) (kube_pod_container_resource_requests{resource=\"memory\",node=\"work-3\"})) * 100)",
+              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-3\"}) / 1024 / 1024)",
               "instant": true,
-              "legendFormat": "{{pod}}",
+              "legendFormat": "{{{{pod}}}}",
               "refId": "A"
             }
           ],
-          "title": "work-3  \u00b7  Memory % of Limit (or Request)",
+          "title": "work-3  \u00b7  Memory (MiB)",
           "type": "bargauge"
         }
       ],
