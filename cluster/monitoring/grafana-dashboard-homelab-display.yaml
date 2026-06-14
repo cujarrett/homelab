@@ -8,274 +8,658 @@ metadata:
 data:
   homelab-display.json: |-
     {
-      "annotations": {
-        "list": [
-          {
-            "builtIn": 1,
-            "datasource": {
-              "type": "grafana",
-              "uid": "-- Grafana --"
-            },
-            "enable": true,
-            "hide": true,
-            "iconColor": "rgba(0, 211, 255, 1)",
-            "name": "Annotations & Alerts",
-            "type": "dashboard"
-          }
-        ]
-      },
-      "editable": true,
-      "fiscalYearStartMonth": 0,
-      "graphTooltip": 0,
-      "links": [],
-      "panels": [
-        {
-          "id": 1, "type": "stat", "title": "ctrl-1",
-          "gridPos": { "x": 0, "y": 0, "w": 6, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "decimals": 0,
-              "min": 0, "max": 100,
-              "thresholds": { "mode": "absolute", "steps": [
-                { "color": "green", "value": 0 },
-                { "color": "yellow", "value": 60 },
-                { "color": "orange", "value": 80 },
-                { "color": "red", "value": 90 }
-              ]},
-              "unit": "percent"
-            },
-            "overrides": [
-              { "matcher": { "id": "byName", "options": "Pods" }, "properties": [
-                { "id": "unit", "value": "short" },
-                { "id": "thresholds", "value": { "mode": "absolute", "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "yellow", "value": 20 },
-                  { "color": "red", "value": 30 }
-                ]}}
-              ]},
-              { "matcher": { "id": "byName", "options": "Temp \u00b0C" }, "properties": [
-                { "id": "unit", "value": "celsius" },
-                { "id": "thresholds", "value": { "mode": "absolute", "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "yellow", "value": 60 },
-                  { "color": "red", "value": 75 }
-                ]}}
-              ]}
+        "annotations": {
+            "list": [
+                {
+                    "builtIn": 1,
+                    "datasource": {
+                        "type": "grafana",
+                        "uid": "-- Grafana --"
+                    },
+                    "enable": true,
+                    "hide": true,
+                    "iconColor": "rgba(0, 211, 255, 1)",
+                    "name": "Annotations & Alerts",
+                    "type": "dashboard"
+                }
             ]
-          },
-          "options": {
-            "colorMode": "background", "graphMode": "none",
-            "justifyMode": "auto", "orientation": "horizontal",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-            "textMode": "auto", "wideLayout": true
-          },
-          "targets": [
-            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
-              "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.100:9100\",mode=\"idle\"}[2m])) * 100)",
-              "legendFormat": "CPU" },
-            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
-              "expr": "(1 - node_memory_MemAvailable_bytes{instance=\"192.168.10.100:9100\"} / node_memory_MemTotal_bytes{instance=\"192.168.10.100:9100\"}) * 100",
-              "legendFormat": "Mem" },
-            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
-              "expr": "count(kube_pod_info{node=\"ctrl-1\"})",
-              "legendFormat": "Pods" },
-            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
-              "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.100:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
-              "legendFormat": "Temp \u00b0C" }
-          ]
         },
-        {
-          "id": 2, "type": "stat", "title": "work-1",
-          "gridPos": { "x": 6, "y": 0, "w": 6, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "decimals": 0,
-              "min": 0, "max": 100,
-              "thresholds": { "mode": "absolute", "steps": [
-                { "color": "green", "value": 0 },
-                { "color": "yellow", "value": 60 },
-                { "color": "orange", "value": 80 },
-                { "color": "red", "value": 90 }
-              ]},
-              "unit": "percent"
+        "editable": true,
+        "fiscalYearStartMonth": 0,
+        "graphTooltip": 0,
+        "links": [],
+        "panels": [
+            {
+                "id": 1,
+                "type": "stat",
+                "title": "ctrl-1",
+                "gridPos": {
+                    "x": 0,
+                    "y": 0,
+                    "w": 6,
+                    "h": 5
+                },
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "decimals": 0,
+                        "min": 0,
+                        "max": 100,
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "color": "green",
+                                    "value": 0
+                                },
+                                {
+                                    "color": "yellow",
+                                    "value": 60
+                                },
+                                {
+                                    "color": "orange",
+                                    "value": 80
+                                },
+                                {
+                                    "color": "red",
+                                    "value": 90
+                                }
+                            ]
+                        },
+                        "unit": "percent"
+                    },
+                    "overrides": [
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Pods"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "short"
+                                },
+                                {
+                                    "id": "color",
+                                    "value": {
+                                        "fixedColor": "purple",
+                                        "mode": "fixed"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Temp °C"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "celsius"
+                                },
+                                {
+                                    "id": "thresholds",
+                                    "value": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": 0
+                                            },
+                                            {
+                                                "color": "yellow",
+                                                "value": 60
+                                            },
+                                            {
+                                                "color": "red",
+                                                "value": 75
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "options": {
+                    "colorMode": "background",
+                    "graphMode": "none",
+                    "justifyMode": "auto",
+                    "orientation": "horizontal",
+                    "reduceOptions": {
+                        "calcs": [
+                            "lastNotNull"
+                        ],
+                        "fields": "",
+                        "values": false
+                    },
+                    "textMode": "auto",
+                    "wideLayout": true
+                },
+                "targets": [
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.100:9100\",mode=\"idle\"}[2m])) * 100)",
+                        "legendFormat": "CPU"
+                    },
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "(1 - node_memory_MemAvailable_bytes{instance=\"192.168.10.100:9100\"} / node_memory_MemTotal_bytes{instance=\"192.168.10.100:9100\"}) * 100",
+                        "legendFormat": "Mem"
+                    },
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.100:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
+                        "legendFormat": "Temp °C"
+                    },
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "count(kube_pod_info{node=\"ctrl-1\"})",
+                        "legendFormat": "Pods"
+                    }
+                ]
             },
-            "overrides": [
-              { "matcher": { "id": "byName", "options": "Pods" }, "properties": [
-                { "id": "unit", "value": "short" },
-                { "id": "thresholds", "value": { "mode": "absolute", "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "yellow", "value": 20 },
-                  { "color": "red", "value": 30 }
-                ]}}
-              ]},
-              { "matcher": { "id": "byName", "options": "Temp \u00b0C" }, "properties": [
-                { "id": "unit", "value": "celsius" },
-                { "id": "thresholds", "value": { "mode": "absolute", "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "yellow", "value": 60 },
-                  { "color": "red", "value": 75 }
-                ]}}
-              ]}
-            ]
-          },
-          "options": {
-            "colorMode": "background", "graphMode": "none",
-            "justifyMode": "auto", "orientation": "horizontal",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-            "textMode": "auto", "wideLayout": true
-          },
-          "targets": [
-            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
-              "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.101:9100\",mode=\"idle\"}[2m])) * 100)",
-              "legendFormat": "CPU" },
-            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
-              "expr": "(1 - node_memory_MemAvailable_bytes{instance=\"192.168.10.101:9100\"} / node_memory_MemTotal_bytes{instance=\"192.168.10.101:9100\"}) * 100",
-              "legendFormat": "Mem" },
-            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
-              "expr": "count(kube_pod_info{node=\"work-1\"})",
-              "legendFormat": "Pods" },
-            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
-              "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.101:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
-              "legendFormat": "Temp \u00b0C" }
-          ]
+            {
+                "id": 2,
+                "type": "stat",
+                "title": "work-1",
+                "gridPos": {
+                    "x": 6,
+                    "y": 0,
+                    "w": 6,
+                    "h": 5
+                },
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "decimals": 0,
+                        "min": 0,
+                        "max": 100,
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "color": "green",
+                                    "value": 0
+                                },
+                                {
+                                    "color": "yellow",
+                                    "value": 60
+                                },
+                                {
+                                    "color": "orange",
+                                    "value": 80
+                                },
+                                {
+                                    "color": "red",
+                                    "value": 90
+                                }
+                            ]
+                        },
+                        "unit": "percent"
+                    },
+                    "overrides": [
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Pods"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "short"
+                                },
+                                {
+                                    "id": "color",
+                                    "value": {
+                                        "fixedColor": "purple",
+                                        "mode": "fixed"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Temp °C"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "celsius"
+                                },
+                                {
+                                    "id": "thresholds",
+                                    "value": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": 0
+                                            },
+                                            {
+                                                "color": "yellow",
+                                                "value": 60
+                                            },
+                                            {
+                                                "color": "red",
+                                                "value": 75
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "options": {
+                    "colorMode": "background",
+                    "graphMode": "none",
+                    "justifyMode": "auto",
+                    "orientation": "horizontal",
+                    "reduceOptions": {
+                        "calcs": [
+                            "lastNotNull"
+                        ],
+                        "fields": "",
+                        "values": false
+                    },
+                    "textMode": "auto",
+                    "wideLayout": true
+                },
+                "targets": [
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.101:9100\",mode=\"idle\"}[2m])) * 100)",
+                        "legendFormat": "CPU"
+                    },
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "(1 - node_memory_MemAvailable_bytes{instance=\"192.168.10.101:9100\"} / node_memory_MemTotal_bytes{instance=\"192.168.10.101:9100\"}) * 100",
+                        "legendFormat": "Mem"
+                    },
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.101:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
+                        "legendFormat": "Temp °C"
+                    },
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "count(kube_pod_info{node=\"work-1\"})",
+                        "legendFormat": "Pods"
+                    }
+                ]
+            },
+            {
+                "id": 3,
+                "type": "stat",
+                "title": "work-2",
+                "gridPos": {
+                    "x": 12,
+                    "y": 0,
+                    "w": 6,
+                    "h": 5
+                },
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "decimals": 0,
+                        "min": 0,
+                        "max": 100,
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "color": "green",
+                                    "value": 0
+                                },
+                                {
+                                    "color": "yellow",
+                                    "value": 60
+                                },
+                                {
+                                    "color": "orange",
+                                    "value": 80
+                                },
+                                {
+                                    "color": "red",
+                                    "value": 90
+                                }
+                            ]
+                        },
+                        "unit": "percent"
+                    },
+                    "overrides": [
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Pods"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "short"
+                                },
+                                {
+                                    "id": "color",
+                                    "value": {
+                                        "fixedColor": "purple",
+                                        "mode": "fixed"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Temp °C"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "celsius"
+                                },
+                                {
+                                    "id": "thresholds",
+                                    "value": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": 0
+                                            },
+                                            {
+                                                "color": "yellow",
+                                                "value": 60
+                                            },
+                                            {
+                                                "color": "red",
+                                                "value": 75
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "options": {
+                    "colorMode": "background",
+                    "graphMode": "none",
+                    "justifyMode": "auto",
+                    "orientation": "horizontal",
+                    "reduceOptions": {
+                        "calcs": [
+                            "lastNotNull"
+                        ],
+                        "fields": "",
+                        "values": false
+                    },
+                    "textMode": "auto",
+                    "wideLayout": true
+                },
+                "targets": [
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.102:9100\",mode=\"idle\"}[2m])) * 100)",
+                        "legendFormat": "CPU"
+                    },
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "(1 - node_memory_MemAvailable_bytes{instance=\"192.168.10.102:9100\"} / node_memory_MemTotal_bytes{instance=\"192.168.10.102:9100\"}) * 100",
+                        "legendFormat": "Mem"
+                    },
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.102:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
+                        "legendFormat": "Temp °C"
+                    },
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "count(kube_pod_info{node=\"work-2\"})",
+                        "legendFormat": "Pods"
+                    }
+                ]
+            },
+            {
+                "id": 4,
+                "type": "stat",
+                "title": "work-3",
+                "gridPos": {
+                    "x": 18,
+                    "y": 0,
+                    "w": 6,
+                    "h": 5
+                },
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "decimals": 0,
+                        "min": 0,
+                        "max": 100,
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "color": "green",
+                                    "value": 0
+                                },
+                                {
+                                    "color": "yellow",
+                                    "value": 60
+                                },
+                                {
+                                    "color": "orange",
+                                    "value": 80
+                                },
+                                {
+                                    "color": "red",
+                                    "value": 90
+                                }
+                            ]
+                        },
+                        "unit": "percent"
+                    },
+                    "overrides": [
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Pods"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "short"
+                                },
+                                {
+                                    "id": "color",
+                                    "value": {
+                                        "fixedColor": "purple",
+                                        "mode": "fixed"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Temp °C"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "celsius"
+                                },
+                                {
+                                    "id": "thresholds",
+                                    "value": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": 0
+                                            },
+                                            {
+                                                "color": "yellow",
+                                                "value": 60
+                                            },
+                                            {
+                                                "color": "red",
+                                                "value": 75
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "options": {
+                    "colorMode": "background",
+                    "graphMode": "none",
+                    "justifyMode": "auto",
+                    "orientation": "horizontal",
+                    "reduceOptions": {
+                        "calcs": [
+                            "lastNotNull"
+                        ],
+                        "fields": "",
+                        "values": false
+                    },
+                    "textMode": "auto",
+                    "wideLayout": true
+                },
+                "targets": [
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.103:9100\",mode=\"idle\"}[2m])) * 100)",
+                        "legendFormat": "CPU"
+                    },
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "(1 - node_memory_MemAvailable_bytes{instance=\"192.168.10.103:9100\"} / node_memory_MemTotal_bytes{instance=\"192.168.10.103:9100\"}) * 100",
+                        "legendFormat": "Mem"
+                    },
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.103:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
+                        "legendFormat": "Temp °C"
+                    },
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "count(kube_pod_info{node=\"work-3\"})",
+                        "legendFormat": "Pods"
+                    }
+                ]
+            }
+        ],
+        "preload": false,
+        "refresh": "10s",
+        "schemaVersion": 42,
+        "tags": [
+            "homelab",
+            "kiosk"
+        ],
+        "templating": {
+            "list": []
         },
-        {
-          "id": 3, "type": "stat", "title": "work-2",
-          "gridPos": { "x": 12, "y": 0, "w": 6, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "decimals": 0,
-              "min": 0, "max": 100,
-              "thresholds": { "mode": "absolute", "steps": [
-                { "color": "green", "value": 0 },
-                { "color": "yellow", "value": 60 },
-                { "color": "orange", "value": 80 },
-                { "color": "red", "value": 90 }
-              ]},
-              "unit": "percent"
-            },
-            "overrides": [
-              { "matcher": { "id": "byName", "options": "Pods" }, "properties": [
-                { "id": "unit", "value": "short" },
-                { "id": "thresholds", "value": { "mode": "absolute", "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "yellow", "value": 20 },
-                  { "color": "red", "value": 30 }
-                ]}}
-              ]},
-              { "matcher": { "id": "byName", "options": "Temp \u00b0C" }, "properties": [
-                { "id": "unit", "value": "celsius" },
-                { "id": "thresholds", "value": { "mode": "absolute", "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "yellow", "value": 60 },
-                  { "color": "red", "value": 75 }
-                ]}}
-              ]}
-            ]
-          },
-          "options": {
-            "colorMode": "background", "graphMode": "none",
-            "justifyMode": "auto", "orientation": "horizontal",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-            "textMode": "auto", "wideLayout": true
-          },
-          "targets": [
-            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
-              "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.102:9100\",mode=\"idle\"}[2m])) * 100)",
-              "legendFormat": "CPU" },
-            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
-              "expr": "(1 - node_memory_MemAvailable_bytes{instance=\"192.168.10.102:9100\"} / node_memory_MemTotal_bytes{instance=\"192.168.10.102:9100\"}) * 100",
-              "legendFormat": "Mem" },
-            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
-              "expr": "count(kube_pod_info{node=\"work-2\"})",
-              "legendFormat": "Pods" },
-            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
-              "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.102:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
-              "legendFormat": "Temp \u00b0C" }
-          ]
+        "time": {
+            "from": "now-5m",
+            "to": "now"
         },
-        {
-          "id": 4, "type": "stat", "title": "work-3",
-          "gridPos": { "x": 18, "y": 0, "w": 6, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "decimals": 0,
-              "min": 0, "max": 100,
-              "thresholds": { "mode": "absolute", "steps": [
-                { "color": "green", "value": 0 },
-                { "color": "yellow", "value": 60 },
-                { "color": "orange", "value": 80 },
-                { "color": "red", "value": 90 }
-              ]},
-              "unit": "percent"
-            },
-            "overrides": [
-              { "matcher": { "id": "byName", "options": "Pods" }, "properties": [
-                { "id": "unit", "value": "short" },
-                { "id": "thresholds", "value": { "mode": "absolute", "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "yellow", "value": 20 },
-                  { "color": "red", "value": 30 }
-                ]}}
-              ]},
-              { "matcher": { "id": "byName", "options": "Temp \u00b0C" }, "properties": [
-                { "id": "unit", "value": "celsius" },
-                { "id": "thresholds", "value": { "mode": "absolute", "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "yellow", "value": 60 },
-                  { "color": "red", "value": 75 }
-                ]}}
-              ]}
-            ]
-          },
-          "options": {
-            "colorMode": "background", "graphMode": "none",
-            "justifyMode": "auto", "orientation": "horizontal",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-            "textMode": "auto", "wideLayout": true
-          },
-          "targets": [
-            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
-              "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.103:9100\",mode=\"idle\"}[2m])) * 100)",
-              "legendFormat": "CPU" },
-            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
-              "expr": "(1 - node_memory_MemAvailable_bytes{instance=\"192.168.10.103:9100\"} / node_memory_MemTotal_bytes{instance=\"192.168.10.103:9100\"}) * 100",
-              "legendFormat": "Mem" },
-            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
-              "expr": "count(kube_pod_info{node=\"work-3\"})",
-              "legendFormat": "Pods" },
-            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "instant": true,
-              "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.103:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
-              "legendFormat": "Temp \u00b0C" }
-          ]
-        }
-      ],
-      "preload": false,
-      "refresh": "10s",
-      "schemaVersion": 42,
-      "tags": [
-        "homelab",
-        "kiosk"
-      ],
-      "templating": {
-        "list": []
-      },
-      "time": {
-        "from": "now-5m",
-        "to": "now"
-      },
-      "timepicker": {},
-      "timezone": "browser",
-      "title": "Homelab \u2014 Kiosk",
-      "uid": "homelab-kiosk",
-      "version": 4,
-      "weekStart": ""
+        "timepicker": {},
+        "timezone": "browser",
+        "title": "Homelab — Kiosk",
+        "uid": "homelab-kiosk",
+        "version": 4,
+        "weekStart": ""
     }
