@@ -90,7 +90,7 @@ The app-facing service binding path doesn't change. The platform swaps what's be
 
 ---
 
-### Phase 1 — Service mesh (prerequisite)
+### Phase 1 — Service mesh (prerequisite) ✅
 
 SPIFFE and SPIRE are easier to understand once you've seen SVIDs in action. Linkerd gives
 you that for free inside the cluster. Do this first.
@@ -100,10 +100,28 @@ Follow [`docs/service-mesh.md`](service-mesh.md). The full plan is there.
 **Exit criteria before moving on:**
 - Every platform namespace has `linkerd.io/inject: enabled`
 - `linkerd viz edges po -n my-vinyl` shows mTLS between pods
-- You can run `linkerd identity -n my-vinyl deploy/my-vinyl-api` and read the SPIFFE ID in the cert's URI SAN field
+- You can run `linkerd identity -n my-vinyl $(kubectl get pod -n my-vinyl -l app=xapi -o jsonpath='{.items[0].metadata.name}')` and read the identity in the cert's Subject field
 
-That last one is important. Read the cert. Understand what `spiffe://cluster.local/ns/my-vinyl/sa/my-vinyl-api`
-means. That's the format. Trust domain + namespace + service account.
+That last one is important. When you run it, find the Subject line in the output:
+
+```
+Subject: CN=my-vinyl-api.my-vinyl.serviceaccount.identity.linkerd.cluster.local
+```
+
+That string is the pod's identity. Read it right to left: `cluster.local` is the trust
+domain, `my-vinyl` is the namespace, `my-vinyl-api` is the service account. Linkerd
+minted this cert automatically — the app didn't ask for it, configure it, or know it
+exists.
+
+This is what SPIFFE formalizes. Once SPIRE is running (Phase 3), the same identity
+appears as a URI SAN instead:
+
+```
+spiffe://homelab.local/ns/my-vinyl/sa/my-vinyl-api
+```
+
+Same information, standard format. That URI is what AWS will see in Phase 5 when it
+decides whether to hand out credentials.
 
 ---
 
