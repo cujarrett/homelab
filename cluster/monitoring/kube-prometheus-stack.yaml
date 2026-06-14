@@ -29,8 +29,6 @@ spec:
                 linkerd.io/inject: disabled
         alertmanager:
           alertmanagerSpec:
-            nodeSelector:
-              node-role.kubernetes.io/worker: worker
             storage:
               volumeClaimTemplate:
                 spec:
@@ -40,8 +38,6 @@ spec:
         grafana:
           serviceMonitor:
             enabled: false
-          nodeSelector:
-            node-role.kubernetes.io/worker: worker
           deploymentStrategy:
             type: Recreate
           admin:
@@ -88,8 +84,6 @@ spec:
             enabled: false
         prometheus:
           prometheusSpec:
-            nodeSelector:
-              node-role.kubernetes.io/worker: worker
             enableAdminAPI: true
             retention: 30d
             scrapeInterval: "60s"

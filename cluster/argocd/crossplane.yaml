@@ -14,11 +14,7 @@ spec:
         values: |
           metrics:
             enabled: true
-          nodeSelector:
-            node-role.kubernetes.io/worker: worker
-          rbacManager:
-            nodeSelector:
-              node-role.kubernetes.io/worker: worker
+          rbacManager: {}
     - repoURL: https://github.com/cujarrett/homelab.git
       targetRevision: main
       path: cluster/crossplane
