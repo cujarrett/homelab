@@ -512,36 +512,37 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Each bar = one pod. Bar length = CPU usage. Color = saturation (green \u2192 red).",
+          "description": "Each bar = one pod. Length = CPU usage \u00f7 CPU limit \u00d7 100. Color: green < 50% \u00b7 yellow < 80% \u00b7 orange < 100% \u00b7 red = over-limit. Pods without limits are hidden.",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 3,
+              "decimals": 1,
               "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
                     "color": "green",
-                    "value": 0
+                    "value": null
                   },
                   {
                     "color": "yellow",
-                    "value": 0.05
+                    "value": 50
                   },
                   {
                     "color": "orange",
-                    "value": 0.15
+                    "value": 80
                   },
                   {
                     "color": "red",
-                    "value": 0.4
+                    "value": 100
                   }
                 ]
               },
-              "unit": "short"
+              "unit": "percent",
+              "max": 110
             }
           },
           "gridPos": {
@@ -582,13 +583,13 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"ctrl-1\"}))",
+              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"ctrl-1\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"cpu\",node=\"ctrl-1\"}) * 100)",
               "instant": true,
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "ctrl-1  \u00b7  Pods by CPU",
+          "title": "ctrl-1  \u00b7  CPU Saturation %",
           "type": "bargauge"
         },
         {
@@ -596,36 +597,37 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Each bar = one pod. Bar length = CPU usage. Color = saturation (green \u2192 red).",
+          "description": "Each bar = one pod. Length = CPU usage \u00f7 CPU limit \u00d7 100. Color: green < 50% \u00b7 yellow < 80% \u00b7 orange < 100% \u00b7 red = over-limit. Pods without limits are hidden.",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 3,
+              "decimals": 1,
               "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
                     "color": "green",
-                    "value": 0
+                    "value": null
                   },
                   {
                     "color": "yellow",
-                    "value": 0.05
+                    "value": 50
                   },
                   {
                     "color": "orange",
-                    "value": 0.15
+                    "value": 80
                   },
                   {
                     "color": "red",
-                    "value": 0.4
+                    "value": 100
                   }
                 ]
               },
-              "unit": "short"
+              "unit": "percent",
+              "max": 110
             }
           },
           "gridPos": {
@@ -666,13 +668,13 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-1\"}))",
+              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-1\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-1\"}) * 100)",
               "instant": true,
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "work-1  \u00b7  Pods by CPU",
+          "title": "work-1  \u00b7  CPU Saturation %",
           "type": "bargauge"
         },
         {
@@ -680,36 +682,37 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Each bar = one pod. Bar length = CPU usage. Color = saturation (green \u2192 red).",
+          "description": "Each bar = one pod. Length = CPU usage \u00f7 CPU limit \u00d7 100. Color: green < 50% \u00b7 yellow < 80% \u00b7 orange < 100% \u00b7 red = over-limit. Pods without limits are hidden.",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 3,
+              "decimals": 1,
               "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
                     "color": "green",
-                    "value": 0
+                    "value": null
                   },
                   {
                     "color": "yellow",
-                    "value": 0.05
+                    "value": 50
                   },
                   {
                     "color": "orange",
-                    "value": 0.15
+                    "value": 80
                   },
                   {
                     "color": "red",
-                    "value": 0.4
+                    "value": 100
                   }
                 ]
               },
-              "unit": "short"
+              "unit": "percent",
+              "max": 110
             }
           },
           "gridPos": {
@@ -750,13 +753,13 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-2\"}))",
+              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-2\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-2\"}) * 100)",
               "instant": true,
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "work-2  \u00b7  Pods by CPU",
+          "title": "work-2  \u00b7  CPU Saturation %",
           "type": "bargauge"
         },
         {
@@ -764,36 +767,37 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Each bar = one pod. Bar length = CPU usage. Color = saturation (green \u2192 red).",
+          "description": "Each bar = one pod. Length = CPU usage \u00f7 CPU limit \u00d7 100. Color: green < 50% \u00b7 yellow < 80% \u00b7 orange < 100% \u00b7 red = over-limit. Pods without limits are hidden.",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 3,
+              "decimals": 1,
               "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
                     "color": "green",
-                    "value": 0
+                    "value": null
                   },
                   {
                     "color": "yellow",
-                    "value": 0.05
+                    "value": 50
                   },
                   {
                     "color": "orange",
-                    "value": 0.15
+                    "value": 80
                   },
                   {
                     "color": "red",
-                    "value": 0.4
+                    "value": 100
                   }
                 ]
               },
-              "unit": "short"
+              "unit": "percent",
+              "max": 110
             }
           },
           "gridPos": {
@@ -834,13 +838,13 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-3\"}))",
+              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-3\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-3\"}) * 100)",
               "instant": true,
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "work-3  \u00b7  Pods by CPU",
+          "title": "work-3  \u00b7  CPU Saturation %",
           "type": "bargauge"
         },
         {
@@ -848,7 +852,7 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Each bar = one pod. Bar length = memory working set. Color = saturation (green \u2192 red).",
+          "description": "Each bar = one pod. Length = memory working set \u00f7 memory limit \u00d7 100. Color: green < 50% \u00b7 yellow < 80% \u00b7 orange < 100% \u00b7 red = over-limit. Pods without limits are hidden.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -860,23 +864,25 @@ data:
                 "steps": [
                   {
                     "color": "green",
-                    "value": 0
+                    "value": null
                   },
                   {
                     "color": "yellow",
-                    "value": 67108864
+                    "value": 50
                   },
                   {
                     "color": "orange",
-                    "value": 268435456
+                    "value": 80
                   },
                   {
                     "color": "red",
-                    "value": 536870912
+                    "value": 100
                   }
                 ]
               },
-              "unit": "bytes"
+              "unit": "percent",
+              "decimals": 1,
+              "max": 110
             }
           },
           "gridPos": {
@@ -917,13 +923,13 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"ctrl-1\"}))",
+              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"ctrl-1\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\",node=\"ctrl-1\"}) * 100)",
               "instant": true,
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "ctrl-1  \u00b7  Pods by Memory",
+          "title": "ctrl-1  \u00b7  Memory Saturation %",
           "type": "bargauge"
         },
         {
@@ -931,7 +937,7 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Each bar = one pod. Bar length = memory working set. Color = saturation (green \u2192 red).",
+          "description": "Each bar = one pod. Length = memory working set \u00f7 memory limit \u00d7 100. Color: green < 50% \u00b7 yellow < 80% \u00b7 orange < 100% \u00b7 red = over-limit. Pods without limits are hidden.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -943,23 +949,25 @@ data:
                 "steps": [
                   {
                     "color": "green",
-                    "value": 0
+                    "value": null
                   },
                   {
                     "color": "yellow",
-                    "value": 67108864
+                    "value": 50
                   },
                   {
                     "color": "orange",
-                    "value": 268435456
+                    "value": 80
                   },
                   {
                     "color": "red",
-                    "value": 536870912
+                    "value": 100
                   }
                 ]
               },
-              "unit": "bytes"
+              "unit": "percent",
+              "decimals": 1,
+              "max": 110
             }
           },
           "gridPos": {
@@ -1000,13 +1008,13 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-1\"}))",
+              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-1\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\",node=\"work-1\"}) * 100)",
               "instant": true,
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "work-1  \u00b7  Pods by Memory",
+          "title": "work-1  \u00b7  Memory Saturation %",
           "type": "bargauge"
         },
         {
@@ -1014,7 +1022,7 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Each bar = one pod. Bar length = memory working set. Color = saturation (green \u2192 red).",
+          "description": "Each bar = one pod. Length = memory working set \u00f7 memory limit \u00d7 100. Color: green < 50% \u00b7 yellow < 80% \u00b7 orange < 100% \u00b7 red = over-limit. Pods without limits are hidden.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1026,23 +1034,25 @@ data:
                 "steps": [
                   {
                     "color": "green",
-                    "value": 0
+                    "value": null
                   },
                   {
                     "color": "yellow",
-                    "value": 67108864
+                    "value": 50
                   },
                   {
                     "color": "orange",
-                    "value": 268435456
+                    "value": 80
                   },
                   {
                     "color": "red",
-                    "value": 536870912
+                    "value": 100
                   }
                 ]
               },
-              "unit": "bytes"
+              "unit": "percent",
+              "decimals": 1,
+              "max": 110
             }
           },
           "gridPos": {
@@ -1083,13 +1093,13 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-2\"}))",
+              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-2\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\",node=\"work-2\"}) * 100)",
               "instant": true,
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "work-2  \u00b7  Pods by Memory",
+          "title": "work-2  \u00b7  Memory Saturation %",
           "type": "bargauge"
         },
         {
@@ -1097,7 +1107,7 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Each bar = one pod. Bar length = memory working set. Color = saturation (green \u2192 red).",
+          "description": "Each bar = one pod. Length = memory working set \u00f7 memory limit \u00d7 100. Color: green < 50% \u00b7 yellow < 80% \u00b7 orange < 100% \u00b7 red = over-limit. Pods without limits are hidden.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1109,23 +1119,25 @@ data:
                 "steps": [
                   {
                     "color": "green",
-                    "value": 0
+                    "value": null
                   },
                   {
                     "color": "yellow",
-                    "value": 67108864
+                    "value": 50
                   },
                   {
                     "color": "orange",
-                    "value": 268435456
+                    "value": 80
                   },
                   {
                     "color": "red",
-                    "value": 536870912
+                    "value": 100
                   }
                 ]
               },
-              "unit": "bytes"
+              "unit": "percent",
+              "decimals": 1,
+              "max": 110
             }
           },
           "gridPos": {
@@ -1166,13 +1178,13 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-3\"}))",
+              "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-3\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\",node=\"work-3\"}) * 100)",
               "instant": true,
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "work-3  \u00b7  Pods by Memory",
+          "title": "work-3  \u00b7  Memory Saturation %",
           "type": "bargauge"
         }
       ],
