@@ -66,6 +66,38 @@ data:
               {
                 "matcher": {
                   "id": "byName",
+                  "options": "Pods"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 15
+                        },
+                        {
+                          "color": "red",
+                          "value": 25
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
                   "options": "Temp \u00b0C"
                 },
                 "properties": [
@@ -103,7 +135,7 @@ data:
             "x": 0,
             "y": 0
           },
-          "id": 1,
+          "id": 2,
           "options": {
             "colorMode": "background",
             "graphMode": "none",
@@ -128,6 +160,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
+              "editorMode": "code",
               "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.100:9100\",mode=\"idle\"}[2m])) * 100)",
               "instant": true,
               "legendFormat": "CPU",
@@ -138,6 +171,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
+              "editorMode": "code",
               "expr": "(1 - node_memory_MemAvailable_bytes{instance=\"192.168.10.100:9100\"} / node_memory_MemTotal_bytes{instance=\"192.168.10.100:9100\"}) * 100",
               "instant": true,
               "legendFormat": "Mem",
@@ -148,7 +182,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "count(kube_pod_info{node=\"ctrl-1\"})",
+              "expr": "count(kube_pod_info{node=\"work-1\"})",
               "instant": true,
               "legendFormat": "Pods",
               "refId": "C"
@@ -158,13 +192,14 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
+              "editorMode": "code",
               "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.100:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
               "instant": true,
               "legendFormat": "Temp \u00b0C",
               "refId": "D"
             }
           ],
-          "title": "ctrl-1",
+          "title": "crtl-1",
           "type": "stat"
         },
         {
@@ -273,7 +308,7 @@ data:
             "x": 6,
             "y": 0
           },
-          "id": 2,
+          "id": 13,
           "options": {
             "colorMode": "background",
             "graphMode": "none",
