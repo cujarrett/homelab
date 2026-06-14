@@ -159,9 +159,9 @@ data:
                 "uid": "prometheus"
               },
               "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.100:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
+              "instant": true,
               "legendFormat": "Temp \u00b0C",
-              "refId": "D",
-              "instant": true
+              "refId": "D"
             }
           ],
           "title": "ctrl-1",
@@ -329,9 +329,9 @@ data:
                 "uid": "prometheus"
               },
               "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.101:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
+              "instant": true,
               "legendFormat": "Temp \u00b0C",
-              "refId": "D",
-              "instant": true
+              "refId": "D"
             }
           ],
           "title": "work-1",
@@ -499,9 +499,9 @@ data:
                 "uid": "prometheus"
               },
               "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.102:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
+              "instant": true,
               "legendFormat": "Temp \u00b0C",
-              "refId": "D",
-              "instant": true
+              "refId": "D"
             }
           ],
           "title": "work-2",
@@ -669,381 +669,693 @@ data:
                 "uid": "prometheus"
               },
               "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.103:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
+              "instant": true,
               "legendFormat": "Temp \u00b0C",
-              "refId": "D",
-              "instant": true
+              "refId": "D"
             }
           ],
           "title": "work-3",
           "type": "stat"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Each bar = one pod. CPU usage \u00f7 CPU limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 1,
+              "max": 110,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 50
+                  },
+                  {
+                    "color": "orange",
+                    "value": 80
+                  },
+                  {
+                    "color": "red",
+                    "value": 100
+                  }
+                ]
+              },
+              "unit": "percent"
+            }
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 0,
+            "y": 6
+          },
           "id": 5,
-          "type": "bargauge",
-          "title": "ctrl-1  \u00b7  CPU % of Limits",
-          "description": "Each bar = one pod. CPU usage \u00f7 CPU limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
-          "gridPos": { "x": 0, "y": 6, "w": 6, "h": 11 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "decimals": 1,
-              "min": 0,
-              "max": 110,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "yellow", "value": 50 },
-                  { "color": "orange", "value": 80 },
-                  { "color": "red", "value": 100 }
-                ]
-              },
-              "unit": "percent"
-            },
-            "overrides": []
-          },
           "options": {
             "displayMode": "gradient",
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "maxVizHeight": 300,
             "minVizHeight": 10,
             "minVizWidth": 0,
             "namePlacement": "auto",
             "orientation": "horizontal",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
             "showUnfilled": true,
+            "sizing": "auto",
             "valueMode": "color"
           },
+          "pluginVersion": "13.0.1+security-01",
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"ctrl-1\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"cpu\",node=\"ctrl-1\"}) * 100)",
+              "instant": true,
               "legendFormat": "{{pod}}",
-              "refId": "A",
-              "instant": true
+              "refId": "A"
             }
-          ]
+          ],
+          "title": "ctrl-1  \u00b7  CPU % of Limits",
+          "type": "bargauge"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Each bar = one pod. CPU usage \u00f7 CPU limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 1,
+              "max": 110,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 50
+                  },
+                  {
+                    "color": "orange",
+                    "value": 80
+                  },
+                  {
+                    "color": "red",
+                    "value": 100
+                  }
+                ]
+              },
+              "unit": "percent"
+            }
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 6,
+            "y": 6
+          },
           "id": 6,
-          "type": "bargauge",
-          "title": "work-1  \u00b7  CPU % of Limits",
-          "description": "Each bar = one pod. CPU usage \u00f7 CPU limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
-          "gridPos": { "x": 6, "y": 6, "w": 6, "h": 11 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "decimals": 1,
-              "min": 0,
-              "max": 110,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "yellow", "value": 50 },
-                  { "color": "orange", "value": 80 },
-                  { "color": "red", "value": 100 }
-                ]
-              },
-              "unit": "percent"
-            },
-            "overrides": []
-          },
           "options": {
             "displayMode": "gradient",
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "maxVizHeight": 300,
             "minVizHeight": 10,
             "minVizWidth": 0,
             "namePlacement": "auto",
             "orientation": "horizontal",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
             "showUnfilled": true,
+            "sizing": "auto",
             "valueMode": "color"
           },
+          "pluginVersion": "13.0.1+security-01",
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-1\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-1\"}) * 100)",
+              "instant": true,
               "legendFormat": "{{pod}}",
-              "refId": "A",
-              "instant": true
+              "refId": "A"
             }
-          ]
+          ],
+          "title": "work-1  \u00b7  CPU % of Limits",
+          "type": "bargauge"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Each bar = one pod. CPU usage \u00f7 CPU limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 1,
+              "max": 110,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 50
+                  },
+                  {
+                    "color": "orange",
+                    "value": 80
+                  },
+                  {
+                    "color": "red",
+                    "value": 100
+                  }
+                ]
+              },
+              "unit": "percent"
+            }
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 12,
+            "y": 6
+          },
           "id": 7,
-          "type": "bargauge",
-          "title": "work-2  \u00b7  CPU % of Limits",
-          "description": "Each bar = one pod. CPU usage \u00f7 CPU limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
-          "gridPos": { "x": 12, "y": 6, "w": 6, "h": 11 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "decimals": 1,
-              "min": 0,
-              "max": 110,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "yellow", "value": 50 },
-                  { "color": "orange", "value": 80 },
-                  { "color": "red", "value": 100 }
-                ]
-              },
-              "unit": "percent"
-            },
-            "overrides": []
-          },
           "options": {
             "displayMode": "gradient",
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "maxVizHeight": 300,
             "minVizHeight": 10,
             "minVizWidth": 0,
             "namePlacement": "auto",
             "orientation": "horizontal",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
             "showUnfilled": true,
+            "sizing": "auto",
             "valueMode": "color"
           },
+          "pluginVersion": "13.0.1+security-01",
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-2\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-2\"}) * 100)",
+              "instant": true,
               "legendFormat": "{{pod}}",
-              "refId": "A",
-              "instant": true
+              "refId": "A"
             }
-          ]
+          ],
+          "title": "work-2  \u00b7  CPU % of Limits",
+          "type": "bargauge"
         },
         {
-          "id": 8,
-          "type": "bargauge",
-          "title": "work-3  \u00b7  CPU % of Limits",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "description": "Each bar = one pod. CPU usage \u00f7 CPU limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
-          "gridPos": { "x": 18, "y": 6, "w": 6, "h": 11 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": {
-              "color": { "mode": "thresholds" },
+              "color": {
+                "mode": "thresholds"
+              },
               "decimals": 1,
-              "min": 0,
               "max": 110,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "yellow", "value": 50 },
-                  { "color": "orange", "value": 80 },
-                  { "color": "red", "value": 100 }
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 50
+                  },
+                  {
+                    "color": "orange",
+                    "value": 80
+                  },
+                  {
+                    "color": "red",
+                    "value": 100
+                  }
                 ]
               },
               "unit": "percent"
-            },
-            "overrides": []
+            }
           },
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 18,
+            "y": 6
+          },
+          "id": 8,
           "options": {
             "displayMode": "gradient",
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "maxVizHeight": 300,
             "minVizHeight": 10,
             "minVizWidth": 0,
             "namePlacement": "auto",
             "orientation": "horizontal",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
             "showUnfilled": true,
+            "sizing": "auto",
             "valueMode": "color"
           },
+          "pluginVersion": "13.0.1+security-01",
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-3\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-3\"}) * 100)",
+              "instant": true,
               "legendFormat": "{{pod}}",
-              "refId": "A",
-              "instant": true
+              "refId": "A"
             }
-          ]
+          ],
+          "title": "work-3  \u00b7  CPU % of Limits",
+          "type": "bargauge"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Each bar = one pod. Memory working set \u00f7 memory limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 1,
+              "max": 110,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 50
+                  },
+                  {
+                    "color": "orange",
+                    "value": 80
+                  },
+                  {
+                    "color": "red",
+                    "value": 100
+                  }
+                ]
+              },
+              "unit": "percent"
+            }
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 0,
+            "y": 13
+          },
           "id": 9,
-          "type": "bargauge",
-          "title": "ctrl-1  \u00b7  Memory % of Limits",
-          "description": "Each bar = one pod. Memory working set \u00f7 memory limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
-          "gridPos": { "x": 0, "y": 17, "w": 6, "h": 11 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "decimals": 1,
-              "min": 0,
-              "max": 110,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "yellow", "value": 50 },
-                  { "color": "orange", "value": 80 },
-                  { "color": "red", "value": 100 }
-                ]
-              },
-              "unit": "percent"
-            },
-            "overrides": []
-          },
           "options": {
             "displayMode": "gradient",
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "maxVizHeight": 300,
             "minVizHeight": 10,
             "minVizWidth": 0,
             "namePlacement": "auto",
             "orientation": "horizontal",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
             "showUnfilled": true,
+            "sizing": "auto",
             "valueMode": "color"
           },
+          "pluginVersion": "13.0.1+security-01",
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"ctrl-1\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\",node=\"ctrl-1\"}) * 100)",
+              "instant": true,
               "legendFormat": "{{pod}}",
-              "refId": "A",
-              "instant": true
+              "refId": "A"
             }
-          ]
+          ],
+          "title": "ctrl-1  \u00b7  Memory % of Limits",
+          "type": "bargauge"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Each bar = one pod. Memory working set \u00f7 memory limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 1,
+              "max": 110,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 50
+                  },
+                  {
+                    "color": "orange",
+                    "value": 80
+                  },
+                  {
+                    "color": "red",
+                    "value": 100
+                  }
+                ]
+              },
+              "unit": "percent"
+            }
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 6,
+            "y": 13
+          },
           "id": 10,
-          "type": "bargauge",
-          "title": "work-1  \u00b7  Memory % of Limits",
-          "description": "Each bar = one pod. Memory working set \u00f7 memory limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
-          "gridPos": { "x": 6, "y": 17, "w": 6, "h": 11 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "decimals": 1,
-              "min": 0,
-              "max": 110,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "yellow", "value": 50 },
-                  { "color": "orange", "value": 80 },
-                  { "color": "red", "value": 100 }
-                ]
-              },
-              "unit": "percent"
-            },
-            "overrides": []
-          },
           "options": {
             "displayMode": "gradient",
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "maxVizHeight": 300,
             "minVizHeight": 10,
             "minVizWidth": 0,
             "namePlacement": "auto",
             "orientation": "horizontal",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
             "showUnfilled": true,
+            "sizing": "auto",
             "valueMode": "color"
           },
+          "pluginVersion": "13.0.1+security-01",
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-1\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\",node=\"work-1\"}) * 100)",
+              "instant": true,
               "legendFormat": "{{pod}}",
-              "refId": "A",
-              "instant": true
+              "refId": "A"
             }
-          ]
+          ],
+          "title": "work-1  \u00b7  Memory % of Limits",
+          "type": "bargauge"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Each bar = one pod. Memory working set \u00f7 memory limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 1,
+              "max": 110,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 50
+                  },
+                  {
+                    "color": "orange",
+                    "value": 80
+                  },
+                  {
+                    "color": "red",
+                    "value": 100
+                  }
+                ]
+              },
+              "unit": "percent"
+            }
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 12,
+            "y": 13
+          },
           "id": 11,
-          "type": "bargauge",
-          "title": "work-2  \u00b7  Memory % of Limits",
-          "description": "Each bar = one pod. Memory working set \u00f7 memory limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
-          "gridPos": { "x": 12, "y": 17, "w": 6, "h": 11 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "decimals": 1,
-              "min": 0,
-              "max": 110,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "yellow", "value": 50 },
-                  { "color": "orange", "value": 80 },
-                  { "color": "red", "value": 100 }
-                ]
-              },
-              "unit": "percent"
-            },
-            "overrides": []
-          },
           "options": {
             "displayMode": "gradient",
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "maxVizHeight": 300,
             "minVizHeight": 10,
             "minVizWidth": 0,
             "namePlacement": "auto",
             "orientation": "horizontal",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
             "showUnfilled": true,
+            "sizing": "auto",
             "valueMode": "color"
           },
+          "pluginVersion": "13.0.1+security-01",
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-2\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\",node=\"work-2\"}) * 100)",
+              "instant": true,
               "legendFormat": "{{pod}}",
-              "refId": "A",
-              "instant": true
+              "refId": "A"
             }
-          ]
+          ],
+          "title": "work-2  \u00b7  Memory % of Limits",
+          "type": "bargauge"
         },
         {
-          "id": 12,
-          "type": "bargauge",
-          "title": "work-3  \u00b7  Memory % of Limits",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "description": "Each bar = one pod. Memory working set \u00f7 memory limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
-          "gridPos": { "x": 18, "y": 17, "w": 6, "h": 11 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": {
-              "color": { "mode": "thresholds" },
+              "color": {
+                "mode": "thresholds"
+              },
               "decimals": 1,
-              "min": 0,
               "max": 110,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "yellow", "value": 50 },
-                  { "color": "orange", "value": 80 },
-                  { "color": "red", "value": 100 }
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 50
+                  },
+                  {
+                    "color": "orange",
+                    "value": 80
+                  },
+                  {
+                    "color": "red",
+                    "value": 100
+                  }
                 ]
               },
               "unit": "percent"
-            },
-            "overrides": []
+            }
           },
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 18,
+            "y": 13
+          },
+          "id": 12,
           "options": {
             "displayMode": "gradient",
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "maxVizHeight": 300,
             "minVizHeight": 10,
             "minVizWidth": 0,
             "namePlacement": "auto",
             "orientation": "horizontal",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
             "showUnfilled": true,
+            "sizing": "auto",
             "valueMode": "color"
           },
+          "pluginVersion": "13.0.1+security-01",
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-3\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\",node=\"work-3\"}) * 100)",
+              "instant": true,
               "legendFormat": "{{pod}}",
-              "refId": "A",
-              "instant": true
+              "refId": "A"
             }
-          ]
+          ],
+          "title": "work-3  \u00b7  Memory % of Limits",
+          "type": "bargauge"
         }
       ],
       "preload": false,
