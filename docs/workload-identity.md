@@ -99,7 +99,7 @@ Follow [`docs/service-mesh.md`](service-mesh.md). The full plan is there.
 
 **Exit criteria before moving on:**
 - Every platform namespace has `linkerd.io/inject: enabled`
-- `linkerd viz edges -n my-vinyl` shows mTLS between pods
+- `linkerd viz edges po -n my-vinyl` shows mTLS between pods
 - You can run `linkerd identity -n my-vinyl deploy/my-vinyl-api` and read the SPIFFE ID in the cert's URI SAN field
 
 That last one is important. Read the cert. Understand what `spiffe://cluster.local/ns/my-vinyl/sa/my-vinyl-api`
