@@ -790,7 +790,7 @@ data:
               },
               "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"ctrl-1\"}) * 1000)",
               "instant": true,
-              "legendFormat": "{{{{pod}}}}",
+              "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
@@ -875,7 +875,7 @@ data:
               },
               "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-1\"}) * 1000)",
               "instant": true,
-              "legendFormat": "{{{{pod}}}}",
+              "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
@@ -960,7 +960,7 @@ data:
               },
               "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-2\"}) * 1000)",
               "instant": true,
-              "legendFormat": "{{{{pod}}}}",
+              "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
@@ -1045,7 +1045,7 @@ data:
               },
               "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-3\"}) * 1000)",
               "instant": true,
-              "legendFormat": "{{{{pod}}}}",
+              "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
@@ -1130,7 +1130,7 @@ data:
               },
               "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"ctrl-1\"}) / 1024 / 1024)",
               "instant": true,
-              "legendFormat": "{{{{pod}}}}",
+              "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
@@ -1215,7 +1215,7 @@ data:
               },
               "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-1\"}) / 1024 / 1024)",
               "instant": true,
-              "legendFormat": "{{{{pod}}}}",
+              "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
@@ -1300,7 +1300,7 @@ data:
               },
               "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-2\"}) / 1024 / 1024)",
               "instant": true,
-              "legendFormat": "{{{{pod}}}}",
+              "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
@@ -1385,7 +1385,7 @@ data:
               },
               "expr": "sort_desc(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-3\"}) / 1024 / 1024)",
               "instant": true,
-              "legendFormat": "{{{{pod}}}}",
+              "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
