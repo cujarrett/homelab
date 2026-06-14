@@ -724,7 +724,6 @@ data:
                 "mode": "thresholds"
               },
               "decimals": 1,
-              "max": 110,
               "min": 0,
               "thresholds": {
                 "mode": "absolute",
@@ -747,7 +746,7 @@ data:
                   }
                 ]
               },
-              "unit": "short"
+              "unit": "percent"
             }
           },
           "gridPos": {
@@ -788,13 +787,13 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"ctrl-1\"}) * 1000)",
+              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"ctrl-1\"}) / scalar(sum(machine_cpu_cores{instance=\"192.168.10.100:9100\"})) * 100)",
               "instant": true,
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "ctrl-1  \u00b7  CPU (millicores)",
+          "title": "ctrl-1  \u00b7  CPU % of Node",
           "type": "bargauge"
         },
         {
@@ -809,7 +808,6 @@ data:
                 "mode": "thresholds"
               },
               "decimals": 1,
-              "max": 110,
               "min": 0,
               "thresholds": {
                 "mode": "absolute",
@@ -832,7 +830,7 @@ data:
                   }
                 ]
               },
-              "unit": "short"
+              "unit": "percent"
             }
           },
           "gridPos": {
@@ -873,13 +871,13 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-1\"}) * 1000)",
+              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-1\"}) / scalar(sum(machine_cpu_cores{instance=\"192.168.10.101:9100\"})) * 100)",
               "instant": true,
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "work-1  \u00b7  CPU (millicores)",
+          "title": "work-1  \u00b7  CPU % of Node",
           "type": "bargauge"
         },
         {
@@ -894,7 +892,6 @@ data:
                 "mode": "thresholds"
               },
               "decimals": 1,
-              "max": 110,
               "min": 0,
               "thresholds": {
                 "mode": "absolute",
@@ -917,7 +914,7 @@ data:
                   }
                 ]
               },
-              "unit": "short"
+              "unit": "percent"
             }
           },
           "gridPos": {
@@ -958,13 +955,13 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-2\"}) * 1000)",
+              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-2\"}) / scalar(sum(machine_cpu_cores{instance=\"192.168.10.102:9100\"})) * 100)",
               "instant": true,
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "work-2  \u00b7  CPU (millicores)",
+          "title": "work-2  \u00b7  CPU % of Node",
           "type": "bargauge"
         },
         {
@@ -979,7 +976,6 @@ data:
                 "mode": "thresholds"
               },
               "decimals": 1,
-              "max": 110,
               "min": 0,
               "thresholds": {
                 "mode": "absolute",
@@ -1002,7 +998,7 @@ data:
                   }
                 ]
               },
-              "unit": "short"
+              "unit": "percent"
             }
           },
           "gridPos": {
@@ -1043,13 +1039,13 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-3\"}) * 1000)",
+              "expr": "sort_desc(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-3\"}) / scalar(sum(machine_cpu_cores{instance=\"192.168.10.103:9100\"})) * 100)",
               "instant": true,
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "work-3  \u00b7  CPU (millicores)",
+          "title": "work-3  \u00b7  CPU % of Node",
           "type": "bargauge"
         },
         {
