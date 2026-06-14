@@ -7,6 +7,7 @@
 - **When debugging, always list every command used** — show the command, what it does, and why — so the user can learn the debugging workflow. Do this inline as you debug, not as a summary at the end.
 - **After changing XRDs or Compositions, remind the user to sync `platform-definitions`:** `argocd app sync platform-definitions --grpc-web`
 - **Platform README and XRD examples must use `foo`, `bar`, or `baz` as placeholder names** — never use real instance names (e.g. `nms-events`, `mattjarrett-com`) in `platform/*/README.md` or `platform/*/xrd.yaml` description fields.
+- **No lazy cross-references in tables or lists.** Never write "Same as above," "Same as XFoo pattern," or "See above." Write it out explicitly — every row must stand on its own.
 - **Platform READMEs and XRD descriptions must not leak implementation details.** Rules:
   - No infrastructure technology names in XRD `description` fields (e.g. no "NATS", "Redis", "S3", "NACK") — describe *what* the platform does, not *how*
   - No internal resource names, namespaces, or controller names in README prose (e.g. no "managed by NACK", no `kubectl get consumer -n nats`)
