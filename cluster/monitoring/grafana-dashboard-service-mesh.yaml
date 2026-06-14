@@ -37,7 +37,7 @@ data:
             "x": 0,
             "y": 0
           },
-          "id": 11,
+          "id": 21,
           "title": "Golden Signals",
           "type": "row"
         },
@@ -469,7 +469,7 @@ data:
             "x": 0,
             "y": 5
           },
-          "id": 12,
+          "id": 22,
           "title": "Per Namespace",
           "type": "row"
         },
@@ -674,20 +674,11 @@ data:
           "type": "timeseries"
         },
         {
-          "id": 20,
-          "type": "heatmap",
-          "title": "Response Latency Distribution",
-          "description": "Linkerd response latency histogram across all meshed services. X=time, Y=latency bucket (ms), color=request volume.",
-          "gridPos": {
-            "x": 0,
-            "y": 17,
-            "w": 24,
-            "h": 12
-          },
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "description": "Linkerd response latency histogram across all meshed services. X=time, Y=latency bucket (ms), color=request volume.",
           "fieldConfig": {
             "defaults": {
               "custom": {
@@ -695,12 +686,25 @@ data:
                   "legend": false,
                   "tooltip": false,
                   "viz": false
+                },
+                "scaleDistribution": {
+                  "type": "linear"
                 }
               }
-            },
-            "overrides": []
+            }
           },
+          "gridPos": {
+            "h": 12,
+            "w": 24,
+            "x": 0,
+            "y": 17
+          },
+          "id": 20,
           "options": {
+            "annotations": {
+              "clustering": -1,
+              "multiLane": false
+            },
             "calculate": false,
             "cellGap": 1,
             "color": {
@@ -709,7 +713,7 @@ data:
               "mode": "scheme",
               "reverse": false,
               "scale": "exponential",
-              "scheme": "Oranges",
+              "scheme": "Cool",
               "steps": 64
             },
             "exemplars": {
@@ -735,6 +739,7 @@ data:
               "unit": "ms"
             }
           },
+          "pluginVersion": "13.0.1+security-01",
           "targets": [
             {
               "datasource": {
@@ -746,7 +751,9 @@ data:
               "legendFormat": "{{le}}",
               "refId": "A"
             }
-          ]
+          ],
+          "title": "Response Latency Distribution",
+          "type": "heatmap"
         }
       ],
       "preload": false,
