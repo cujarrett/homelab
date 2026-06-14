@@ -1,6 +1,6 @@
 # kiosk.sh
 
-Runs a fullscreen Chromium kiosk on `work-1`'s attached 1U display, showing the Grafana playlist.
+Runs a fullscreen Chromium kiosk on `ctrl-1`'s attached 1U display, showing the Grafana playlist.
 
 ## What it does
 
@@ -19,7 +19,7 @@ Runs a fullscreen Chromium kiosk on `work-1`'s attached 1U display, showing the 
 ## How to update the URL without rebooting
 
 ```bash
-ssh pi@192.168.10.101 "sed -i 's|OLD_URL|NEW_URL|' ~/kiosk.sh"
+ssh pi@192.168.10.100 "sed -i 's|OLD_URL|NEW_URL|' ~/kiosk.sh"
 sudo systemctl restart getty@tty1.service
 ```
 
@@ -28,5 +28,5 @@ Do **not** just `pkill chromium` — the loop will relaunch with the old URL sti
 
 ## X server requirement
 
-Requires `/etc/X11/xorg.conf.d/99-pi5.conf` on `work-1` to force the display DRM device.
+Requires `/etc/X11/xorg.conf.d/99-pi5.conf` on `ctrl-1` to force the display DRM device.
 See the homelab `copilot-instructions.md` for the config file contents.
