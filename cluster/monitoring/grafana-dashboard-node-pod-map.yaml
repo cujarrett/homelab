@@ -1578,69 +1578,6 @@ data:
           ],
           "title": "work-3  \u00b7  Memory by Pod + Unused",
           "type": "marcusolsson-treemap-panel"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "description": "All pods sized by memory working set. Tile labels show pod names, grouped by node.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "continuous-viridis"
-              },
-              "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "bytes"
-            }
-          },
-          "gridPos": {
-            "h": 10,
-            "w": 24,
-            "x": 0,
-            "y": 27
-          },
-          "id": 18,
-          "options": {
-            "colorByField": "node",
-            "groupByField": "node",
-            "labelFields": [
-              "node"
-            ],
-            "sizeField": "Value",
-            "textField": "pod",
-            "tiling": "treemapSquarify"
-          },
-          "pluginVersion": "2.1.1",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "editorMode": "code",
-              "expr": "sort_desc(sum by (node, pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} * on(pod) group_left(node) kube_pod_info))",
-              "format": "table",
-              "instant": true,
-              "legendFormat": "{{node}} / {{pod}}",
-              "refId": "A"
-            }
-          ],
-          "title": "All Nodes  \u00b7  Pod Memory Treemap",
-          "type": "marcusolsson-treemap-panel"
         }
       ],
       "preload": false,
