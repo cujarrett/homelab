@@ -1360,32 +1360,12 @@ data:
                 },
                 "id": 14,
                 "options": {
-                    "displayLabels": [
-                        "name",
-                        "percent"
-                    ],
-                    "legend": {
-                        "displayMode": "list",
-                        "placement": "right",
-                        "showLegend": true,
-                        "values": [
-                            "percent",
-                            "value"
-                        ]
-                    },
-                    "pieType": "donut",
-                    "reduceOptions": {
-                        "calcs": [
-                            "lastNotNull"
-                        ],
-                        "fields": "",
-                        "values": false
-                    },
-                    "sort": "desc",
-                    "tooltip": {
-                        "mode": "single",
-                        "sort": "none"
-                    }
+                    "colorByField": "Value",
+                    "groupByField": "",
+                    "labelFields": [],
+                    "sizeField": "Value",
+                    "textField": "pod",
+                    "tiling": "treemapSquarify"
                 },
                 "pluginVersion": "13.0.1+security-01",
                 "targets": [
@@ -1395,6 +1375,7 @@ data:
                             "uid": "prometheus"
                         },
                         "editorMode": "code",
+                        "format": "table",
                         "expr": "sort_desc((sum by (pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"ctrl-1\"})) or label_replace((node_memory_MemTotal_bytes{instance=\"192.168.10.100:9100\"} - sum(container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"ctrl-1\"})), \"pod\", \"Unused\", \"instance\", \".*\"))",
                         "instant": true,
                         "legendFormat": "{{pod}}",
@@ -1402,7 +1383,7 @@ data:
                     }
                 ],
                 "title": "ctrl-1  ·  Memory by Pod + Unused",
-                "type": "piechart"
+                "type": "marcusolsson-treemap-panel"
             },
             {
                 "datasource": {
@@ -1428,32 +1409,12 @@ data:
                 },
                 "id": 15,
                 "options": {
-                    "displayLabels": [
-                        "name",
-                        "percent"
-                    ],
-                    "legend": {
-                        "displayMode": "list",
-                        "placement": "right",
-                        "showLegend": true,
-                        "values": [
-                            "percent",
-                            "value"
-                        ]
-                    },
-                    "pieType": "donut",
-                    "reduceOptions": {
-                        "calcs": [
-                            "lastNotNull"
-                        ],
-                        "fields": "",
-                        "values": false
-                    },
-                    "sort": "desc",
-                    "tooltip": {
-                        "mode": "single",
-                        "sort": "none"
-                    }
+                    "colorByField": "Value",
+                    "groupByField": "",
+                    "labelFields": [],
+                    "sizeField": "Value",
+                    "textField": "pod",
+                    "tiling": "treemapSquarify"
                 },
                 "pluginVersion": "13.0.1+security-01",
                 "targets": [
@@ -1463,6 +1424,7 @@ data:
                             "uid": "prometheus"
                         },
                         "editorMode": "code",
+                        "format": "table",
                         "expr": "sort_desc((sum by (pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-1\"})) or label_replace((node_memory_MemTotal_bytes{instance=\"192.168.10.101:9100\"} - sum(container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-1\"})), \"pod\", \"Unused\", \"instance\", \".*\"))",
                         "instant": true,
                         "legendFormat": "{{pod}}",
@@ -1470,7 +1432,7 @@ data:
                     }
                 ],
                 "title": "work-1  ·  Memory by Pod + Unused",
-                "type": "piechart"
+                "type": "marcusolsson-treemap-panel"
             },
             {
                 "datasource": {
@@ -1496,32 +1458,12 @@ data:
                 },
                 "id": 16,
                 "options": {
-                    "displayLabels": [
-                        "name",
-                        "percent"
-                    ],
-                    "legend": {
-                        "displayMode": "list",
-                        "placement": "right",
-                        "showLegend": true,
-                        "values": [
-                            "percent",
-                            "value"
-                        ]
-                    },
-                    "pieType": "donut",
-                    "reduceOptions": {
-                        "calcs": [
-                            "lastNotNull"
-                        ],
-                        "fields": "",
-                        "values": false
-                    },
-                    "sort": "desc",
-                    "tooltip": {
-                        "mode": "single",
-                        "sort": "none"
-                    }
+                    "colorByField": "Value",
+                    "groupByField": "",
+                    "labelFields": [],
+                    "sizeField": "Value",
+                    "textField": "pod",
+                    "tiling": "treemapSquarify"
                 },
                 "pluginVersion": "13.0.1+security-01",
                 "targets": [
@@ -1531,6 +1473,7 @@ data:
                             "uid": "prometheus"
                         },
                         "editorMode": "code",
+                        "format": "table",
                         "expr": "sort_desc((sum by (pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-2\"})) or label_replace((node_memory_MemTotal_bytes{instance=\"192.168.10.102:9100\"} - sum(container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-2\"})), \"pod\", \"Unused\", \"instance\", \".*\"))",
                         "instant": true,
                         "legendFormat": "{{pod}}",
@@ -1538,7 +1481,7 @@ data:
                     }
                 ],
                 "title": "work-2  ·  Memory by Pod + Unused",
-                "type": "piechart"
+                "type": "marcusolsson-treemap-panel"
             },
             {
                 "datasource": {
@@ -1564,32 +1507,12 @@ data:
                 },
                 "id": 17,
                 "options": {
-                    "displayLabels": [
-                        "name",
-                        "percent"
-                    ],
-                    "legend": {
-                        "displayMode": "list",
-                        "placement": "right",
-                        "showLegend": true,
-                        "values": [
-                            "percent",
-                            "value"
-                        ]
-                    },
-                    "pieType": "donut",
-                    "reduceOptions": {
-                        "calcs": [
-                            "lastNotNull"
-                        ],
-                        "fields": "",
-                        "values": false
-                    },
-                    "sort": "desc",
-                    "tooltip": {
-                        "mode": "single",
-                        "sort": "none"
-                    }
+                    "colorByField": "Value",
+                    "groupByField": "",
+                    "labelFields": [],
+                    "sizeField": "Value",
+                    "textField": "pod",
+                    "tiling": "treemapSquarify"
                 },
                 "pluginVersion": "13.0.1+security-01",
                 "targets": [
@@ -1599,6 +1522,7 @@ data:
                             "uid": "prometheus"
                         },
                         "editorMode": "code",
+                        "format": "table",
                         "expr": "sort_desc((sum by (pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-3\"})) or label_replace((node_memory_MemTotal_bytes{instance=\"192.168.10.103:9100\"} - sum(container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-3\"})), \"pod\", \"Unused\", \"instance\", \".*\"))",
                         "instant": true,
                         "legendFormat": "{{pod}}",
@@ -1606,7 +1530,7 @@ data:
                     }
                 ],
                 "title": "work-3  ·  Memory by Pod + Unused",
-                "type": "piechart"
+                "type": "marcusolsson-treemap-panel"
             }
         ],
         "preload": false,
