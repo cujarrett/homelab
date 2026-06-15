@@ -36,6 +36,8 @@ spec:
                     requests:
                       storage: 2Gi
         grafana:
+          plugins:
+            - marcusolsson-treemap-panel
           serviceMonitor:
             enabled: false
           deploymentStrategy:
