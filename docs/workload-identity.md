@@ -125,7 +125,7 @@ decides whether to hand out credentials.
 
 ---
 
-### Phase 2 — SPIRE: understand the model
+### Phase 2 — SPIRE: understand the model ✅
 
 SPIRE has two components. Read these before touching anything.
 
@@ -149,6 +149,62 @@ and a SPIFFE ID. Without one, a pod gets nothing from the Workload API.
 
 **Exit criteria:** You can explain the difference between the SPIRE server, the SPIRE agent,
 and the workload API to someone else without notes. Draw the diagram. Then proceed.
+
+
+<details>
+<summary>Answers</summary>
+
+```
+┌────────────────────────────────────────────────────────────┐
+│                        SPIRE Server                        │
+│  - Runs as a Deployment (one replica is fine for homelab)  │
+│  - Owns the root CA; signs all SVIDs                       │
+│  - Holds all registration entries (spiffeID ↔ selectors)   │
+│  - Agents bootstrap against it and attest to it            │
+└───────────────────────────┬────────────────────────────────┘
+                            │ mTLS (agents attest on join)
+          ┌─────────────────┼─────────────────┐
+          ▼                 ▼                 ▼
+┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
+│   SPIRE Agent    │ │   SPIRE Agent    │ │   SPIRE Agent    │
+│   (work-1)       │ │   (work-2)       │ │   (work-3)       │
+│                  │ │                  │ │                  │
+│ - DaemonSet pod  │ │ - DaemonSet pod  │ │ - DaemonSet pod  │
+│ - Talks to local │ │                  │ │                  │
+│   kubelet API to │ │                  │ │                  │
+│   verify pod ns/ │ │                  │ │                  │
+│   serviceaccount │ │                  │ │                  │
+│ - Exposes the    │ │                  │ │                  │
+│   Workload API   │ │                  │ │                  │
+│   Unix socket    │ │                  │ │                  │
+└────────┬─────────┘ └──────────────────┘ └──────────────────┘
+         │ /run/spire/agent.sock
+         │ (Unix socket, host path)
+         ▼
+┌──────────────────────────────────────────┐
+│              Workload API                │
+│                                          │
+│  The socket the app (or sidecar) calls.  │
+│  Agent checks: does this pod's ns +      │
+│  serviceaccount match a registration     │
+│  entry? If yes → fetch SVID from server  │
+│  and hand it back. If no → nothing.      │
+└──────────────────────────────────────────┘
+         │ X.509 SVID (cert + private key)
+         ▼
+┌──────────────────────────────────────────┐
+│                  App pod                 │
+│  Reads SVID. Hands it to                 │
+│  aws_signing_helper → STS creds.         │
+└──────────────────────────────────────────┘
+```
+
+**The key distinction:**
+
+- **SPIRE Server** — the CA and the policy store. It knows what identities exist and signs their certs. There's one, and workloads never talk to it directly.
+- **SPIRE Agent** — the node-local proxy. Runs everywhere a workload runs. It's the one that actually verifies pod identity (by asking the kubelet) and serves the socket. Workloads only ever talk to their local agent.
+- **Workload API** — not a separate process. It's the interface the agent exposes. The Unix socket at `/run/spire/agent.sock`. The app calls this to get its SVID; it has no idea a server exists.
+</details>
 
 ---
 
