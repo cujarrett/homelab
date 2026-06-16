@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: spire
+  namespace: argocd
+spec:
+  project: cluster
+  source:
+    repoURL: https://spiffe.github.io/helm-charts-hardened/
+    chart: spire
+    targetRevision: 0.29.0
+    helm:
+      releaseName: spire
+      values: |
+        global:
+          spire:
+            trustDomain: homelab.local
+            clusterName: homelab
+            namespaces:
+              create: true
+            persistence:
+              storageClass: longhorn-retain
+
+        spire-server:
+          replicaCount: 1
+
+        spire-agent:
+          logLevel: DEBUG
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: spire-server
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
