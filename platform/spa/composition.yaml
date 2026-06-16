@@ -144,7 +144,6 @@ spec:
                     }
 
                     # Secret store / credential file name probes
-                    # Covers the exact patterns observed returning 200 in access logs:
                     # /secrets.json, /serviceAccountKey.json, /config/secrets.yml
                     location ~* (secrets\.(json|yaml|yml)|serviceAccountKey\.json|credentials\.json|database\.yml|\.npmrc|\.yarnrc)$ {
                         return 404;
@@ -215,8 +214,47 @@ spec:
                     }
 
                     # Generic setup/install/discovery path probes — return 404 instead of 200 via catch-all
-                    # Observed: GET /setup/ and GET /api/user/ returning 200 on mattjarrett-dev (Jun 14 2026)
                     location ~* ^/(setup|install|installer|installation|wizard|admin/setup|api/user|api/v[0-9]+/user|_internal)(/|$) {
+                        return 404;
+                    }
+
+                    # Laravel Ignition debug/RCE endpoints
+                    location ~* ^/_ignition(/|$) {
+                        return 404;
+                    }
+
+                    # environment.* config files — /environment.json, /environment.yml, /environment.yaml
+                    location ~* ^/environment\.(json|ya?ml)$ {
+                        return 404;
+                    }
+
+                    # Bare /env (exact) — ^/env(/|\.) misses exactly GET /env
+                    location = /env {
+                        return 404;
+                    }
+
+                    # /_env, /__env env-dump path variants
+                    location ~* ^/__?env(/|$) {
+                        return 404;
+                    }
+
+                    # /manage/env and similar env management paths
+                    location ~* ^/manage/env(/|$) {
+                        return 404;
+                    }
+
+                    # Magento local.xml credential file — /app/etc/local.xml
+                    location ~* /etc/local\.xml$ {
+                        return 404;
+                    }
+
+                    # Symfony config package paths — /config/packages/, /app/config/
+                    location ~* ^/(app/)?config/(packages|routes|services|security)(/|$) {
+                        return 404;
+                    }
+
+                    # MCP/SSE endpoint probes — SPAs don't serve these; prevent catch-all 200
+                    location ~* ^/(sse|mcp)(/|$) {
                         return 404;
                     }
 
