@@ -218,7 +218,7 @@ helm repo add spiffe https://spiffe.github.io/helm-charts-hardened/
 helm repo update
 
 # Inspect the values before applying
-helm show values spiffe/spire > /tmp/spire-values.yaml
+helm show values spiffe/spire > ~/Desktop/spire-values.yaml
 ```
 
 Manifests live in `cluster/spire/`. Use the hardened chart — it sets sane RBAC defaults.
@@ -326,12 +326,12 @@ public cert as a trust anchor. No private key leaves the cluster.
 ```bash
 # Get the SPIRE CA bundle
 k exec -n spire deploy/spire-server -- \
-  /opt/spire/bin/spire-server bundle show -format pem > /tmp/spire-ca.pem
+  /opt/spire/bin/spire-server bundle show -format pem > ~/Desktop/spire-ca.pem
 
 # Register it in IAM Roles Anywhere
 aws rolesanywhere create-trust-anchor \
   --name homelab-spire \
-  --source "sourceType=CERTIFICATE_BUNDLE,sourceData={x509CertificateData=$(cat /tmp/spire-ca.pem)}" \
+  --source "sourceType=CERTIFICATE_BUNDLE,sourceData={x509CertificateData=$(cat ~/Desktop/spire-ca.pem)}" \
   --enabled
 ```
 
@@ -420,8 +420,8 @@ App reads: AWS_SHARED_CREDENTIALS_FILE=/bindings/object-storage/credentials
 # https://github.com/aws/rolesanywhere-credential-helper
 
 aws_signing_helper credential-process \
-  --certificate /tmp/svid.pem \
-  --private-key /tmp/svid-key.pem \
+  --certificate ~/Desktop/svid.pem \
+  --private-key ~/Desktop/svid-key.pem \
   --trust-anchor-arn $TRUST_ANCHOR_ARN \
   --profile-arn $PROFILE_ARN \
   --role-arn $ROLE_ARN
