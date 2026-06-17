@@ -205,7 +205,7 @@ k exec -n spire-server spire-server-0 -- \
 
 Save that CA cert. You'll register it as an IAM Roles Anywhere trust anchor in Phase 5.
 
-**Exit criteria:** ✅ `spire-server-0` and all `spire-agent-*` pods are `1/1 Running`, `agent list` shows 4 attested agents, bundle command returns a PEM cert.
+**Exit criteria:**  `spire-server-0` and all `spire-agent-*` pods are `1/1 Running`, `agent list` shows 4 attested agents, bundle command returns a PEM cert.
 
 ---
 
