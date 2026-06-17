@@ -48,3 +48,10 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
       - SkipDryRunOnMissingResource=true
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      name: spire-server
+      namespace: spire-server
+      jqPathExpressions:
+        - .spec.volumeClaimTemplates[]?.metadata.annotations
