@@ -295,11 +295,11 @@ CA #1 Valid After: ...
 CA #1 Valid Until: ...
 ```
 
-**Exit criteria:** ✅ SVID received, SPIFFE ID matches `spiffe://homelab.local/ns/my-vinyl/sa/my-vinyl-api`.
+**Exit criteria:** SVID received, SPIFFE ID matches `spiffe://homelab.local/ns/my-vinyl/sa/my-vinyl-api`.
 
 ---
 
-### Phase 4 — IAM Roles Anywhere: trust anchor and role
+### Phase 4 — IAM Roles Anywhere: trust anchor and role ✅
 
 AWS needs to trust your SPIRE CA before it will accept SVIDs. You're registering the CA's
 public cert as a trust anchor. No private key leaves the cluster.
@@ -315,6 +315,7 @@ k exec -n spire-server spire-server-0 -- \
 aws rolesanywhere create-trust-anchor \
   --name homelab-spire \
   --source "sourceType=CERTIFICATE_BUNDLE,sourceData={x509CertificateData=$(cat ~/Desktop/spire-ca.pem)}" \
+  --tags key=cluster,value=homelab \
   --enabled
 ```
 
@@ -364,7 +365,7 @@ ROLE_ARN=arn:aws:iam::<account>:role/homelab-my-vinyl-api
 aws rolesanywhere create-profile \
   --name homelab-my-vinyl-api \
   --role-arns "$ROLE_ARN" \
-  --session-duration 3600 \
+  --duration-seconds 3600 \
   --enabled
 ```
 
