@@ -177,7 +177,7 @@ data:
               },
               "expr": "max(weather_temperature_fahrenheit{job=\"weather-exporter\"})",
               "instant": true,
-              "legendFormat": "\u00b0F",
+              "legendFormat": "°F",
               "refId": "A"
             }
           ],
@@ -510,7 +510,7 @@ data:
             "type": "prometheus",
             "uid": "sump-pump-archive"
           },
-          "description": "Runs per hour with rainfall and temperature overlay.",
+          "description": "Runs per hour, run duration, rainfall, and temperature over time.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -526,7 +526,7 @@ data:
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
                 "drawStyle": "line",
-                "fillOpacity": 15,
+                "fillOpacity": 0,
                 "gradientMode": "none",
                 "hideFrom": {
                   "legend": false,
@@ -540,7 +540,7 @@ data:
                 "scaleDistribution": {
                   "type": "linear"
                 },
-                "showPoints": "auto",
+                "showPoints": "never",
                 "showValues": false,
                 "spanNulls": true,
                 "stacking": {
@@ -571,6 +571,37 @@ data:
               {
                 "matcher": {
                   "id": "byName",
+                  "options": "runs/hr"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "rgba(140, 140, 140, 0.95)",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.axisPlacement",
+                    "value": "left"
+                  },
+                  {
+                    "id": "custom.lineWidth",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.showPoints",
+                    "value": "never"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
                   "options": "in/hr"
                 },
                 "properties": [
@@ -580,16 +611,12 @@ data:
                   },
                   {
                     "id": "custom.axisPlacement",
-                    "value": "right"
-                  },
-                  {
-                    "id": "custom.axisLabel",
-                    "value": "rainfall (in/hr)"
+                    "value": "hidden"
                   },
                   {
                     "id": "color",
                     "value": {
-                      "fixedColor": "blue",
+                      "fixedColor": "rgba(90, 168, 255, 0.9)",
                       "mode": "fixed"
                     }
                   },
@@ -607,26 +634,18 @@ data:
                   },
                   {
                     "id": "custom.fillOpacity",
-                    "value": 50
+                    "value": 35
                   },
                   {
                     "id": "custom.spanNulls",
                     "value": true
-                  },
-                  {
-                    "id": "custom.axisSoftMin",
-                    "value": 0
-                  },
-                  {
-                    "id": "custom.axisSoftMax",
-                    "value": 0.1
                   }
                 ]
               },
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "\u00b0F"
+                  "options": "°F"
                 },
                 "properties": [
                   {
@@ -638,9 +657,13 @@ data:
                     "value": 1
                   },
                   {
+                    "id": "custom.axisPlacement",
+                    "value": "hidden"
+                  },
+                  {
                     "id": "color",
                     "value": {
-                      "fixedColor": "rgba(255, 152, 48, 0.26)",
+                      "fixedColor": "rgba(255, 230, 120, 0.95)",
                       "mode": "fixed"
                     }
                   },
@@ -655,6 +678,53 @@ data:
                   {
                     "id": "custom.fillOpacity",
                     "value": 0
+                  },
+                  {
+                    "id": "custom.spanNulls",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "min/hr"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "min"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.axisPlacement",
+                    "value": "right"
+                  },
+                  {
+                    "id": "custom.axisLabel",
+                    "value": "weather"
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "rgba(76, 175, 80, 0.95)",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.lineWidth",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.lineInterpolation",
+                    "value": "smooth"
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 35
                   },
                   {
                     "id": "custom.spanNulls",
@@ -714,11 +784,20 @@ data:
                 "uid": "sump-pump-archive"
               },
               "expr": "max(weather_temperature_fahrenheit{job=\"weather-exporter\"})",
-              "legendFormat": "\u00b0F",
+              "legendFormat": "°F",
               "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "sump-pump-archive"
+              },
+              "expr": "round(avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:1m]) * 60)",
+              "legendFormat": "min/hr",
+              "refId": "D"
             }
           ],
-          "title": "Runs per Hour",
+          "title": "Runs, Duration, Temp, Rain",
           "type": "timeseries"
         },
         {
@@ -931,7 +1010,7 @@ data:
           "id": 30,
           "type": "heatmap",
           "title": "Pump Wattage Distribution",
-          "description": "Distribution of wattage readings over time. Shows motor load variation \u2014 wider spread or drift upward can indicate pump wear.",
+          "description": "Distribution of wattage readings over time. Shows motor load variation — wider spread or drift upward can indicate pump wear.",
           "gridPos": {
             "x": 0,
             "y": 31,
