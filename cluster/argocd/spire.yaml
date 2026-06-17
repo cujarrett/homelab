@@ -23,11 +23,19 @@ spec:
 
         spire-server:
           replicaCount: 1
+          controllerManager:
+            enabled: false
 
         spire-agent:
           logLevel: DEBUG
 
         spire-controller-manager:
+          enabled: false
+
+        spiffe-csi-driver:
+          enabled: false
+
+        spiffe-oidc-discovery-provider:
           enabled: false
   destination:
     server: https://kubernetes.default.svc
