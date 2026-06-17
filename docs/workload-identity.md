@@ -90,42 +90,7 @@ The app-facing service binding path doesn't change. The platform swaps what's be
 
 ---
 
-### Phase 1 — Service mesh (prerequisite) ✅
-
-SPIFFE and SPIRE are easier to understand once you've seen SVIDs in action. Linkerd gives
-you that for free inside the cluster. Do this first.
-
-Follow [`docs/service-mesh.md`](service-mesh.md). The full plan is there.
-
-**Exit criteria before moving on:**
-- Every platform namespace has `linkerd.io/inject: enabled`
-- `linkerd viz edges po -n my-vinyl` shows mTLS between pods
-- You can run `linkerd identity -n my-vinyl $(kubectl get pod -n my-vinyl -l app=xapi -o jsonpath='{.items[0].metadata.name}')` and read the identity in the cert's Subject field
-
-That last one is important. When you run it, find the Subject line in the output:
-
-```
-Subject: CN=my-vinyl-api.my-vinyl.serviceaccount.identity.linkerd.cluster.local
-```
-
-That string is the pod's identity. Read it right to left: `cluster.local` is the trust
-domain, `my-vinyl` is the namespace, `my-vinyl-api` is the service account. Linkerd
-minted this cert automatically — the app didn't ask for it, configure it, or know it
-exists.
-
-This is what SPIFFE formalizes. Once SPIRE is running (Phase 3), the same identity
-appears as a URI SAN instead:
-
-```
-spiffe://homelab.local/ns/my-vinyl/sa/my-vinyl-api
-```
-
-Same information, standard format. That URI is what AWS will see in Phase 5 when it
-decides whether to hand out credentials.
-
----
-
-### Phase 2 — SPIRE: understand the model ✅
+### Phase 1 — SPIRE: understand the model ✅
 
 SPIRE has two components. Read these before touching anything.
 
@@ -208,115 +173,137 @@ and the workload API to someone else without notes. Draw the diagram. Then proce
 
 ---
 
-### Phase 3 — Install SPIRE
+### Phase 2 — Install SPIRE ✅
 
 **Install:**
 
-```bash
-# Add SPIRE helm repo
-helm repo add spiffe https://spiffe.github.io/helm-charts-hardened/
-helm repo update
+The ArgoCD Application is at `cluster/argocd/spire.yaml`. Push to git — ArgoCD picks it up automatically.
 
-# Inspect the values before applying
-helm show values spiffe/spire > ~/Desktop/spire-values.yaml
-```
-
-Manifests live in `cluster/spire/`. Use the hardened chart — it sets sane RBAC defaults.
-
-Minimal values to understand:
-
-```yaml
-# cluster/spire/spire-values.yaml
-global:
-  spire:
-    trustDomain: homelab.local     # your trust domain — appears in every SPIFFE ID
-    clusterName: homelab
-
-spire-server:
-  replicaCount: 1                  # single node is fine for homelab
-  persistence:
-    enabled: true
-    storageClass: longhorn-retain  # retain the CA on pod restart
-
-spire-agent:
-  logLevel: DEBUG                  # turn down later; helpful for learning
-```
+Key values used (see `cluster/argocd/spire.yaml` for the full config):
+- `trustDomain: homelab.local` — appears in every SPIFFE ID
+- `storageClass: longhorn-retain` — retains the CA PVC on pod restart
+- `logLevel: DEBUG` on agents — turn down to `INFO` once attestation is confirmed working
+- SPIKE, CSI driver, OIDC provider, and controller manager are disabled — not needed until later phases
 
 **What to look at after install:**
 
 ```bash
-# SPIRE server is running
-k get pods -n spire
+# SPIRE server and agents are running (namespace is spire-server)
+k get pods -n spire-server
 
 # SPIRE server logs — you'll see it bootstrapping its CA
-k logs -n spire deploy/spire-server | head -50
+k logs -n spire-server spire-server-0 | head -50
 
-# The server's bundle (your root CA public cert)
-k exec -n spire deploy/spire-server -- \
+# Confirm all 4 agents have attested
+k exec -n spire-server spire-server-0 -- \
+  /opt/spire/bin/spire-server agent list
+
+# The server's bundle (your root CA public cert) — save this to 1Password as a Secure Note
+k exec -n spire-server spire-server-0 -- \
   /opt/spire/bin/spire-server bundle show -format pem
 ```
 
 Save that CA cert. You'll register it as an IAM Roles Anywhere trust anchor in Phase 5.
 
-**Exit criteria:** SPIRE server and agents running, agents show `Attested` in server logs, bundle command returns a PEM cert.
+**Exit criteria:** ✅ `spire-server-0` and all `spire-agent-*` pods are `1/1 Running`, `agent list` shows 4 attested agents, bundle command returns a PEM cert.
 
 ---
 
-### Phase 4 — Register a workload
+## Concepts to know before starting Phase 3
+
+| Term | What it means |
+|---|---|
+| SPIFFE ID | A URI: `spiffe://trust-domain/path`. The identity. |
+| SVID | The cert (or JWT) that proves the SPIFFE ID. Short-lived. |
+| Trust domain | The namespace for SPIFFE IDs in your deployment. `homelab.local`. |
+| Workload API | The Unix socket a workload calls to get its SVID. |
+| Attestation | How SPIRE proves a workload is who it claims. For Kubernetes: checks pod namespace, service account, labels against the kubelet API. |
+| Trust anchor | The CA cert you register in AWS. AWS uses it to validate SVID cert chains. |
+| Profile (Roles Anywhere) | Maps a trust anchor to a set of IAM roles and sets session duration. |
+| Registration entry | SPIRE's mapping from Kubernetes selectors to a SPIFFE ID. |
+
+---
+
+### Phase 3 — Register a workload ✅
 
 Before any app gets an SVID, you register it. This is the step that binds a Kubernetes identity
 to a SPIFFE ID.
 
 **Create a registration entry for `my-vinyl-api`:**
 
+You need one entry per node — each agent's parentID is its own SPIFFE ID. Get all four from the server:
+
 ```bash
-k exec -n spire deploy/spire-server -- \
-  /opt/spire/bin/spire-server entry create \
-    -spiffeID spiffe://homelab.local/ns/my-vinyl/sa/my-vinyl-api \
-    -parentID  spiffe://homelab.local/spire/agent/k8s_psat/homelab/$(k get node work-1 -o jsonpath='{.spec.providerID}') \
-    -selector  k8s:ns:my-vinyl \
-    -selector  k8s:sa:my-vinyl-api
+k exec -n spire-server spire-server-0 -- \
+  /opt/spire/bin/spire-server agent list | grep "SPIFFE ID"
+```
+
+Create an entry for each node agent (the selectors ensure only the right pod gets the SVID regardless of which node it lands on):
+
+```bash
+# Copy the UIDs from the agent list output above, then run:
+for uid in \
+  "spiffe://homelab.local/spire/agent/k8s_psat/homelab/REPLACE-UID-1" \
+  "spiffe://homelab.local/spire/agent/k8s_psat/homelab/REPLACE-UID-2" \
+  "spiffe://homelab.local/spire/agent/k8s_psat/homelab/REPLACE-UID-3" \
+  "spiffe://homelab.local/spire/agent/k8s_psat/homelab/REPLACE-UID-4"; do
+  k exec -n spire-server spire-server-0 -- \
+    /opt/spire/bin/spire-server entry create \
+      -spiffeID spiffe://homelab.local/ns/my-vinyl/sa/my-vinyl-api \
+      -parentID "$uid" \
+      -selector k8s:ns:my-vinyl \
+      -selector k8s:sa:my-vinyl-api
+done
 ```
 
 The selectors tell SPIRE: "only pods in namespace `my-vinyl` with service account `my-vinyl-api`
 can claim this SPIFFE ID." Anything else gets rejected.
 
+Note: Phase 8 (SPIRE Controller Manager) automates this — you won't create entries by hand at scale.
+
 **Verify the workload can fetch its SVID:**
 
-Deploy a debug pod with the SPIRE socket mounted:
+The `spire-agent` image is distroless — no shell or `sleep`. Run the fetch directly as the container command and read it from logs:
 
 ```bash
 k run spire-test -n my-vinyl \
-  --image=ghcr.io/spiffe/spire-agent:latest \
+  --image=ghcr.io/spiffe/spire-agent:1.15.1 \
+  --restart=Never \
   --overrides='{
     "spec": {
       "serviceAccountName": "my-vinyl-api",
-      "volumes": [{"name":"spire-agent-socket","hostPath":{"path":"/run/spire/agent.sock","type":"Socket"}}],
+      "volumes": [{"name":"spire-agent-socket","hostPath":{"path":"/run/spire/agent-sockets/spire-agent.sock","type":"Socket"}}],
       "containers":[{
         "name":"spire-test",
-        "image":"ghcr.io/spiffe/spire-agent:latest",
-        "command":["sleep","3600"],
+        "image":"ghcr.io/spiffe/spire-agent:1.15.1",
+        "command":["/opt/spire/bin/spire-agent","api","fetch","x509","-socketPath","/run/spire/agent.sock"],
         "volumeMounts":[{"name":"spire-agent-socket","mountPath":"/run/spire/agent.sock"}]
       }]
     }
   }'
 
-# Fetch the SVID
-k exec -n my-vinyl spire-test -- \
-  /opt/spire/bin/spire-agent api fetch x509 \
-    -socketPath /run/spire/agent.sock
+sleep 10 && k logs spire-test -n my-vinyl -c spire-test
 
 k delete pod spire-test -n my-vinyl
 ```
 
-You should see a cert dump. Find the URI SAN field. It will contain
-`spiffe://homelab.local/ns/my-vinyl/sa/my-vinyl-api`. That's the identity.
+You should see output like:
 
-**Exit criteria:** SVID fetched, URI SAN matches the registered SPIFFE ID.
+```
+Received 1 svid after 576ms
+
+SPIFFE ID:    spiffe://homelab.local/ns/my-vinyl/sa/my-vinyl-api
+SVID Valid After:  ...
+SVID Valid Until:  ...
+CA #1 Valid After: ...
+CA #1 Valid Until: ...
+```
+
+**Exit criteria:** ✅ SVID received, SPIFFE ID matches `spiffe://homelab.local/ns/my-vinyl/sa/my-vinyl-api`.
 
 ---
 
-### Phase 5 — IAM Roles Anywhere: trust anchor and role
+### Phase 4 — IAM Roles Anywhere: trust anchor and role
 
 AWS needs to trust your SPIRE CA before it will accept SVIDs. You're registering the CA's
 public cert as a trust anchor. No private key leaves the cluster.
@@ -325,7 +312,7 @@ public cert as a trust anchor. No private key leaves the cluster.
 
 ```bash
 # Get the SPIRE CA bundle
-k exec -n spire deploy/spire-server -- \
+k exec -n spire-server spire-server-0 -- \
   /opt/spire/bin/spire-server bundle show -format pem > ~/Desktop/spire-ca.pem
 
 # Register it in IAM Roles Anywhere
@@ -390,7 +377,7 @@ Nothing is actually called yet — that's Phase 6.
 
 ---
 
-### Phase 6 — Wire the first workload (XObjectStorage proof-of-concept)
+### Phase 5 — Wire the first workload (XObjectStorage proof-of-concept)
 
 This is the manual proof before the platform automates it.
 
@@ -441,7 +428,7 @@ No static key anywhere in the process.
 
 ---
 
-### Phase 7 — Update XObjectStorage composition
+### Phase 6 — Update XObjectStorage composition
 
 The composition currently creates an IAM user and writes static keys into the binding Secret.
 Replace that with:
@@ -481,7 +468,7 @@ it's happening.
 
 ---
 
-### Phase 8 — Repeat for XNoSql and XSql (RDS)
+### Phase 7 — Repeat for XNoSql and XSql (RDS)
 
 Same pattern as XObjectStorage. Each gets its own IAM role, its own SPIFFE ID condition.
 
@@ -495,7 +482,7 @@ network identity; no credential required.
 
 ---
 
-### Phase 9 — Automate registration entries
+### Phase 8 — Automate registration entries
 
 Today you created the SPIRE registration entry by hand in Phase 4. That doesn't scale.
 
@@ -516,7 +503,7 @@ creates the SPIRE entry automatically. When the XR is deleted, the entry is clea
 
 ---
 
-### Phase 10 — Declared connection topology (long-term)
+### Phase 9 — Declared connection topology (long-term)
 
 Once every workload has a SPIFFE identity and Linkerd is running, the platform can enforce
 *who is allowed to call whom*.
@@ -557,20 +544,4 @@ These decisions are hard to reverse. Make them deliberately.
 | Decision | Why it's sticky |
 |---|---|
 | SPIRE trust domain (`homelab.local`) | Baked into every SVID and every IAM trust policy condition. Changing it requires re-registering trust anchors and updating all role trust policies. |
-| SPIRE as Linkerd's identity backend | Replacing Linkerd's built-in CA with SPIRE as the identity issuer (optional, advanced) tightly couples the two systems. Don't do this unless you have a reason. |
 | Credential sidecar pattern | Once apps rely on the credentials file path, changing the delivery mechanism requires a coordinated update. The path is stable; the mechanism underneath can change. |
-
----
-
-## Concepts to know before starting Phase 3
-
-| Term | What it means |
-|---|---|
-| SPIFFE ID | A URI: `spiffe://trust-domain/path`. The identity. |
-| SVID | The cert (or JWT) that proves the SPIFFE ID. Short-lived. |
-| Trust domain | The namespace for SPIFFE IDs in your deployment. `homelab.local`. |
-| Workload API | The Unix socket a workload calls to get its SVID. |
-| Attestation | How SPIRE proves a workload is who it claims. For Kubernetes: checks pod namespace, service account, labels against the kubelet API. |
-| Trust anchor | The CA cert you register in AWS. AWS uses it to validate SVID cert chains. |
-| Profile (Roles Anywhere) | Maps a trust anchor to a set of IAM roles and sets session duration. |
-| Registration entry | SPIRE's mapping from Kubernetes selectors to a SPIFFE ID. |
