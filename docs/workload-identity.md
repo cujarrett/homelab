@@ -209,7 +209,10 @@ Save that CA cert. You'll register it as an IAM Roles Anywhere trust anchor in P
 
 ---
 
-## Concepts to know before starting Phase 3
+### Phase 3 — Register a workload ✅
+
+Before any app gets an SVID, you register it. This is the step that binds a Kubernetes identity
+to a SPIFFE ID.
 
 | Term | What it means |
 |---|---|
@@ -221,13 +224,6 @@ Save that CA cert. You'll register it as an IAM Roles Anywhere trust anchor in P
 | Trust anchor | The CA cert you register in AWS. AWS uses it to validate SVID cert chains. |
 | Profile (Roles Anywhere) | Maps a trust anchor to a set of IAM roles and sets session duration. |
 | Registration entry | SPIRE's mapping from Kubernetes selectors to a SPIFFE ID. |
-
----
-
-### Phase 3 — Register a workload ✅
-
-Before any app gets an SVID, you register it. This is the step that binds a Kubernetes identity
-to a SPIFFE ID.
 
 **Create a registration entry for `my-vinyl-api`:**
 
