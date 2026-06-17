@@ -48,10 +48,16 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
       - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
   ignoreDifferences:
     - group: apps
       kind: StatefulSet
       name: spire-server
       namespace: spire-server
       jqPathExpressions:
+        # Kubernetes strips chart-generated annotations from volumeClaimTemplates after creation
         - .spec.volumeClaimTemplates[]?.metadata.annotations
+        # Kubernetes adds volumeMode: Filesystem default; chart omits it, causing a false diff
+        - .spec.volumeClaimTemplates[]?.spec.volumeMode
+        # Kubernetes adds status.phase to volumeClaimTemplates; not part of desired state
+        - .spec.volumeClaimTemplates[]?.status
