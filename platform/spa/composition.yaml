@@ -98,6 +98,50 @@ spec:
                         add_header Permissions-Policy           "camera=(), microphone=(), geolocation=()"  always;
                     }
 
+
+                    # VCS credential files, IDE project dirs, and unhosted cloud CLI dirs not covered above.
+                    location ~* (^|/)(\.git-credentials|\.netrc|\.pgpass|\.pypirc|\.idea|\.github|\.firebase|\.next)(/|$|\.) {
+                        return 404;
+                    }
+
+                    # CI/CD pipeline definition files not covered above
+                    location ~* (^|/)(Jenkinsfile|amplify\.yml|buildspec\.yml|appspec\.yml|bitbucket-pipelines\.yml|\.travis\.yml)$ {
+                        return 404;
+                    }
+
+                    # config.yml (.yaml/.json variants blocked; .yml was missing)
+                    # docker-compose.yaml (.yaml ext; .yml already blocked)
+                    # application-<profile>.* (Spring Boot profile variants — application.properties blocked but not application-production.properties)
+                    # .yarnrc.yml (Yarn v2 format — .yarnrc blocked with $ anchor; .yarnrc.yml was not matched)
+                    location ~* (config\.yml|docker-compose\.yaml|application[^/]*\.(properties|yml|yaml)|\.yarnrc\.yml)$ {
+                        return 404;
+                    }
+
+                    # Nested config environment files — /config/production.json, /config/parameters.yml, etc.
+                    # config.json is blocked at root; /config/<env>.* paths are not
+                    location ~* (^|/)config/(production|development|staging|test|local|default|parameters)\.(json|yaml|yml)$ {
+                        return 404;
+                    }
+
+                    {{- if $apiProxyEnabled }}
+                    # API proxy: routes /api/ to in-cluster service (no public exposure needed)
+                    location /api/ {
+                        proxy_pass http://{{ $params.apiProxy.upstream }}/;
+                        proxy_set_header Host $host;
+                        # Use Traefik's forwarded header — $remote_addr is Traefik's pod IP, not the client.
+                        proxy_set_header X-Real-IP $http_x_real_ip;
+                        proxy_set_header X-Forwarded-For $http_x_forwarded_for;
+                        proxy_set_header X-Forwarded-Proto $scheme;
+                        # SSE / long-poll support: disable buffering so streamed responses
+                        # reach the client immediately (e.g. /api/status/watch).
+                        proxy_buffering off;
+                        proxy_cache off;
+                        proxy_read_timeout 3600s;
+                        proxy_set_header Connection '';
+                        chunked_transfer_encoding on;
+                    }
+                    {{- end }}
+
                     # Block credential/config probes before the catch-all.
                     # Without these, try_files returns 200 for every .env scan.
                     location ~* /\.git(/|$) {
@@ -257,25 +301,6 @@ spec:
                     location ~* ^/(sse|mcp)(/|$) {
                         return 404;
                     }
-
-                    {{- if $apiProxyEnabled }}
-                    # API proxy: routes /api/ to in-cluster service (no public exposure needed)
-                    location /api/ {
-                        proxy_pass http://{{ $params.apiProxy.upstream }}/;
-                        proxy_set_header Host $host;
-                        # Use Traefik's forwarded header — $remote_addr is Traefik's pod IP, not the client.
-                        proxy_set_header X-Real-IP $http_x_real_ip;
-                        proxy_set_header X-Forwarded-For $http_x_forwarded_for;
-                        proxy_set_header X-Forwarded-Proto $scheme;
-                        # SSE / long-poll support: disable buffering so streamed responses
-                        # reach the client immediately (e.g. /api/status/watch).
-                        proxy_buffering off;
-                        proxy_cache off;
-                        proxy_read_timeout 3600s;
-                        proxy_set_header Connection '';
-                        chunked_transfer_encoding on;
-                    }
-                    {{- end }}
 
                     # SPA catch-all: client-side router handles unmatched paths
                     location / {
