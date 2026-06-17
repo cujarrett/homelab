@@ -26,6 +26,9 @@ spec:
 
         spire-agent:
           logLevel: DEBUG
+
+        spire-controller-manager:
+          enabled: false
   destination:
     server: https://kubernetes.default.svc
     namespace: spire-server
