@@ -113,7 +113,6 @@ data:
             "type": "prometheus",
             "uid": "sump-pump-archive"
           },
-          "description": "Current hour outdoor temperature.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -152,7 +151,7 @@ data:
           },
           "id": 24,
           "options": {
-            "colorMode": "background",
+            "colorMode": "none",
             "graphMode": "none",
             "justifyMode": "center",
             "orientation": "auto",
@@ -189,7 +188,6 @@ data:
             "type": "prometheus",
             "uid": "sump-pump-archive"
           },
-          "description": "Live power draw from the sump pump.",
           "fieldConfig": {
             "defaults": {
               "decimals": 1,
@@ -254,7 +252,6 @@ data:
             "type": "prometheus",
             "uid": "sump-pump-archive"
           },
-          "description": "Rolling runs per hour based on the last 60 minutes.",
           "fieldConfig": {
             "defaults": {
               "decimals": 1,
@@ -319,7 +316,6 @@ data:
             "type": "prometheus",
             "uid": "sump-pump-archive"
           },
-          "description": "Number of times the pump has run in the last 24 hours.",
           "fieldConfig": {
             "defaults": {
               "decimals": 0,
@@ -341,7 +337,7 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
+            "w": 4,
             "x": 13,
             "y": 0
           },
@@ -384,7 +380,6 @@ data:
             "type": "prometheus",
             "uid": "sump-pump-archive"
           },
-          "description": "Approximate total rainfall in the last 24 hours.",
           "fieldConfig": {
             "defaults": {
               "decimals": 1,
@@ -406,8 +401,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 16,
+            "w": 3,
+            "x": 17,
             "y": 0
           },
           "id": 12,
@@ -449,7 +444,6 @@ data:
             "type": "prometheus",
             "uid": "sump-pump-archive"
           },
-          "description": "Approximate seconds the sump pump ran in the last hour, derived from the running gauge.",
           "fieldConfig": {
             "defaults": {
               "decimals": 0,
@@ -514,7 +508,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "green",
+                "fixedColor": "rgba(38, 198, 218, 0.95)",
                 "mode": "fixed"
               },
               "custom": {
@@ -682,6 +676,14 @@ data:
                   {
                     "id": "custom.spanNulls",
                     "value": true
+                  },
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": false,
+                      "tooltip": true,
+                      "viz": true
+                    }
                   }
                 ]
               },
@@ -710,7 +712,7 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "fixedColor": "rgba(76, 175, 80, 0.95)",
+                      "fixedColor": "rgba(38, 198, 218, 0.95)",
                       "mode": "fixed"
                     }
                   },
