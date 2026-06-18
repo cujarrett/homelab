@@ -242,6 +242,21 @@ spec:
                         return 404;
                     }
 
+                    # Additional env probe variants seen in scanner traffic
+                    location ~* ^/(api/)?env(/|\.|$) {
+                      return 404;
+                    }
+
+                    # Frontend toolchain probe variants
+                    location ~* ^/@vite/env(/|$) {
+                      return 404;
+                    }
+
+                    # Common typo scanner probe for /actuator/env
+                    location ~* ^/actutor/env(/|$) {
+                      return 404;
+                    }
+
                     # WordPress REST API probes
                     location ~* ^/wp-json(/|$) {
                         return 404;
@@ -285,6 +300,16 @@ spec:
                     # /manage/env and similar env management paths
                     location ~* ^/manage/env(/|$) {
                         return 404;
+                    }
+
+                    # Config backup and account metadata probes
+                    location ~* (^|/)(config\.json\.(save|bak|old|orig)|account\.json)$ {
+                      return 404;
+                    }
+
+                    # Java app version file probes
+                    location ~* ^/data/conf/(%20)?version\.txt$ {
+                      return 404;
                     }
 
                     # Magento local.xml credential file — /app/etc/local.xml
