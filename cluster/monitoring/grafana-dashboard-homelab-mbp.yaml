@@ -202,7 +202,6 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Number of nodes in Ready state out of total. Red = a node is down.",
           "fieldConfig": {
             "defaults": {
               "decimals": 0,
@@ -1611,7 +1610,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Uptime \u2014 ctrl-1",
+          "title": "Uptime ctrl-1",
           "type": "stat"
         },
         {
@@ -1671,7 +1670,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Uptime \u2014 work-1",
+          "title": "Uptime work-1",
           "type": "stat"
         },
         {
@@ -1731,7 +1730,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Uptime \u2014 work-2",
+          "title": "Uptime work-2",
           "type": "stat"
         },
         {
@@ -1791,7 +1790,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Uptime \u2014 work-3",
+          "title": "Uptime work-3",
           "type": "stat"
         },
         {
@@ -1799,7 +1798,6 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Percentage of pods in Running phase. Below 95% = yellow, below 80% = red.",
           "fieldConfig": {
             "defaults": {
               "decimals": 1,
@@ -1875,7 +1873,6 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Deployments with all desired replicas available. Red = at least one deployment is degraded.",
           "fieldConfig": {
             "defaults": {
               "decimals": 0,
@@ -1965,7 +1962,6 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Persistent volume claims in Bound state. Any non-Bound PVC means a workload may be broken.",
           "fieldConfig": {
             "defaults": {
               "decimals": 0,
@@ -2055,7 +2051,6 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Rate of Crossplane watch circuit breaker opens over 5m. Should be 0. Non-zero means a resource is stuck and Crossplane is backing off \u2014 this is what fired during the WatchCircuitOpen incident.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -2125,7 +2120,6 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Rate of successful Crossplane reconciles over 5m. Should be > 0 while XRs exist. Dropping to 0 means Crossplane has stopped processing entirely.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -2191,7 +2185,6 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Rate of Crossplane controller reconcile errors over the last 5 minutes. Should be 0. Any sustained value means Crossplane is failing to apply a composed resource.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -2261,7 +2254,6 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "30-day cluster availability: fraction of 5-minute windows in the last 30 days where all nodes reported Ready. Green \u2265 99.9%, yellow \u2265 99%, red below.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -2977,13 +2969,46 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Each bar = one pod. CPU usage \u00f7 CPU limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "thresholds"
+                "mode": "palette-classic"
               },
-              "decimals": 1,
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
               "min": 0,
               "thresholds": {
                 "mode": "absolute",
@@ -2991,83 +3016,97 @@ data:
                   {
                     "color": "green",
                     "value": 0
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 50
-                  },
-                  {
-                    "color": "orange",
-                    "value": 80
-                  },
-                  {
-                    "color": "red",
-                    "value": 100
                   }
                 ]
               },
               "unit": "percent"
-            }
+            },
+            "overrides": []
           },
           "gridPos": {
             "h": 6,
-            "w": 6,
+            "w": 12,
             "x": 0,
             "y": 27
           },
-          "id": 310,
+          "id": 324,
           "options": {
-            "displayMode": "gradient",
             "legend": {
-              "calcs": [],
-              "displayMode": "list",
+              "calcs": [
+                "mean",
+                "max",
+                "lastNotNull"
+              ],
+              "displayMode": "table",
               "placement": "bottom",
               "showLegend": false
             },
-            "maxVizHeight": 300,
-            "minVizHeight": 10,
-            "minVizWidth": 0,
-            "namePlacement": "auto",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showUnfilled": true,
-            "sizing": "auto",
-            "valueMode": "color"
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
           },
-          "pluginVersion": "13.0.1+security-01",
+          "pluginVersion": "12.4.2",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sort_desc((sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"ctrl-1\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"cpu\",node=\"ctrl-1\"})) or (sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"ctrl-1\"} unless on(pod) kube_pod_container_resource_limits{resource=\"cpu\",node=\"ctrl-1\"}) / sum by(pod) (kube_pod_container_resource_requests{resource=\"cpu\",node=\"ctrl-1\"})) * 100)",
-              "instant": true,
+              "expr": "(sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m])) / sum by(pod) (kube_pod_container_resource_limits{resource=\"cpu\"})) * 100",
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "ctrl-1  \u00b7  CPU % of Limit (or Request)",
-          "type": "bargauge"
+          "title": "CPU % of Limit \u00b7 All Pods",
+          "type": "timeseries"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Each bar = one pod. CPU usage \u00f7 CPU limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "thresholds"
+                "mode": "palette-classic"
               },
-              "decimals": 1,
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
               "min": 0,
               "thresholds": {
                 "mode": "absolute",
@@ -3075,167 +3114,97 @@ data:
                   {
                     "color": "green",
                     "value": 0
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 50
-                  },
-                  {
-                    "color": "orange",
-                    "value": 80
-                  },
-                  {
-                    "color": "red",
-                    "value": 100
                   }
                 ]
               },
-              "unit": "percent"
-            }
+              "unit": "short"
+            },
+            "overrides": []
           },
           "gridPos": {
             "h": 6,
-            "w": 6,
-            "x": 6,
-            "y": 27
-          },
-          "id": 311,
-          "options": {
-            "displayMode": "gradient",
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": false
-            },
-            "maxVizHeight": 300,
-            "minVizHeight": 10,
-            "minVizWidth": 0,
-            "namePlacement": "auto",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showUnfilled": true,
-            "sizing": "auto",
-            "valueMode": "color"
-          },
-          "pluginVersion": "13.0.1+security-01",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sort_desc((sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-1\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-1\"})) or (sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-1\"} unless on(pod) kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-1\"}) / sum by(pod) (kube_pod_container_resource_requests{resource=\"cpu\",node=\"work-1\"})) * 100)",
-              "instant": true,
-              "legendFormat": "{{pod}}",
-              "refId": "A"
-            }
-          ],
-          "title": "work-1  \u00b7  CPU % of Limit (or Request)",
-          "type": "bargauge"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "description": "Each bar = one pod. CPU usage \u00f7 CPU limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "decimals": 1,
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 50
-                  },
-                  {
-                    "color": "orange",
-                    "value": 80
-                  },
-                  {
-                    "color": "red",
-                    "value": 100
-                  }
-                ]
-              },
-              "unit": "percent"
-            }
-          },
-          "gridPos": {
-            "h": 6,
-            "w": 6,
+            "w": 12,
             "x": 12,
             "y": 27
           },
-          "id": 312,
+          "id": 326,
           "options": {
-            "displayMode": "gradient",
             "legend": {
-              "calcs": [],
-              "displayMode": "list",
+              "calcs": [
+                "mean",
+                "max",
+                "lastNotNull"
+              ],
+              "displayMode": "table",
               "placement": "bottom",
               "showLegend": false
             },
-            "maxVizHeight": 300,
-            "minVizHeight": 10,
-            "minVizWidth": 0,
-            "namePlacement": "auto",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showUnfilled": true,
-            "sizing": "auto",
-            "valueMode": "color"
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
           },
-          "pluginVersion": "13.0.1+security-01",
+          "pluginVersion": "12.4.2",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sort_desc((sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-2\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-2\"})) or (sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-2\"} unless on(pod) kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-2\"}) / sum by(pod) (kube_pod_container_resource_requests{resource=\"cpu\",node=\"work-2\"})) * 100)",
-              "instant": true,
+              "expr": "sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]))",
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "work-2  \u00b7  CPU % of Limit (or Request)",
-          "type": "bargauge"
+          "title": "CPU Usage per Pod \u00b7 All Nodes",
+          "type": "timeseries"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Each bar = one pod. CPU usage \u00f7 CPU limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "thresholds"
+                "mode": "palette-classic"
               },
-              "decimals": 1,
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
               "min": 0,
               "thresholds": {
                 "mode": "absolute",
@@ -3243,169 +3212,97 @@ data:
                   {
                     "color": "green",
                     "value": 0
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 50
-                  },
-                  {
-                    "color": "orange",
-                    "value": 80
-                  },
-                  {
-                    "color": "red",
-                    "value": 100
                   }
                 ]
               },
               "unit": "percent"
-            }
-          },
-          "gridPos": {
-            "h": 6,
-            "w": 6,
-            "x": 18,
-            "y": 27
-          },
-          "id": 313,
-          "options": {
-            "displayMode": "gradient",
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": false
             },
-            "maxVizHeight": 300,
-            "minVizHeight": 10,
-            "minVizWidth": 0,
-            "namePlacement": "auto",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showUnfilled": true,
-            "sizing": "auto",
-            "valueMode": "color"
-          },
-          "pluginVersion": "13.0.1+security-01",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sort_desc((sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-3\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-3\"})) or (sum by(pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]) and on(pod) kube_pod_info{node=\"work-3\"} unless on(pod) kube_pod_container_resource_limits{resource=\"cpu\",node=\"work-3\"}) / sum by(pod) (kube_pod_container_resource_requests{resource=\"cpu\",node=\"work-3\"})) * 100)",
-              "instant": true,
-              "legendFormat": "{{pod}}",
-              "refId": "A"
-            }
-          ],
-          "title": "work-3  \u00b7  CPU % of Limit (or Request)",
-          "type": "bargauge"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "description": "Each bar = one pod. Memory working set \u00f7 memory limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "decimals": 1,
-              "max": 110,
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 50
-                  },
-                  {
-                    "color": "orange",
-                    "value": 80
-                  },
-                  {
-                    "color": "red",
-                    "value": 100
-                  }
-                ]
-              },
-              "unit": "percent"
-            }
+            "overrides": []
           },
           "gridPos": {
             "h": 7,
-            "w": 6,
+            "w": 12,
             "x": 0,
             "y": 33
           },
-          "id": 314,
+          "id": 325,
           "options": {
-            "displayMode": "gradient",
             "legend": {
-              "calcs": [],
-              "displayMode": "list",
+              "calcs": [
+                "mean",
+                "max",
+                "lastNotNull"
+              ],
+              "displayMode": "table",
               "placement": "bottom",
               "showLegend": false
             },
-            "maxVizHeight": 300,
-            "minVizHeight": 10,
-            "minVizWidth": 0,
-            "namePlacement": "auto",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showUnfilled": true,
-            "sizing": "auto",
-            "valueMode": "color"
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
           },
-          "pluginVersion": "13.0.1+security-01",
+          "pluginVersion": "12.4.2",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sort_desc((sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"ctrl-1\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\",node=\"ctrl-1\"})) or (sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"ctrl-1\"} unless on(pod) kube_pod_container_resource_limits{resource=\"memory\",node=\"ctrl-1\"}) / sum by(pod) (kube_pod_container_resource_requests{resource=\"memory\",node=\"ctrl-1\"})) * 100)",
-              "instant": true,
+              "expr": "(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\"})) * 100",
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "ctrl-1  \u00b7  Memory % of Limit (or Request)",
-          "type": "bargauge"
+          "title": "Memory % of Limit \u00b7 All Pods",
+          "type": "timeseries"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Each bar = one pod. Memory working set \u00f7 memory limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "thresholds"
+                "mode": "palette-classic"
               },
-              "decimals": 1,
-              "max": 110,
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
               "min": 0,
               "thresholds": {
                 "mode": "absolute",
@@ -3413,247 +3310,57 @@ data:
                   {
                     "color": "green",
                     "value": 0
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 50
-                  },
-                  {
-                    "color": "orange",
-                    "value": 80
-                  },
-                  {
-                    "color": "red",
-                    "value": 100
                   }
                 ]
               },
-              "unit": "percent"
-            }
+              "unit": "bytes"
+            },
+            "overrides": []
           },
           "gridPos": {
             "h": 7,
-            "w": 6,
-            "x": 6,
-            "y": 33
-          },
-          "id": 315,
-          "options": {
-            "displayMode": "gradient",
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": false
-            },
-            "maxVizHeight": 300,
-            "minVizHeight": 10,
-            "minVizWidth": 0,
-            "namePlacement": "auto",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showUnfilled": true,
-            "sizing": "auto",
-            "valueMode": "color"
-          },
-          "pluginVersion": "13.0.1+security-01",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sort_desc((sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-1\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\",node=\"work-1\"})) or (sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-1\"} unless on(pod) kube_pod_container_resource_limits{resource=\"memory\",node=\"work-1\"}) / sum by(pod) (kube_pod_container_resource_requests{resource=\"memory\",node=\"work-1\"})) * 100)",
-              "instant": true,
-              "legendFormat": "{{pod}}",
-              "refId": "A"
-            }
-          ],
-          "title": "work-1  \u00b7  Memory % of Limit (or Request)",
-          "type": "bargauge"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "description": "Each bar = one pod. Memory working set \u00f7 memory limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "decimals": 1,
-              "max": 110,
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 50
-                  },
-                  {
-                    "color": "orange",
-                    "value": 80
-                  },
-                  {
-                    "color": "red",
-                    "value": 100
-                  }
-                ]
-              },
-              "unit": "percent"
-            }
-          },
-          "gridPos": {
-            "h": 7,
-            "w": 6,
+            "w": 12,
             "x": 12,
             "y": 33
           },
-          "id": 316,
+          "id": 327,
           "options": {
-            "displayMode": "gradient",
             "legend": {
-              "calcs": [],
-              "displayMode": "list",
+              "calcs": [
+                "mean",
+                "max",
+                "lastNotNull"
+              ],
+              "displayMode": "table",
               "placement": "bottom",
               "showLegend": false
             },
-            "maxVizHeight": 300,
-            "minVizHeight": 10,
-            "minVizWidth": 0,
-            "namePlacement": "auto",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showUnfilled": true,
-            "sizing": "auto",
-            "valueMode": "color"
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
           },
-          "pluginVersion": "13.0.1+security-01",
+          "pluginVersion": "12.4.2",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sort_desc((sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-2\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\",node=\"work-2\"})) or (sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-2\"} unless on(pod) kube_pod_container_resource_limits{resource=\"memory\",node=\"work-2\"}) / sum by(pod) (kube_pod_container_resource_requests{resource=\"memory\",node=\"work-2\"})) * 100)",
-              "instant": true,
+              "expr": "sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"})",
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "work-2  \u00b7  Memory % of Limit (or Request)",
-          "type": "bargauge"
+          "title": "Memory Used per Pod \u00b7 All Nodes",
+          "type": "timeseries"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Each bar = one pod. Memory working set \u00f7 memory limit \u00d7 100. Pods without limits are excluded. green \u2264 50% \u00b7 yellow \u2264 80% \u00b7 orange \u2264 100% \u00b7 red = over-limit.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "decimals": 1,
-              "max": 110,
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 50
-                  },
-                  {
-                    "color": "orange",
-                    "value": 80
-                  },
-                  {
-                    "color": "red",
-                    "value": 100
-                  }
-                ]
-              },
-              "unit": "percent"
-            }
-          },
-          "gridPos": {
-            "h": 7,
-            "w": 6,
-            "x": 18,
-            "y": 33
-          },
-          "id": 317,
-          "options": {
-            "displayMode": "gradient",
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": false
-            },
-            "maxVizHeight": 300,
-            "minVizHeight": 10,
-            "minVizWidth": 0,
-            "namePlacement": "auto",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showUnfilled": true,
-            "sizing": "auto",
-            "valueMode": "color"
-          },
-          "pluginVersion": "13.0.1+security-01",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sort_desc((sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-3\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\",node=\"work-3\"})) or (sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-3\"} unless on(pod) kube_pod_container_resource_limits{resource=\"memory\",node=\"work-3\"}) / sum by(pod) (kube_pod_container_resource_requests{resource=\"memory\",node=\"work-3\"})) * 100)",
-              "instant": true,
-              "legendFormat": "{{pod}}",
-              "refId": "A"
-            }
-          ],
-          "title": "work-3  \u00b7  Memory % of Limit (or Request)",
-          "type": "bargauge"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "description": "Pod memory working set as a share of the node, plus remaining unused node memory. Larger pods take larger slices.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3674,75 +3381,16 @@ data:
                 ]
               },
               "unit": "bytes"
-            }
+            },
+            "overrides": []
           },
           "gridPos": {
             "h": 9,
-            "w": 6,
+            "w": 24,
             "x": 0,
             "y": 40
           },
-          "id": 319,
-          "options": {
-            "colorByField": "Value",
-            "labelFields": [],
-            "sizeField": "Value",
-            "textField": "pod",
-            "tiling": "treemapSquarify"
-          },
-          "pluginVersion": "2.1.1",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "editorMode": "code",
-              "expr": "sort_desc((sum by (pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"ctrl-1\"})) or label_replace((node_memory_MemTotal_bytes{instance=\"192.168.10.100:9100\"} - sum(container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"ctrl-1\"})), \"pod\", \"Unused\", \"instance\", \".*\"))",
-              "format": "table",
-              "instant": true,
-              "legendFormat": "{{pod}}",
-              "refId": "A"
-            }
-          ],
-          "title": "ctrl-1  \u00b7  Memory by Pod + Unused",
-          "type": "marcusolsson-treemap-panel"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "description": "Pod memory working set as a share of the node, plus remaining unused node memory. Larger pods take larger slices.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "continuous-viridis"
-              },
-              "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "bytes"
-            }
-          },
-          "gridPos": {
-            "h": 9,
-            "w": 6,
-            "x": 6,
-            "y": 40
-          },
-          "id": 320,
+          "id": 323,
           "options": {
             "colorByField": "Value",
             "groupByField": "",
@@ -3759,136 +3407,14 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sort_desc((sum by (pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-1\"})) or label_replace((node_memory_MemTotal_bytes{instance=\"192.168.10.101:9100\"} - sum(container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-1\"})), \"pod\", \"Unused\", \"instance\", \".*\"))",
+              "expr": "sort_desc(sum by (pod, node) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} * on(pod) group_left(node) kube_pod_info{}))",
               "format": "table",
               "instant": true,
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
-          "title": "work-1  \u00b7  Memory by Pod + Unused",
-          "type": "marcusolsson-treemap-panel"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "description": "Pod memory working set as a share of the node, plus remaining unused node memory. Larger pods take larger slices.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "continuous-viridis"
-              },
-              "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "bytes"
-            }
-          },
-          "gridPos": {
-            "h": 9,
-            "w": 6,
-            "x": 12,
-            "y": 40
-          },
-          "id": 321,
-          "options": {
-            "colorByField": "Value",
-            "groupByField": "",
-            "labelFields": [],
-            "sizeField": "Value",
-            "textField": "pod",
-            "tiling": "treemapSquarify"
-          },
-          "pluginVersion": "2.1.1",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "editorMode": "code",
-              "expr": "sort_desc((sum by (pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-2\"})) or label_replace((node_memory_MemTotal_bytes{instance=\"192.168.10.102:9100\"} - sum(container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-2\"})), \"pod\", \"Unused\", \"instance\", \".*\"))",
-              "format": "table",
-              "instant": true,
-              "legendFormat": "{{pod}}",
-              "refId": "A"
-            }
-          ],
-          "title": "work-2  \u00b7  Memory by Pod + Unused",
-          "type": "marcusolsson-treemap-panel"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "description": "Pod memory working set as a share of the node, plus remaining unused node memory. Larger pods take larger slices.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "continuous-viridis"
-              },
-              "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "bytes"
-            }
-          },
-          "gridPos": {
-            "h": 9,
-            "w": 6,
-            "x": 18,
-            "y": 40
-          },
-          "id": 322,
-          "options": {
-            "colorByField": "Value",
-            "groupByField": "",
-            "labelFields": [],
-            "sizeField": "Value",
-            "textField": "pod",
-            "tiling": "treemapSquarify"
-          },
-          "pluginVersion": "2.1.1",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "editorMode": "code",
-              "expr": "sort_desc((sum by (pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-3\"})) or label_replace((node_memory_MemTotal_bytes{instance=\"192.168.10.103:9100\"} - sum(container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} and on(pod) kube_pod_info{node=\"work-3\"})), \"pod\", \"Unused\", \"instance\", \".*\"))",
-              "format": "table",
-              "instant": true,
-              "legendFormat": "{{pod}}",
-              "refId": "A"
-            }
-          ],
-          "title": "work-3  \u00b7  Memory by Pod + Unused",
+          "title": "Memory by Pod \u00b7 All Nodes",
           "type": "marcusolsson-treemap-panel"
         }
       ],
