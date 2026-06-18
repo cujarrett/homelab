@@ -1,54 +1,50 @@
 # Workload Identity
 
-Right now, every service that talks to AWS does it with a static access key sitting in a
-Kubernetes Secret. It was created once. It never rotates. If anything goes wrong, that key
-is valid until I notice — and "until I notice" is not a security model.
+Every platform API that integrates with an AWS resource needs credentials. If those
+credentials are static access keys, each new service is a new long-lived secret to manage,
+rotate, and audit. The attack surface grows with every deployment. A compromised key remains
+valid until someone catches it — that does not scale.
 
-The fix is giving each workload its own short-lived identity instead of a shared password.
-A cert that proves "I am the my-vinyl-api pod, in the my-vinyl namespace, on this cluster"
-and expires in an hour. AWS sees the cert, checks that it was signed by a CA it trusts,
-and hands back temporary credentials. No key to leak. Nothing to rotate. The next cert is
-already being fetched before the old one expires.
-
-That's what this is. SPIFFE defines the identity format. SPIRE issues the certs. IAM Roles
-Anywhere is the AWS side that accepts them. Each piece is boring on its own — combined, they
-replace a class of credential problem entirely.
+The fix: give each workload its own short-lived identity instead of a shared password.
+A cert — an SVID (SPIFFE Verifiable Identity Document) — that proves "this is the
+`foo-api` pod, in the `foo` namespace, on this cluster" and expires in an hour.
+AWS validates it against a registered CA and issues temporary credentials scoped to a role.
+No key to leak. Nothing to rotate manually. The platform rotates SVIDs before they expire.
 
 ---
 
 ## The Stack
 
-Three layers, each building on the last.
-
 ```
-AWS IAM Roles Anywhere  ← "I trust certs signed by this CA; map to this role"
+AWS IAM Roles Anywhere  ← "Trust certs signed by this CA; map to this role"
         ↑
-   SPIRE / SPIFFE        ← "This pod is who it says it is; here's its cert"
-        ↑
-   Linkerd (mesh)        ← "All traffic between these pods is encrypted and identified"
+   SPIRE / SPIFFE        ← "This pod is who it claims; here is its cert"
 ```
 
-**Linkerd** handles in-cluster mTLS automatically. Every meshed pod already has a SPIFFE-compatible
-identity. You'll understand what an SVID *is* by working through the mesh first.
+**SPIRE** issues SVIDs to workloads via a CSI volume — a Kubernetes-standard mechanism where
+a driver DaemonSet intercepts the pod's volume mount, fetches the SVID from the local SPIRE
+agent, and writes the cert and private key directly into the pod's filesystem. They rotate in
+place before expiry. The pod never restarts.
 
-**SPIRE** is a full SPIFFE implementation. It issues X.509 SVIDs to workloads via a local Unix
-socket. The app calls the socket, gets its cert, and hands that cert to AWS.
-
-**IAM Roles Anywhere** is the AWS STS integration for on-prem workloads. You register SPIRE's
-CA as a trust anchor. AWS validates the cert chain and issues temporary credentials scoped to an
-IAM role. The role trust policy can be locked to a specific SPIFFE ID.
+**IAM Roles Anywhere** is the AWS STS integration for on-prem and hybrid workloads ([like my homelab](https://blog.mattjarrett.dev/platform)). SPIRE's CA is registered as a trust anchor. AWS validates the cert chain and issues temporary
+credentials scoped to an IAM role. The role trust policy is locked to a specific SPIFFE ID.
+Each workload gets its own least-privilege role. Automatically.
 
 ---
 
 ## Why IAM Roles Anywhere, not OIDC
 
-OIDC federation requires AWS to reach your OIDC discovery endpoint to validate JWT tokens. The
-cluster is on-prem. That means exposing your JWKS on a public URL (S3 bucket, typically) as a
-workaround. It works but it's a kludge.
+OIDC federation requires AWS to reach the cluster's OIDC discovery endpoint to validate JWT
+tokens. For an on-prem cluster like mine, that means exposing the JWKS on a public URL. It works.
+It's also an unnecessary attack surface.
 
-IAM Roles Anywhere is purely certificate-based. The workload presents its cert to AWS STS.
-AWS validates the chain against a trust anchor you registered. No inbound connection to your
-cluster. Designed for exactly the type of topology between my homelab cluster and AWS.
+IAM Roles Anywhere is purely certificate-based. The workload presents its cert directly to
+AWS STS. No inbound connection to the cluster required. The topology fits on-prem natively.
+
+> **On ROSA?** Skip this entirely. ROSA automatically provisions a managed OIDC provider
+> and integrates with AWS STS out of the box. Use
+> [AWS Pod Identity / STS-based service account token projection](https://docs.aws.amazon.com/rosa/latest/userguide/rosa-sts-about-iam-resources.html)
+> instead — OIDC is the right answer when AWS already hosts and trusts the endpoint.
 
 ---
 
@@ -62,12 +58,62 @@ Crossplane → creates IAM user → generates access key → writes to Secret �
 After:
 ```
 Crossplane → creates IAM role (with SPIFFE ID condition) → writes role ARN to binding Secret
-SPIRE      → issues SVID to pod at /run/spire/agent.sock
-Sidecar    → exchanges SVID for STS creds → writes to /bindings/<type>/credentials
-App        → reads AWS credentials file, calls S3/DynamoDB/RDS — same path, different source
+SPIRE      → issues SVID to pod via CSI volume (cert + key files, auto-rotated)
+Sidecar    → writes ~/.aws/config entry with credential_process = aws_signing_helper
+App        → aws.NewFromConfig(ctx) — zero credential wiring
 ```
 
-The app-facing service binding path doesn't change. The platform swaps what's behind it.
+**Example: an XApi binding to both S3 and DynamoDB**
+
+```yaml
+# XApi instance
+spec:
+  objectStorageRef: foo-media     # S3 bucket
+  nosqlRef: foo-catalog           # DynamoDB table
+```
+
+The composition provisions one sidecar per AWS binding, each with its own SPIFFE identity,
+IAM role, and named AWS profile. It injects env vars the app reads by convention:
+
+```
+AWS_PROFILE_OBJECT_STORAGE=object-storage
+AWS_PROFILE_NOSQL=nosql
+```
+
+Each env var value is a profile name. The sidecar for that binding writes a matching entry
+to `~/.aws/config`:
+
+```ini
+[profile object-storage]
+credential_process = aws_signing_helper credential-process \
+  --certificate /spire/tls.crt \
+  --private-key /spire/tls.key \
+  --role-arn arn:aws:iam::...:role/foo-api-object-storage \
+  --trust-anchor-arn ... \
+  --profile-arn ...
+```
+
+`credential_process` is a standard AWS SDK feature. When the SDK needs credentials for that
+profile, it executes the command as a subprocess, reads the JSON from stdout (access key,
+secret, session token, expiry), and caches them. When the cached credentials near expiry, the
+SDK re-executes the command automatically. The sidecar's only job is writing this config entry.
+`aws_signing_helper` reads the SVID cert from the CSI volume, calls IAM Roles Anywhere, and
+returns fresh STS credentials as JSON. The app never sees a key.
+
+App code — one line per AWS client, no credential details:
+
+```go
+s3Cfg, _  := config.LoadDefaultConfig(ctx,
+    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_OBJECT_STORAGE")))
+s3Client  := s3.NewFromConfig(s3Cfg)
+
+ddbCfg, _ := config.LoadDefaultConfig(ctx,
+    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_NOSQL")))
+ddbClient := dynamodb.NewFromConfig(ddbCfg)
+```
+
+The profile name is a platform convention. If the underlying credential mechanism changes,
+the env var contract stays stable and no application code changes are required.
 
 ---
 
@@ -198,12 +244,14 @@ k logs -n spire-server spire-server-0 | head -50
 k exec -n spire-server spire-server-0 -- \
   /opt/spire/bin/spire-server agent list
 
-# The server's bundle (your root CA public cert) — save this to 1Password as a Secure Note
+# The server's bundle (root CA public cert) — treat as sensitive
 k exec -n spire-server spire-server-0 -- \
   /opt/spire/bin/spire-server bundle show -format pem
 ```
 
-Save that CA cert. You'll register it as an IAM Roles Anywhere trust anchor in Phase 5.
+Save that CA cert. It is the root of trust for every SVID the cluster issues and is highly
+sensitive. Anyone who registers it as a trust anchor in AWS can issue SVIDs that will be accepted as
+valid cluster identities. You'll register it in IAM Roles Anywhere in Phase 4.
 
 **Exit criteria:**  `spire-server-0` and all `spire-agent-*` pods are `1/1 Running`, `agent list` shows 4 attested agents, bundle command returns a PEM cert.
 
@@ -255,7 +303,7 @@ done
 The selectors tell SPIRE: "only pods in namespace `my-vinyl` with service account `my-vinyl-api`
 can claim this SPIFFE ID." Anything else gets rejected.
 
-Note: Phase 8 (SPIRE Controller Manager) automates this — you won't create entries by hand at scale.
+Note: Phase 7 (SPIRE Controller Manager) automates this — you won't create entries by hand at scale.
 
 **Verify the workload can fetch its SVID:**
 
@@ -317,6 +365,10 @@ aws rolesanywhere create-trust-anchor \
   --source "sourceType=CERTIFICATE_BUNDLE,sourceData={x509CertificateData=$(cat ~/Desktop/spire-ca.pem)}" \
   --tags key=cluster,value=homelab \
   --enabled
+
+# Delete the local copy — it's a public cert (no private key), safe to remove.
+# Re-fetch any time with the bundle show command above.
+rm ~/Desktop/spire-ca.pem
 ```
 
 **Create an IAM role for `my-vinyl-api` S3 access:**
@@ -370,62 +422,46 @@ aws rolesanywhere create-profile \
 ```
 
 **Exit criteria:** Trust anchor shows `enabled: true`. Role trust policy is saved. Profile exists.
-Nothing is actually called yet — that's Phase 6.
+
+**Cleanup — before Phase 5:** The IAM role and profile created here were manual proof-of-concept resources. Once Phase 5 has the composition managing them, delete these:
+
+```bash
+# Delete the manual proof-of-concept role and profile (Crossplane will own these going forward)
+aws rolesanywhere delete-profile \
+  --profile-id $(aws rolesanywhere list-profiles \
+    --query 'profiles[?name==`homelab-my-vinyl-api`].profileId' --output text)
+
+# The role has no attached or inline policies — delete directly
+aws iam delete-role --role-name homelab-my-vinyl-api
+```
+
+The trust anchor (`homelab-spire`) is cluster-wide and permanent — do not delete it.
 
 ---
 
-### Phase 5 — Wire the first workload (XObjectStorage proof-of-concept)
+### Phase 5 — Update XObjectStorage composition
 
-This is the manual proof before the platform automates it.
+**Implementation decisions:**
+
+| Decision | Choice | Why |
+|---|---|---|
+| SVID delivery to sidecar | SPIRE CSI driver | Mounts SVID cert+key directly as pod volume files — no extra sidecar needed. The two-sidecar alternative (spiffe-helper + aws_signing_helper) adds inter-container coordination with no benefit. CSI driver is the upstream-recommended pattern and is already in `cluster/argocd/spire.yaml`, just disabled. Enable it there before this phase. |
+| `trust-anchor-arn` + `profile-arn` source | EnvironmentConfig | Cluster-wide constants, not per-instance values. Same pattern as `abacPolicyArn` already in the config. Not stored in Git. |
+| Credentials delivery to SDK | Named profiles in shared AWS config | Each sidecar writes a named profile (`[object-storage]`, `[nosql]`) to a shared AWS config. The composition injects `AWS_PROFILE_<BINDING>` env vars. For a single AWS binding, `config.LoadDefaultConfig(ctx)` works with no arguments. For multiple bindings, the app passes `config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_OBJECT_STORAGE"))` — one line per client, no credential details. Supports the full XApi multi-binding model. |
 
 **The credential exchange mechanism:**
 
-AWS provides an open-source binary called `aws_signing_helper`. It accepts an SVID cert+key,
-calls `rolesanywhere.amazonaws.com`, and returns STS credentials. You can use it as a
-`credential_process` provider in the AWS SDK, or run it as a sidecar that writes a
-credentials file.
-
-For the platform, the sidecar pattern is cleanest — the app just reads a file, same as today.
+AWS provides `aws_signing_helper` ([rolesanywhere-credential-helper](https://github.com/aws/rolesanywhere-credential-helper)) accepts an SVID cert+key, calls `rolesanywhere.amazonaws.com`, and returns STS credentials. The platform runs it as a sidecar with a pinned image tag — no floating `latest`, so a bad upstream release can't silently break credential exchange. Renovate keeps the tag current via PRs.
 
 ```
-SPIRE agent socket
+SPIRE CSI volume (cert + key files, auto-rotated)
       ↓
-aws-credentials-sidecar (runs aws_signing_helper on a refresh loop)
+aws-credentials-sidecar writes ~/.aws/config:
+  [profile object-storage]
+  credential_process = aws_signing_helper ...  ← full example in "What changes for the platform"
       ↓
-/bindings/object-storage/credentials  (AWS credentials file format)
-      ↓
-App reads: AWS_SHARED_CREDENTIALS_FILE=/bindings/object-storage/credentials
+SDK executes aws_signing_helper on demand → IAM Roles Anywhere → STS creds (cached, auto-refreshed)
 ```
-
-**Test it manually first:**
-
-```bash
-# Download aws_signing_helper on a test pod
-# https://github.com/aws/rolesanywhere-credential-helper
-
-aws_signing_helper credential-process \
-  --certificate ~/Desktop/svid.pem \
-  --private-key ~/Desktop/svid-key.pem \
-  --trust-anchor-arn $TRUST_ANCHOR_ARN \
-  --profile-arn $PROFILE_ARN \
-  --role-arn $ROLE_ARN
-```
-
-You get back JSON with `AccessKeyId`, `SecretAccessKey`, `SessionToken`. Those expire in one hour.
-
-**Then verify S3 access:**
-
-```bash
-AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... AWS_SESSION_TOKEN=... \
-  aws s3 ls s3://my-vinyl-assets-bucket/
-```
-
-**Exit criteria:** Manual credential exchange works. S3 access verified from a pod using an SVID.
-No static key anywhere in the process.
-
----
-
-### Phase 6 — Update XObjectStorage composition
 
 The composition currently creates an IAM user and writes static keys into the binding Secret.
 Replace that with:
@@ -433,7 +469,7 @@ Replace that with:
 1. **Create an IAM role** (not a user) with the SPIFFE ID condition in the trust policy
 2. **Write the role ARN** (not keys) into the binding Secret under the key `role-arn`
 3. **Inject the SPIRE socket** as a volume in `XApi`'s pod spec
-4. **Add the credentials sidecar** to `XApi` — it runs `aws_signing_helper` on a refresh loop and writes to `/bindings/<type>/credentials`
+4. **Add the credentials sidecar** to `XApi` — it writes a `credential_process` entry to `~/.aws/config` pointing `aws_signing_helper` at the SVID cert and the role ARN
 
 The binding Secret format changes from:
 
@@ -450,22 +486,49 @@ The app changes from:
 accessKey := os.ReadFile("/bindings/object-storage/username")
 secretKey := os.ReadFile("/bindings/object-storage/password")
 
-// After
-// Nothing changes in the app — SDK reads credentials file automatically
-// AWS_SHARED_CREDENTIALS_FILE=/bindings/object-storage/credentials
+// After — single AWS binding
+cfg, _ := config.LoadDefaultConfig(ctx)
+s3Client := s3.NewFromConfig(cfg)
+
+// After — multiple AWS bindings (e.g. objectStorageRef + nosqlRef)
+// The composition injects AWS_PROFILE_<BINDING> env vars automatically.
+// Each sidecar writes a named profile to the shared AWS config.
+s3Cfg, _ := config.LoadDefaultConfig(ctx,
+    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_OBJECT_STORAGE")))
+s3Client := s3.NewFromConfig(s3Cfg)
+
+ddbCfg, _ := config.LoadDefaultConfig(ctx,
+    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_NOSQL")))
+ddbClient := dynamodb.NewFromConfig(ddbCfg)
 ```
 
-This is the 80/20 win. The sidecar handles the SPIRE ↔ STS exchange. The app doesn't know
-it's happening.
+The sidecar handles the SPIRE ↔ STS exchange. The composition injects the profile env vars. The app reads an env var and passes it to the SDK — one line per AWS client, no credential details in app code.
 
 **What to update in the composition:**
 
-- `platform/object-storage/composition.yaml` — replace `IAMUser` + `AccessKey` managed resources with `IAMRole` + trust policy
-- `platform/api/composition.yaml` — add the SPIRE socket volume and the credentials sidecar when an `objectStorageRef` is present
+- `platform/object-storage/composition.yaml` — replace `IAMUser` + `AccessKey` + `UserPolicyAttachment` managed resources with `IAMRole` + trust policy
+- `platform/api/composition.yaml` — add the SPIRE CSI volume and the credentials sidecar when an `objectStorageRef` is present
+- `cluster/argocd/spire.yaml` — enable `spire-agent.spiffeCSIDriver.enabled: true`
+- EnvironmentConfig — add `trustAnchorArn` and `rolesAnywhereProfileArn`; remove `abacPolicyArn` (only referenced by `XObjectStorage`, now obsolete)
+- AWS — delete the ABAC IAM policy (`abacPolicyArn`) once no XObjectStorage instances reference it
+
+**Exit criteria:** Deploy the updated composition. Exec into the `my-vinyl-api` pod and confirm:
+
+```bash
+# Credentials file is present and non-empty
+k exec -n my-vinyl deploy/my-vinyl-api -c aws-credentials-sidecar -- \
+  cat /credentials/object-storage/credentials
+
+# Verify S3 access with the issued credentials
+k exec -n my-vinyl deploy/my-vinyl-api -c my-vinyl-api -- \
+  aws s3 ls s3://my-vinyl-assets-bucket/ --profile default
+```
+
+No static key anywhere in the process. If the credentials file is missing or empty, check sidecar logs for SPIRE socket or STS errors.
 
 ---
 
-### Phase 7 — Repeat for XNoSql and XSql (RDS)
+### Phase 6 — Repeat for XNoSql and XSql (RDS)
 
 Same pattern as XObjectStorage. Each gets its own IAM role, its own SPIFFE ID condition.
 
@@ -479,9 +542,9 @@ network identity; no credential required.
 
 ---
 
-### Phase 8 — Automate registration entries
+### Phase 7 — Automate registration entries
 
-Today you created the SPIRE registration entry by hand in Phase 4. That doesn't scale.
+Today you created the SPIRE registration entry by hand in Phase 3. That doesn't scale.
 
 When `XApi` creates a Deployment with service account `foo-api` in namespace `foo`, the
 platform should automatically create the corresponding SPIRE registration entry.
@@ -500,7 +563,7 @@ creates the SPIRE entry automatically. When the XR is deleted, the entry is clea
 
 ---
 
-### Phase 9 — Declared connection topology (long-term)
+### Phase 8 — Declared connection topology (long-term)
 
 Once every workload has a SPIFFE identity and Linkerd is running, the platform can enforce
 *who is allowed to call whom*.
@@ -541,4 +604,4 @@ These decisions are hard to reverse. Make them deliberately.
 | Decision | Why it's sticky |
 |---|---|
 | SPIRE trust domain (`homelab.local`) | Baked into every SVID and every IAM trust policy condition. Changing it requires re-registering trust anchors and updating all role trust policies. |
-| Credential sidecar pattern | Once apps rely on the credentials file path, changing the delivery mechanism requires a coordinated update. The path is stable; the mechanism underneath can change. |
+| One credential sidecar per AWS binding | Each sidecar assumes a distinct IAM role scoped to one resource. Collapsing to a shared sidecar later would require merging IAM permissions across resources, breaking least-privilege, or building role-chaining logic with no security upside. |
