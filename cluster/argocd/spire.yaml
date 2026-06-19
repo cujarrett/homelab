@@ -23,10 +23,24 @@ spec:
 
         spire-server:
           replicaCount: 1
-          # Controller manager provisions the ClusterSPIFFEID CRD and watches pods,
-          # auto-creating SPIRE registration entries (replaces the by-hand entry step).
+          # Watches pods and issues each a SPIFFE ID from its namespace + service account.
           controllerManager:
             enabled: true
+            identities:
+              clusterSPIFFEIDs:
+                # By default the chart IDs every pod; we only want platform pods.
+                default:
+                  enabled: false
+                # Issue an ID to XApi and XSpa pods (label set by their compositions).
+                homelab-workloads:
+                  spiffeIDTemplate: spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}
+                  podSelector:
+                    matchExpressions:
+                      - key: app
+                        operator: In
+                        values:
+                          - xapi
+                          - xspa
 
         spire-agent:
           logLevel: DEBUG
