@@ -1,0 +1,25 @@
+# CRDs for spire-controller-manager. These are not shipped inside the Helm chart;
+# they must exist before the controller-manager starts. Pin the files in
+# cluster/spire/ to the controller-manager image tag in cluster/argocd/spire.yaml
+# (controllerManager.image.tag). Update both together when the chart is bumped.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: spire-crds
+  namespace: argocd
+spec:
+  project: cluster
+  source:
+    repoURL: https://github.com/cujarrett/homelab.git
+    targetRevision: HEAD
+    path: cluster/spire
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: spire-server
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true
