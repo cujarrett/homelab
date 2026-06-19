@@ -23,17 +23,18 @@ spec:
 
         spire-server:
           replicaCount: 1
+          # Controller manager provisions the ClusterSPIFFEID CRD and watches pods,
+          # auto-creating SPIRE registration entries (replaces the by-hand entry step).
           controllerManager:
-            enabled: false
+            enabled: true
 
         spire-agent:
           logLevel: DEBUG
 
-        spire-controller-manager:
-          enabled: false
-
+        # CSI driver mounts each pod's SVID (cert + key) as files via a volume.
+        # Required before any workload can consume its identity for AWS credential exchange.
         spiffe-csi-driver:
-          enabled: false
+          enabled: true
 
         spiffe-oidc-discovery-provider:
           enabled: false
