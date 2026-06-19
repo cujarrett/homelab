@@ -3,13 +3,16 @@
   "extends": ["config:recommended"],
   "assignees": ["cujarrett"],
   "reviewers": ["cujarrett"],
-  "enabledManagers": ["argocd", "kubernetes"],
+  "enabledManagers": ["argocd", "crossplane", "kubernetes"],
   "minimumReleaseAge": "7 days",
   "argocd": {
     "fileMatch": [
       "cluster/argocd/.+\\.yaml$",
       "cluster/monitoring/.+\\.yaml$"
     ]
+  },
+  "crossplane": {
+    "fileMatch": ["cluster/crossplane/.+\\.yaml$"]
   },
   "kubernetes": {
     "fileMatch": ["cluster/.+/.+\\.yaml$"]
