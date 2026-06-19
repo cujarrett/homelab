@@ -26,6 +26,9 @@ spec:
           # Watches pods and issues each a SPIFFE ID from its namespace + service account.
           controllerManager:
             enabled: true
+            # Pre-upgrade hook tries to delete a webhook that doesn't exist on first install.
+            installAndUpgradeHook:
+              enabled: false
             identities:
               clusterSPIFFEIDs:
                 # By default the chart IDs every pod; we only want platform pods.
