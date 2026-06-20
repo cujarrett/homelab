@@ -32,13 +32,14 @@ This was a learning in how to make every platform workload gets a short-lived X.
 │  │    tls.key  ← private key (auto-rotated)        │                    │
 │  │                                                 │                    │
 │  │  aws-spiffe-helper sidecar (per AWS binding):   │                    │
-│  │    reads role-arn from binding Secret           │                    │
+│  │    reads role-arn + profile-arn from Secret     │                    │
 │  │    reads cert+key → calls IAM Roles Anywhere    │                    │
-│  │    writes ~/.aws/config credential_process      │                    │
+│  │    writes /aws-credentials/credentials          │                    │
+│  │    (named profiles, refreshed every 50 min)     │                    │
 │  │                                                 │                    │
 │  │  app container:                                 │                    │
 │  │    config.LoadDefaultConfig(ctx)                │                    │
-│  │    → SDK executes aws_signing_helper            │                    │
+│  │    → SDK reads named profile from creds file    │                    │
 │  └─────────────────────────────────────────────────┘                    │
 │                            ▲                                            │
 │        binding Secret mounted into pod at runtime                       │
@@ -85,10 +86,10 @@ This was a learning in how to make every platform workload gets a short-lived X.
 2. SPIRE CSI driver mounts the SVID (cert + key) into the pod filesystem
 3. `aws-spiffe-helper` sidecar reads the cert+key, calls IAM Roles Anywhere with the role ARN from the binding Secret
 4. IAM Roles Anywhere validates the cert chain against the trust anchor, checks the SPIFFE ID condition on the role, calls STS
-5. STS returns temporary credentials — sidecar writes them as a `credential_process` entry in `~/.aws/config`
-6. App calls `config.LoadDefaultConfig(ctx)` — SDK executes `aws_signing_helper` on demand, caches and auto-refreshes
+5. STS returns temporary credentials — sidecar writes them as named profile sections to `/aws-credentials/credentials` (a shared emptyDir volume)
+6. App calls `config.LoadDefaultConfig(ctx)` with a profile name from `AWS_PROFILE_<BINDING>` env var — SDK reads the named profile from the credentials file directly
 
-`aws_signing_helper` is the [AWS IAM Roles Anywhere credential helper](https://github.com/aws/rolesanywhere-credential-helper). It takes an SVID cert+key, calls the Roles Anywhere API, and returns temporary STS credentials. The AWS SDK invokes it as a `credential_process` — a standard SDK extension point for external credential sources — so app code never calls it directly.
+`aws_signing_helper` is the [AWS IAM Roles Anywhere credential helper](https://github.com/aws/rolesanywhere-credential-helper). The sidecar calls it directly, gets credentials JSON back, and writes the actual access key, secret key, and session token into the credentials file. The SDK never calls `aws_signing_helper` — it just reads the file. The sidecar owns the refresh loop (every 50 minutes).
 
 The app never sees a static key. The platform rotates SVIDs before expiry (default 1h). If the pod is deleted, the role can't be assumed by anything else — the trust policy condition is scoped to the exact SPIFFE ID.
 
@@ -566,7 +567,7 @@ Replace that with:
 1. **Create an IAM role** (not a user) with the SPIFFE ID condition in the trust policy
 2. **Write the role ARN** (not keys) into the binding Secret under the key `role-arn`
 3. **Mount the SPIFFE CSI volume** in `XApi`'s pod spec — the CSI driver writes the SVID cert+key as files at `/var/run/secrets/spiffe.io/`
-4. **Add the credentials sidecar** to `XApi` — it writes a `credential_process` entry to `~/.aws/config` pointing `aws_signing_helper` at the SVID cert and the role ARN
+4. **Add the credentials sidecar** to `XApi` — it calls `aws_signing_helper` with the SVID cert+key and the role ARN, gets STS credentials back, and writes them as named profile sections to `/aws-credentials/credentials` (a shared emptyDir). The app reads via `AWS_SHARED_CREDENTIALS_FILE` + `AWS_PROFILE_<BINDING>` env vars.
 
 The binding Secret format changes from:
 
@@ -605,7 +606,7 @@ The sidecar handles the SPIRE ↔ STS exchange. The composition injects the prof
 
 - `platform/object-storage/composition.yaml` — ✓ replaced `IAMUser` + `AccessKey` with `IAMRole` + trust policy; binding Secret now contains `role-arn` not keys
 - `platform/api/composition.yaml` — ✓ adds `aws-credentials-sidecar`, `spiffe-bundle` CSI volume, `aws-credentials` emptyDir, and `AWS_SHARED_CREDENTIALS_FILE` / `AWS_PROFILE_<BINDING>` env vars into the api container when `objectStorageRef` or `nosqlRef` is set
-- EnvironmentConfig — add `trustAnchorArn` and `rolesAnywhereProfileArn`; remove `abacPolicyArn` (only referenced by `XObjectStorage`, now obsolete)
+- EnvironmentConfig — add `trustAnchorArn`; remove `abacPolicyArn`. The XApi composition creates its own Profile per `objectStorageRef` — no shared profile ARN needed.
 - AWS — delete the ABAC IAM policy (`abacPolicyArn`) once no XObjectStorage instances reference it
 
 **Exit criteria:** Spin up throwaway XRs, verify the full chain, then delete them.
@@ -646,8 +647,8 @@ spec:
     image: nginx:alpine
     port: 80
     readinessCheckPath: /
-    objectStorageRef:
-      name: phase5-test
+    objectStorageRefs:
+      - name: phase5-test
 EOF
 
 # 6. Wait for the pod to be running
