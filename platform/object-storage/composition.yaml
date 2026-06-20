@@ -22,10 +22,6 @@ spec:
               spec:
                 forProvider:
                   region: "us-east-1"
-                  lifecycleRule:
-                    - enabled: true
-                      abortIncompleteMultipartUpload:
-                        daysAfterInitiation: 7
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.dataRetention
