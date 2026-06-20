@@ -15,9 +15,6 @@ spec:
       schema:
         openAPIV3Schema:
           type: object
-          x-kubernetes-validations:
-            - rule: "!has(self.spec.parameters.objectStorageRefs) || self.spec.parameters.objectStorageRefs.all(r, size('crossplane-' + self.spec.parameters.namespace + '-' + self.metadata.name + '-' + r.name) <= 64)"
-              message: "IAM role name 'crossplane-{namespace}-{name}-{refName}' must be <= 64 characters. Shorten namespace, XApi name, or objectStorageRef name."
           properties:
             spec:
               type: object
