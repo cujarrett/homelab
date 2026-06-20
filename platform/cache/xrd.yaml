@@ -29,9 +29,9 @@ spec:
                       description: "Size for the cache cluster (cloud only). xs=cache.t4g.micro, sm=cache.t4g.small, md=cache.t4g.medium, lg=cache.t4g.medium."
                     backend:
                       type: string
-                      default: cluster
-                      enum: [cluster, cloud]
-                      description: "Backend to provision. cloud provisions AWS ElastiCache; cluster provisions in-cluster Redis."
+                      default: private-cloud
+                      enum: [private-cloud, public-cloud]
+                      description: "Backend to provision. public-cloud provisions AWS ElastiCache; private-cloud provisions in-cluster Redis."
                     namespace:
                       type: string
                       description: "Namespace to deploy into. Must already exist (created by the tenant's namespace.yaml)."

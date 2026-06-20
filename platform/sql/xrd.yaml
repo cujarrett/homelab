@@ -31,9 +31,9 @@ spec:
                       description: "Size for the RDS instance (cloud only). xs=db.t4g.micro, sm=db.t4g.small, md=db.t4g.medium, lg=db.t4g.large."
                     backend:
                       type: string
-                      default: cluster
-                      enum: [cluster, cloud]
-                      description: "Backend to provision. cloud provisions AWS RDS Postgres; cluster provisions in-cluster Postgres."
+                      default: private-cloud
+                      enum: [private-cloud, public-cloud]
+                      description: "Backend to provision. public-cloud provisions AWS RDS Postgres; private-cloud provisions in-cluster Postgres."
                     namespace:
                       type: string
                       description: "Namespace to write the binding Secret into. Passed automatically by XApi."

@@ -40,6 +40,11 @@ spec:
                         name:
                           type: string
                           description: "metadata.name of the XSql instance."
+                        backend:
+                          type: string
+                          default: private-cloud
+                          enum: [private-cloud, public-cloud]
+                          description: "Must match the XSql instance's spec.parameters.backend. When public-cloud, the sidecar exchanges the SVID for STS credentials so the app can generate an RDS auth token."
                     nosqlRef:
                       type: object
                       description: "Reference to an existing XNoSql instance to bind. The platform mounts its Secret at /bindings/nosql/."

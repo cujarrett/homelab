@@ -21,7 +21,7 @@ spec:
             {{- $xr := .observed.composite.resource }}
             {{- $name := $xr.metadata.name }}
             {{- $uid := $xr.metadata.uid }}
-            {{- $env := $xr.spec.parameters.backend | default "cluster" }}
+            {{- $env := $xr.spec.parameters.backend | default "private-cloud" }}
             {{- $dataRetention := $xr.spec.parameters.dataRetention | default "retain" }}
             {{- $storageClass := "longhorn-retain" }}
             {{- if eq $dataRetention "delete" }}{{- $storageClass = "longhorn-delete" }}{{- end }}
@@ -40,7 +40,13 @@ spec:
                 {{- end }}
               {{- end }}
             {{- end }}
-            {{- if eq $env "cluster" }}
+            {{- $sqlRoleObs := index (.observed.resources | default dict) "sql-role" | default dict }}
+            {{- $sqlRoleArn := "" }}
+            {{- if $sqlRoleObs.resource }}{{- $sqlRoleArn = $sqlRoleObs.resource.status.atProvider.arn | default "" }}{{- end }}
+            {{- $sqlProfileObs := index (.observed.resources | default dict) "sql-profile" | default dict }}
+            {{- $sqlProfileArn := "" }}
+            {{- if $sqlProfileObs.resource }}{{- $sqlProfileArn = $sqlProfileObs.resource.status.atProvider.arn | default "" }}{{- end }}
+            {{- if eq $env "private-cloud" }}
             ---
             apiVersion: v1
             kind: PersistentVolumeClaim
@@ -181,12 +187,71 @@ spec:
                 skipFinalSnapshot: true
                 publiclyAccessible: false
                 username: app
+                # IAM DB Auth: the sidecar exchanges the SVID for STS credentials, then the app
+                # calls rds generate-db-auth-token using those credentials as its password.
+                iamDatabaseAuthenticationEnabled: true
               writeConnectionSecretToRef:
                 name: {{ $name }}-rds-conn
                 namespace: {{ $ns }}
-            {{- if $rdsConn }}
+            {{- /* Trust policy scoped to the XSql namespace (wildcard on SA). The XApi that      */}}
+            {{- /* references this XSql will be in the same namespace. Full per-workload scoping   */}}
+            {{- /* would require XApi to create this role — acceptable homelab trade-off.          */}}
+            {{- $sqlTrustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringLike" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/*" $ns))))) | toJson }}
+            {{- $sqlInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" "rds-db:connect" "Resource" (printf "arn:aws:rds-db:%s:*:dbuser/*/app" $region))) | toJson }}
             ---
-            # type/provider not published by the provider; added here for servicebinding.io compliance
+            # IAM Role for RDS IAM DB Auth. Trust scoped to all service accounts in the XSql namespace.
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              name: {{ $name }}-sql
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: sql-role
+                gotemplating.fn.crossplane.io/ready: "True"
+                crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}-sql
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                path: /crossplane/
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+                assumeRolePolicy: {{ $sqlTrustPolicy | quote }}
+                inlinePolicy:
+                  - name: platform-sql-{{ $ns }}-{{ $name }}
+                    policy: {{ $sqlInlinePolicy | quote }}
+            {{- if $sqlRoleArn }}
+            {{- $sqlProfileExternalName := "00000000-0000-0000-0000-000000000000" }}
+            {{- if $sqlProfileObs.resource }}
+              {{- $sqlObservedExternalName := index ($sqlProfileObs.resource.metadata.annotations | default dict) "crossplane.io/external-name" | default "" }}
+              {{- if $sqlObservedExternalName }}{{- $sqlProfileExternalName = $sqlObservedExternalName }}{{- end }}
+            {{- end }}
+            ---
+            # RolesAnywhere Profile for RDS IAM DB Auth. Deferred until role ARN is known.
+            apiVersion: rolesanywhere.aws.upbound.io/v1beta1
+            kind: Profile
+            metadata:
+              name: {{ $name }}-sql
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: sql-profile
+                gotemplating.fn.crossplane.io/ready: "True"
+                crossplane.io/external-name: {{ $sqlProfileExternalName }}
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                name: crossplane-{{ $ns }}-{{ $name }}-sql
+                enabled: true
+                durationSeconds: 3600
+                roleArns:
+                  - {{ $sqlRoleArn }}
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+            {{- end }}
+            {{- if and $rdsConn $sqlRoleArn $sqlProfileArn }}
+            ---
+            # Binding Secret for RDS. Written once RDS is ready and IAM credentials are known.
+            # No password — the app uses role-arn/profile-arn via the sidecar to generate
+            # a short-lived RDS auth token with: aws rds generate-db-auth-token.
             apiVersion: v1
             kind: Secret
             metadata:
@@ -203,6 +268,7 @@ spec:
               port: {{ index $rdsConn "port" | default "5432" }}
               database: {{ $name | replace "-" "_" }}
               username: {{ index $rdsConn "username" | default "app" }}
-              password: {{ index $rdsConn "password" | default "" }}
+              role-arn: {{ $sqlRoleArn }}
+              profile-arn: {{ $sqlProfileArn }}
             {{- end }}
             {{- end }}
