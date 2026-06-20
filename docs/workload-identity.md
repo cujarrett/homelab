@@ -147,14 +147,14 @@ For a pod with both `objectStorageRef` and `nosqlRef`, one sidecar runs and hand
 
 ```ini
 [object-storage]
-aws_access_key_id = ASIAIOSFODNN7EXAMPLE
-aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-aws_session_token = AQoXnyc4lcK...
+aws_access_key_id = REDACTED
+aws_secret_access_key = REDACTED
+aws_session_token = REDACTED
 
 [nosql]
-aws_access_key_id = ASIAI44QH8DHBEXAMPLE
-aws_secret_access_key = je7MtGbClwBF/2Zp9Utk/h3yCo8nvbEXAMPLEKEY
-aws_session_token = AQoDYXdzEJr...
+aws_access_key_id = REDACTED
+aws_secret_access_key = REDACTED
+aws_session_token = REDACTED
 ```
 
 The sidecar reads the ARNs from each binding Secret mounted into the pod, calls IAM Roles Anywhere once per binding, and refreshes all profiles every 50 minutes. The SVID cert and key are the same file for both assumptions — they prove pod identity regardless of which role is being assumed.
