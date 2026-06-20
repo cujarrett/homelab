@@ -10,7 +10,7 @@
       "customType": "regex",
       "fileMatch": ["platform/api/composition\\.yaml"],
       "matchStrings": [
-        "image: ghcr\\.io/cujarrett/aws-spiffe-helper:(?<currentValue>[^\\s@]+)"
+        "image: ghcr\\.io/cujarrett/aws-spiffe-helper:(?<currentValue>[^\\s@]+)(@(?<currentDigest>sha256:[0-9a-f]+))?"
       ],
       "depNameTemplate": "ghcr.io/cujarrett/aws-spiffe-helper",
       "datasourceTemplate": "docker"
