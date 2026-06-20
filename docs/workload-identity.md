@@ -463,7 +463,7 @@ done
 The selectors tell SPIRE: "only pods in namespace `my-vinyl` with service account `my-vinyl-api`
 can claim this SPIFFE ID." Anything else gets rejected.
 
-Note: Phase 7 (SPIRE Controller Manager) automates this — you won't create entries by hand at scale.
+Note: Phase 5 (SPIRE Controller Manager) automates this — you won't create entries by hand at scale.
 
 **Verify the workload can fetch its SVID:**
 
@@ -602,7 +602,77 @@ The trust anchor (`homelab-spire`) is cluster-wide and permanent — do not dele
 
 ---
 
-### Phase 5 — Update XObjectStorage composition
+### Phase 5 — Automate registration entries ✅
+
+**Purpose:** Kill the manual SPIRE entry step from Phase 3. Entries are created and destroyed with the XR, so a new workload gets an identity with zero manual steps.
+
+Today you created the SPIRE registration entry by hand in Phase 3. That doesn't scale.
+
+When `XApi` creates a Deployment with service account `foo-api` in namespace `foo`, the
+platform should automatically create the corresponding SPIRE registration entry.
+
+Two options:
+
+| | SPIRE Controller Manager | Crossplane go-templating |
+|---|---|---|
+| **What** | Kubernetes controller that watches ClusterSPIFFEID/SPIFFEIDs CRDs and creates entries | go-template in the composition creates an Entry MR via SPIRE provider |
+| **Complexity** | Low — install the controller, create a ClusterSPIFFEID per workload type | Medium — need a Crossplane provider for SPIRE |
+| **Fits platform model** | Partially — CRDs are separate from XR | Yes — entry lifecycle tied to XR lifecycle |
+
+**Use SPIRE Controller Manager.** It's already wired up:
+
+- `cluster/argocd/spire.yaml` — `spire-server.controllerManager.enabled: true` runs the
+  controller and installs the `ClusterSPIFFEID` CRD. The SPIFFE CSI driver is enabled in the
+  same change so workloads can access the Workload API socket (Phase 6 prerequisite).
+- `cluster/spire/cluster-spiffeid.yaml` — a single `ClusterSPIFFEID` selects every pod
+  labelled `app in (xapi, spa)` and templates the identity
+  `spiffe://homelab.local/ns/{namespace}/sa/{service-account}` — the same format the by-hand
+  Phase 3 entry used. One selector covers every XApi and XSpa pod and excludes XWordpress,
+  which carries neither label. XTopic and XSubscription run no pods of their own (their
+  consumers are XApi), so they're covered too.
+- `cluster/argocd/spire-identities.yaml` — an ArgoCD Application that syncs `cluster/spire/`,
+  because the SPIRE Helm Application can't carry raw manifests.
+
+No per-workload-type CRD and no composition change needed: pod labels do the matching, so a new
+XApi or XSpa gets an identity the moment its pod schedules, and loses it when the pod is gone.
+
+**Why label selection instead of one ClusterSPIFFEID per composition:** the labels already
+exist, so a single rule covers the whole fleet. Adding a `ClusterSPIFFEID` per offering would
+be three rules doing what one does, and would drift the moment a new offering forgot to add its
+own. One selector, no drift.
+
+**Verify (after push + ArgoCD sync):**
+
+```bash
+# Controller manager and CSI driver are running
+kubectl get pods -n spire-server
+
+# The ClusterSPIFFEID exists and reports how many entries it produced
+kubectl get clusterspiffeid homelab-workloads -o wide
+
+# The controller auto-created an entry per matching pod — no by-hand entry create
+kubectl exec -n spire-server spire-server-0 -- \
+  /opt/spire/bin/spire-server entry show | grep -E "SPIFFE ID|Selector"
+
+# A real workload can fetch its SVID (same test as Phase 3, now backed by an auto entry)
+kubectl exec -n my-vinyl deploy/my-vinyl-api -c api -- ls /run/spire 2>/dev/null || true
+```
+
+**Exit criteria:** `spire-server entry show` lists one entry per running XApi/XSpa pod with the
+expected SPIFFE ID, and none for the XWordpress pod. The manual Phase 3 entry for `my-vinyl-api`
+is now redundant — delete it once the auto entry is confirmed:
+
+```bash
+# Optional cleanup of the by-hand Phase 3 entries (the controller manager owns entries now)
+kubectl exec -n spire-server spire-server-0 -- \
+  /opt/spire/bin/spire-server entry show \
+  -spiffeID spiffe://homelab.local/ns/my-vinyl/sa/my-vinyl-api
+# then: spire-server entry delete -entryID <id> for each manual entry
+```
+
+---
+
+### Phase 6 — Update XObjectStorage composition ✅
 
 **Purpose:** Move the manual exchange from Phase 4 into the platform. The composition owns the IAM role and the credential sidecar; the app stops reading static keys.
 
@@ -749,13 +819,14 @@ kubectl exec -n phase5-test deploy/phase5-test -c aws-credentials-sidecar -- \
 # The sidecar wrote the credentials file with the named profile
 kubectl exec -n phase5-test deploy/phase5-test -c aws-credentials-sidecar -- \
   cat /aws-credentials/credentials
+# Expected: [phase5-test] section with aws_access_key_id, aws_secret_access_key, aws_session_token
 
-# The SDK can exchange the SVID for real STS credentials via the named profile
-kubectl exec -n phase5-test deploy/phase5-test -c aws-credentials-sidecar -- \
-  aws sts get-caller-identity --profile object-storage
+# Confirm the STS exchange succeeded via sidecar logs
+kubectl logs -n phase5-test deploy/phase5-test -c aws-credentials-sidecar | tail -3
+# Expected last line: "credentials file updated at /aws-credentials/credentials"
 ```
 
-`get-caller-identity` should return an ARN in the form `arn:aws:sts::<account>:assumed-role/crossplane/crossplane-phase5-test-*`. No static key anywhere in the process.
+`credentials file updated at /aws-credentials/credentials` in the sidecar logs confirms the full SVID → IAM Roles Anywhere → STS chain completed. No static key anywhere in the process.
 
 If the binding Secret is missing: check Crossplane logs (`kubectl logs -n crossplane-system deploy/crossplane`).
 If `/aws-credentials/credentials` is missing: check CSI driver logs (`kubectl logs -n spire-server -l app=spiffe-csi-driver`) and sidecar logs (`kubectl logs -n phase5-test deploy/phase5-test -c aws-credentials-sidecar`).
@@ -771,9 +842,9 @@ kubectl delete namespace phase5-test
 
 ---
 
-### Phase 6 — Repeat for XNoSql and XSql (RDS)
+### Phase 7 — Repeat for XNoSql and XSql (RDS)
 
-**Purpose:** Extend the proven Phase 5 pattern to the remaining AWS-backed offerings so every AWS binding uses identity, not keys.
+**Purpose:** Extend the proven Phase 6 pattern to the remaining AWS-backed offerings so every AWS binding uses identity, not keys.
 
 Same pattern as XObjectStorage. Each gets its own IAM role, its own SPIFFE ID condition.
 
@@ -785,75 +856,6 @@ to `/bindings/sql/password` on a refresh loop — no app change needed.
 For in-cluster Postgres: mTLS via Linkerd is sufficient. No IAM auth. The platform enforces
 network identity; no credential required.
 
----
-
-### Phase 7 — Automate registration entries
-
-**Purpose:** Kill the manual SPIRE entry step from Phase 3. Entries are created and destroyed with the XR, so a new workload gets an identity with zero manual steps.
-
-Today you created the SPIRE registration entry by hand in Phase 3. That doesn't scale.
-
-When `XApi` creates a Deployment with service account `foo-api` in namespace `foo`, the
-platform should automatically create the corresponding SPIRE registration entry.
-
-Two options:
-
-| | SPIRE Controller Manager | Crossplane go-templating |
-|---|---|---|
-| **What** | Kubernetes controller that watches ClusterSPIFFEID/SPIFFEIDs CRDs and creates entries | go-template in the composition creates an Entry MR via SPIRE provider |
-| **Complexity** | Low — install the controller, create a ClusterSPIFFEID per workload type | Medium — need a Crossplane provider for SPIRE |
-| **Fits platform model** | Partially — CRDs are separate from XR | Yes — entry lifecycle tied to XR lifecycle |
-
-**Use SPIRE Controller Manager.** It's already wired up:
-
-- `cluster/argocd/spire.yaml` — `spire-server.controllerManager.enabled: true` runs the
-  controller and installs the `ClusterSPIFFEID` CRD. The SPIFFE CSI driver is enabled in the
-  same change so workloads can access the Workload API socket (Phase 5 prerequisite).
-- `cluster/spire/cluster-spiffeid.yaml` — a single `ClusterSPIFFEID` selects every pod
-  labelled `app in (xapi, spa)` and templates the identity
-  `spiffe://homelab.local/ns/{namespace}/sa/{service-account}` — the same format the by-hand
-  Phase 3 entry used. One selector covers every XApi and XSpa pod and excludes XWordpress,
-  which carries neither label. XTopic and XSubscription run no pods of their own (their
-  consumers are XApi), so they're covered too.
-- `cluster/argocd/spire-identities.yaml` — an ArgoCD Application that syncs `cluster/spire/`,
-  because the SPIRE Helm Application can't carry raw manifests.
-
-No per-workload-type CRD and no composition change needed: pod labels do the matching, so a new
-XApi or XSpa gets an identity the moment its pod schedules, and loses it when the pod is gone.
-
-**Why label selection instead of one ClusterSPIFFEID per composition:** the labels already
-exist, so a single rule covers the whole fleet. Adding a `ClusterSPIFFEID` per offering would
-be three rules doing what one does, and would drift the moment a new offering forgot to add its
-own. One selector, no drift.
-
-**Verify (after push + ArgoCD sync):**
-
-```bash
-# Controller manager and CSI driver are running
-kubectl get pods -n spire-server
-
-# The ClusterSPIFFEID exists and reports how many entries it produced
-kubectl get clusterspiffeid homelab-workloads -o wide
-
-# The controller auto-created an entry per matching pod — no by-hand entry create
-kubectl exec -n spire-server spire-server-0 -- \
-  /opt/spire/bin/spire-server entry show | grep -E "SPIFFE ID|Selector"
-
-# A real workload can fetch its SVID (same test as Phase 3, now backed by an auto entry)
-kubectl exec -n my-vinyl deploy/my-vinyl-api -c api -- ls /run/spire 2>/dev/null || true
-```
-
-**Exit criteria:** `spire-server entry show` lists one entry per running XApi/XSpa pod with the
-expected SPIFFE ID, and none for the XWordpress pod. The manual Phase 3 entry for `my-vinyl-api`
-is now redundant — delete it once the auto entry is confirmed:
-
-```bash
-# Optional cleanup of the by-hand Phase 3 entries (the controller manager owns entries now)
-kubectl exec -n spire-server spire-server-0 -- \
-  /opt/spire/bin/spire-server entry show \
-  -spiffeID spiffe://homelab.local/ns/my-vinyl/sa/my-vinyl-api
-# then: spire-server entry delete -entryID <id> for each manual entry
-```
 
 ---
 
