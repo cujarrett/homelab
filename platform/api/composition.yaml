@@ -37,11 +37,12 @@ spec:
             {{- $objectStorageRefs := $xr.spec.parameters.objectStorageRefs | default list }}
             {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
             {{- $trustAnchorArn := index $envCtx "trustAnchorArn" | default "" }}
-            {{- $platformProfileArn := index $envCtx "platformProfileArn" | default "" }}
             {{- $sqlRefName := "" }}
             {{- if $xr.spec.parameters.sqlRef }}{{- $sqlRefName = $xr.spec.parameters.sqlRef.name }}{{- end }}
             {{- $nosqlRefName := "" }}
             {{- if $xr.spec.parameters.nosqlRef }}{{- $nosqlRefName = $xr.spec.parameters.nosqlRef.name }}{{- end }}
+            {{- $sqlBackend := "private-cloud" }}
+            {{- if $xr.spec.parameters.sqlRef }}{{- $sqlBackend = $xr.spec.parameters.sqlRef.backend | default "private-cloud" }}{{- end }}
             {{- $cacheEnabled := and $xr.spec.parameters.cache $xr.spec.parameters.cache.enabled }}
             {{- $cacheReady := "False" }}
             {{- $cacheObserved := index (.observed.resources | default dict) "cache" }}
@@ -83,6 +84,14 @@ spec:
             {{- if $nosqlRefName }}
               {{- $awsBindings = append $awsBindings "nosql-binding:/bindings/nosql:nosql" }}
               {{- $sidecarBindingParts = append $sidecarBindingParts "/bindings/nosql:nosql" }}
+            {{- end }}
+            {{- if and $sqlRefName (eq $sqlBackend "public-cloud") }}
+              {{- $awsBindings = append $awsBindings "sql-binding:/bindings/sql:sql" }}
+              {{- $sidecarBindingParts = append $sidecarBindingParts "/bindings/sql:sql" }}
+            {{- end }}
+            {{- if and $cacheEnabled (eq $cacheBackend "public-cloud") }}
+              {{- $awsBindings = append $awsBindings (printf "cache-binding:/bindings/cache:cache") }}
+              {{- $sidecarBindingParts = append $sidecarBindingParts "/bindings/cache:cache" }}
             {{- end }}
             # --- Service ---
             apiVersion: v1
@@ -360,6 +369,16 @@ spec:
                           mountPath: /bindings/nosql
                           readOnly: true
                         {{- end }}
+                        {{- if and $sqlRefName (eq $sqlBackend "public-cloud") }}
+                        - name: sql-binding
+                          mountPath: /bindings/sql
+                          readOnly: true
+                        {{- end }}
+                        {{- if and $cacheEnabled (eq $cacheBackend "public-cloud") }}
+                        - name: cache-binding
+                          mountPath: /bindings/cache
+                          readOnly: true
+                        {{- end }}
                     {{- end }}
                   {{- if or (gt (len $objectStorageRefs) 0) $sqlRefName $nosqlRefName $cacheEnabled (gt (len $awsBindings) 0) }}
                   volumes:
@@ -402,7 +421,7 @@ spec:
             {{- /* $hasAwsCloudBindings covers all AWS cloud resource types:                            */}}
             {{- /*   objectStorageRefs (any entries), nosqlRef (always DynamoDB),                       */}}
             {{- /*   cache backend=cloud (ElastiCache). Add sqlRef cloud variant when XRD supports.     */}}
-            {{- $hasAwsCloudBindings := or (gt (len $objectStorageRefs) 0) (ne $nosqlRefName "") (and $cacheEnabled (eq $cacheBackend "public-cloud")) }}
+            {{- $hasAwsCloudBindings := or (gt (len $objectStorageRefs) 0) (ne $nosqlRefName "") (and $cacheEnabled (eq $cacheBackend "public-cloud")) (and (ne $sqlRefName "") (eq $sqlBackend "public-cloud")) }}
             {{- if $hasAwsCloudBindings }}
             {{- range $objectStorageRefs }}
             {{- $refName := .name }}
@@ -500,6 +519,90 @@ spec:
 
             {{- end }}
             {{- end }}
+            {{- if $nosqlRefName }}
+            {{- $nosqlRoleKey := "role-nosql" }}
+            {{- $nosqlProfileKey := "profile-nosql" }}
+            {{- $nosqlRoleObs := index ($.observed.resources | default dict) $nosqlRoleKey | default dict }}
+            {{- $nosqlRoleArn := "" }}
+            {{- if $nosqlRoleObs.resource }}{{- $nosqlRoleArn = $nosqlRoleObs.resource.status.atProvider.arn | default "" }}{{- end }}
+            {{- $nosqlProfileObs := index ($.observed.resources | default dict) $nosqlProfileKey | default dict }}
+            {{- $nosqlProfileArn := "" }}
+            {{- if $nosqlProfileObs.resource }}{{- $nosqlProfileArn = $nosqlProfileObs.resource.status.atProvider.arn | default "" }}{{- end }}
+            {{- $tableName := $nosqlRefName }}
+            {{- $nosqlTrustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringEquals" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $name))))) | toJson }}
+            {{- $nosqlInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "dynamodb:GetItem" "dynamodb:PutItem" "dynamodb:UpdateItem" "dynamodb:DeleteItem" "dynamodb:Query" "dynamodb:Scan" "dynamodb:BatchGetItem" "dynamodb:BatchWriteItem") "Resource" (list (printf "arn:aws:dynamodb:us-east-1:*:table/%s" $tableName) (printf "arn:aws:dynamodb:us-east-1:*:table/%s/index/*" $tableName)))) | toJson }}
+            ---
+            # IAM Role for nosqlRef {{ $nosqlRefName }}. Trust scoped to this XApi's service account.
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              name: {{ $name }}-nosql
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: {{ $nosqlRoleKey }}
+                gotemplating.fn.crossplane.io/ready: "True"
+                crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}-nosql
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                path: /crossplane/
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+                  NoSqlRef: {{ $nosqlRefName }}
+                assumeRolePolicy: {{ $nosqlTrustPolicy | quote }}
+                inlinePolicy:
+                  - name: platform-nosql-{{ $ns }}-{{ $nosqlRefName }}
+                    policy: {{ $nosqlInlinePolicy | quote }}
+            {{- if $nosqlRoleArn }}
+            {{- $nosqlProfileExternalName := "00000000-0000-0000-0000-000000000000" }}
+            {{- if $nosqlProfileObs.resource }}
+              {{- $nosqlObservedExternalName := index ($nosqlProfileObs.resource.metadata.annotations | default dict) "crossplane.io/external-name" | default "" }}
+              {{- if $nosqlObservedExternalName }}{{- $nosqlProfileExternalName = $nosqlObservedExternalName }}{{- end }}
+            {{- end }}
+            ---
+            # RolesAnywhere Profile for nosqlRef {{ $nosqlRefName }}. Deferred until role ARN is known.
+            apiVersion: rolesanywhere.aws.upbound.io/v1beta1
+            kind: Profile
+            metadata:
+              name: {{ $name }}-nosql
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: {{ $nosqlProfileKey }}
+                gotemplating.fn.crossplane.io/ready: "True"
+                crossplane.io/external-name: {{ $nosqlProfileExternalName }}
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                name: crossplane-{{ $ns }}-{{ $name }}-nosql
+                enabled: true
+                durationSeconds: 3600
+                roleArns:
+                  - {{ $nosqlRoleArn }}
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+                  NoSqlRef: {{ $nosqlRefName }}
+            {{- end }}
+            {{- if and $nosqlRoleArn $nosqlProfileArn }}
+            ---
+            # Binding Secret for nosqlRef {{ $nosqlRefName }}. Written once both role ARN and profile ARN are known.
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $nosqlRefName }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: binding-secret-nosql
+                gotemplating.fn.crossplane.io/ready: "True"
+            type: servicebinding.io/dynamodb
+            stringData:
+              type: dynamodb
+              provider: aws
+              table-name: {{ $tableName }}
+              region: us-east-1
+              role-arn: {{ $nosqlRoleArn }}
+              profile-arn: {{ $nosqlProfileArn }}
+            {{- end }}
+            {{- end }}{{- /* end nosqlRefName */}}
             {{- end }}{{- /* end hasAwsCloudBindings */}}
             {{- if $cacheEnabled }}
             ---

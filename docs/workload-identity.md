@@ -822,20 +822,118 @@ kubectl delete namespace phase6-test
 
 ---
 
-### Phase 7 — Repeat for XNoSql and XSql (RDS)
+### Phase 7 — XNoSql, XSql (RDS), and XCache (ElastiCache) ✅
 
-**Purpose:** Extend the proven Phase 6 pattern to the remaining AWS-backed offerings so every AWS binding uses identity, not keys.
+**Purpose:** Extend the proven Phase 6 pattern to all remaining AWS-backed offerings so every AWS binding uses identity, not keys. Also standardizes the backend enum across all platform offerings to `private-cloud` / `public-cloud`.
 
-Same pattern as XObjectStorage. Each gets its own IAM role, its own SPIFFE ID condition.
+**Backend enum rename:**
 
-For RDS specifically: IAM database authentication replaces the password. The IAM role gets
-`rds-db:connect` permission to a specific DB resource ARN. The app requests a short-lived
-token from RDS and connects with it instead of a password. The sidecar can write this token
-to `/bindings/sql/password` on a refresh loop — no app change needed.
+All XRDs (`XCache`, `XSql`, `XApi.sqlRef`) now use `private-cloud` / `public-cloud` instead of the old `cluster` / `cloud` values, consistent with the existing `XApi.cache.backend` convention.
 
-For in-cluster Postgres: mTLS via Linkerd is sufficient. No IAM auth. The platform enforces
-network identity; no credential required.
+**XNoSql — IAM Roles Anywhere (same pattern as XObjectStorage):**
 
+The XNoSql composition now manages only the DynamoDB table. The IAM role, RolesAnywhere Profile, and binding Secret are owned by the XApi composition — the same lifecycle-coupling pattern used in Phase 6.
+
+When an XApi references a `nosqlRef`, the composition creates:
+1. **IAM Role** — trust policy condition locked to `spiffe://homelab.local/ns/{ns}/sa/{name}`. Inline policy scoped to the exact DynamoDB table ARN and its indexes.
+2. **RolesAnywhere Profile** — created after the role ARN is known; nil UUID workaround identical to Phase 6.
+3. **Binding Secret** — written at `{nosqlRefName}` in the app namespace once both ARNs are available. Contains `type`, `provider`, `table-name`, `region`, `role-arn`, `profile-arn`. No static credentials.
+
+The sidecar writes a named `nosql` profile to `/aws-credentials/credentials`. The app reads via `AWS_PROFILE_NOSQL`.
+
+**XSql (RDS) — IAM DB Auth + Roles Anywhere:**
+
+The XSql composition (`backend: public-cloud`) now creates an IAM role with `rds-db:connect` permission and a RolesAnywhere Profile. `iamDatabaseAuthenticationEnabled: true` is set on the RDS instance. The binding Secret replaces the static password with `role-arn` and `profile-arn`.
+
+Trust policy uses `StringLike` scoped to the XSql namespace (`spiffe://homelab.local/ns/{ns}/sa/*`) — a pragmatic trade-off since XSql cannot know which XApi service account will reference it. Namespace isolation still applies. Set `sqlRef.backend: public-cloud` in the XApi to wire the sql binding into the sidecar; the app then calls `aws rds generate-db-auth-token` using the sidecar's STS credentials.
+
+**For in-cluster Postgres (`backend: private-cloud`):** no changes — mTLS via Linkerd is sufficient.
+
+**XCache (ElastiCache) — IAM Roles Anywhere:**
+
+The XCache composition (`backend: public-cloud`) now creates:
+1. **IAM Role** — `elasticache:Connect` permission on the specific ReplicationGroup and User ARNs; trust policy scoped to the namespace (same pragmatic trade-off as XSql since XCache is an embedded XR).
+2. **RolesAnywhere Profile** — nil UUID workaround.
+3. **ElastiCache User** — IAM auth mode (`authenticationMode.type: iam`). The `userId` becomes the Redis username in the AUTH command.
+4. **ElastiCache UserGroup** — associates the IAM user with the ReplicationGroup.
+5. **ReplicationGroup** — `transitEncryptionEnabled: true` and `userGroupIds` pointing to the UserGroup. IAM auth on ElastiCache requires TLS.
+6. **Binding Secret** — contains `host`, `port`, `user-id`, `role-arn`, `profile-arn`. No password. The app uses the sidecar's STS credentials to call `aws elasticache generate-auth-token`.
+
+The XApi sidecar is wired for the cache binding when `cache.backend: public-cloud` — same pattern as sql.
+
+**For in-cluster Redis (`backend: private-cloud`):** no changes.
+
+**What was updated:**
+
+- `platform/cache/xrd.yaml` — backend enum: `cluster`/`cloud` → `private-cloud`/`public-cloud`
+- `platform/cache/composition.yaml` — `public-cloud` branch adds IAM Role + Profile + ElastiCache User + UserGroup + TLS-enabled ReplicationGroup; binding Secret adds `role-arn`/`profile-arn`/`user-id`
+- `platform/sql/xrd.yaml` — backend enum: `cluster`/`cloud` → `private-cloud`/`public-cloud`
+- `platform/sql/composition.yaml` — backend checks updated; IAM Role/Profile creation unchanged (already used correct values)
+- `platform/api/xrd.yaml` — `sqlRef.backend` enum: `cluster`/`cloud` → `private-cloud`/`public-cloud`
+- `platform/api/composition.yaml` — backend checks updated for sql; added cache sidecar wiring for `public-cloud` cache backend
+- `platform/nosql/composition.yaml` — stripped to DynamoDB table only; removed IAM User, AccessKey, UserPolicyAttachment, and binding Secret
+
+**Exit criteria:**
+
+```bash
+# 1. Create throwaway namespace
+kubectl create namespace phase7-test
+
+# 2. Create XNoSql + XApi with nosqlRef (primary test — full SVID→STS chain)
+kubectl apply -f - <<'EOF'
+apiVersion: platform.local.lab/v1alpha1
+kind: XNoSql
+metadata:
+  name: phase7-test
+spec:
+  parameters:
+    namespace: phase7-test
+    partitionKey: id
+    partitionKeyType: S
+    dataRetention: delete
+EOF
+
+kubectl apply -f - <<'EOF'
+apiVersion: platform.local.lab/v1alpha1
+kind: XApi
+metadata:
+  name: phase7-test
+spec:
+  parameters:
+    namespace: phase7-test
+    image: nginx:alpine
+    port: 80
+    readinessCheckPath: /
+    nosqlRef:
+      name: phase7-test
+EOF
+
+# 3. Wait for pod
+kubectl get pods -n phase7-test -w
+
+# 4. Verify containers: 1 init + 2 containers
+kubectl get pod -n phase7-test -o jsonpath='{.items[0].spec.initContainers[*].name} {.items[0].spec.containers[*].name}'
+# expected: wait-for-nosql-binding api aws-credentials-sidecar
+
+# 5. Verify credentials file has the nosql profile
+kubectl exec -n phase7-test deploy/phase7-test -c aws-credentials-sidecar -- \
+  cat /aws-credentials/credentials
+# expected: [phase7-test] section with aws_access_key_id, aws_secret_access_key, aws_session_token
+
+# 6. Confirm sidecar log
+kubectl logs -n phase7-test deploy/phase7-test -c aws-credentials-sidecar | tail -3
+# expected: "credentials file updated at /aws-credentials/credentials"
+
+# 7. Spot-check XNoSql binding Secret has role-arn (no access-key-id)
+kubectl get secret phase7-test -n phase7-test -o jsonpath='{.data}' | jq 'keys'
+# expected keys: ["profile-arn","provider","region","role-arn","table-name","type"]
+# must NOT contain: access-key-id, secret-access-key
+
+# Cleanup
+kubectl delete xapi phase7-test
+kubectl delete xnosql phase7-test
+kubectl delete namespace phase7-test
+```
 
 ---
 

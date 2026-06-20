@@ -20,7 +20,7 @@ spec:
           template: |
             {{- $xr := .observed.composite.resource }}
             {{- $name := $xr.metadata.name }}
-            {{- $env := $xr.spec.parameters.backend | default "cluster" }}
+            {{- $env := $xr.spec.parameters.backend | default "private-cloud" }}
             {{- $ns := $xr.spec.parameters.namespace }}
             {{- $region := "us-east-1" }}
             {{- $size := $xr.spec.parameters.size | default "sm" }}
@@ -36,7 +36,13 @@ spec:
                 {{- end }}
               {{- end }}
             {{- end }}
-            {{- if eq $env "cluster" }}
+            {{- $cacheRoleObs := index (.observed.resources | default dict) "cache-role" | default dict }}
+            {{- $cacheRoleArn := "" }}
+            {{- if $cacheRoleObs.resource }}{{- $cacheRoleArn = $cacheRoleObs.resource.status.atProvider.arn | default "" }}{{- end }}
+            {{- $cacheProfileObs := index (.observed.resources | default dict) "cache-profile" | default dict }}
+            {{- $cacheProfileArn := "" }}
+            {{- if $cacheProfileObs.resource }}{{- $cacheProfileArn = $cacheProfileObs.resource.status.atProvider.arn | default "" }}{{- end }}
+            {{- if eq $env "private-cloud" }}
             ---
             apiVersion: apps/v1
             kind: Deployment
@@ -106,6 +112,104 @@ spec:
               host: {{ $name }}-redis.{{ $ns }}.svc.cluster.local
               port: "6379"
             {{- else }}
+            {{- /* Trust policy scoped to the XCache namespace (wildcard on SA). XCache does not  */}}
+            {{- /* know which XApi SA will reference it; namespace isolation still applies.        */}}
+            {{- $cacheTrustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringLike" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/*" $ns))))) | toJson }}
+            {{- $userId := printf "%s-user" $name }}
+            {{- $userGroupId := $name }}
+            {{- $cacheInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" "elasticache:Connect" "Resource" (list (printf "arn:aws:elasticache:%s:*:replicationgroup:%s" $region $name) (printf "arn:aws:elasticache:%s:*:user:%s" $region $userId)))) | toJson }}
+            ---
+            # IAM Role for ElastiCache IAM auth. Trust scoped to all SAs in the XCache namespace.
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              name: {{ $name }}-cache
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: cache-role
+                gotemplating.fn.crossplane.io/ready: "True"
+                crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}-cache
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                path: /crossplane/
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+                assumeRolePolicy: {{ $cacheTrustPolicy | quote }}
+                inlinePolicy:
+                  - name: platform-cache-{{ $ns }}-{{ $name }}
+                    policy: {{ $cacheInlinePolicy | quote }}
+            {{- if $cacheRoleArn }}
+            {{- $cacheProfileExternalName := "00000000-0000-0000-0000-000000000000" }}
+            {{- if $cacheProfileObs.resource }}
+              {{- $cacheObservedExternalName := index ($cacheProfileObs.resource.metadata.annotations | default dict) "crossplane.io/external-name" | default "" }}
+              {{- if $cacheObservedExternalName }}{{- $cacheProfileExternalName = $cacheObservedExternalName }}{{- end }}
+            {{- end }}
+            ---
+            # RolesAnywhere Profile for ElastiCache. Deferred until role ARN is known.
+            apiVersion: rolesanywhere.aws.upbound.io/v1beta1
+            kind: Profile
+            metadata:
+              name: {{ $name }}-cache
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: cache-profile
+                gotemplating.fn.crossplane.io/ready: "True"
+                crossplane.io/external-name: {{ $cacheProfileExternalName }}
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                name: crossplane-{{ $ns }}-{{ $name }}-cache
+                enabled: true
+                durationSeconds: 3600
+                roleArns:
+                  - {{ $cacheRoleArn }}
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+            {{- end }}
+            ---
+            # ElastiCache User with IAM auth mode. userId is used as the Redis username in AUTH.
+            apiVersion: elasticache.aws.upbound.io/v1beta1
+            kind: User
+            metadata:
+              name: {{ $name }}-cache-user
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: cache-user
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                region: {{ $region }}
+                userId: {{ $userId }}
+                userName: {{ $userId }}
+                engine: redis
+                authenticationMode:
+                  - type: iam
+                accessString: "on ~* +@all"
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+            ---
+            # ElastiCache UserGroup references the IAM user. ReplicationGroup associates with this group.
+            apiVersion: elasticache.aws.upbound.io/v1beta1
+            kind: UserGroup
+            metadata:
+              name: {{ $name }}-cache-group
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: cache-user-group
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                region: {{ $region }}
+                engine: redis
+                userGroupId: {{ $userGroupId }}
+                userIds:
+                  - default
+                  - {{ $userId }}
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
             ---
             # Provider writes connection details to {name}-rg-conn once ElastiCache is up
             apiVersion: elasticache.aws.upbound.io/v1beta2
@@ -122,12 +226,17 @@ spec:
                 nodeType: {{ $nodeType }}
                 engine: redis
                 numCacheClusters: 1
+                # IAM auth requires TLS; userGroupIds enables the IAM user created above.
+                transitEncryptionEnabled: true
+                userGroupIds:
+                  - {{ $userGroupId }}
               writeConnectionSecretToRef:
                 name: {{ $name }}-rg-conn
                 namespace: {{ $ns }}
-            {{- if $rgConn }}
+            {{- if and $rgConn $cacheRoleArn $cacheProfileArn }}
             ---
-            # type/provider not published by the provider; added here for servicebinding.io compliance
+            # Binding Secret for ElastiCache. Written once the cluster is ready and IAM credentials
+            # are known. No password — the app calls elasticache generate-auth-token via the sidecar.
             apiVersion: v1
             kind: Secret
             metadata:
@@ -142,5 +251,8 @@ spec:
               provider: aws
               host: {{ index $rgConn "host" | default "" }}
               port: {{ index $rgConn "port" | default "6379" }}
+              user-id: {{ $userId }}
+              role-arn: {{ $cacheRoleArn }}
+              profile-arn: {{ $cacheProfileArn }}
             {{- end }}
             {{- end }}
