@@ -10,26 +10,38 @@ Standalone resource with a lifecycle independent of any one API. Bind to an `XAp
 
 ## Deployability
 
-**Important:** The `public-cloud` backend (AWS RDS) is **for Phase 7 workload identity testing only**. After confirming that workload-identity works with XSql, XCache, and XNoSql together, XSql will not be deployed to AWS in production. Long-term, only `XApi`, `XCache`, and `XNoSql` use AWS backends; databases will remain in-cluster (cheaper, simpler, `private-cloud` backend).
+**⚠️ Phase 7 testing:** The `public-cloud` backend (AWS RDS) is **temporary for workload identity validation only**. After Phase 7 completes, XSql will not be deployed to AWS in production. Long-term, only `XApi` and `XNoSql` use cloud resources; databases remain in-cluster via `private-cloud` backend.
 
-The `public-cloud` backend is fully functional for testing. Master password is deterministic (derived from XR UID) and acceptable for homelab because:
+### Master password security
+
+**For `private-cloud`:** Credentials are generated at composition time and stored in a Kubernetes Secret. Standard Kubernetes RBAC + audit logs apply.
+
+**For `public-cloud`:** Master password is deterministic (SHA256 hash of the XR UID) and acceptable for homelab because:
 1. Apps use IAM DB auth (SVID→RolesAnywhere→STS tokens) as the primary auth method
-2. Master password is fallback-only (emergencies, direct CLI access)
-3. Data is ephemeral (testing only, deleted after Phase 7 validation)
+2. Master password is fallback-only (emergencies, direct CLI access)  
+3. Data is ephemeral (testing only; deleted after Phase 7)
+
+For production: Generate a random password at composition time, store it in AWS Secrets Manager (with automatic rotation enabled), and reference it via `ExternalSecret` — this prevents even cluster admins from reading it.
 
 ## Binding secret
 
-Secret name equals the XR name; namespace comes from the `namespace` parameter passed by the parent `XApi`. Mounted at `/bindings/sql/` inside the container.
+Secret name equals the XR name; namespace comes from the `namespace` parameter. Mounted at `/bindings/sql/` inside the container.
 
-| Key | Value |
-|---|---|
-| `type` | `postgresql` |
-| `provider` | `aws` (public-cloud) or `in-cluster` (private-cloud) |
-| `host` | Database endpoint hostname |
-| `port` | `5432` |
-| `database` | Database name |
-| `username` | Username |
-| `password` | Password (or role-arn/profile-arn for IAM auth — see `iamDatabaseAuthenticationEnabled` in composition) |
+**For `private-cloud`:** Standard username/password auth.
+
+**For `public-cloud`:** IAM DB auth — no password in the Secret. Apps exchange SVID for STS credentials (via sidecar), then call `rds generate-db-auth-token` with those credentials as the password.
+
+| Key | Value | Used by |
+|---|---|---|
+| `type` | `postgresql` | servicebinding.io spec |
+| `provider` | `aws` (public-cloud) or `in-cluster` (private-cloud) | app routing |
+| `host` | Database endpoint hostname | all backends |
+| `port` | `5432` | all backends |
+| `database` | Database name | all backends |
+| `username` | Username | private-cloud only; public-cloud uses IAM DB auth |
+| `password` | Password (private-cloud) or omitted (public-cloud) | private-cloud only |
+| `role-arn` | IAM role ARN | public-cloud only; read by sidecar |
+| `profile-arn` | RolesAnywhere profile ARN | public-cloud only; read by sidecar |
 
 ## Parameters
 

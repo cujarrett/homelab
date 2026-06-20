@@ -1,18 +1,80 @@
 # Workload Identity
 
-An adventure in learning how to give every platform workload an AWS identity — without a single static key.
+Every platform workload gets an AWS identity without static keys.
 
-Each pod gets a short-lived X.509 certificate proving who it is. AWS validates it and issues temporary credentials in exchange. The cert expires in an hour; a sidecar handles the refresh.
+Each pod receives a short-lived X.509 SVID (SPIFFE certificate) from SPIRE. The sidecar exchanges this certificate for AWS temporary credentials via IAM Roles Anywhere. Credentials refresh every 50 minutes, so they never expire mid-request.
 
-It was a deep rabbit hole. The diagram below is the end state.
+## How it works
 
----
+### Provisioning phase (on XR apply)
 
-TEMP
+When an XApi is created with AWS bindings, Crossplane:
+1. Creates one IAM role per binding (scoped to that pod's SPIFFE ID)
+2. Creates a RolesAnywhere profile referencing the role
+3. Writes a binding Secret with the role ARN and profile ARN
+4. Pod's init container waits for the Secret
 
-Challenges encountered:
+### Runtime phase (while pod runs)
 
-# The Profile Problem: Root Cause + All Options
+```mermaid
+%%{init: {'flowchart': {'nodeSpacing': 50, 'rankSpacing': 50}}}%%
+flowchart LR
+    spire["SPIRE\nroot CA &\nregistration\nentries"]
+    agent["SPIRE Agent\nper node\nattests pods"]
+    csi["SPIFFE CSI\nDriver\nmounts socket"]
+    
+    sidecar["Sidecar\ncalls fetch x509\nvia socket"]
+    aws["IAM Roles\nAnywhere\nvalidates cert\nchecks SPIFFE ID\ncondition"]
+    sts["STS\nassume role\n1h credentials"]
+    
+    app["App container\nreads named\nprofiles"]
+
+    spire -->|node attestation| agent
+    agent -->|SVID| csi
+    csi -->|socket| sidecar
+    sidecar -->|cert + ARNs| aws
+    aws -->|assume| sts
+    sts -->|credentials| sidecar
+    sidecar -->|profiles| app
+
+    classDef spireStyle fill:#512DA8,stroke:#311B92,color:#fff
+    classDef sideStyle  fill:#E65100,stroke:#BF360C,color:#fff
+    classDef awsStyle   fill:#283593,stroke:#1A237E,color:#fff
+
+    class spire,agent,csi spireStyle
+    class sidecar sideStyle
+    class aws,sts awsStyle
+```
+
+Steps:
+1. **SPIRE attestation** — SPIRE Server and Agent exchange credentials to prove the agent runs on a real cluster node
+2. **SVID issuance** — SPIRE auto-creates a registration entry for pods with specific labels; CSI driver mounts the Workload API socket
+3. **Certificate fetch** — Sidecar calls `spire-agent api fetch x509` to get the pod's SVID cert+key
+4. **Identity exchange** — Sidecar calls `aws_signing_helper` with SVID, role ARN, profile ARN, and trust anchor ARN
+5. **Assume role** — IAM Roles Anywhere validates the SVID chain and checks `aws:PrincipalTag/x509SAN/URI` matches the pod's exact SPIFFE ID
+6. **Temporary credentials** — STS returns access key + secret + session token (valid 1 hour)
+7. **Write profiles** — Sidecar writes named profile sections to `/aws-credentials/credentials`; app reads via `AWS_PROFILE_<BINDING>` env vars
+
+## Design choices
+
+**IAM Roles Anywhere, not OIDC:**  
+OIDC requires AWS to reach your cluster's JWKS endpoint. For on-prem clusters, that means a public URL — unnecessary attack surface. IAM Roles Anywhere is certificate-based; the workload presents its cert directly.
+
+**SPIFFE CSI driver, not SPIFFE helper sidecar:**  
+The CSI driver mounts the Workload API socket. The sidecar calls `spire-agent api fetch x509` against that socket. This is cleaner than a separate sidecar managing cert files.
+
+**Per-workload IAM role, not shared role:**  
+Each binding gets its own role with a trust policy condition locked to `spiffe://homelab.local/ns/{ns}/sa/{sa}`. Only that exact pod can assume it.
+
+**`platform-` bucket prefix, not bucket tags:**  
+IAM cannot read S3 bucket tags at auth time — conditions must use ARNs. The `platform-{namespace}-{name}` naming convention scopes policies to exact bucket ARNs without wildcards.
+
+**Binding Secret carries ARNs, not credentials:**  
+The Secret contains `role-arn`, `profile-arn`, `bucket`, and `region` — no access keys. If accidentally logged, it's useless without a valid SVID. The sidecar handles credential exchange at runtime.
+
+## Challenges encountered
+
+### The Profile Problem: Root Cause and Solution
 Core constraint: RolesAnywhere Profile `roleArns` is an exact-match list. No wildcards. Every new IAM role created by Crossplane must be explicitly listed in the profile before `CreateSession` succeeds.
 
 ## Options
@@ -45,252 +107,42 @@ On subsequent reconciles, the template reads the observed Profile's annotation a
 {{- end }}
 ```
 
-No `managementPolicies` override needed. No manual steps. No external dependencies.
+This solution was implemented successfully across all XObjectStorage, XNoSql, XSql, and XCache bindings. No provider upgrades or external steps needed.
 
-Option D — Shared profile + composition-driven update
-The `update-profile` API replaces the entire `roleArns` list. To add a new role, you'd need to read the current list, append, write back. Compositions have no "read-modify-write" primitive. Would require a custom function or a Lambda. More complex than Option C.
+## App code examples
 
-Option E — Lambda/EventBridge on IAM role creation
-Works in theory. AWS EventBridge triggers on IAM role creation → Lambda adds ARN to profile. Adds an external dependency outside the platform's GitOps boundary. More moving parts than Option C, no benefit over it.
-
-Recommended path
-Implement Option F: per-workload Profile with a nil UUID as the initial `crossplane.io/external-name`, reading the real UUID back from observed state on subsequent reconciles. This restores the original correct design, eliminates the manual step, and works within the existing composition framework without any provider version requirements.
-
-Changes needed:
-
-1. Add Profile back to the composition (deferred until `$roleArn` is known), with nil UUID external-name on first render, observed UUID on subsequent renders
-2. Read `$profileArn` from `$.observed.resources[$profileKey]` (same pattern as `$roleArn`)
-3. Gate Binding Secret on both `$roleArn` AND `$profileArn` being non-empty
-4. Remove `$platformProfileArn` from EnvironmentConfig dependency
-
----
-
-## End-to-end flow
-
-### Provisioning (once — on XR apply)
-
-```mermaid
-%%{init: {'flowchart': {'nodeSpacing': 50, 'rankSpacing': 50}}}%%
-flowchart LR
-    xr["XApi XR applied"]
-    bucket["S3 Bucket\nplatform-ns-name"]
-    role["IAM Role\ntrust policy locked to\nspiffe://…/ns/foo/sa/foo-api"]
-    secret["Binding Secret\nrole-arn · profile-arn\nbucket · region"]
-    pod["Pod\ninit container waits\nuntil Secret is ready"]
-
-    xr -->|"1 · creates bucket"| bucket
-    xr -->|"2 · creates role"| role
-    role -->|"3 · role ARN known → writes"| secret
-    secret -->|"4 · mounted into pod"| pod
-
-    classDef crossplaneStyle fill:#2E7D32,stroke:#1B5E20,color:#fff
-    classDef podStyle fill:#1565C0,stroke:#0D47A1,color:#fff
-    class xr,bucket,role,secret crossplaneStyle
-    class pod podStyle
-```
-
-Crossplane runs this once when an XApi XR with a cloud resource binding (e.g. `objectStorageRefs`, `nosqlRef`) is applied — before the pod starts. Each binding gets its own IAM Role (trust policy locked to the pod's exact SPIFFE ID), then a binding Secret containing the role ARN and the platform's shared RolesAnywhere Profile ARN. The init container blocks pod startup until the Secret is fully written.
-
-1. Creates bucket — S3 bucket named `platform-{namespace}-{name}`. The prefix lets IAM scope policies to `arn:aws:s3:::platform-*` — bucket tags can't be read at auth time.
-2. Creates role — IAM Role with one trust condition: `aws:PrincipalTag/x509SAN/URI` must exactly match this pod's SPIFFE ID. Inline policy scoped to the one bucket. No other workload can assume it.
-3. Role ARN known → writes Secret — On the next reconcile pass after the Role exists, Crossplane writes the binding Secret. Contains `role-arn`, `profile-arn` (from the platform EnvironmentConfig — one shared profile covers all platform roles), `bucket`, `region`. No credentials.
-4. Mounted into pod — The init container polls for the Secret's `type` file before the app starts. Once it exists, the sidecar has everything it needs.
-
-### Runtime (every 50 min — while pod is running)
-
-```mermaid
-%%{init: {'flowchart': {'nodeSpacing': 50, 'rankSpacing': 50}}}%%
-flowchart LR
-    subgraph cluster["Cluster"]
-        subgraph identity["Identity — SPIRE"]
-            spire["SPIRE Server\nroot CA\nauto-registers app=xapi\nand app=xspa pods"]
-            agent["SPIRE Agent\nper node\nverifies via kubelet"]
-            csi["SPIFFE CSI Driver\nmounts Workload API socket\nat /var/run/secrets/spiffe.io/"]
-        end
-
-        subgraph pod["XApi pod"]
-            sidecar["aws-credentials-sidecar\ncalls spire-agent fetch x509\nvia socket → aws_signing_helper"]
-            app["api container\nAWS SDK\nreads named profile"]
-        end
-    end
-
-    subgraph aws["AWS"]
-        ra["IAM Roles Anywhere\nvalidates cert chain\nchecks SPIFFE ID condition"]
-        sts["STS\n1h credentials"]
-        roles["IAM Role\n(one per binding)"]
-    end
-
-    spire  -->|"1 · node attestation"| agent
-    agent  -->|"2 · SVID cert+key"| csi
-    csi    -->|"3 · mount socket"| sidecar
-    sidecar -->|"4 · cert + ARNs\nfrom binding Secret"| ra
-    ra      -->|"5 · validate + assume"| roles
-    roles   --> sts
-    sts     -->|"6 · temp credentials"| sidecar
-    sidecar -->|"7 · named profiles\nwritten to emptyDir"| app
-
-    classDef spireStyle fill:#512DA8,stroke:#311B92,color:#fff
-    classDef sideStyle  fill:#E65100,stroke:#BF360C,color:#fff
-    classDef awsStyle   fill:#283593,stroke:#1A237E,color:#fff
-
-    class spire,agent,csi spireStyle
-    class sidecar sideStyle
-    class ra,sts,roles awsStyle
-
-    style cluster  fill:#263238,stroke:#546E7A
-    style identity fill:#1A1A2E,stroke:#512DA8
-    style pod      fill:#1A2332,stroke:#37474F
-    style aws      fill:#1B2A1B,stroke:#2E7D32
-```
-
-1. Node attestation — Each SPIRE Agent bootstraps to the server and proves it's running on a legitimate cluster node. Not service mesh mTLS — this is SPIRE's own internal protocol. Once attested, the server trusts that agent to vouch for workloads on that node.
-2. SVID issuance — When an XApi pod schedules, `spire-controller-manager` auto-creates a registration entry. The SPIFFE CSI driver mounts the Workload API socket into the pod at `/var/run/secrets/spiffe.io/api.sock`. Rotated automatically before expiry.
-3. Fetch cert+key — The sidecar calls `spire-agent api fetch x509` against the socket to write the SVID cert and key to a temp directory. The SVID is short-lived; the sidecar re-fetches on each credential refresh cycle.
-4. Identity exchange — The sidecar calls `aws_signing_helper` with the SVID cert+key, role ARN, profile ARN, and trust anchor ARN. IAM Roles Anywhere validates the cert chain and checks `aws:PrincipalTag/x509SAN/URI` against the pod's exact SPIFFE ID. Wrong namespace, wrong service account, different cluster — rejected.
-5. Assume the role — On successful validation, Roles Anywhere calls STS to assume the role.
-6. Temporary credentials — STS returns a 1h access key + secret + session token. The sidecar refreshes every 50 minutes so credentials never expire mid-request.
-7. Credentials on disk — The sidecar writes named profile sections to `/aws-credentials/credentials` (shared emptyDir). The app reads via `AWS_SHARED_CREDENTIALS_FILE` + `AWS_PROFILE_<BINDING>` env vars injected by the composition.
-
-    ```go
-    cfg, _ := config.LoadDefaultConfig(ctx,
-        config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_OBJECT_STORAGE")))
-    s3Client := s3.NewFromConfig(cfg)
-    ```
-
-    JavaScript (AWS SDK v3):
-    ```js
-    const { S3Client } = require("@aws-sdk/client-s3");
-    const { fromIni } = require("@aws-sdk/credential-providers");
-
-    const s3 = new S3Client({
-      credentials: fromIni({ profile: process.env.AWS_PROFILE_OBJECT_STORAGE }),
-    });
-    ```
-
-If the pod is deleted, the role can't be assumed by anything else — the trust policy condition is scoped to the exact SPIFFE ID.
-
----
-
-## Why these choices
-
-**IAM Roles Anywhere, not OIDC federation**
-
-OIDC requires AWS to reach your cluster's JWKS endpoint to validate tokens. For an on-prem or private cluster that means a public URL — unnecessary attack surface. IAM Roles Anywhere is certificate-based: the workload presents its cert directly to STS. No inbound connection to the cluster required.
-
-On EKS? [EKS Pod Identity](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html) handles multiple IAM roles per pod natively — use that instead. On ROSA? ROSA does not have EKS Pod Identity. IRSA (the ROSA equivalent) binds one IAM role per ServiceAccount, which is limiting when an app needs credentials for multiple Crossplane-provisioned resources (S3 + NoSQL + cache). IAM Roles Anywhere with SPIRE solves that cleanly: one SVID can assume any number of roles, one per binding, each written as a named profile. This is a valid pattern on ROSA for multi-binding internal developer platforms.
-
-**SPIFFE CSI driver, not SPIFFE helper sidecar**
-
-The CSI driver mounts the SPIRE Workload API socket into the pod. The `aws-credentials-sidecar` calls `spire-agent api fetch x509` against that socket to obtain the SVID cert and key before each credential exchange. The alternative — a separate spiffe-helper sidecar writing cert files — adds inter-container coordination with no security benefit.
-
-**Per-workload IAM role, not a shared role**
-
-Each XR instance gets its own role with a trust policy condition locked to `spiffe://homelab.local/ns/{ns}/sa/{sa}`. Only that exact pod can assume that role. A shared role would let any workload with an SVID escalate to all bound resources.
-
-**`platform-` bucket name prefix, not bucket tags**
-
-IAM cannot read S3 bucket tags at auth time — resource conditions must use the ARN. The `platform-{namespace}-{name}` naming convention lets the inline policy scope to the exact bucket ARN without wildcards. Each role's inline policy references the exact ARN: `arn:aws:s3:::platform-{ns}-{name}`.
-
-**Binding Secret carries ARNs, not credentials**
-
-The Secret written by Crossplane contains `role-arn`, `profile-arn`, `bucket`/`table-name`, and `region`. No access key. No secret key. `trust-anchor-arn` is injected directly as an env var on the sidecar from the platform's EnvironmentConfig — it never appears in user-visible Secrets. The `aws-spiffe-helper` sidecar reads the ARNs and handles the STS exchange at runtime. If the Secret is accidentally logged or exposed, it contains no usable credentials — only the ARNs needed to request them, which require a valid SVID to use.
-
----
-
-## App code
-
-One line per AWS client. No credential details.
+### Single binding
 
 ```go
-// Single AWS binding
 cfg, _ := config.LoadDefaultConfig(ctx)
 s3Client := s3.NewFromConfig(cfg)
+```
 
-// Multiple AWS bindings — composition injects AWS_PROFILE_<BINDING> env vars
-s3Cfg, _  := config.LoadDefaultConfig(ctx,
+### Multiple bindings
+
+The composition injects `AWS_PROFILE_<BINDING>` env vars. The sidecar writes named profiles to the credentials file (one per binding).
+
+```go
+s3Cfg, _ := config.LoadDefaultConfig(ctx,
     config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_OBJECT_STORAGE")))
-s3Client  := s3.NewFromConfig(s3Cfg)
+s3Client := s3.NewFromConfig(s3Cfg)
 
 ddbCfg, _ := config.LoadDefaultConfig(ctx,
     config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_NOSQL")))
 ddbClient := dynamodb.NewFromConfig(ddbCfg)
 ```
 
-The profile name is a platform convention (`object-storage`, `nosql`). If the credential mechanism changes, the env var contract stays stable — no app code changes required.
+JavaScript (AWS SDK v3):
+```js
+const { S3Client } = require("@aws-sdk/client-s3");
+const { fromIni } = require("@aws-sdk/credential-providers");
 
-**How the multi-binding case works:**
-
-For a pod with both `objectStorageRef` and `nosqlRef`, one sidecar runs and handles both bindings via the `AWS_BINDINGS` env var. It calls `aws_signing_helper` once per role and writes each result as a named profile directly into the credentials file:
-
-```ini
-[object-storage]
-aws_access_key_id = REDACTED
-aws_secret_access_key = REDACTED
-aws_session_token = REDACTED
-
-[nosql]
-aws_access_key_id = REDACTED
-aws_secret_access_key = REDACTED
-aws_session_token = REDACTED
+const s3 = new S3Client({
+  credentials: fromIni({ profile: process.env.AWS_PROFILE_OBJECT_STORAGE }),
+});
 ```
 
-The sidecar reads the ARNs from each binding Secret mounted into the pod, calls IAM Roles Anywhere once per binding, and refreshes all profiles every 50 minutes. The SVID cert and key are the same file for both assumptions — they prove pod identity regardless of which role is being assumed.
-
-The composition also injects env vars so the app knows which profile name maps to which binding:
-
-```
-AWS_PROFILE_OBJECT_STORAGE=object-storage
-AWS_PROFILE_NOSQL=nosql
-```
-
-When the S3 client makes its first call, the SDK looks up the `object-storage` profile, executes the `credential_process` command, which calls IAM Roles Anywhere, which validates the SVID against the trust anchor, checks the role's trust policy condition, and calls STS. Temporary credentials come back and are cached by the SDK. The DynamoDB client does the same independently via the `nosql` profile — different role, different resource scope, same SVID. Neither client can use the other's credentials.
-
-<details>
-<summary>ROSA + multi-binding IDP</summary>
-
-SPIRE still runs on ROSA — SVIDs are still issued to every workload for mesh identity (Linkerd mTLS, Phase 8). The AWS credential exchange is the same as the homelab: SPIRE SVID → IAM Roles Anywhere → STS.
-
-ROSA does not have EKS Pod Identity (that's an EKS-specific feature). ROSA's equivalent is IRSA, which binds one IAM role per ServiceAccount. For an internal developer platform where one app pod may need credentials for S3 + NoSQL + cache simultaneously, IRSA's one-role-per-SA limit becomes a problem. IAM Roles Anywhere with SPIRE solves it: one SVID can assume multiple roles, one per Crossplane binding, each written as a named profile.
-
-**What's different from vanilla EKS:**
-
-On EKS you'd use EKS Pod Identity associations — multiple roles per pod, managed by the EKS API. The app code contract is the same (`AWS_PROFILE_<BINDING>` env vars), but the sidecar and RolesAnywhere machinery are replaced by the EKS Pod Identity agent.
-
-**What stays the same:**
-
-- SPIRE runs; SVIDs are still issued to every XApi and XSpa pod
-- App code is identical — `config.LoadDefaultConfig(ctx)` works with no arguments; multi-binding still uses `AWS_PROFILE_<BINDING>` env vars
-- One role per binding is still the right pattern
-- The "no static keys" outcome is the same
-
-**Why homelab uses IAM Roles Anywhere instead of OIDC:**
-
-AWS can't reach `homelab.local` to validate an OIDC token — there's no public JWKS endpoint. IAM Roles Anywhere flips the direction: the workload presents its cert to AWS rather than AWS validating a token against a URL it can reach. On ROSA, RolesAnywhere is also the right call for a multi-binding IDP since ROSA lacks EKS Pod Identity.
-
-</details>
-
----
-
-## Scope
-
-The target end-state: every platform offering gets a SPIFFE identity. The auth mechanism layered on
-top differs by what the offering talks to.
-
-| Offering | Auth mechanism | Changes |
-|---|---|---|
-| `XObjectStorage` | IAM Roles Anywhere | Replace static key with role ARN + SPIRE sidecar |
-| `XNoSql` | IAM Roles Anywhere | Replace static key with role ARN + SPIRE sidecar |
-| `XSql` (RDS) | IAM DB Auth + Roles Anywhere | IAM role grants `rds-db:connect`; no password |
-| `XSql` (in-cluster Postgres) | Linkerd mTLS | No AWS auth; mesh enforces identity |
-| `XCache` (in-cluster Redis) | Linkerd mTLS | No AWS auth; mesh enforces identity |
-| `XCache` (ElastiCache) | IAM Roles Anywhere | Replace static key with role ARN + SPIRE sidecar |
-| `XSpa` | Linkerd mTLS | Identity for mesh membership only; no app credentials |
-| `XTopic` | NATS JWT auth (app) + SPIFFE identity (mesh) | App auth to NATS stays JWT; SPIFFE identity still issued for mesh |
-| `XSubscription` | NATS JWT auth (app) + SPIFFE identity (mesh) | App auth to NATS stays JWT; SPIFFE identity still issued for mesh |
-
----
-
-### Phase 1 — SPIRE: understand the model ✅
+The sidecar reads binding Secret ARNs, calls `aws_signing_helper` once per binding to exchange the SVID for STS credentials, and writes each result as a named profile. The binding Secret contains no credentials—only ARNs, which are public. The SVID proves pod identity; AWS validates it.
 
 **Purpose:** Build the mental model before touching infrastructure. You can't debug attestation you can't explain.
 
