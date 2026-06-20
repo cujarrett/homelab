@@ -8,18 +8,17 @@ spec:
     kind: XApi
   mode: Pipeline
   pipeline:
-    # TODO: Fix environment configs function schema mismatch
-    # - step: load-environment-configs
-    #   functionRef:
-    #     name: function-environment-configs
-    #   input:
-    #     apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
-    #     kind: Input
-    #     spec:
-    #       environmentConfigs:
-    #         - type: Reference
-    #           ref:
-    #             name: aws-platform-config
+    - step: load-environment-configs
+      functionRef:
+        name: function-environment-configs
+      input:
+        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+        kind: Input
+        spec:
+          environmentConfigs:
+            - type: Reference
+              ref:
+                name: aws-platform-config
     - step: render-all-resources
       functionRef:
         name: function-go-templating
@@ -38,6 +37,7 @@ spec:
             {{- $objectStorageRefs := $xr.spec.parameters.objectStorageRefs | default list }}
             {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
             {{- $trustAnchorArn := index $envCtx "trustAnchorArn" | default "" }}
+            {{- $platformProfileArn := index $envCtx "platformProfileArn" | default "" }}
             {{- $sqlRefName := "" }}
             {{- if $xr.spec.parameters.sqlRef }}{{- $sqlRefName = $xr.spec.parameters.sqlRef.name }}{{- end }}
             {{- $nosqlRefName := "" }}
@@ -411,9 +411,7 @@ spec:
             {{- $roleObs := index ($.observed.resources | default dict) $roleKey | default dict }}
             {{- $roleArn := "" }}
             {{- if $roleObs.resource }}{{- $roleArn = $roleObs.resource.status.atProvider.arn | default "" }}{{- end }}
-            {{- $profileObs := index ($.observed.resources | default dict) $profileKey | default dict }}
-            {{- $profileArn := "" }}
-            {{- if $profileObs.resource }}{{- $profileArn = $profileObs.resource.status.atProvider.arn | default "" }}{{- end }}
+            {{- $profileArn := $platformProfileArn }}
             {{- $bucketName := printf "platform-%s-%s" $ns $refName }}
             {{- $trustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringEquals" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $name))))) | toJson }}
             {{- $inlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "s3:GetObject" "s3:PutObject" "s3:DeleteObject" "s3:ListBucket") "Resource" (list (printf "arn:aws:s3:::%s" $bucketName) (printf "arn:aws:s3:::%s/*" $bucketName)))) | toJson }}
@@ -438,31 +436,10 @@ spec:
                 inlinePolicy:
                   - name: platform-object-storage-{{ $ns }}-{{ $refName }}
                     policy: {{ $inlinePolicy | quote }}
+
             {{- if $roleArn }}
             ---
-            # RolesAnywhere Profile for {{ $refName }}. Deferred until role ARN is known.
-            apiVersion: rolesanywhere.aws.upbound.io/v1beta1
-            kind: Profile
-            metadata:
-              name: {{ $name }}-objstorage-{{ $refName }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: {{ $profileKey }}
-            spec:
-              deletionPolicy: Delete
-              forProvider:
-                name: crossplane-{{ $ns }}-{{ $name }}-{{ $refName }}
-                enabled: true
-                durationSeconds: 3600
-                roleArns:
-                  - {{ $roleArn }}
-                tags:
-                  App: {{ $name }}
-                  Namespace: {{ $ns }}
-                  ObjectStorageRef: {{ $refName }}
-            {{- end }}
-            {{- if $profileArn }}
-            ---
-            # Binding Secret for {{ $refName }}. Deferred until profile ARN is known.
+            # Binding Secret for {{ $refName }}. Written once role ARN is known; profile ARN from platform EnvironmentConfig.
             apiVersion: v1
             kind: Secret
             metadata:
