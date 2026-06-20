@@ -423,8 +423,8 @@ spec:
             {{- /*   cache backend=cloud (ElastiCache). Add sqlRef cloud variant when XRD supports.     */}}
             {{- $hasAwsCloudBindings := or (gt (len $objectStorageRefs) 0) (ne $nosqlRefName "") (and $cacheEnabled (eq $cacheBackend "public-cloud")) (and (ne $sqlRefName "") (eq $sqlBackend "public-cloud")) }}
             {{- if $hasAwsCloudBindings }}
-            {{- range $objectStorageRefs }}
-            {{- $refName := .name }}
+            {{- range $i, $ref := $objectStorageRefs }}
+            {{- $refName := $ref.name }}
             {{- $roleKey := printf "role-object-storage-%s" $refName }}
             {{- $profileKey := printf "profile-object-storage-%s" $refName }}
             {{- $roleObs := index ($.observed.resources | default dict) $roleKey | default dict }}
@@ -445,7 +445,7 @@ spec:
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: {{ $roleKey }}
                 gotemplating.fn.crossplane.io/ready: "True"
-                crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}-{{ $refName }}
+                crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}-obj{{ $i }}
             spec:
               deletionPolicy: Delete
               forProvider:
@@ -486,7 +486,7 @@ spec:
             spec:
               deletionPolicy: Delete
               forProvider:
-                name: crossplane-{{ $ns }}-{{ $name }}-{{ $refName }}
+                name: crossplane-{{ $ns }}-{{ $name }}-obj{{ $i }}
                 enabled: true
                 durationSeconds: 3600
                 roleArns:
