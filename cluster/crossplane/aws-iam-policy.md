@@ -21,7 +21,7 @@ ever recreated, apply all policies below.
 
 ## Inline policy: CrossplaneWorkloadIdentityManagement
 
-Grants the permissions needed to manage per-workload IAM roles and RolesAnywhere profiles.
+Grants the permissions needed to manage per-workload IAM roles.
 Scoped to the `/crossplane/` IAM path — no permission to touch roles outside that path.
 
 ```json
