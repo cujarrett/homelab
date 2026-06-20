@@ -29,6 +29,13 @@ spec:
                 linkerd.io/inject: disabled
         alertmanager:
           alertmanagerSpec:
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: node-role.kubernetes.io/control-plane
+                          operator: DoesNotExist
             storage:
               volumeClaimTemplate:
                 spec:
@@ -36,6 +43,13 @@ spec:
                     requests:
                       storage: 2Gi
         grafana:
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: DoesNotExist
           plugins:
             - marcusolsson-treemap-panel
           serviceMonitor:
@@ -86,6 +100,13 @@ spec:
             enabled: false
         prometheus:
           prometheusSpec:
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: node-role.kubernetes.io/control-plane
+                          operator: DoesNotExist
             enableAdminAPI: true
             retention: 30d
             scrapeInterval: "60s"

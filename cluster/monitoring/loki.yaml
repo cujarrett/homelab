@@ -36,6 +36,13 @@ spec:
             delete_request_store: filesystem
         singleBinary:
           replicas: 1
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: DoesNotExist
           persistence:
             enabled: true
             size: 2Gi
