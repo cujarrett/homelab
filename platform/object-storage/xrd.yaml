@@ -25,9 +25,9 @@ spec:
                   properties:
                     namespace:
                       type: string
-                      description: "Namespace to write the binding Secret into."
+                      description: "Namespace of the owning workload. Used to construct the bucket name (platform-{namespace}-{name}) and the Namespace cost-allocation tag."
                     dataRetention:
                       type: string
                       default: delete
                       enum: [retain, delete]
-                      description: "AWS resource reclaim behavior when the XR is deleted. delete=Crossplane deletes the S3 bucket and IAM user (data is unrecoverable); retain=Crossplane orphans them (resources persist in AWS, data recoverable)."
+                      description: "AWS resource reclaim behavior when the XR is deleted. delete=Crossplane deletes the S3 bucket (data is unrecoverable); retain=Crossplane orphans it (bucket persists in AWS, data recoverable)."
