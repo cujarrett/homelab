@@ -8,6 +8,60 @@ It was a deep rabbit hole. The diagram below is the end state.
 
 ---
 
+TEMP
+
+Challenges encountered:
+
+# The Profile Problem: Root Cause + All Options
+Core constraint: RolesAnywhere Profile `roleArns` is an exact-match list. No wildcards. Every new IAM role created by Crossplane must be explicitly listed in the profile before `CreateSession` succeeds.
+
+## Options
+
+### Option A — Wildcards in Profile roleArns
+Tried `arn:aws:iam::550429969116:role/crossplane/`*. AWS stores it literally. At session-create time, does exact string matching — the literal `crossplane/`* never matches `crossplane/crossplane-phase5-test-....` Dead end, confirmed today.
+
+### Option B — Per-workload Profile (original design, Crossplane-managed)
+The right design. Each binding gets its own Profile tied to its IAM role. Lifecycle managed by Crossplane with the XApi.
+
+Blocker hit: `provider-aws-rolesanywhere` v2.5.2 uses `spec.forProvider.name` (a human-readable string) as the profileId when calling `GetProfile`. ProfileIds are UUIDs assigned by AWS — you can't specify them at creation time. When the profile doesn't exist yet, the Observe call returns HTTP 400 (validation error: "not a UUID") instead of HTTP 404 (not found). Crossplane treats 400 as an error, never calls Create. Profile never gets made.
+
+The previous workaround attempt (`crossplane.io/external-name: crossplane-{ns}-{name}-{ref}`) made it worse — it set a non-UUID string as the external-name, ensuring every Observe call permanently fails.
+
+### Option C — `managementPolicies: ["Create", "Delete"]` without setting external-name
+This should work. Key insight from Crossplane v2 docs:
+
+> When Observe is not in management policies: the reconciler assumes the resource does not exist if crossplane.io/external-name is not set, and does exist if it is set.
+
+The sequence:
+
+1. Profile rendered without c`rossplane.io/external-name` → Observe skipped → `ResourceExists=false` → Create called → AWS creates profile, assigns UUID → provider sets `external-name=<uuid>` on the object
+2. Next reconcile: `external-name` is now set (UUID) → Observe skipped → `ResourceExists=true` → no-op
+3. `$profileArn` read from `$.observed.resources[$profileKey].resource.status.atProvider.arn` (same pattern as `$roleArn` which already works)
+4. Binding Secret rendered once both ARNs are known
+5. XApi deleted → `Delete` in management policies → Profile deleted in AWS
+The critical question is whether SSA preserves the external-name the provider sets when the template doesn't set it. Crossplane v2 uses SSA with field ownership — the managed reconciler owns crossplane.io/external-name, the function pipeline doesn't. SSA won't let the function pipeline clear a field it doesn't own. This should hold.
+
+Previous attempt failed here because we DID set `crossplane.io/external-name` in the template — the function pipeline owned the annotation, and set it to a non-UUID string on every reconcile, resetting the UUID the provider wrote.
+
+Option D — Shared profile + composition-driven update
+The `update-profile` API replaces the entire `roleArns` list. To add a new role, you'd need to read the current list, append, write back. Compositions have no "read-modify-write" primitive. Would require a custom function or a Lambda. More complex than Option C.
+
+Option E — Lambda/EventBridge on IAM role creation
+Works in theory. AWS EventBridge triggers on IAM role creation → Lambda adds ARN to profile. Adds an external dependency outside the platform's GitOps boundary. More moving parts than Option C, no benefit over it.
+
+Recommended path
+Implement Option C: per-workload Profile with `managementPolicies: ["Create", "Delete"]` and no `crossplane.io/external-name` in the template. This restores the original correct design, eliminates the manual step, and works within the existing composition framework.
+
+Changes needed:
+
+1. Add Profile back to the composition (deferred until `$roleArn` is known), with `managementPolicies: ["Create", "Delete"]`, no external-name annotation
+2. Read `$profileArn` from `$.observed.resources[$profileKey]` (same pattern as `$roleArn`)
+3. Gate Binding Secret on both `$roleArn` AND `$profileArn` being non-empty (was already the original design)
+Remove `$platformProfileArn` from EnvironmentConfig dependency
+The `homelab-platform` shared profile can be deleted once this is validated — or kept as a fallback
+
+---
+
 ## End-to-end flow
 
 ### Provisioning (once — on XR apply)
