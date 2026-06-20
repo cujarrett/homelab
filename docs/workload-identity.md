@@ -22,11 +22,11 @@ flowchart LR
     spire["SPIRE\nroot CA &\nregistration\nentries"]
     agent["SPIRE Agent\nper node\nattests pods"]
     csi["SPIFFE CSI\nDriver\nmounts socket"]
-    
+
     sidecar["Sidecar\ncalls fetch x509\nvia socket"]
     aws["IAM Roles\nAnywhere\nvalidates cert\nchecks SPIFFE ID\ncondition"]
     sts["STS\nassume role\n1h credentials"]
-    
+
     app["App container\nreads named\nprofiles"]
 
     spire -->|node attestation| agent
@@ -57,19 +57,19 @@ Steps:
 
 ## Design choices
 
-**IAM Roles Anywhere, not OIDC:**  
+**IAM Roles Anywhere, not OIDC:**
 OIDC requires AWS to reach your cluster's JWKS endpoint. For on-prem clusters, that means a public URL — unnecessary attack surface. IAM Roles Anywhere is certificate-based; the workload presents its cert directly.
 
-**SPIFFE CSI driver, not SPIFFE helper sidecar:**  
+**SPIFFE CSI driver, not SPIFFE helper sidecar:**
 The CSI driver mounts the Workload API socket. The sidecar calls `spire-agent api fetch x509` against that socket. This is cleaner than a separate sidecar managing cert files.
 
-**Per-workload IAM role, not shared role:**  
+**Per-workload IAM role, not shared role:**
 Each binding gets its own role with a trust policy condition locked to `spiffe://homelab.local/ns/{ns}/sa/{sa}`. Only that exact pod can assume it.
 
-**`platform-` bucket prefix, not bucket tags:**  
+**`platform-` bucket prefix, not bucket tags:**
 IAM cannot read S3 bucket tags at auth time — conditions must use ARNs. The `platform-{namespace}-{name}` naming convention scopes policies to exact bucket ARNs without wildcards.
 
-**Binding Secret carries ARNs, not credentials:**  
+**Binding Secret carries ARNs, not credentials:**
 The Secret contains `role-arn`, `profile-arn`, `bucket`, and `region` — no access keys. If accidentally logged, it's useless without a valid SVID. The sidecar handles credential exchange at runtime.
 
 ## Challenges encountered
@@ -80,7 +80,7 @@ Core constraint: RolesAnywhere Profile `roleArns` is an exact-match list. No wil
 ## Options
 
 ### Option A — Wildcards in Profile roleArns
-Tried `arn:aws:iam::550429969116:role/crossplane/`*. AWS stores it literally. At session-create time, does exact string matching — the literal `crossplane/`* never matches `crossplane/crossplane-phase6-test-....` Dead end, confirmed today.
+Tried `arn:aws:iam::550429969116:role/crossplane/`*. AWS stores it literally. At session-create time, does exact string matching — the literal `crossplane/`* never matches `crossplane/crossplane-phase6-test-....` Dead end confirmed.
 
 ### Option B — Per-workload Profile (original design, Crossplane-managed)
 The right design. Each binding gets its own Profile tied to its IAM role. Lifecycle managed by Crossplane with the XApi.
@@ -850,6 +850,107 @@ is declared, enforced, and visible in Grafana without a line of app code.
 
 That's "platform manages connections." The composition owns both the credential and the
 network gate.
+
+---
+
+## Testing multi-binding workload identity
+
+To validate that SPIFFE SVID → IAM Roles Anywhere → STS credential exchange works across simultaneous bindings, create test XRs for all three resource types.
+
+**Create NoSQL:**
+```yaml
+apiVersion: platform.local.lab/v1alpha1
+kind: XNoSql
+metadata:
+  name: test-nosql
+spec:
+  parameters:
+    namespace: test-identity
+    backend: public-cloud
+    region: us-east-1
+```
+
+**Create SQL:**
+```yaml
+apiVersion: platform.local.lab/v1alpha1
+kind: XSql
+metadata:
+  name: test-sql
+spec:
+  parameters:
+    namespace: test-identity
+    backend: public-cloud
+    region: us-east-1
+```
+
+**Create Cache:**
+```yaml
+apiVersion: platform.local.lab/v1alpha1
+kind: XCache
+metadata:
+  name: test-cache
+spec:
+  parameters:
+    namespace: test-identity
+    backend: public-cloud
+    region: us-east-1
+```
+
+**Create API with all three bindings:**
+```yaml
+apiVersion: platform.local.lab/v1alpha1
+kind: XApi
+metadata:
+  name: test-api
+  namespace: test-identity
+spec:
+  parameters:
+    namespace: test-identity
+    image: busybox:latest  # Simple image with no external dependencies
+    port: 8080
+    metricsPort: 8080
+    replicas: 1
+    nosqlRef:
+      name: test-nosql
+    sqlRef:
+      name: test-sql
+      backend: public-cloud
+    cache:
+      enabled: true
+      backend: public-cloud
+```
+
+**Verify binding Secrets are created:**
+```bash
+kubectl get secrets -n test-identity | grep test-
+```
+
+**Check sidecar generated credentials (must manually create cache binding Secret first):**
+```bash
+# For cache binding Secret, gather role/profile ARNs and create Secret manually:
+kubectl create secret generic test-api-cache \
+  --from-literal=type=redis \
+  --from-literal=provider=aws \
+  --from-literal=host=<cache-endpoint> \
+  --from-literal=port=6379 \
+  --from-literal=role-arn=<role-arn> \
+  --from-literal=profile-arn=<profile-arn> \
+  -n test-identity
+
+# Then check credentials:
+kubectl exec -it deployment/test-api -n test-identity -c aws-credentials-sidecar -- cat /aws-credentials/credentials
+```
+
+You should see three named profiles (`[nosql]`, `[sql]`, `[cache]`) with temporary AWS credentials (ASIA access keys + session tokens).
+
+**Cleanup:**
+```bash
+kubectl delete xapi test-api -n test-identity
+kubectl delete xsql test-sql
+kubectl delete xnosql test-nosql
+kubectl delete xcache test-cache
+kubectl delete ns test-identity
+```
 
 ---
 

@@ -18,7 +18,7 @@ Standalone resource with a lifecycle independent of any one API. Bind to an `XAp
 
 **For `public-cloud`:** Master password is deterministic (SHA256 hash of the XR UID) and acceptable for homelab because:
 1. Apps use IAM DB auth (SVID→RolesAnywhere→STS tokens) as the primary auth method
-2. Master password is fallback-only (emergencies, direct CLI access)  
+2. Master password is fallback-only (emergencies, direct CLI access)
 3. Data is ephemeral (testing only; deleted after Phase 7)
 
 For production: Generate a random password at composition time, store it in AWS Secrets Manager (with automatic rotation enabled), and reference it via `ExternalSecret` — this prevents even cluster admins from reading it.
