@@ -23,6 +23,7 @@ spec:
 
         spire-server:
           replicaCount: 1
+          caTTL: 8760h
           # Watches pods and issues each a SPIFFE ID from its namespace + service account.
           controllerManager:
             enabled: true
