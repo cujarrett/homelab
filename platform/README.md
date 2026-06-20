@@ -46,3 +46,11 @@ spec:
 An init container blocks the app from starting until each binding Secret exists. `optional: true` on the volume prevents a scheduling deadlock while provisioning completes.
 
 For a deeper dive: [`docs/service-binding.md`](../docs/service-binding.md)
+
+## AWS Workload Identity
+
+AWS-backed offerings (`XObjectStorage`, `XNoSql`, `XCache` with `backend: public-cloud`) use IAM Roles Anywhere — no static keys anywhere. Each binding creates a scoped IAM role whose trust policy is locked to the pod's SPIFFE identity.
+
+The [`aws-spiffe-helper`](https://github.com/cujarrett/aws-spiffe-helper) sidecar handles the SVID → STS exchange at runtime and writes named AWS credential profiles to a shared volume. App code uses `config.LoadDefaultConfig(ctx)` with a profile env var — no credential logic required.
+
+For a full explanation: [`docs/workload-identity.md`](../docs/workload-identity.md)
