@@ -165,18 +165,6 @@ spec:
               username: app
               password: "{{ printf "%s-db" $uid | sha256sum | trunc 32 }}"
             {{- else }}
-            {{- /* ========================================================================== */}}
-            {{- /* PHASE 7 TESTING: public-cloud (AWS RDS) backend with workload identity     */}}
-            {{- /* ========================================================================== */}}
-            {{- /* Master password: deterministic, derived from XSql UID, stored in etcd.    */}}
-            {{- /* This is acceptable for homelab testing because:                           */}}
-            {{- /* 1. Apps use IAM DB auth (SVID→RolesAnywhere→STS) as primary auth method   */}}
-            {{- /* 2. Master password is fallback-only (emergencies, direct CLI access)      */}}
-            {{- /* 3. XSql will not be deployed in AWS after Phase 7 workload-identity       */}}
-            {{- /*    validation (only XApi + XCache + XNoSql are AWS-ready long-term)       */}}
-            {{- /* For production: generate random password, store in AWS Secrets Manager,    */}}
-            {{- /* enable automatic rotation, and reference via ExternalSecret.              */}}
-            {{- /* ========================================================================== */}}
             ---
             # Secret containing the master password. Must exist before Instance creation.
             # Deterministic password from XR UID ensures consistent behavior across restarts.

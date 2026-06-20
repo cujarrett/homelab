@@ -168,8 +168,8 @@ spec:
                   Namespace: {{ $ns }}
             {{- end }}
             ---
-            # ElastiCache User with IAM auth mode. userId is used as the Redis username in AUTH.
-            apiVersion: elasticache.aws.upbound.io/v1beta1
+            # ElastiCache User with IAM auth mode. userName is used as the Redis username in AUTH.
+            apiVersion: elasticache.aws.upbound.io/v1beta2
             kind: User
             metadata:
               name: {{ $name }}-cache-user
@@ -180,7 +180,6 @@ spec:
               deletionPolicy: Delete
               forProvider:
                 region: {{ $region }}
-                userId: {{ $userId }}
                 userName: {{ $userId }}
                 engine: redis
                 authenticationMode:
