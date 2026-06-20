@@ -208,7 +208,6 @@ spec:
               provider: aws
               host: {{ index $rgConn "host" | default "" }}
               port: {{ index $rgConn "port" | default "6379" }}
-              auth: "{{ printf \"%s-auth\" $name }}"
               role-arn: {{ $cacheRoleArn }}
               profile-arn: {{ $cacheProfileArn }}
             {{- end }}
