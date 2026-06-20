@@ -8,21 +8,7 @@ spec:
     kind: XObjectStorage
   mode: Pipeline
   pipeline:
-    - step: load-environment-configs
-      # In Crossplane v2 Pipeline mode, EnvironmentConfig data must be injected
-      # by function-environment-configs before P&T can read it via FromEnvironmentFieldPath.
-      functionRef:
-        name: function-environment-configs
-      input:
-        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
-        kind: Input
-        spec:
-          environmentConfigs:
-            - type: Reference
-              ref:
-                name: aws-platform-config
     - step: render-aws-resources
-      # Uses P&T for connectionDetails aggregation across multiple managed resources.
       functionRef:
         name: function-patch-and-transform
       input:
@@ -36,6 +22,10 @@ spec:
               spec:
                 forProvider:
                   region: "us-east-1"
+                  lifecycleRule:
+                    - enabled: true
+                      abortIncompleteMultipartUpload:
+                        daysAfterInitiation: 7
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.dataRetention
@@ -45,10 +35,11 @@ spec:
                     map:
                       delete: Delete
                       retain: Orphan
-              # Set a deterministic bucket name ({namespace}-{name}) so the composition can tag
-              # the IAM user with the exact bucket name for principal-tag-based ABAC (aws:PrincipalTag).
-              # aws:ResourceTag does not work for S3 — IAM never populates it from S3 bucket tags.
-              # The namespace prefix avoids S3's global name collision with short/generic XR names.
+              # Bucket name: platform-{namespace}-{name}. The platform- prefix is a
+              # naming convention that lets IAM resource conditions scope to
+              # arn:aws:s3:::platform-* without relying on bucket tags (IAM cannot
+              # read S3 tags at auth time). This role's inline policy is scoped to
+              # the exact bucket ARN, not the wildcard.
               - type: CombineFromComposite
                 combine:
                   variables:
@@ -56,9 +47,8 @@ spec:
                     - fromFieldPath: metadata.name
                   strategy: string
                   string:
-                    fmt: "%s-%s"
+                    fmt: "platform-%s-%s"
                 toFieldPath: metadata.annotations["crossplane.io/external-name"]
-              # Informational tags — not used for IAM ABAC but useful in the AWS console
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.name
                 toFieldPath: spec.forProvider.tags.App
@@ -66,146 +56,7 @@ spec:
                 fromFieldPath: spec.parameters.namespace
                 toFieldPath: spec.forProvider.tags.Namespace
             connectionDetails:
-              # FromValue: literal constant, not read from the provider
-              - type: FromValue
-                name: type
-                value: s3
-              - type: FromValue
-                name: provider
-                value: aws
-              # status.atProvider.id is the bucket name AWS assigned
               - type: FromFieldPath
                 name: bucket
                 fromFieldPath: status.atProvider.id
-              - type: FromFieldPath
-                name: region
-                fromFieldPath: spec.forProvider.region
-
-          - name: user
-            base:
-              apiVersion: iam.aws.upbound.io/v1beta1
-              kind: User
-              spec:
-                forProvider:
-                  # /crossplane/ path groups Crossplane-managed IAM users in the console
-                  path: /crossplane/
-            patches:
-              # Bucket tag: must match the bucket external-name ({namespace}-{name}) exactly.
-              # The ABAC policy uses arn:aws:s3:::${aws:PrincipalTag/Bucket} in the Resource ARN
-              # because aws:ResourceTag is not populated by IAM for S3 buckets.
-              - type: CombineFromComposite
-                combine:
-                  variables:
-                    - fromFieldPath: spec.parameters.namespace
-                    - fromFieldPath: metadata.name
-                  strategy: string
-                  string:
-                    fmt: "%s-%s"
-                toFieldPath: spec.forProvider.tags.Bucket
-              # Informational tags
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.forProvider.tags.App
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.namespace
-                toFieldPath: spec.forProvider.tags.Namespace
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.dataRetention
-                toFieldPath: spec.deletionPolicy
-                transforms:
-                  - type: map
-                    map:
-                      delete: Delete
-                      retain: Orphan
-
-          - name: access-key
-            base:
-              apiVersion: iam.aws.upbound.io/v1beta1
-              kind: AccessKey
-              spec:
-                forProvider:
-                  # matchControllerRef binds this AccessKey to the User created above
-                  userSelector:
-                    matchControllerRef: true
-                writeConnectionSecretToRef:
-                  name: ""
-                  namespace: ""
-            patches:
-              # Writes credentials to an intermediate secret {name}-iam before promotion
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.writeConnectionSecretToRef.name
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: "%s-iam"
-              # Use explicit namespace parameter instead of deriving from XR name
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.namespace
-                toFieldPath: spec.writeConnectionSecretToRef.namespace
-            connectionDetails:
-              # Promote credentials from the intermediate secret to the XR connection secret
-              - type: FromConnectionSecretKey
-                name: username
-                fromConnectionSecretKey: username
-              - type: FromConnectionSecretKey
-                name: password
-                fromConnectionSecretKey: password
-
-          - name: abac-policy-attachment
-            base:
-              apiVersion: iam.aws.upbound.io/v1beta1
-              kind: UserPolicyAttachment
-              spec:
-                forProvider:
-                  policyArn: ""
-                  userSelector:
-                    matchControllerRef: true
-            patches:
-              # ARN comes from EnvironmentConfig — not stored in Git
-              - type: FromEnvironmentFieldPath
-                fromFieldPath: abacPolicyArn
-                toFieldPath: spec.forProvider.policyArn
-
-    - step: create-binding-secret
-      # In Crossplane v2, XR-level connection secrets are removed.
-      # Instead, create the binding Secret directly as a composed native K8s resource.
-      # P&T (previous step) collects connectionDetails into desired.composite.connectionDetails;
-      # go-templating reads those and creates the Secret once credentials are available.
-      functionRef:
-        name: function-go-templating
-      input:
-        apiVersion: gotemplating.fn.crossplane.io/v1beta1
-        kind: GoTemplate
-        source: Inline
-        inline:
-          template: |
-            {{- $cd := .desired.composite.connectionDetails | default dict -}}
-            {{- $username := index $cd "username" | toString -}}
-            {{- $password := index $cd "password" | toString -}}
-            {{- if and $username $password -}}
-            {{- $xr := .observed.composite.resource -}}
-            {{- $name := $xr.metadata.name -}}
-            {{- $ns := $xr.spec.parameters.namespace -}}
-            {{- $bucket := index $cd "bucket" | toString | b64dec | default $name -}}
-            {{- $region := index $cd "region" | toString | b64dec | default "us-east-1" -}}
-            ---
-            apiVersion: v1
-            kind: Secret
-            metadata:
-              name: {{ $name }}
-              namespace: {{ $ns }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: binding-secret
-                gotemplating.fn.crossplane.io/ready: "True"
-            type: servicebinding.io/s3
-            stringData:
-              type: s3
-              provider: aws
-              bucket: {{ $bucket }}
-              region: {{ $region }}
-              username: {{ $username | b64dec }}
-              password: {{ $password | b64dec }}
-            {{- end -}}
 
