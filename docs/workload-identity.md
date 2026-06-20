@@ -6,36 +6,70 @@ Each pod receives a short-lived X.509 SVID (SPIFFE certificate) from SPIRE. The 
 
 ## How it works
 
-### Provisioning phase (on XR apply)
-
-When an XApi is created with AWS bindings, Crossplane:
-1. Creates one IAM role per binding (scoped to that pod's SPIFFE ID)
-2. Creates a RolesAnywhere profile referencing the role
-3. Writes a binding Secret with the role ARN and profile ARN
-4. Pod's init container waits for the Secret
-
-### Runtime phase (while pod runs)
+### Provisioning (once — on XR apply)
 
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 50, 'rankSpacing': 50}}}%%
 flowchart LR
-    spire["SPIRE\nroot CA &\nregistration\nentries"]
-    agent["SPIRE Agent\nper node\nattests pods"]
-    csi["SPIFFE CSI\nDriver\nmounts socket"]
+    xr["XApi XR applied"]
+    bucket["S3 Bucket\nplatform-ns-name"]
+    role["IAM Role\ntrust policy locked to\nspiffe://…/ns/foo/sa/foo-api"]
+    profile["RolesAnywhere Profile\nlinks role → trust anchor\n1h session"]
+    secret["Binding Secret\nrole-arn · profile-arn\nbucket · region"]
+    pod["Pod\ninit container waits\nuntil Secret is ready"]
 
-    sidecar["Sidecar\ncalls fetch x509\nvia socket"]
-    aws["IAM Roles\nAnywhere\nvalidates cert\nchecks SPIFFE ID\ncondition"]
-    sts["STS\nassume role\n1h credentials"]
+    xr -->|"1 · creates bucket"| bucket
+    xr -->|"2 · creates role"| role
+    role -->|"3 · role ARN known → creates"| profile
+    profile -->|"4 · profile ARN known → writes"| secret
+    secret -->|"5 · mounted into pod"| pod
 
-    app["App container\nreads named\nprofiles"]
+    classDef crossplaneStyle fill:#2E7D32,stroke:#1B5E20,color:#fff
+    classDef podStyle fill:#1565C0,stroke:#0D47A1,color:#fff
+    class xr,bucket,role,profile,secret crossplaneStyle
+    class pod podStyle
+```
 
-    spire -->|node attestation| agent
-    agent -->|SVID| csi
-    csi -->|socket| sidecar
-    sidecar -->|cert + ARNs| aws
-    aws -->|assume| sts
-    sts -->|credentials| sidecar
-    sidecar -->|profiles| app
+Crossplane runs this once when an XApi XR with a cloud resource binding (e.g. `objectStorageRefs`, `nosqlRef`) is applied — before the pod starts. Each binding gets its own IAM Role (trust policy locked to the pod's exact SPIFFE ID), a RolesAnywhere Profile linking it to the cluster trust anchor, then a binding Secret containing the ARNs. The init container blocks pod startup until the Secret is fully written.
+
+1. Creates bucket — S3 bucket named `platform-{namespace}-{name}`. The prefix lets IAM scope policies to `arn:aws:s3:::platform-*` — bucket tags can't be read at auth time.
+2. Creates role — IAM Role with one trust condition: `aws:PrincipalTag/x509SAN/URI` must exactly match this pod's SPIFFE ID. Inline policy scoped to the one bucket. No other workload can assume it.
+3. Role ARN known → creates profile — On the next reconcile pass after the Role exists, Crossplane creates the RolesAnywhere Profile. Links the role to the cluster trust anchor with a 1h session.
+4. Profile ARN known → writes Secret — Deferred again. Writes `role-arn`, `profile-arn`, `bucket`, `region`. No credentials — just the ARNs needed to request them.
+5. Mounted into pod — The init container polls for the Secret's `type` file before the app starts. Once it exists, the sidecar has everything it needs.
+
+### Runtime (every 50 min — while pod is running)
+
+```mermaid
+%%{init: {'flowchart': {'nodeSpacing': 50, 'rankSpacing': 50}}}%%
+flowchart LR
+    subgraph cluster["Cluster"]
+        subgraph identity["Identity — SPIRE"]
+            spire["SPIRE Server\nroot CA\nauto-registers app=xapi\nand app=xspa pods"]
+            agent["SPIRE Agent\nper node\nverifies via kubelet"]
+            csi["SPIFFE CSI Driver\nmounts socket at\n/var/run/secrets/spiffe.io/api.sock"]
+        end
+
+        subgraph pod["XApi pod"]
+            sidecar["aws-credentials-sidecar\nreads cert+key + binding Secret\ncalls aws_signing_helper"]
+            app["api container\nAWS SDK\nreads named profile"]
+        end
+    end
+
+    subgraph aws["AWS"]
+        ra["IAM Roles Anywhere\nvalidates cert chain\nchecks SPIFFE ID condition"]
+        sts["STS\n1h credentials"]
+        roles["IAM Role\n(one per binding)"]
+    end
+
+    spire  -->|"1 · node attestation"| agent
+    agent  -->|"2 · SVID cert+key"| csi
+    csi    -->|"3 · mount files"| sidecar
+    sidecar -->|"4 · cert + ARNs\nfrom binding Secret"| ra
+    ra      -->|"5 · validate + assume"| roles
+    roles   --> sts
+    sts     -->|"6 · temp credentials"| sidecar
+    sidecar -->|"7 · named profiles\nwritten to emptyDir"| app
 
     classDef spireStyle fill:#512DA8,stroke:#311B92,color:#fff
     classDef sideStyle  fill:#E65100,stroke:#BF360C,color:#fff
@@ -43,17 +77,39 @@ flowchart LR
 
     class spire,agent,csi spireStyle
     class sidecar sideStyle
-    class aws,sts awsStyle
+    class ra,sts,roles awsStyle
+
+    style cluster  fill:#263238,stroke:#546E7A
+    style identity fill:#1A1A2E,stroke:#512DA8
+    style pod      fill:#1A2332,stroke:#37474F
+    style aws      fill:#1B2A1B,stroke:#2E7D32
 ```
 
-Steps:
-1. **SPIRE attestation** — SPIRE Server and Agent exchange credentials to prove the agent runs on a real cluster node
-2. **SVID issuance** — SPIRE auto-creates a registration entry for pods with specific labels; CSI driver mounts the Workload API socket
-3. **Certificate fetch** — Sidecar calls `spire-agent api fetch x509` to get the pod's SVID cert+key
-4. **Identity exchange** — Sidecar calls `aws_signing_helper` with SVID, role ARN, profile ARN, and trust anchor ARN
-5. **Assume role** — IAM Roles Anywhere validates the SVID chain and checks `aws:PrincipalTag/x509SAN/URI` matches the pod's exact SPIFFE ID
-6. **Temporary credentials** — STS returns access key + secret + session token (valid 1 hour)
-7. **Write profiles** — Sidecar writes named profile sections to `/aws-credentials/credentials`; app reads via `AWS_PROFILE_<BINDING>` env vars
+1. Node attestation — Each SPIRE Agent bootstraps to the server and proves it's running on a legitimate cluster node. Not service mesh mTLS — this is SPIRE's own internal protocol. Once attested, the server trusts that agent to vouch for workloads on that node.
+2. SVID issuance — When an XApi pod schedules, `spire-controller-manager` auto-creates a registration entry. The SPIFFE CSI driver mounts the Workload API socket at `/var/run/secrets/spiffe.io/api.sock`. Rotated automatically before expiry.
+3. Fetch cert+key — The sidecar calls `spire-agent api fetch x509` against the socket to get the pod's SVID cert and key (valid ~1 hour, refreshed every 50 minutes).
+4. Identity exchange — The sidecar calls `aws_signing_helper` with the SVID cert+key, role ARN, profile ARN, and trust anchor ARN. IAM Roles Anywhere validates the cert chain and checks `aws:PrincipalTag/x509SAN/URI` against the pod's exact SPIFFE ID. Wrong namespace, wrong service account, different cluster — rejected.
+5. Assume the role — On successful validation, Roles Anywhere calls STS to assume the role.
+6. Temporary credentials — STS returns a 1h access key + secret + session token. The sidecar refreshes every 50 minutes so credentials never expire mid-request.
+7. Credentials on disk — The sidecar writes named profile sections to `/aws-credentials/credentials` (shared emptyDir). The app reads via `AWS_SHARED_CREDENTIALS_FILE` + `AWS_PROFILE_<BINDING>` env vars injected by the composition.
+
+    ```go
+    cfg, _ := config.LoadDefaultConfig(ctx,
+        config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_OBJECT_STORAGE")))
+    s3Client := s3.NewFromConfig(cfg)
+    ```
+
+    JavaScript (AWS SDK v3):
+    ```js
+    const { S3Client } = require("@aws-sdk/client-s3");
+    const { fromIni } = require("@aws-sdk/credential-providers");
+
+    const s3 = new S3Client({
+      credentials: fromIni({ profile: process.env.AWS_PROFILE_OBJECT_STORAGE }),
+    });
+    ```
+
+If the pod is deleted, the role can't be assumed by anything else — the trust policy condition is scoped to the exact SPIFFE ID.
 
 ## Design choices
 
