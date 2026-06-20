@@ -183,10 +183,10 @@ spec:
                 nodeType: {{ $nodeType }}
                 engine: redis
                 numCacheClusters: 1
-                # TLS enabled for security; sidecar will provision credentials via RolesAnywhere
+                # IAM auth requires TLS; userGroupIds enables the IAM user created above.
                 transitEncryptionEnabled: true
-                # Use default user with password auth for simplicity; IAM auth via STS credentials in sidecar
-                authToken: "{{ printf \"%s-auth\" $name }}"
+                userGroupIds:
+                  - {{ $userGroupId }}
               writeConnectionSecretToRef:
                 name: {{ $name }}-rg-conn
                 namespace: {{ $ns }}
