@@ -852,9 +852,87 @@ kubectl delete xsql phase7-sql
 kubectl delete namespace phase7-test
 ```
 
+## Testing multi-binding workload identity
+
+To validate SPIFFE SVID → IAM Roles Anywhere → STS credential exchange across simultaneous bindings:
+
+**Create prerequisites (NoSQL, SQL, Cache):**
+```yaml
+# XNoSql (test-nosql), XSql (test-sql), XCache (test-cache) — each with:
+apiVersion: platform.local.lab/v1alpha1
+kind: X{NoSql|Sql|Cache}
+metadata:
+  name: test-{nosql|sql|cache}
+spec:
+  parameters:
+    namespace: test-identity
+    backend: public-cloud
+    region: us-east-1
+```
+
+**Create API with all three bindings:**
+```yaml
+apiVersion: platform.local.lab/v1alpha1
+kind: XApi
+metadata:
+  name: test-api
+  namespace: test-identity
+spec:
+  parameters:
+    namespace: test-identity
+    image: busybox:latest  # No external dependencies
+    port: 8080
+    replicas: 1
+    nosqlRef:
+      name: test-nosql
+    sqlRef:
+      name: test-sql
+      backend: public-cloud
+    cache:
+      enabled: true
+      backend: public-cloud
+```
+
+**Verify and check credentials:**
+```bash
+# Binding Secrets created automatically (except cache — manual workaround needed)
+kubectl get secrets -n test-identity | grep test-
+
+# For cache, manually create binding Secret with role/profile ARNs:
+kubectl create secret generic test-api-cache -n test-identity \
+  --from-literal=type=redis \
+  --from-literal=provider=aws \
+  --from-literal=host=<cache-endpoint> \
+  --from-literal=port=6379 \
+  --from-literal=role-arn=<role-arn> \
+  --from-literal=profile-arn=<profile-arn>
+
+# Check sidecar generated three named profiles with STS credentials:
+kubectl exec -it deployment/test-api -n test-identity -c aws-credentials-sidecar -- cat /aws-credentials/credentials
+```
+
+Expected: three profiles (`[nosql]`, `[sql]`, `[cache]`) with temporary AWS credentials.
+
+**Cleanup:**
+```bash
+kubectl delete xapi test-api xsql test-sql xnosql test-nosql xcache test-cache -n test-identity
+kubectl delete ns test-identity
+```
+
 ---
 
-### Phase 8 — Declared connection topology (long-term)
+## One-Way Doors
+
+These decisions are hard to reverse. Make them deliberately.
+
+| Decision | Why it's sticky |
+|---|---|
+| SPIRE trust domain (`homelab.local`) | Baked into every SVID and every IAM trust policy condition. Changing it requires re-registering trust anchors and updating all role trust policies. |
+| One credential sidecar per AWS binding | Each sidecar assumes a distinct IAM role scoped to one resource. Collapsing to a shared sidecar later would require merging IAM permissions across resources, breaking least-privilege, or building role-chaining logic with no security upside. |
+
+---
+
+### TODO — Declared connection topology (long-term)
 
 **Purpose:** Use the identities for more than AWS auth — enforce *who is allowed to call whom* inside the cluster, declared in the composition.
 
@@ -887,115 +965,3 @@ is declared, enforced, and visible in Grafana without a line of app code.
 
 That's "platform manages connections." The composition owns both the credential and the
 network gate.
-
----
-
-## Testing multi-binding workload identity
-
-To validate that SPIFFE SVID → IAM Roles Anywhere → STS credential exchange works across simultaneous bindings, create test XRs for all three resource types.
-
-**Create NoSQL:**
-```yaml
-apiVersion: platform.local.lab/v1alpha1
-kind: XNoSql
-metadata:
-  name: test-nosql
-spec:
-  parameters:
-    namespace: test-identity
-    backend: public-cloud
-    region: us-east-1
-```
-
-**Create SQL:**
-```yaml
-apiVersion: platform.local.lab/v1alpha1
-kind: XSql
-metadata:
-  name: test-sql
-spec:
-  parameters:
-    namespace: test-identity
-    backend: public-cloud
-    region: us-east-1
-```
-
-**Create Cache:**
-```yaml
-apiVersion: platform.local.lab/v1alpha1
-kind: XCache
-metadata:
-  name: test-cache
-spec:
-  parameters:
-    namespace: test-identity
-    backend: public-cloud
-    region: us-east-1
-```
-
-**Create API with all three bindings:**
-```yaml
-apiVersion: platform.local.lab/v1alpha1
-kind: XApi
-metadata:
-  name: test-api
-  namespace: test-identity
-spec:
-  parameters:
-    namespace: test-identity
-    image: busybox:latest  # Simple image with no external dependencies
-    port: 8080
-    metricsPort: 8080
-    replicas: 1
-    nosqlRef:
-      name: test-nosql
-    sqlRef:
-      name: test-sql
-      backend: public-cloud
-    cache:
-      enabled: true
-      backend: public-cloud
-```
-
-**Verify binding Secrets are created:**
-```bash
-kubectl get secrets -n test-identity | grep test-
-```
-
-**Check sidecar generated credentials (must manually create cache binding Secret first):**
-```bash
-# For cache binding Secret, gather role/profile ARNs and create Secret manually:
-kubectl create secret generic test-api-cache \
-  --from-literal=type=redis \
-  --from-literal=provider=aws \
-  --from-literal=host=<cache-endpoint> \
-  --from-literal=port=6379 \
-  --from-literal=role-arn=<role-arn> \
-  --from-literal=profile-arn=<profile-arn> \
-  -n test-identity
-
-# Then check credentials:
-kubectl exec -it deployment/test-api -n test-identity -c aws-credentials-sidecar -- cat /aws-credentials/credentials
-```
-
-You should see three named profiles (`[nosql]`, `[sql]`, `[cache]`) with temporary AWS credentials (ASIA access keys + session tokens).
-
-**Cleanup:**
-```bash
-kubectl delete xapi test-api -n test-identity
-kubectl delete xsql test-sql
-kubectl delete xnosql test-nosql
-kubectl delete xcache test-cache
-kubectl delete ns test-identity
-```
-
----
-
-## One-Way Doors
-
-These decisions are hard to reverse. Make them deliberately.
-
-| Decision | Why it's sticky |
-|---|---|
-| SPIRE trust domain (`homelab.local`) | Baked into every SVID and every IAM trust policy condition. Changing it requires re-registering trust anchors and updating all role trust policies. |
-| One credential sidecar per AWS binding | Each sidecar assumes a distinct IAM role scoped to one resource. Collapsing to a shared sidecar later would require merging IAM permissions across resources, breaking least-privilege, or building role-chaining logic with no security upside. |
