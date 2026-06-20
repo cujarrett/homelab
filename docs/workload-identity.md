@@ -634,6 +634,7 @@ EOF
 
 # 3. Wait for the S3 bucket to be ready
 kubectl get xobjectstorage phase5-test -w
+
 # Once SYNCED=True and READY=True, the bucket exists in AWS
 
 # 4. Create a throwaway XApi that references the XObjectStorage
