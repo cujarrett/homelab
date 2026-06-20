@@ -34,6 +34,37 @@ Create a new directory `./<app-name>/` containing the following files. In every 
 
 Also create:
 
+**`./<app-name>/README.md`**
+```markdown
+# <app-name>
+
+One sentence description of what the app does.
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `just ci` | Lint + test + build (run before pushing) |
+| `just run` | Start the server locally on port <port> |
+| `just test` | Run tests with race detector |
+| `just lint` | go mod tidy -diff + golangci-lint |
+
+## Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/healthz` | Liveness probe |
+
+## Environment variables
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+
+## Deployment
+
+Runs on the homelab cluster via the `XApi` Crossplane composition. Image: `ghcr.io/cujarrett/<app-name>`. ARM64.
+```
+
 **`./<app-name>/go.mod`**
 ```
 module github.com/cujarrett/<app-name>
