@@ -6,22 +6,18 @@ Standalone resource with a lifecycle independent of any one API. Bind to an `XAp
 
 ## What it provisions
 - `backend: private-cloud` — **in-cluster Postgres** (Deployment + PVC on Longhorn) + binding Secret; no cloud resources
-- `backend: public-cloud` — **AWS RDS Postgres** instance + binding Secret (**Phase 7 testing only** — see [Deployability](#deployability) below)
+- `backend: public-cloud` — **AWS RDS Postgres** instance + binding Secret (see [Deployability](#deployability) for limitations)
 
 ## Deployability
 
-**⚠️ Phase 7 testing:** The `public-cloud` backend (AWS RDS) is **temporary for workload identity validation only**. After Phase 7 completes, XSql will not be deployed to AWS in production. Long-term, only `XApi` and `XNoSql` use cloud resources; databases remain in-cluster via `private-cloud` backend.
+**⚠️ Not for scale** The `public-cloud` backend stores master passwords in Kubernetes Secrets. This is acceptable for homelab because apps use IAM DB auth as the primary method and passwords are fallback-only. For production use at scale:
 
-### Master password security
+1. Replace Secret-based storage with AWS Secrets Manager + ExternalSecret
+2. Generate random passwords at composition time (not deterministic)
+3. Enable automatic rotation in Secrets Manager
+4. This prevents cluster admins from reading database credentials
 
-**For `private-cloud`:** Credentials are generated at composition time and stored in a Kubernetes Secret. Standard Kubernetes RBAC + audit logs apply.
-
-**For `public-cloud`:** Master password is deterministic (SHA256 hash of the XR UID) and acceptable for homelab because:
-1. Apps use IAM DB auth (SVID→RolesAnywhere→STS tokens) as the primary auth method
-2. Master password is fallback-only (emergencies, direct CLI access)
-3. Data is ephemeral (testing only; deleted after Phase 7)
-
-For production: Generate a random password at composition time, store it in AWS Secrets Manager (with automatic rotation enabled), and reference it via `ExternalSecret` — this prevents even cluster admins from reading it.
+Currently, in-cluster databases are the recommended approach for this platform.
 
 ## Binding secret
 

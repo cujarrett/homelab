@@ -4,7 +4,7 @@ Crossplane platform primitive that provisions a Redis-compatible cache cluster a
 
 Owned by `XApi` — created and deleted with it when `cache.enabled: true`. Not intended for standalone use.
 
-**⚠️ Phase 7 testing:** The `public-cloud` backend (AWS ElastiCache) is temporary for workload identity validation only. Long-term, only `XApi` and `XNoSql` use cloud resources; caching remains in-cluster via the `private-cloud` backend.
+**⚠️ Not for scale** The `public-cloud` backend stores auth tokens in Kubernetes Secrets, which is not suitable for production at scale. Before using ElastiCache in production, replace Secret-based auth with AWS Secrets Manager + ExternalSecret, or use the `private-cloud` backend (in-cluster Redis). Currently, in-cluster caching is the recommended approach for this platform.
 
 ## What it provisions
 - `backend: private-cloud` — **in-cluster Redis** + binding Secret; no cloud resources
