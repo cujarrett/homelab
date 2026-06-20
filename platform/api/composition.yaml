@@ -425,6 +425,7 @@ spec:
               name: {{ $name }}-objstorage-{{ $refName }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: {{ $roleKey }}
+                gotemplating.fn.crossplane.io/ready: "True"
                 crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}-{{ $refName }}
             spec:
               deletionPolicy: Delete
@@ -461,6 +462,7 @@ spec:
               name: {{ $name }}-objstorage-{{ $refName }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: {{ $profileKey }}
+                gotemplating.fn.crossplane.io/ready: "True"
                 crossplane.io/external-name: {{ $profileExternalName }}
             spec:
               deletionPolicy: Delete
