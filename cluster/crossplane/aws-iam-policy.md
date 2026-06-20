@@ -21,7 +21,7 @@ ever recreated, apply all policies below.
 
 ## Inline policy: CrossplaneWorkloadIdentityManagement
 
-Grants the permissions needed to manage per-workload IAM roles.
+Grants the permissions needed to manage per-workload IAM roles and RolesAnywhere profiles.
 Scoped to the `/crossplane/` IAM path — no permission to touch roles outside that path.
 
 ```json
@@ -48,6 +48,22 @@ Scoped to the `/crossplane/` IAM path — no permission to touch roles outside t
         "iam:PassRole"
       ],
       "Resource": "arn:aws:iam::*:role/crossplane/*"
+    },
+    {
+      "Sid": "ManageRolesAnywhereProfiles",
+      "Effect": "Allow",
+      "Action": [
+        "rolesanywhere:CreateProfile",
+        "rolesanywhere:DeleteProfile",
+        "rolesanywhere:GetProfile",
+        "rolesanywhere:UpdateProfile",
+        "rolesanywhere:EnableProfile",
+        "rolesanywhere:DisableProfile",
+        "rolesanywhere:TagResource",
+        "rolesanywhere:UntagResource",
+        "rolesanywhere:ListTagsForResource"
+      ],
+      "Resource": "*"
     }
   ]
 }
@@ -66,4 +82,4 @@ aws iam put-user-policy \
 
 - The `aws-creds` Secret in `crossplane-system` — created manually, never stored in Git
 - The trust anchor (`homelab-spire`) — created in Phase 4 of `docs/workload-identity.md`; cluster-wide and permanent
-- The `aws-platform-config` EnvironmentConfig — contains `trustAnchorArn` and `platformProfileArn`; applied manually
+- The `aws-platform-config` EnvironmentConfig — contains `trustAnchorArn`; applied manually
