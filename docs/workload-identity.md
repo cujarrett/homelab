@@ -72,32 +72,13 @@ IAM cannot read S3 bucket tags at auth time — conditions must use ARNs. The `p
 **Binding Secret carries ARNs, not credentials:**
 The Secret contains `role-arn`, `profile-arn`, `bucket`, and `region` — no access keys. If accidentally logged, it's useless without a valid SVID. The sidecar handles credential exchange at runtime.
 
-## Challenges encountered
+## Challenges encountered: Provider bug workaround
 
-### The Profile Problem: Root Cause and Solution
-Core constraint: RolesAnywhere Profile `roleArns` is an exact-match list. No wildcards. Every new IAM role created by Crossplane must be explicitly listed in the profile before `CreateSession` succeeds.
+**The constraint:** RolesAnywhere Profile `roleArns` is an exact-match list with no wildcards. Each IAM role must be explicitly listed in the profile.
 
-## Options
+**The provider bug:** `provider-aws-rolesanywhere` uses `spec.forProvider.name` (the profile's human-readable name) as the profileId when calling `GetProfile`. ProfileIds are actually UUIDs assigned by AWS. When the profile doesn't exist yet, AWS returns HTTP 400 (validation error: "not a UUID") instead of HTTP 404 (not found). Crossplane treats 400 as a terminal error and never calls Create, so the profile never gets created.
 
-### Option A — Wildcards in Profile roleArns
-Tried `arn:aws:iam::550429969116:role/crossplane/`*. AWS stores it literally. At session-create time, does exact string matching — the literal `crossplane/`* never matches `crossplane/crossplane-phase6-test-....` Dead end confirmed.
-
-### Option B — Per-workload Profile (original design, Crossplane-managed)
-The right design. Each binding gets its own Profile tied to its IAM role. Lifecycle managed by Crossplane with the XApi.
-
-Blocker hit: `provider-aws-rolesanywhere` v2.5.2 uses `spec.forProvider.name` (a human-readable string) as the profileId when calling `GetProfile`. ProfileIds are UUIDs assigned by AWS — you can't specify them at creation time. When the profile doesn't exist yet, the Observe call returns HTTP 400 (validation error: "not a UUID") instead of HTTP 404 (not found). Crossplane treats 400 as an error, never calls Create. Profile never gets made.
-
-The previous workaround attempt (`crossplane.io/external-name: crossplane-{ns}-{name}-{ref}`) made it worse — it set a non-UUID string as the external-name, ensuring every Observe call permanently fails.
-
-### Option C — `managementPolicies: ["Create", "Delete"]` without setting external-name
-Attempted but failed. `provider-aws-rolesanywhere` v2.5.2 and v2.6.1 both reject non-default `managementPolicies` with: `spec.managementPolicies is set to a value([Create Delete]) which is not supported.` The provider does not implement the management policies capability — it is not a Crossplane platform limitation, it is a per-resource provider limitation. Upgrading the entire provider family to v2.6.1 did not resolve it.
-
-### Option F — Nil UUID as initial external-name, reading back real UUID from observed state
-This is the implemented solution. The root cause of the provider bug is that when `crossplane.io/external-name` is not set, the provider defaults to using `spec.forProvider.name` (the human-readable profile name) as the profileId in `GetProfile`. That name is not a UUID, so AWS returns HTTP 400 (validation error) instead of HTTP 404 (not found). Crossplane treats 400 as an error and never calls Create.
-
-The fix: set `crossplane.io/external-name` to `"00000000-0000-0000-0000-000000000000"` (a valid UUID format that doesn't exist in AWS) on the first render. AWS returns HTTP 404 → Crossplane calls Create → AWS creates the Profile and assigns a real UUID → the provider writes the real UUID back as `crossplane.io/external-name` on the object.
-
-On subsequent reconciles, the template reads the observed Profile's annotation and uses the real UUID in the desired state, so the function pipeline never overwrites it:
+**The solution:** Set `crossplane.io/external-name` to a valid UUID format that doesn't exist in AWS (`"00000000-0000-0000-0000-000000000000"`) on the first render. AWS returns HTTP 404 → Crossplane calls Create → AWS assigns a real UUID → the template reads it back and uses the real UUID on subsequent reconciles:
 
 ```go
 {{- $profileExternalName := "00000000-0000-0000-0000-000000000000" }}
@@ -107,7 +88,7 @@ On subsequent reconciles, the template reads the observed Profile's annotation a
 {{- end }}
 ```
 
-This solution was implemented successfully across all XObjectStorage, XNoSql, XSql, and XCache bindings. No provider upgrades or external steps needed.
+This solution is implemented across all XObjectStorage, XNoSql, XSql, and XCache bindings with no provider upgrades or external steps required.
 
 ## App code examples
 
