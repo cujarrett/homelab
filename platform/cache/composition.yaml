@@ -42,10 +42,6 @@ spec:
             {{- $cacheProfileObs := index (.observed.resources | default dict) "cache-profile" | default dict }}
             {{- $cacheProfileArn := "" }}
             {{- if $cacheProfileObs.resource }}{{- $cacheProfileArn = $cacheProfileObs.resource.status.atProvider.arn | default "" }}{{- end }}
-            {{- $userGroupIdAws := "" }}
-            {{- with index (.observed.resources | default dict) "cache-user-group" }}
-              {{- if .resource }}{{- $userGroupIdAws = .resource.status.atProvider.userGroupId | default "" }}{{- end }}
-            {{- end }}
             {{- if eq $env "private-cloud" }}
             ---
             apiVersion: apps/v1
@@ -172,44 +168,6 @@ spec:
                   Namespace: {{ $ns }}
             {{- end }}
             ---
-            # ElastiCache User with IAM auth mode. userName is used as the Redis username in AUTH.
-            apiVersion: elasticache.aws.upbound.io/v1beta2
-            kind: User
-            metadata:
-              name: {{ $name }}-cache-user
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: cache-user
-                gotemplating.fn.crossplane.io/ready: "True"
-            spec:
-              deletionPolicy: Delete
-              forProvider:
-                region: {{ $region }}
-                userName: {{ $userId }}
-                engine: redis
-                authenticationMode:
-                  - type: iam
-                accessString: "on ~* +@all"
-                tags:
-                  App: {{ $name }}
-                  Namespace: {{ $ns }}
-            ---
-            # ElastiCache UserGroup references the IAM user. ReplicationGroup associates with this group.
-            apiVersion: elasticache.aws.upbound.io/v1beta1
-            kind: UserGroup
-            metadata:
-              name: {{ $name }}-cache-group
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: cache-user-group
-                gotemplating.fn.crossplane.io/ready: "True"
-            spec:
-              deletionPolicy: Delete
-              forProvider:
-                region: {{ $region }}
-                engine: redis
-                tags:
-                  App: {{ $name }}
-                  Namespace: {{ $ns }}
-            ---
             # Provider writes connection details to {name}-rg-conn once ElastiCache is up
             apiVersion: elasticache.aws.upbound.io/v1beta2
             kind: ReplicationGroup
@@ -225,12 +183,10 @@ spec:
                 nodeType: {{ $nodeType }}
                 engine: redis
                 numCacheClusters: 1
-                # IAM auth requires TLS; userGroupIds enables the IAM user created above.
+                # TLS enabled for security; sidecar will provision credentials via RolesAnywhere
                 transitEncryptionEnabled: true
-                {{- if $userGroupIdAws }}
-                userGroupIds:
-                  - {{ $userGroupIdAws }}
-                {{- end }}
+                # Use default user with password auth for simplicity; IAM auth via STS credentials in sidecar
+                authToken: "{{ printf \"%s-auth\" $name }}"
               writeConnectionSecretToRef:
                 name: {{ $name }}-rg-conn
                 namespace: {{ $ns }}
@@ -252,7 +208,7 @@ spec:
               provider: aws
               host: {{ index $rgConn "host" | default "" }}
               port: {{ index $rgConn "port" | default "6379" }}
-              user-id: {{ $userId }}
+              auth: "{{ printf \"%s-auth\" $name }}"
               role-arn: {{ $cacheRoleArn }}
               profile-arn: {{ $cacheProfileArn }}
             {{- end }}
