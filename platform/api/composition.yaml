@@ -440,21 +440,29 @@ spec:
                     policy: {{ $inlinePolicy | quote }}
 
             {{- if $roleArn }}
+            {{- /* Profile external-name workaround: provider uses spec.forProvider.name (string) as  */}}
+            {{- /* profileId in GetProfile — a bug that returns 400 instead of 404.                   */}}
+            {{- /* Fix: set external-name to a nil UUID on first create (valid UUID format → 404).     */}}
+            {{- /* On subsequent reconciles, read the real UUID from observed state and use that,     */}}
+            {{- /* so the function pipeline never overwrites what the provider wrote.                  */}}
+            {{- $profileExternalName := "00000000-0000-0000-0000-000000000000" }}
+            {{- if $profileObs.resource }}
+              {{- $observedExternalName := index ($profileObs.resource.metadata.annotations | default dict) "crossplane.io/external-name" | default "" }}
+              {{- if $observedExternalName }}{{- $profileExternalName = $observedExternalName }}{{- end }}
+            {{- end }}
             ---
             # RolesAnywhere Profile for {{ $refName }}. Deferred until role ARN is known.
-            # managementPolicies: Create+Delete only — skips Observe to work around provider bug
-            # where the provider incorrectly uses spec.forProvider.name (a string) as the profileId
-            # (a UUID). Without Observe: external-name absent → Create called → AWS assigns UUID →
-            # provider sets external-name=<uuid>. SSA field ownership prevents the template from
-            # overwriting the UUID on subsequent reconciles.
+            # External-name is set to a nil UUID on first create so AWS returns 404 (not 400),
+            # allowing Crossplane to call Create. After creation the real UUID is read back from
+            # observed state so the function pipeline never overwrites the provider-assigned UUID.
             apiVersion: rolesanywhere.aws.upbound.io/v1beta1
             kind: Profile
             metadata:
               name: {{ $name }}-objstorage-{{ $refName }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: {{ $profileKey }}
+                crossplane.io/external-name: {{ $profileExternalName }}
             spec:
-              managementPolicies: ["Create", "Delete"]
               deletionPolicy: Delete
               forProvider:
                 name: crossplane-{{ $ns }}-{{ $name }}-{{ $refName }}
