@@ -77,9 +77,10 @@ spec:
             {{- $awsBindings := list }}
             {{- /* mountPath:profile pairs (used for AWS_BINDINGS env var in sidecar)            */ -}}
             {{- $sidecarBindingParts := list }}
-            {{- range $objectStorageRefs }}
-              {{- $awsBindings = append $awsBindings (printf "object-storage-%s-binding:/bindings/%s:%s" .name .name .name) }}
-              {{- $sidecarBindingParts = append $sidecarBindingParts (printf "/bindings/%s:%s" .name .name) }}
+            {{- range $i, $ref := $objectStorageRefs }}
+              {{- $osMountName := "object-storage" }}{{- if gt $i 0 }}{{- $osMountName = printf "object-storage-%d" $i }}{{- end }}
+              {{- $awsBindings = append $awsBindings (printf "object-storage-%s-binding:/bindings/%s:%s" $ref.name $osMountName $osMountName) }}
+              {{- $sidecarBindingParts = append $sidecarBindingParts (printf "/bindings/%s:%s" $osMountName $osMountName) }}
             {{- end }}
             {{- if $nosqlRefName }}
               {{- $awsBindings = append $awsBindings "nosql-binding:/bindings/nosql:nosql" }}
