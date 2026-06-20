@@ -334,7 +334,7 @@ spec:
                       {{- end }}
                     {{- if gt (len $awsBindings) 0 }}
                     - name: aws-credentials-sidecar
-                      image: ghcr.io/cujarrett/aws-spiffe-helper:main@sha256:b3d89148edfa869a05a7d8f430001170fceb45eca77bdbcce24e7bd709417287
+                      image: ghcr.io/cujarrett/aws-spiffe-helper:main@sha256:863a56c984fcf8003c546557dbc426061d99e9bdb29f25e6372c8f216e8b8b76
                       imagePullPolicy: IfNotPresent
                       env:
                         - name: AWS_BINDINGS
