@@ -408,10 +408,10 @@ spec:
             {{- $refName := .name }}
             {{- $roleKey := printf "role-object-storage-%s" $refName }}
             {{- $profileKey := printf "profile-object-storage-%s" $refName }}
-            {{- $roleObs := index ($.observed.composed.resources | default dict) $roleKey | default dict }}
+            {{- $roleObs := index ($.observed.resources | default dict) $roleKey | default dict }}
             {{- $roleArn := "" }}
             {{- if $roleObs.resource }}{{- $roleArn = $roleObs.resource.status.atProvider.arn | default "" }}{{- end }}
-            {{- $profileObs := index ($.observed.composed.resources | default dict) $profileKey | default dict }}
+            {{- $profileObs := index ($.observed.resources | default dict) $profileKey | default dict }}
             {{- $profileArn := "" }}
             {{- if $profileObs.resource }}{{- $profileArn = $profileObs.resource.status.atProvider.arn | default "" }}{{- end }}
             {{- $bucketName := printf "platform-%s-%s" $ns $refName }}
