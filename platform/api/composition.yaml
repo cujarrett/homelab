@@ -334,8 +334,8 @@ spec:
                       {{- end }}
                     {{- if gt (len $awsBindings) 0 }}
                     - name: aws-credentials-sidecar
-                      image: ghcr.io/cujarrett/aws-spiffe-helper:main@sha256:04c74311735ee2e097f24ba3468d9dc2648abe6068a4e277df10910e9124735a
-                      imagePullPolicy: IfNotPresent
+                      image: ghcr.io/cujarrett/aws-spiffe-helper:main
+                      imagePullPolicy: Always
                       env:
                         - name: AWS_BINDINGS
                           value: {{ join "," $sidecarBindingParts | quote }}
@@ -411,7 +411,9 @@ spec:
             {{- $roleObs := index ($.observed.resources | default dict) $roleKey | default dict }}
             {{- $roleArn := "" }}
             {{- if $roleObs.resource }}{{- $roleArn = $roleObs.resource.status.atProvider.arn | default "" }}{{- end }}
-            {{- $profileArn := $platformProfileArn }}
+            {{- $profileObs := index ($.observed.resources | default dict) $profileKey | default dict }}
+            {{- $profileArn := "" }}
+            {{- if $profileObs.resource }}{{- $profileArn = $profileObs.resource.status.atProvider.arn | default "" }}{{- end }}
             {{- $bucketName := printf "platform-%s-%s" $ns $refName }}
             {{- $trustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringEquals" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $name))))) | toJson }}
             {{- $inlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "s3:GetObject" "s3:PutObject" "s3:DeleteObject" "s3:ListBucket") "Resource" (list (printf "arn:aws:s3:::%s" $bucketName) (printf "arn:aws:s3:::%s/*" $bucketName)))) | toJson }}
@@ -439,7 +441,36 @@ spec:
 
             {{- if $roleArn }}
             ---
-            # Binding Secret for {{ $refName }}. Written once role ARN is known; profile ARN from platform EnvironmentConfig.
+            # RolesAnywhere Profile for {{ $refName }}. Deferred until role ARN is known.
+            # managementPolicies: Create+Delete only — skips Observe to work around provider bug
+            # where the provider incorrectly uses spec.forProvider.name (a string) as the profileId
+            # (a UUID). Without Observe: external-name absent → Create called → AWS assigns UUID →
+            # provider sets external-name=<uuid>. SSA field ownership prevents the template from
+            # overwriting the UUID on subsequent reconciles.
+            apiVersion: rolesanywhere.aws.upbound.io/v1beta1
+            kind: Profile
+            metadata:
+              name: {{ $name }}-objstorage-{{ $refName }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: {{ $profileKey }}
+            spec:
+              managementPolicies: ["Create", "Delete"]
+              deletionPolicy: Delete
+              forProvider:
+                name: crossplane-{{ $ns }}-{{ $name }}-{{ $refName }}
+                enabled: true
+                durationSeconds: 3600
+                roleArns:
+                  - {{ $roleArn }}
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+                  ObjectStorageRef: {{ $refName }}
+            {{- end }}
+
+            {{- if and $roleArn $profileArn }}
+            ---
+            # Binding Secret for {{ $refName }}. Written once both role ARN and profile ARN are known.
             apiVersion: v1
             kind: Secret
             metadata:
