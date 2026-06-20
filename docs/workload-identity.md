@@ -873,26 +873,44 @@ The XApi sidecar is wired for the cache binding when `cache.backend: public-clou
 - `platform/api/composition.yaml` — backend checks updated for sql; added cache sidecar wiring for `public-cloud` cache backend
 - `platform/nosql/composition.yaml` — stripped to DynamoDB table only; removed IAM User, AccessKey, UserPolicyAttachment, and binding Secret
 
-**Exit criteria:**
+**Exit criteria:** One XApi instance exercises all three bindings simultaneously. RDS and ElastiCache take ~10–15 minutes to provision.
 
 ```bash
 # 1. Create throwaway namespace
 kubectl create namespace phase7-test
 
-# 2. Create XNoSql + XApi with nosqlRef (primary test — full SVID→STS chain)
+# 2. Create standalone XRs first (XSql and XNoSql are referenced, not embedded)
 kubectl apply -f - <<'EOF'
 apiVersion: platform.local.lab/v1alpha1
 kind: XNoSql
 metadata:
-  name: phase7-test
+  name: phase7-nosql
 spec:
   parameters:
     namespace: phase7-test
     partitionKey: id
     partitionKeyType: S
     dataRetention: delete
+---
+apiVersion: platform.local.lab/v1alpha1
+kind: XSql
+metadata:
+  name: phase7-sql
+spec:
+  parameters:
+    namespace: phase7-test
+    backend: public-cloud
+    size: xs
+    dataRetention: delete
 EOF
 
+# 3. Wait for RDS to be ready before creating the XApi — DynamoDB is fast,
+#    RDS takes ~10-15 min. XApi's init containers will block until all binding
+#    Secrets are written, but it's cleaner to let AWS finish first.
+kubectl get xnosql phase7-nosql -w  # READY=True in ~30s
+kubectl get xsql phase7-sql -w      # READY=True in ~10-15 min
+
+# 4. Create the XApi with all three bindings
 kubectl apply -f - <<'EOF'
 apiVersion: platform.local.lab/v1alpha1
 kind: XApi
@@ -905,33 +923,43 @@ spec:
     port: 80
     readinessCheckPath: /
     nosqlRef:
-      name: phase7-test
+      name: phase7-nosql
+    sqlRef:
+      name: phase7-sql
+      backend: public-cloud
+    cache:
+      enabled: true
+      backend: public-cloud
 EOF
 
-# 3. Wait for pod
-kubectl get pods -n phase7-test -w
+# 5. Wait for ElastiCache and the pod
+kubectl get xcache -w               # READY=True in ~10-15 min
+kubectl get pods -n phase7-test -w  # Running once all binding Secrets are written
 
-# 4. Verify containers: 1 init + 2 containers
-kubectl get pod -n phase7-test -o jsonpath='{.items[0].spec.initContainers[*].name} {.items[0].spec.containers[*].name}'
-# expected: wait-for-nosql-binding api aws-credentials-sidecar
-
-# 5. Verify credentials file has the nosql profile
+# 6. Verify all three bindings are in the credentials file
 kubectl exec -n phase7-test deploy/phase7-test -c aws-credentials-sidecar -- \
   cat /aws-credentials/credentials
-# expected: [phase7-test] section with aws_access_key_id, aws_secret_access_key, aws_session_token
+# expected: three named profile sections — [phase7-test] (nosql), [sql], [cache]
+# each with aws_access_key_id, aws_secret_access_key, aws_session_token
 
-# 6. Confirm sidecar log
-kubectl logs -n phase7-test deploy/phase7-test -c aws-credentials-sidecar | tail -3
+# 7. Confirm sidecar log shows all three refreshed
+kubectl logs -n phase7-test deploy/phase7-test -c aws-credentials-sidecar | tail -5
 # expected: "credentials file updated at /aws-credentials/credentials"
 
-# 7. Spot-check XNoSql binding Secret has role-arn (no access-key-id)
-kubectl get secret phase7-test -n phase7-test -o jsonpath='{.data}' | jq 'keys'
-# expected keys: ["profile-arn","provider","region","role-arn","table-name","type"]
-# must NOT contain: access-key-id, secret-access-key
+# 8. Spot-check each binding Secret — role-arn present, no static credentials
+kubectl get secret phase7-nosql -n phase7-test -o json | jq '{type: .type, keys: (.data | keys)}'
+# expected: type=servicebinding.io/dynamodb, keys include role-arn, table-name — no access-key-id
 
-# Cleanup
+kubectl get secret phase7-sql -n phase7-test -o json | jq '{type: .type, keys: (.data | keys)}'
+# expected: type=servicebinding.io/postgresql, keys include role-arn, host, username — no password
+
+kubectl get secret phase7-test-cache -n phase7-test -o json | jq '{type: .type, keys: (.data | keys)}'
+# expected: type=servicebinding.io/redis, keys include role-arn, user-id — no password
+
+# Cleanup — RDS and ElastiCache are deleted immediately (no final snapshot)
 kubectl delete xapi phase7-test
-kubectl delete xnosql phase7-test
+kubectl delete xnosql phase7-nosql
+kubectl delete xsql phase7-sql
 kubectl delete namespace phase7-test
 ```
 
