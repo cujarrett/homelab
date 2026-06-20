@@ -447,7 +447,6 @@ spec:
               name: {{ $name }}-objstorage-{{ $refName }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: {{ $profileKey }}
-                crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}-{{ $refName }}
             spec:
               deletionPolicy: Delete
               forProvider:
