@@ -28,20 +28,24 @@ Blocker hit: `provider-aws-rolesanywhere` v2.5.2 uses `spec.forProvider.name` (a
 The previous workaround attempt (`crossplane.io/external-name: crossplane-{ns}-{name}-{ref}`) made it worse — it set a non-UUID string as the external-name, ensuring every Observe call permanently fails.
 
 ### Option C — `managementPolicies: ["Create", "Delete"]` without setting external-name
-This should work. Key insight from Crossplane v2 docs:
+Attempted but failed. `provider-aws-rolesanywhere` v2.5.2 and v2.6.1 both reject non-default `managementPolicies` with: `spec.managementPolicies is set to a value([Create Delete]) which is not supported.` The provider does not implement the management policies capability — it is not a Crossplane platform limitation, it is a per-resource provider limitation. Upgrading the entire provider family to v2.6.1 did not resolve it.
 
-> When Observe is not in management policies: the reconciler assumes the resource does not exist if crossplane.io/external-name is not set, and does exist if it is set.
+### Option F — Nil UUID as initial external-name, reading back real UUID from observed state
+This is the implemented solution. The root cause of the provider bug is that when `crossplane.io/external-name` is not set, the provider defaults to using `spec.forProvider.name` (the human-readable profile name) as the profileId in `GetProfile`. That name is not a UUID, so AWS returns HTTP 400 (validation error) instead of HTTP 404 (not found). Crossplane treats 400 as an error and never calls Create.
 
-The sequence:
+The fix: set `crossplane.io/external-name` to `"00000000-0000-0000-0000-000000000000"` (a valid UUID format that doesn't exist in AWS) on the first render. AWS returns HTTP 404 → Crossplane calls Create → AWS creates the Profile and assigns a real UUID → the provider writes the real UUID back as `crossplane.io/external-name` on the object.
 
-1. Profile rendered without c`rossplane.io/external-name` → Observe skipped → `ResourceExists=false` → Create called → AWS creates profile, assigns UUID → provider sets `external-name=<uuid>` on the object
-2. Next reconcile: `external-name` is now set (UUID) → Observe skipped → `ResourceExists=true` → no-op
-3. `$profileArn` read from `$.observed.resources[$profileKey].resource.status.atProvider.arn` (same pattern as `$roleArn` which already works)
-4. Binding Secret rendered once both ARNs are known
-5. XApi deleted → `Delete` in management policies → Profile deleted in AWS
-The critical question is whether SSA preserves the external-name the provider sets when the template doesn't set it. Crossplane v2 uses SSA with field ownership — the managed reconciler owns crossplane.io/external-name, the function pipeline doesn't. SSA won't let the function pipeline clear a field it doesn't own. This should hold.
+On subsequent reconciles, the template reads the observed Profile's annotation and uses the real UUID in the desired state, so the function pipeline never overwrites it:
 
-Previous attempt failed here because we DID set `crossplane.io/external-name` in the template — the function pipeline owned the annotation, and set it to a non-UUID string on every reconcile, resetting the UUID the provider wrote.
+```go
+{{- $profileExternalName := "00000000-0000-0000-0000-000000000000" }}
+{{- if $profileObs.resource }}
+  {{- $observedExternalName := index ($profileObs.resource.metadata.annotations | default dict) "crossplane.io/external-name" | default "" }}
+  {{- if $observedExternalName }}{{- $profileExternalName = $observedExternalName }}{{- end }}
+{{- end }}
+```
+
+No `managementPolicies` override needed. No manual steps. No external dependencies.
 
 Option D — Shared profile + composition-driven update
 The `update-profile` API replaces the entire `roleArns` list. To add a new role, you'd need to read the current list, append, write back. Compositions have no "read-modify-write" primitive. Would require a custom function or a Lambda. More complex than Option C.
@@ -50,15 +54,14 @@ Option E — Lambda/EventBridge on IAM role creation
 Works in theory. AWS EventBridge triggers on IAM role creation → Lambda adds ARN to profile. Adds an external dependency outside the platform's GitOps boundary. More moving parts than Option C, no benefit over it.
 
 Recommended path
-Implement Option C: per-workload Profile with `managementPolicies: ["Create", "Delete"]` and no `crossplane.io/external-name` in the template. This restores the original correct design, eliminates the manual step, and works within the existing composition framework.
+Implement Option F: per-workload Profile with a nil UUID as the initial `crossplane.io/external-name`, reading the real UUID back from observed state on subsequent reconciles. This restores the original correct design, eliminates the manual step, and works within the existing composition framework without any provider version requirements.
 
 Changes needed:
 
-1. Add Profile back to the composition (deferred until `$roleArn` is known), with `managementPolicies: ["Create", "Delete"]`, no external-name annotation
+1. Add Profile back to the composition (deferred until `$roleArn` is known), with nil UUID external-name on first render, observed UUID on subsequent renders
 2. Read `$profileArn` from `$.observed.resources[$profileKey]` (same pattern as `$roleArn`)
-3. Gate Binding Secret on both `$roleArn` AND `$profileArn` being non-empty (was already the original design)
-Remove `$platformProfileArn` from EnvironmentConfig dependency
-The `homelab-platform` shared profile can be deleted once this is validated — or kept as a fallback
+3. Gate Binding Secret on both `$roleArn` AND `$profileArn` being non-empty
+4. Remove `$platformProfileArn` from EnvironmentConfig dependency
 
 ---
 
@@ -608,7 +611,7 @@ The trust anchor (`homelab-spire`) is cluster-wide and permanent — do not dele
 | Decision | Choice | Why |
 |---|---|---|
 | SVID delivery to sidecar | SPIFFE CSI driver (socket mode) | Mounts the SPIRE Workload API socket into the pod. The sidecar calls `spire-agent api fetch x509` to get the cert+key on each refresh. No separate spiffe-helper sidecar needed. |
-| RolesAnywhere Profile | One shared platform Profile (`homelab-platform`) pre-created manually; ARN stored in EnvironmentConfig | The Crossplane `provider-aws-rolesanywhere` uses the profile name as the profileId when observing — a bug that prevents Crossplane from creating Profiles reliably. Security boundary is in the IAM role trust policy (SPIFFE ID condition), not the Profile. |
+| RolesAnywhere Profile | One per-workload Profile created by Crossplane per objectStorageRef; ARN stored in binding Secret | The provider bug (uses name as profileId → 400) is bypassed by setting crossplane.io/external-name to a nil UUID on first render. AWS returns 404 → Create called → real UUID assigned → read back from observed state on next reconcile. |
 | `trust-anchor-arn` source | Env var injected from EnvironmentConfig directly into the sidecar | Cluster-wide constant. Kept out of binding Secrets to avoid leaking the AWS account ID to app tenants. Not stored in Git. |
 | Credentials delivery to SDK | Named profiles in shared credentials file | One profile per binding written to `/aws-credentials/credentials` by the `aws-credentials-sidecar`; the XApi composition injects `AWS_SHARED_CREDENTIALS_FILE` and `AWS_PROFILE_<BINDING>` env vars directly into the api container. |
 
@@ -709,6 +712,18 @@ EOF
 
 # 5. Wait for the XApi to reconcile (creates IAM role and binding Secret)
 kubectl get xapi phase5-test -w
+
+# Pass 1 check — is the IAM Role ready?
+kubectl get role.iam.aws.upbound.io -l crossplane.io/composite=phase5-test
+
+# Pass 2 check — did the Profile get created with a real UUID (not the nil UUID)?
+kubectl get profile.rolesanywhere.aws.upbound.io -l crossplane.io/composite=phase5-test
+
+# Pass 3 check — is the binding Secret written?
+kubectl get secret phase5-test -n phase5-test 2>/dev/null || echo "not yet"
+k get pods -n phase5-test && \
+k logs -n phase5-test -l app.kubernetes.io/instance=phase5-test -c aws-credentials-sidecar --tail=5
+
 
 # 6. Confirm the binding Secret contains role-arn (not access keys)
 kubectl get secret phase5-test -n phase5-test -o jsonpath='{.data}' | \
