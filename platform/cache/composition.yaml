@@ -42,6 +42,10 @@ spec:
             {{- $cacheProfileObs := index (.observed.resources | default dict) "cache-profile" | default dict }}
             {{- $cacheProfileArn := "" }}
             {{- if $cacheProfileObs.resource }}{{- $cacheProfileArn = $cacheProfileObs.resource.status.atProvider.arn | default "" }}{{- end }}
+            {{- $userGroupIdAws := "" }}
+            {{- with index (.observed.resources | default dict) "cache-user-group" }}
+              {{- if .resource }}{{- $userGroupIdAws = .resource.status.atProvider.userGroupId | default "" }}{{- end }}
+            {{- end }}
             {{- if eq $env "private-cloud" }}
             ---
             apiVersion: apps/v1
@@ -202,10 +206,6 @@ spec:
               forProvider:
                 region: {{ $region }}
                 engine: redis
-                userGroupId: {{ $userGroupId }}
-                userIds:
-                  - default
-                  - {{ $userId }}
                 tags:
                   App: {{ $name }}
                   Namespace: {{ $ns }}
@@ -227,8 +227,10 @@ spec:
                 numCacheClusters: 1
                 # IAM auth requires TLS; userGroupIds enables the IAM user created above.
                 transitEncryptionEnabled: true
+                {{- if $userGroupIdAws }}
                 userGroupIds:
-                  - {{ $userGroupId }}
+                  - {{ $userGroupIdAws }}
+                {{- end }}
               writeConnectionSecretToRef:
                 name: {{ $name }}-rg-conn
                 namespace: {{ $ns }}
