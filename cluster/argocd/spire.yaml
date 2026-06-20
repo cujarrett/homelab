@@ -24,6 +24,14 @@ spec:
         spire-server:
           replicaCount: 1
           caTTL: 8760h
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  preference:
+                    matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: DoesNotExist
           # Watches pods and issues each a SPIFFE ID from its namespace + service account.
           controllerManager:
             enabled: true
