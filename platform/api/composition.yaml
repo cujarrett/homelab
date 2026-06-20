@@ -550,10 +550,12 @@ spec:
                             port:
                               number: 80
             {{- end }}
-            ---
-            # --- HTTPRoute ---
+            {{- /*
+            # --- HTTPRoute (DISABLED FOR PHASE 5) ---
+            # TODO: Fix HTTPRoute to use Gateway parent ref instead of Service
             # Default timeout + retry — rendered for every XApi instance automatically.
             # Retries on 502/503/504 (pod crash, restart) — safe because Go handlers are stateless.
+            ---
             apiVersion: gateway.networking.k8s.io/v1
             kind: HTTPRoute
             metadata:
@@ -578,3 +580,4 @@ spec:
                     codes: [502, 503, 504]
                     attempts: 3
                     backoff: 1s
+            */ -}}
