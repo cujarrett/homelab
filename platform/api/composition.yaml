@@ -366,7 +366,7 @@ spec:
                     {{- if gt (len $awsBindings) 0 }}
                     - name: spiffe-bundle
                       csi:
-                        driver: spiffe.csi.spiffe.io
+                        driver: csi.spiffe.io
                         readOnly: true
                     - name: aws-credentials
                       emptyDir: {}
