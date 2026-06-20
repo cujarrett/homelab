@@ -3,8 +3,26 @@
   "extends": ["config:recommended"],
   "assignees": ["cujarrett"],
   "reviewers": ["cujarrett"],
-  "enabledManagers": ["argocd", "crossplane", "kubernetes"],
+  "enabledManagers": ["argocd", "crossplane", "kubernetes", "regex"],
   "minimumReleaseAge": "7 days",
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["platform/api/composition\\.yaml"],
+      "matchStrings": [
+        "image: ghcr\\.io/cujarrett/aws-spiffe-helper:(?<currentValue>[^\\s@]+)"
+      ],
+      "depNameTemplate": "ghcr.io/cujarrett/aws-spiffe-helper",
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": ["ghcr.io/cujarrett/aws-spiffe-helper"],
+      "pinDigests": true,
+      "minimumReleaseAge": "0 days"
+    }
+  ],
   "argocd": {
     "fileMatch": [
       "cluster/argocd/.+\\.yaml$",
