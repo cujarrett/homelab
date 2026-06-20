@@ -8,17 +8,18 @@ spec:
     kind: XApi
   mode: Pipeline
   pipeline:
-    - step: load-environment-configs
-      functionRef:
-        name: function-environment-configs
-      input:
-        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
-        kind: Input
-        spec:
-          environmentConfigs:
-            - type: Reference
-              ref:
-                name: aws-platform-config
+    # TODO: Fix environment configs function schema mismatch
+    # - step: load-environment-configs
+    #   functionRef:
+    #     name: function-environment-configs
+    #   input:
+    #     apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+    #     kind: Input
+    #     spec:
+    #       environmentConfigs:
+    #         - type: Reference
+    #           ref:
+    #             name: aws-platform-config
     - step: render-all-resources
       functionRef:
         name: function-go-templating
