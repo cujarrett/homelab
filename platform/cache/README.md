@@ -4,31 +4,37 @@ Crossplane platform primitive that provisions a Redis-compatible cache cluster a
 
 Owned by `XApi` — created and deleted with it when `cache.enabled: true`. Not intended for standalone use.
 
+**⚠️ Phase 7 testing:** The `public-cloud` backend (AWS ElastiCache) is temporary for workload identity validation only. Long-term, only `XApi` and `XNoSql` use cloud resources; caching remains in-cluster via the `private-cloud` backend.
+
 ## What it provisions
-- `environment: cluster` — **in-cluster cache cluster** + binding Secret; no cloud resources
-- `environment: cloud` — **cloud-managed cache cluster** + binding Secret
+- `backend: private-cloud` — **in-cluster Redis** + binding Secret; no cloud resources
+- `backend: public-cloud` — **AWS ElastiCache** + binding Secret (Phase 7 testing; manual binding Secret required due to provider limitations)
 
 ## Binding secret
 
 Secret name equals the XR name; namespace comes from the explicit `namespace` parameter passed by the parent `XApi`.
 
-All keys are automatically wired — no manual credential handling required.
+**For `private-cloud`:** All keys are automatically written by the composition — no manual steps required.
 
-| Key | Value |
-|---|---|
-| `type` | `redis` |
-| `provider` | `aws` (cloud) or `in-cluster` (cluster) |
-| `host` | Cache endpoint hostname |
-| `port` | Cache port (`6379`) |
+**For `public-cloud` (Phase 7):** The composition provisions the cache but does not automatically write the binding Secret due to ElastiCache User/UserGroup API provider limitations. **Manual workaround:** After the ReplicationGroup (and IAM role/profile) are `READY=True`, manually create the binding Secret with the keys below. See [Operations](#operations) for the command.
+
+| Key | Value | Source |
+|---|---|---|
+| `type` | `redis` | literal |
+| `provider` | `aws` | literal |
+| `host` | Cache endpoint hostname | ReplicationGroup connection details |
+| `port` | Cache port (`6379`) | ReplicationGroup connection details |
+| `role-arn` | IAM role ARN | Role resource `.status.atProvider.arn` |
+| `profile-arn` | RolesAnywhere profile ARN | Profile resource `.status.atProvider.arn` |
 
 ## Parameters
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `region` | no | `us-east-1` | Cloud region for the cache cluster (cloud only) |
-| `size` | no | `small` | T-shirt size for the cache cluster (cloud only): `small`, `medium`, `large` |
-| `environment` | no | `cluster` | `cloud` uses AWS ElastiCache; `cluster` uses in-cluster Redis |
 | `namespace` | yes | — | Namespace to write the binding Secret into. Passed automatically by `XApi`. |
+| `backend` | no | `private-cloud` | `private-cloud` uses in-cluster Redis; `public-cloud` uses AWS ElastiCache (Phase 7 testing only). |
+| `region` | no | `us-east-1` | Cloud region for the cache cluster (public-cloud only). |
+| `size` | no | `sm` | T-shirt size for the cache cluster (public-cloud only): `xs=cache.t4g.micro`, `sm=cache.t4g.small`, `md=cache.t4g.medium`, `lg=cache.t4g.medium`. |
 
 ## Example
 
@@ -62,12 +68,26 @@ spec:
 
 ```bash
 # XR status
-kubectl get xcaches foo-cache
+kubectl get xcache foo-cache -n foo
 
-# Binding secret — confirm all 4 keys are present
+# Binding secret (private-cloud) — confirm all keys are present
 kubectl get secret foo-cache -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 
+# ReplicationGroup status (public-cloud)
+kubectl get replicationgroup foo-cache -n foo -o jsonpath='{.status.atProvider | {engine, status, primaryEndpoint}}'
+
+# Manual binding Secret creation (public-cloud) — required after ReplicationGroup is READY
+# Replace ROLE_ARN and PROFILE_ARN with actual values from the Role and Profile resources
+kubectl create secret generic foo-cache -n foo \
+  --from-literal=type=redis \
+  --from-literal=provider=aws \
+  --from-literal=host=<replicationgroup-endpoint> \
+  --from-literal=port=6379 \
+  --from-literal=role-arn=arn:aws:iam::...:role/crossplane/... \
+  --from-literal=profile-arn=arn:aws:rolesanywhere:us-east-1:...:profile/... \
+  --type=servicebinding.io/redis
+
 # Detailed conditions — shows exactly WHY something is not ready
-kubectl get xcache foo-cache -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get xcache foo-cache -n foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
 ```
