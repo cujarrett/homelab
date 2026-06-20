@@ -18,7 +18,7 @@ Core constraint: RolesAnywhere Profile `roleArns` is an exact-match list. No wil
 ## Options
 
 ### Option A — Wildcards in Profile roleArns
-Tried `arn:aws:iam::550429969116:role/crossplane/`*. AWS stores it literally. At session-create time, does exact string matching — the literal `crossplane/`* never matches `crossplane/crossplane-phase5-test-....` Dead end, confirmed today.
+Tried `arn:aws:iam::550429969116:role/crossplane/`*. AWS stores it literally. At session-create time, does exact string matching — the literal `crossplane/`* never matches `crossplane/crossplane-phase6-test-....` Dead end, confirmed today.
 
 ### Option B — Per-workload Profile (original design, Crossplane-managed)
 The right design. Each binding gets its own Profile tied to its IAM role. Lifecycle managed by Crossplane with the XApi.
@@ -743,22 +743,22 @@ The sidecar handles the SPIRE ↔ STS exchange. The composition injects the prof
 
 ```bash
 # 1. Create a throwaway namespace
-kubectl create namespace phase5-test
+kubectl create namespace phase6-test
 
 # 2. Create a throwaway XObjectStorage instance (just the bucket; role/profile/secret created in step 4)
 kubectl apply -f - <<'EOF'
 apiVersion: platform.local.lab/v1alpha1
 kind: XObjectStorage
 metadata:
-  name: phase5-test
+  name: phase6-test
 spec:
   parameters:
-    namespace: phase5-test
+    namespace: phase6-test
     dataRetention: delete
 EOF
 
 # 3. Wait for the S3 bucket to be ready
-kubectl get xobjectstorage phase5-test -w
+kubectl get xobjectstorage phase6-test -w
 
 # Once SYNCED=True and READY=True, the bucket exists in AWS
 
@@ -769,75 +769,55 @@ kubectl apply -f - <<'EOF'
 apiVersion: platform.local.lab/v1alpha1
 kind: XApi
 metadata:
-  name: phase5-test
+  name: phase6-test
 spec:
   parameters:
-    namespace: phase5-test
+    namespace: phase6-test
     image: nginx:alpine
     port: 80
     readinessCheckPath: /
     objectStorageRefs:
-      - name: phase5-test
+      - name: phase6-test
 EOF
 
-# 5. Wait for the XApi to reconcile (creates IAM role and binding Secret)
-kubectl get xapi phase5-test -w
-
-# Pass 1 check — is the IAM Role ready?
-kubectl get role.iam.aws.upbound.io -l crossplane.io/composite=phase5-test
-
-# Pass 2 check — did the Profile get created with a real UUID (not the nil UUID)?
-kubectl get profile.rolesanywhere.aws.upbound.io -l crossplane.io/composite=phase5-test
-
-# Pass 3 check — is the binding Secret written?
-kubectl get secret phase5-test -n phase5-test 2>/dev/null || echo "not yet"
-k get pods -n phase5-test && \
-k logs -n phase5-test -l app.kubernetes.io/instance=phase5-test -c aws-credentials-sidecar --tail=5
-
-
-# 6. Confirm the binding Secret contains role-arn (not access keys)
-kubectl get secret phase5-test -n phase5-test -o jsonpath='{.data}' | \
-  python3 -c "import sys,json,base64; d=json.load(sys.stdin); [print(k,'=',base64.b64decode(v).decode()) for k,v in d.items()]"
-# Expected output: role-arn=arn:aws:iam::...  profile-arn=arn:aws:rolesanywhere:...  bucket=platform-phase5-test-phase5-test  region=us-east-1
-
-# 7. Wait for the pod to be running
-kubectl get pods -n phase5-test -w
+# 5. Wait for the pod to be running
+kubectl get pods -n phase6-test -w
 ```
 
 Once the pod is up, verify the full SVID → STS chain:
 
 ```bash
 # The XApi composition added the sidecar — pod should have 1 init + 2 containers
-kubectl get pod -n phase5-test -o jsonpath='{.items[0].spec.initContainers[*].name} {.items[0].spec.containers[*].name}'
-# expected: wait-for-object-storage-phase5-test-binding api aws-credentials-sidecar
+kubectl get pod -n phase6-test -o jsonpath='{.items[0].spec.initContainers[*].name} {.items[0].spec.containers[*].name}'
+# expected: wait-for-object-storage-phase6-test-binding api aws-credentials-sidecar
 
 # The CSI driver mounted the SPIFFE Workload API socket
-kubectl exec -n phase5-test deploy/phase5-test -c aws-credentials-sidecar -- \
+kubectl exec -n phase6-test deploy/phase6-test -c aws-credentials-sidecar -- \
   ls /var/run/secrets/spiffe.io/
 # expected: api.sock  socket  spire-agent.sock
 
 # The sidecar wrote the credentials file with the named profile
-kubectl exec -n phase5-test deploy/phase5-test -c aws-credentials-sidecar -- \
+kubectl exec -n phase6-test deploy/phase6-test -c aws-credentials-sidecar -- \
   cat /aws-credentials/credentials
-# Expected: [phase5-test] section with aws_access_key_id, aws_secret_access_key, aws_session_token
+# Expected: [phase6-test] section with aws_access_key_id, aws_secret_access_key, aws_session_token
 
 # Confirm the STS exchange succeeded via sidecar logs
-kubectl logs -n phase5-test deploy/phase5-test -c aws-credentials-sidecar | tail -3
+kubectl logs -n phase6-test deploy/phase6-test -c aws-credentials-sidecar | tail -3
 # Expected last line: "credentials file updated at /aws-credentials/credentials"
 ```
 
 `credentials file updated at /aws-credentials/credentials` in the sidecar logs confirms the full SVID → IAM Roles Anywhere → STS chain completed. No static key anywhere in the process.
 
 If the binding Secret is missing: check Crossplane logs (`kubectl logs -n crossplane-system deploy/crossplane`).
-If `/aws-credentials/credentials` is missing: check CSI driver logs (`kubectl logs -n spire-server -l app=spiffe-csi-driver`) and sidecar logs (`kubectl logs -n phase5-test deploy/phase5-test -c aws-credentials-sidecar`).
-If `get-caller-identity` fails: check sidecar logs for STS errors (`kubectl logs -n phase5-test deploy/phase5-test -c aws-credentials-sidecar`).
+If `/aws-credentials/credentials` is missing: check CSI driver logs (`kubectl logs -n spire-server -l app=spiffe-csi-driver`) and sidecar logs (`kubectl logs -n phase6-test deploy/phase6-test -c aws-credentials-sidecar`).
+If `get-caller-identity` fails: check sidecar logs for STS errors (`kubectl logs -n phase6-test deploy/phase6-test -c aws-credentials-sidecar`).
 
 **Cleanup:**
 
 ```bash
-kubectl delete xapi phase5-test
-kubectl delete xobjectstorage phase5-test
-kubectl delete namespace phase5-test
+kubectl delete xapi phase6-test
+kubectl delete xobjectstorage phase6-test
+kubectl delete namespace phase6-test
 ```
 
 ---
