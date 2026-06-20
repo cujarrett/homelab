@@ -762,13 +762,13 @@ The XApi sidecar is wired for the cache binding when `cache.backend: public-clou
 - `platform/api/composition.yaml` — backend checks updated for sql; added cache sidecar wiring for `public-cloud` cache backend
 - `platform/nosql/composition.yaml` — stripped to DynamoDB table only; removed IAM User, AccessKey, UserPolicyAttachment, and binding Secret
 
-**Exit criteria:** One XApi instance exercises all three bindings simultaneously. RDS and ElastiCache take ~10–15 minutes to provision.
+**Exit criteria:** Deploy one XApi with all three cloud bindings. Verify STS credentials are exchanged for all three.
 
 ```bash
-# 1. Create throwaway namespace
+# Create namespace and prerequisites
 kubectl create namespace phase7-test
 
-# 2. Create standalone XRs first (XSql and XNoSql are referenced, not embedded)
+# XNoSql + XSql (RDS takes ~10-15 min; DynamoDB is fast)
 kubectl apply -f - <<'EOF'
 apiVersion: platform.local.lab/v1alpha1
 kind: XNoSql
@@ -793,13 +793,10 @@ spec:
     dataRetention: delete
 EOF
 
-# 3. Wait for RDS to be ready before creating the XApi — DynamoDB is fast,
-#    RDS takes ~10-15 min. XApi's init containers will block until all binding
-#    Secrets are written, but it's cleaner to let AWS finish first.
-kubectl get xnosql phase7-nosql -w  # READY=True in ~30s
-kubectl get xsql phase7-sql -w      # READY=True in ~10-15 min
+# Wait for cloud resources to be ready
+kubectl get xsql phase7-sql -w  # ~10-15 min for RDS
 
-# 4. Create the XApi with all three bindings
+# Create XApi with all three bindings
 kubectl apply -f - <<'EOF'
 apiVersion: platform.local.lab/v1alpha1
 kind: XApi
@@ -821,102 +818,21 @@ spec:
       backend: public-cloud
 EOF
 
-# 5. Wait for ElastiCache and the pod
-kubectl get xcache -w               # READY=True in ~10-15 min
-kubectl get pods -n phase7-test -w  # Running once all binding Secrets are written
+# Wait for pod and ElastiCache (~10-15 min)
+kubectl get pods -n phase7-test -w
 
-# 6. Verify all three bindings are in the credentials file
+# Verify all three bindings exchanged SVID for STS credentials
 kubectl exec -n phase7-test deploy/phase7-test -c aws-credentials-sidecar -- \
   cat /aws-credentials/credentials
-# expected: three named profile sections — [phase7-test] (nosql), [sql], [cache]
-# each with aws_access_key_id, aws_secret_access_key, aws_session_token
+# Expected: [phase7-test], [sql], [cache] profiles with ASIA access keys + session tokens
 
-# 7. Confirm sidecar log shows all three refreshed
-kubectl logs -n phase7-test deploy/phase7-test -c aws-credentials-sidecar | tail -5
-# expected: "credentials file updated at /aws-credentials/credentials"
+# Verify binding Secrets contain ARNs, not static credentials
+kubectl get secret -n phase7-test phase7-nosql -o json | jq '.data | keys'
+# Expected: includes role-arn, table-name; no access-key-id
 
-# 8. Spot-check each binding Secret — role-arn present, no static credentials
-kubectl get secret phase7-nosql -n phase7-test -o json | jq '{type: .type, keys: (.data | keys)}'
-# expected: type=servicebinding.io/dynamodb, keys include role-arn, table-name — no access-key-id
-
-kubectl get secret phase7-sql -n phase7-test -o json | jq '{type: .type, keys: (.data | keys)}'
-# expected: type=servicebinding.io/postgresql, keys include role-arn, host, username — no password
-
-kubectl get secret phase7-test-cache -n phase7-test -o json | jq '{type: .type, keys: (.data | keys)}'
-# expected: type=servicebinding.io/redis, keys include role-arn, user-id — no password
-
-# Cleanup — RDS and ElastiCache are deleted immediately (no final snapshot)
-kubectl delete xapi phase7-test
-kubectl delete xnosql phase7-nosql
-kubectl delete xsql phase7-sql
-kubectl delete namespace phase7-test
-```
-
-## Testing multi-binding workload identity
-
-To validate SPIFFE SVID → IAM Roles Anywhere → STS credential exchange across simultaneous bindings:
-
-**Create prerequisites (NoSQL, SQL, Cache):**
-```yaml
-# XNoSql (test-nosql), XSql (test-sql), XCache (test-cache) — each with:
-apiVersion: platform.local.lab/v1alpha1
-kind: X{NoSql|Sql|Cache}
-metadata:
-  name: test-{nosql|sql|cache}
-spec:
-  parameters:
-    namespace: test-identity
-    backend: public-cloud
-    region: us-east-1
-```
-
-**Create API with all three bindings:**
-```yaml
-apiVersion: platform.local.lab/v1alpha1
-kind: XApi
-metadata:
-  name: test-api
-  namespace: test-identity
-spec:
-  parameters:
-    namespace: test-identity
-    image: busybox:latest  # No external dependencies
-    port: 8080
-    replicas: 1
-    nosqlRef:
-      name: test-nosql
-    sqlRef:
-      name: test-sql
-      backend: public-cloud
-    cache:
-      enabled: true
-      backend: public-cloud
-```
-
-**Verify and check credentials:**
-```bash
-# Binding Secrets created automatically (except cache — manual workaround needed)
-kubectl get secrets -n test-identity | grep test-
-
-# For cache, manually create binding Secret with role/profile ARNs:
-kubectl create secret generic test-api-cache -n test-identity \
-  --from-literal=type=redis \
-  --from-literal=provider=aws \
-  --from-literal=host=<cache-endpoint> \
-  --from-literal=port=6379 \
-  --from-literal=role-arn=<role-arn> \
-  --from-literal=profile-arn=<profile-arn>
-
-# Check sidecar generated three named profiles with STS credentials:
-kubectl exec -it deployment/test-api -n test-identity -c aws-credentials-sidecar -- cat /aws-credentials/credentials
-```
-
-Expected: three profiles (`[nosql]`, `[sql]`, `[cache]`) with temporary AWS credentials.
-
-**Cleanup:**
-```bash
-kubectl delete xapi test-api xsql test-sql xnosql test-nosql xcache test-cache -n test-identity
-kubectl delete ns test-identity
+# Cleanup
+kubectl delete xapi phase7-test xsql phase7-sql xnosql phase7-nosql -n phase7-test
+kubectl delete ns phase7-test
 ```
 
 ---
