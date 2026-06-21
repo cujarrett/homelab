@@ -166,6 +166,7 @@ spec:
                 region: {{ $region }}
                 engine: Redis
                 userIds:
+                  - default
                   - {{ $userId }}
                 tags:
                   App: {{ $name }}
