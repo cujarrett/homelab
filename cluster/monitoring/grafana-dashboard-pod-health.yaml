@@ -183,6 +183,105 @@ data:
           ]
         },
         {
+          "id": 7,
+          "type": "stat",
+          "title": "Deployments Available",
+          "gridPos": { "x": 0, "y": 32, "w": 12, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "colorMode": "background", "graphMode": "none",
+            "justifyMode": "center", "orientation": "auto", "textMode": "value_and_name"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0, "mappings": [],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }] }
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "Degraded" },
+                "properties": [
+                  { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }, { "color": "red", "value": 1 }] } }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            { "expr": "sum(kube_deployment_status_condition{condition=\"Available\",status=\"true\"})", "instant": true, "legendFormat": "Available", "refId": "A" },
+            { "expr": "sum(kube_deployment_status_condition{condition=\"Available\",status=\"false\"}) or vector(0)", "instant": true, "legendFormat": "Degraded", "refId": "B" }
+          ]
+        },
+        {
+          "id": 8,
+          "type": "table",
+          "title": "Degraded Deployments",
+          "description": "Deployments with unavailable replicas.",
+          "gridPos": { "x": 0, "y": 36, "w": 24, "h": 10 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "sortBy": [{ "displayName": "Unavailable", "desc": true }],
+            "cellHeight": "sm",
+            "footer": { "show": false }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": { "align": "left", "cellOptions": { "type": "auto" }, "filterable": true },
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }] },
+              "mappings": []
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "Unavailable" },
+                "properties": [
+                  { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+                  { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }, { "color": "red", "value": 1 }] } }
+                ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "Desired" },
+                "properties": [{ "id": "custom.width", "value": 100 }]
+              },
+              {
+                "matcher": { "id": "byName", "options": "Ready" },
+                "properties": [{ "id": "custom.width", "value": 100 }]
+              },
+              {
+                "matcher": { "id": "byName", "options": "Unavailable" },
+                "properties": [{ "id": "custom.width", "value": 120 }]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "kube_deployment_status_replicas_unavailable > 0",
+              "instant": true,
+              "format": "table",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "expr": "kube_deployment_spec_replicas",
+              "instant": true,
+              "format": "table",
+              "legendFormat": "",
+              "refId": "B"
+            },
+            {
+              "expr": "kube_deployment_status_replicas_ready",
+              "instant": true,
+              "format": "table",
+              "legendFormat": "",
+              "refId": "C"
+            }
+          ],
+          "transformations": [
+            { "id": "filterFieldsByName", "options": { "include": { "names": ["namespace", "deployment", "Value #A", "Value #B", "Value #C"] } } },
+            { "id": "organize", "options": { "renameByName": { "namespace": "Namespace", "deployment": "Deployment", "Value #A": "Unavailable", "Value #B": "Desired", "Value #C": "Ready" } } },
+            { "id": "sortBy", "options": { "fields": [{ "displayName": "Unavailable", "desc": true }] } }
+          ]
+        },
+        {
           "id": 6,
           "type": "table",
           "title": "All Pods",
