@@ -4,22 +4,14 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 
 ## Philosophy
 
-A platform is not infrastructure—it is a contract that turns intent into working systems.
+Kubernetes is powerful. Deployments, Services, Ingresses, ConfigMaps, Secrets—you can build anything. But they're still infrastructure concepts. Nobody wakes up wanting to write a Deployment. They want an API. They want a database. There's a gap between what Kubernetes exposes and what developers actually need.
 
-This platform exists to collapse the distance between “I need an app” and a running, connected service. Developers declare what they need—compute, data, identity, and integrations—and the platform handles everything else.
-
-It provisions resources, establishes trust, wires dependencies, and delivers credentials directly into the workload at runtime. No Terraform. No tickets. No hand-built glue. No cloud-specific logic leaking into application code.
-
-Complexity is not removed; it is centralized and standardized inside the platform so it can be automated and reasoned about once. Simplicity is preserved at the application layer, where change actually happens.
-
-The result is a system where applications describe intent, and the platform determines implementation—consistently, safely, and repeatedly across environments.
-
-That means a few things in practice:
+This platform closes that gap. You describe *what* you need—a database, object storage, a message queue. The platform figures out *how*—which IAM roles to wire, how to rotate credentials, where to mount secrets, which init containers to add. The app doesn't care about infrastructure. It just reads from `/bindings/` and works.
 
 - **Declare resources, not steps.** An `XApi` with a `sqlRef` is a statement of intent. The composition figures out IAM roles, init containers, volume mounts, credential rotation — none of that is the app's problem.
 - **Credentials reach the pod as files, not env vars.** The [servicebinding.io](https://servicebinding.io) convention makes bindings portable and predictable. The app reads `/bindings/sql/host`. It doesn't care whether that's in-cluster Postgres or RDS.
 - **Data resources outlive APIs.** `XSql`, `XNoSql`, `XObjectStorage` have lifecycles independent of any one `XApi`. Create them once, reference them by name, bind them to multiple APIs if needed.
-- **Private-cloud first, public-cloud when it matters.** In-cluster Postgres is fast, free, and simple. RDS exists for when durability or managed backups matter. The same `sqlRef` works for both — the app doesn't change.
+- **Choose your backend, keep your app the same.** Some resources offer both in-cluster and cloud-managed variants: Postgres or RDS, Redis or ElastiCache. The `sqlRef` works for both. The app reads `/bindings/sql/host`. It doesn't care where the database lives.
 - **No static credentials for AWS.** Every AWS binding uses workload identity: a short-lived X.509 certificate exchanged for temporary STS credentials via IAM Roles Anywhere. No access keys in Secrets or config files.
 
 ---
@@ -36,7 +28,6 @@ That means a few things in practice:
 | [`XCache`](cache/README.md) | Cache cluster (owned by XApi) | `private-cloud` (Redis) · `public-cloud` (ElastiCache) |
 | [`XTopic`](topic/README.md) | Durable message stream | NATS JetStream |
 | [`XSubscription`](subscription/README.md) | Durable consumer cursor | NATS JetStream |
-| [`XWordpress`](wordpress/README.md) | Full WordPress stack | in-cluster |
 
 ---
 
@@ -148,7 +139,5 @@ Resources that support multiple backends use the same `XApi` binding regardless 
 |---|---|---|
 | `XSql` | In-cluster Postgres on Longhorn | AWS RDS Postgres |
 | `XCache` | In-cluster Redis | AWS ElastiCache |
-| `XNoSql` | — | DynamoDB (always) |
-| `XObjectStorage` | — | S3 (always) |
-
-Private-cloud backends are recommended for most workloads — faster provisioning, no AWS cost, simpler debugging. Public-cloud backends exist for managed durability, backups, and scale.
+| `XNoSql` | — | DynamoDB |
+| `XObjectStorage` | — | S3 |
