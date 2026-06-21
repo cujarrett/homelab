@@ -794,7 +794,7 @@ data:
                 "type": "prometheus",
                 "uid": "sump-pump-archive"
               },
-              "expr": "round(avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:1m]) * 60)",
+              "expr": "round(avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 60)",
               "legendFormat": "min/hr",
               "refId": "D"
             }
