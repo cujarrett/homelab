@@ -27,7 +27,6 @@ data:
         },
         {
           "id": 2, "type": "stat", "title": "Apps Degraded",
-          "description": "Apps in Degraded health state. Should be 0.",
           "gridPos": { "x": 4, "y": 0, "w": 4, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
@@ -44,7 +43,6 @@ data:
         },
         {
           "id": 4, "type": "stat", "title": "Apps OutOfSync",
-          "description": "Apps not in Synced state. Should be 0.",
           "gridPos": { "x": 12, "y": 0, "w": 4, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
@@ -53,7 +51,6 @@ data:
         },
         {
           "id": 5, "type": "timeseries", "title": "Reconcile Rate (ops/min)",
-          "description": "ArgoCD app reconciliation operations per minute.",
           "gridPos": { "x": 16, "y": 0, "w": 8, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": { "defaults": { "unit": "ops", "decimals": 1, "custom": { "lineWidth": 2, "fillOpacity": 10, "lineInterpolation": "smooth" } } },
