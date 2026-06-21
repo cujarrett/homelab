@@ -2077,7 +2077,7 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
+            "w": 3,
             "x": 12,
             "y": 15
           },
@@ -2142,8 +2142,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 16,
+            "w": 3,
+            "x": 15,
             "y": 15
           },
           "id": 302,
@@ -2211,8 +2211,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 20,
+            "w": 3,
+            "x": 18,
             "y": 15
           },
           "id": 303,
@@ -2247,6 +2247,51 @@ data:
             }
           ],
           "title": "Reconcile Errors/s",
+          "type": "stat"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "mappings": [
+                { "type": "value", "options": { "0": { "color": "red", "index": 0, "text": "Not Ready" } } },
+                { "type": "special", "options": { "match": "null", "result": { "color": "red", "text": "No Data" } } }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "green", "value": 1 }
+                ]
+              },
+              "unit": "short",
+              "links": [{ "title": "Cert Manager", "url": "/d/homelab-cert-manager/cert-manager" }]
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 3, "w": 3, "x": 21, "y": 15 },
+          "id": 304,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "12.4.2",
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "count(certmanager_certificate_ready_status{condition=\"True\"} == 1) or vector(0)",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Certs Ready",
           "type": "stat"
         },
         {
