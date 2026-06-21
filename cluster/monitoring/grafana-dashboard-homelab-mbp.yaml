@@ -8,7 +8,6 @@ metadata:
 data:
   homelab-mbp.json: |-
     {
-    {
       "annotations": {
         "list": [
           {
@@ -177,7 +176,7 @@ data:
               },
               "editorMode": "code",
               "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\", node=\"ctrl-1\"})",
-              "instant": true,
+              "instant": false,
               "legendFormat": " Status",
               "range": true,
               "refId": "E"
@@ -376,7 +375,7 @@ data:
               },
               "editorMode": "code",
               "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\", node=\"work-1\"})",
-              "instant": true,
+              "instant": false,
               "legendFormat": " Status",
               "range": true,
               "refId": "E"
@@ -576,7 +575,7 @@ data:
               },
               "editorMode": "code",
               "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\", node=\"work-2\"})",
-              "instant": true,
+              "instant": false,
               "legendFormat": " Status",
               "range": true,
               "refId": "E"
@@ -776,7 +775,7 @@ data:
               },
               "editorMode": "code",
               "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\", node=\"work-3\"})",
-              "instant": true,
+              "instant": false,
               "legendFormat": " Status",
               "range": true,
               "refId": "E"
