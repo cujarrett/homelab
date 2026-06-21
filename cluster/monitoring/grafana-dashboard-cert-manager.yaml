@@ -8,190 +8,380 @@ metadata:
 data:
   cert-manager.json: |-
     {
-      "title": "Cert Manager",
-      "uid": "homelab-cert-manager",
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
       "editable": true,
+      "fiscalYearStartMonth": 0,
       "graphTooltip": 1,
-      "time": { "from": "now-1h", "to": "now" },
-      "timepicker": {},
-      "refresh": "60s",
-      "schemaVersion": 38,
-      "version": 1,
-      "links": [],
-      "tags": ["cert-manager"],
+      "liveNow": false,
       "panels": [
         {
-          "id": 1,
-          "type": "stat",
-          "title": "Ready",
-          "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
-          "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"] },
-            "colorMode": "background",
-            "graphMode": "none",
-            "textMode": "auto"
-          },
           "fieldConfig": {
             "defaults": {
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
-                  { "color": "red", "value": null },
-                  { "color": "green", "value": 1 }
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
                 ]
               },
-              "mappings": [],
               "unit": "short"
             }
           },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.0.2",
           "targets": [
             {
               "expr": "count(certmanager_certificate_ready_status{condition=\"True\"} == 1)",
               "legendFormat": "Ready",
-              "refId": "A"
+              "refId": "A",
+              "instant": true
             }
-          ]
+          ],
+          "title": "Ready",
+          "type": "stat"
         },
         {
-          "id": 2,
-          "type": "stat",
-          "title": "Not Ready",
-          "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
-          "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"] },
-            "colorMode": "background",
-            "graphMode": "none",
-            "textMode": "auto"
-          },
           "fieldConfig": {
             "defaults": {
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "red", "value": 1 }
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
                 ]
               },
-              "mappings": [],
               "unit": "short"
             }
           },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          },
+          "id": 2,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.0.2",
           "targets": [
             {
               "expr": "count(certmanager_certificate_ready_status{condition=\"False\"} == 1) or vector(0)",
               "legendFormat": "Not Ready",
-              "refId": "A"
+              "refId": "A",
+              "instant": true
             }
-          ]
+          ],
+          "title": "Not Ready",
+          "type": "stat"
         },
         {
-          "id": 3,
-          "type": "stat",
-          "title": "Expiring < 7 days",
-          "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
-          "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"] },
-            "colorMode": "background",
-            "graphMode": "none",
-            "textMode": "auto"
-          },
           "fieldConfig": {
             "defaults": {
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "orange", "value": 1 }
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "orange",
+                    "value": 1
+                  }
                 ]
               },
-              "mappings": [],
               "unit": "short"
             }
           },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 12,
+            "y": 0
+          },
+          "id": 3,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.0.2",
           "targets": [
             {
               "expr": "count((certmanager_certificate_expiration_timestamp_seconds - time()) < 7 * 86400) or vector(0)",
               "legendFormat": "Expiring Soon",
-              "refId": "A"
+              "refId": "A",
+              "instant": true
             }
-          ]
+          ],
+          "title": "Expiring < 7 days",
+          "type": "stat"
         },
         {
-          "id": 4,
-          "type": "stat",
-          "title": "ACME Requests (1h)",
-          "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
-          "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"] },
-            "colorMode": "none",
-            "graphMode": "none",
-            "textMode": "auto"
-          },
           "fieldConfig": {
             "defaults": {
               "thresholds": {
                 "mode": "absolute",
-                "steps": [{ "color": "blue", "value": null }]
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": 0
+                  }
+                ]
               },
               "unit": "short"
             }
           },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 18,
+            "y": 0
+          },
+          "id": 4,
+          "options": {
+            "colorMode": "none",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.0.2",
           "targets": [
             {
               "expr": "sum(increase(certmanager_http_acme_client_request_count[1h]))",
               "legendFormat": "Requests",
-              "refId": "A"
+              "refId": "A",
+              "instant": true
             }
-          ]
+          ],
+          "title": "ACME Requests (1h)",
+          "type": "stat"
         },
         {
-          "id": 5,
-          "type": "table",
-          "title": "Certificate Status",
-          "gridPos": { "x": 0, "y": 4, "w": 16, "h": 10 },
-          "options": {
-            "sortBy": [{ "displayName": "Expires In", "desc": false }]
-          },
           "fieldConfig": {
-            "defaults": { "custom": { "align": "left" } },
+            "defaults": {
+              "custom": {
+                "align": "left",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "footer": {
+                  "reducers": []
+                },
+                "inspect": false
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
             "overrides": [
               {
-                "matcher": { "id": "byName", "options": "Ready" },
+                "matcher": {
+                  "id": "byName",
+                  "options": "Ready"
+                },
                 "properties": [
-                  {
-                    "id": "custom.displayMode",
-                    "value": "color-background"
-                  },
                   {
                     "id": "mappings",
                     "value": [
-                      { "type": "value", "options": { "True":  { "text": "Ready",     "color": "green" } } },
-                      { "type": "value", "options": { "False": { "text": "Not Ready", "color": "red"   } } },
-                      { "type": "value", "options": { "Unknown": { "text": "Unknown", "color": "orange" } } }
+                      {
+                        "options": {
+                          "True": {
+                            "color": "green",
+                            "text": "Ready"
+                          }
+                        },
+                        "type": "value"
+                      },
+                      {
+                        "options": {
+                          "False": {
+                            "color": "red",
+                            "text": "Not Ready"
+                          }
+                        },
+                        "type": "value"
+                      },
+                      {
+                        "options": {
+                          "Unknown": {
+                            "color": "orange",
+                            "text": "Unknown"
+                          }
+                        },
+                        "type": "value"
+                      }
                     ]
                   }
                 ]
               },
               {
-                "matcher": { "id": "byName", "options": "Expires In" },
+                "matcher": {
+                  "id": "byName",
+                  "options": "Expires In"
+                },
                 "properties": [
-                  { "id": "unit", "value": "dtdurations" },
+                  {
+                    "id": "unit",
+                    "value": "dtdurations"
+                  },
                   {
                     "id": "thresholds",
                     "value": {
                       "mode": "absolute",
                       "steps": [
-                        { "color": "red",    "value": null },
-                        { "color": "orange", "value": 604800 },
-                        { "color": "green",  "value": 2592000 }
+                        {
+                          "color": "red",
+                          "value": 0
+                        },
+                        {
+                          "color": "orange",
+                          "value": 604800
+                        },
+                        {
+                          "color": "green",
+                          "value": 2592000
+                        }
                       ]
                     }
-                  },
-                  { "id": "custom.displayMode", "value": "color-background" }
+                  }
                 ]
               }
             ]
           },
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 4
+          },
+          "id": 5,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": false,
+                "displayName": "Expires In"
+              }
+            ]
+          },
+          "pluginVersion": "13.0.2",
+          "targets": [
+            {
+              "expr": "certmanager_certificate_ready_status",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "{{name}} {{namespace}} {{condition}}",
+              "refId": "A"
+            },
+            {
+              "expr": "certmanager_certificate_expiration_timestamp_seconds - time()",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "{{name}} {{namespace}}",
+              "refId": "B"
+            }
+          ],
+          "title": "Certificate Status",
           "transformations": [
             {
               "id": "merge",
@@ -200,61 +390,141 @@ data:
             {
               "id": "organize",
               "options": {
-                "renameByName": {
-                  "name": "Certificate",
-                  "namespace": "Namespace",
-                  "condition": "Ready",
-                  "Value #A": "Ready",
-                  "Value #B": "Expires In"
-                },
                 "excludeByName": {
                   "Time": true,
-                  "issuer_name": true,
+                  "issuer_group": true,
                   "issuer_kind": true,
-                  "issuer_group": true
+                  "issuer_name": true
+                },
+                "renameByName": {
+                  "Value #A": "Ready",
+                  "Value #B": "Expires In",
+                  "condition": "Ready",
+                  "name": "Certificate",
+                  "namespace": "Namespace"
                 }
               }
             }
           ],
-          "targets": [
-            {
-              "expr": "certmanager_certificate_ready_status",
-              "legendFormat": "{{name}} {{namespace}} {{condition}}",
-              "refId": "A",
-              "instant": true,
-              "format": "table"
-            },
-            {
-              "expr": "certmanager_certificate_expiration_timestamp_seconds - time()",
-              "legendFormat": "{{name}} {{namespace}}",
-              "refId": "B",
-              "instant": true,
-              "format": "table"
-            }
-          ]
+          "type": "table"
         },
         {
-          "id": 6,
-          "type": "timeseries",
-          "title": "ACME Request Rate",
-          "gridPos": { "x": 0, "y": 14, "w": 16, "h": 7 },
-          "options": {
-            "legend": { "displayMode": "list", "placement": "bottom" },
-            "tooltip": { "mode": "multi" }
-          },
           "fieldConfig": {
             "defaults": {
-              "custom": { "lineWidth": 2, "fillOpacity": 10 },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
               "unit": "reqps"
             }
           },
+          "gridPos": {
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 14
+          },
+          "id": 6,
+          "options": {
+            "annotations": {
+              "clustering": -1,
+              "multiLane": false
+            },
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "13.0.2",
           "targets": [
             {
               "expr": "sum by (status) (rate(certmanager_http_acme_client_request_count[5m]))",
               "legendFormat": "{{status}}",
               "refId": "A"
             }
-          ]
+          ],
+          "title": "ACME Request Rate",
+          "type": "timeseries"
         }
-      ]
+      ],
+      "preload": false,
+      "refresh": "60s",
+      "schemaVersion": 42,
+      "tags": [
+        "cert-manager"
+      ],
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "timepicker": {
+        "refresh_intervals": [
+          "5s",
+          "10s",
+          "30s",
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ]
+      },
+      "timezone": "browser",
+      "title": "Cert Manager",
+      "uid": "homelab-cert-manager"
     }
