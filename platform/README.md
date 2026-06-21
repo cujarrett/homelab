@@ -4,7 +4,15 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 
 ## Philosophy
 
-The platform has one job: make the gap between "I need a database" and "my app is talking to a database" as small as possible, without asking the app to know anything about how that happened.
+A platform is not infrastructure—it is a contract that turns intent into working systems.
+
+This platform exists to collapse the distance between “I need an app” and a running, connected service. Developers declare what they need—compute, data, identity, and integrations—and the platform handles everything else.
+
+It provisions resources, establishes trust, wires dependencies, and delivers credentials directly into the workload at runtime. No Terraform. No tickets. No hand-built glue. No cloud-specific logic leaking into application code.
+
+Complexity is not removed; it is centralized and standardized inside the platform so it can be automated and reasoned about once. Simplicity is preserved at the application layer, where change actually happens.
+
+The result is a system where applications describe intent, and the platform determines implementation—consistently, safely, and repeatedly across environments.
 
 That means a few things in practice:
 
