@@ -35,3 +35,6 @@ spec:
                     namespace:
                       type: string
                       description: "Namespace to deploy into. Must already exist (created by the tenant's namespace.yaml)."
+                    consumerServiceAccount:
+                      type: string
+                      description: "Name of the XApi service account that owns this cache. Used to scope the IAM trust policy to the exact SPIFFE identity instead of a namespace wildcard. Set automatically by the XApi composition."

@@ -112,14 +112,67 @@ spec:
               host: {{ $name }}-redis.{{ $ns }}.svc.cluster.local
               port: "6379"
             {{- else }}
-            {{- /* Trust policy scoped to the XCache namespace (wildcard on SA). XCache does not  */}}
-            {{- /* know which XApi SA will reference it; namespace isolation still applies.        */}}
-            {{- $cacheTrustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringLike" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/*" $ns))))) | toJson }}
+            {{- $consumerSA := $xr.spec.parameters.consumerServiceAccount }}
+            {{- /* Trust policy scoped to the exact XApi SA via StringEquals on the SPIFFE URI.   */}}
+            {{- /* consumerServiceAccount is passed by the XApi composition when creating XCache.  */}}
+            {{- $cacheTrustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringEquals" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $consumerSA))))) | toJson }}
             {{- $userId := printf "%s-user" $name }}
             {{- $userGroupId := $name }}
             {{- $cacheInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" "elasticache:Connect" "Resource" (list (printf "arn:aws:elasticache:%s:*:replicationgroup:%s" $region $name) (printf "arn:aws:elasticache:%s:*:user:%s" $region $userId)))) | toJson }}
+            {{- $cacheUserGroupObs := index (.observed.resources | default dict) "cache-user-group" | default dict }}
+            {{- $ugReady := false }}
+            {{- if $cacheUserGroupObs.resource }}
+              {{- range ($cacheUserGroupObs.resource.status.conditions | default list) }}
+                {{- if and (eq .type "Ready") (eq .status "True") }}
+                  {{- $ugReady = true }}
+                {{- end }}
+              {{- end }}
+            {{- end }}
             ---
-            # IAM Role for ElastiCache IAM auth. Trust scoped to all SAs in the XCache namespace.
+            # ElastiCache IAM User. Must exist before the UserGroup and ReplicationGroup.
+            apiVersion: elasticache.aws.upbound.io/v1beta1
+            kind: User
+            metadata:
+              name: {{ $name }}-user
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: cache-user
+                gotemplating.fn.crossplane.io/ready: "True"
+                crossplane.io/external-name: {{ $userId }}
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                region: {{ $region }}
+                userName: {{ $userId }}
+                accessString: "on ~* &* +@all"
+                authenticationMode:
+                  - type: iam
+                engine: redis
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+            ---
+            # ElastiCache UserGroup. Deferred: ReplicationGroup is created only once this is ready.
+            apiVersion: elasticache.aws.upbound.io/v1beta1
+            kind: UserGroup
+            metadata:
+              name: {{ $name }}-user-group
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: cache-user-group
+                gotemplating.fn.crossplane.io/ready: "True"
+                crossplane.io/external-name: {{ $userGroupId }}
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                region: {{ $region }}
+                engine: Redis
+                userGroupId: {{ $userGroupId }}
+                userIds:
+                  - {{ $userId }}
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+            ---
+            # IAM Role for ElastiCache IAM auth. Trust scoped to the exact XApi service account.
             apiVersion: iam.aws.upbound.io/v1beta1
             kind: Role
             metadata:
@@ -167,8 +220,10 @@ spec:
                   App: {{ $name }}
                   Namespace: {{ $ns }}
             {{- end }}
+            {{- if $ugReady }}
             ---
-            # Provider writes connection details to {name}-rg-conn once ElastiCache is up
+            # ReplicationGroup. Deferred until UserGroup is ready so AWS can associate them.
+            # Provider writes connection details to {name}-rg-conn once ElastiCache is up.
             apiVersion: elasticache.aws.upbound.io/v1beta2
             kind: ReplicationGroup
             metadata:
@@ -184,13 +239,14 @@ spec:
                 nodeType: {{ $nodeType }}
                 engine: redis
                 numCacheClusters: 1
-                # IAM auth requires TLS; userGroupIds enables the IAM user created above.
+                # IAM auth requires TLS; userGroupIds links the IAM User created above.
                 transitEncryptionEnabled: true
                 userGroupIds:
                   - {{ $userGroupId }}
               writeConnectionSecretToRef:
                 name: {{ $name }}-rg-conn
                 namespace: {{ $ns }}
+            {{- end }}
             {{- if and $rgConn $cacheRoleArn $cacheProfileArn }}
             ---
             # Binding Secret for ElastiCache. Written once the cluster is ready and IAM credentials

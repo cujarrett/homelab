@@ -283,9 +283,10 @@ spec:
                       {{- if gt (len $awsBindings) 0 }}
                         - name: AWS_SHARED_CREDENTIALS_FILE
                           value: /aws-credentials/credentials
-                        {{- range $objectStorageRefs }}
-                        - name: AWS_PROFILE_{{ .name | upper | replace "-" "_" }}
-                          value: {{ .name }}
+                        {{- range $i, $ref := $objectStorageRefs }}
+                        {{- $osMountNameEnv := "object-storage" }}{{- if gt $i 0 }}{{- $osMountNameEnv = printf "object-storage-%d" $i }}{{- end }}
+                        - name: AWS_PROFILE_{{ $ref.name | upper | replace "-" "_" }}
+                          value: {{ $osMountNameEnv }}
                         {{- end }}
                         {{- if $nosqlRefName }}
                         - name: AWS_PROFILE_NOSQL
@@ -621,6 +622,7 @@ spec:
               parameters:
                 backend: {{ $cacheBackend }}
                 namespace: {{ $ns }}
+                consumerServiceAccount: {{ $name }}
             {{- end }}
             ---
             # release: monitoring matches the Prometheus operator's serviceMonitorSelector

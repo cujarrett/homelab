@@ -48,6 +48,7 @@ spec:
                     contentSecurityPolicy:
                       type: string
                       default: "default-src 'self'; frame-ancestors 'none'; base-uri 'self';"
+                      pattern: "^[^\"\\r\\n]+$"
                       description: >
                         Value for the Content-Security-Policy response header.
                         Override with app-specific origins (e.g. Google Fonts, external APIs).
