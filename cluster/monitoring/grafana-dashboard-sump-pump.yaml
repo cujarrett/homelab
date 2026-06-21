@@ -92,7 +92,7 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "13.0.1+security-01",
+          "pluginVersion": "13.0.2",
           "targets": [
             {
               "datasource": {
@@ -106,81 +106,6 @@ data:
             }
           ],
           "title": "Current State",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "sump-pump-archive"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "blue",
-                    "value": 0
-                  },
-                  {
-                    "color": "green",
-                    "value": 32
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 80
-                  },
-                  {
-                    "color": "red",
-                    "value": 95
-                  }
-                ]
-              },
-              "unit": "fahrenheit"
-            }
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 3,
-            "x": 4,
-            "y": 0
-          },
-          "id": 24,
-          "options": {
-            "colorMode": "none",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.0.1+security-01",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "sump-pump-archive"
-              },
-              "expr": "max(weather_temperature_fahrenheit{job=\"weather-exporter\"})",
-              "instant": true,
-              "legendFormat": "°F",
-              "refId": "A"
-            }
-          ],
-          "title": "Current Temp",
           "type": "stat"
         },
         {
@@ -210,7 +135,7 @@ data:
           "gridPos": {
             "h": 3,
             "w": 3,
-            "x": 7,
+            "x": 4,
             "y": 0
           },
           "id": 2,
@@ -231,7 +156,7 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "13.0.1+security-01",
+          "pluginVersion": "13.0.2",
           "targets": [
             {
               "datasource": {
@@ -274,7 +199,7 @@ data:
           "gridPos": {
             "h": 3,
             "w": 3,
-            "x": 10,
+            "x": 7,
             "y": 0
           },
           "id": 3,
@@ -295,7 +220,7 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "13.0.1+security-01",
+          "pluginVersion": "13.0.2",
           "targets": [
             {
               "datasource": {
@@ -325,6 +250,66 @@ data:
                   {
                     "color": "green",
                     "value": 0
+                  }
+                ]
+              },
+              "unit": "s"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 4,
+            "x": 10,
+            "y": 0
+          },
+          "id": 26,
+          "options": {
+            "colorMode": "none",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.0.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "sump-pump-archive"
+              },
+              "expr": "round(avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 3600)",
+              "instant": true,
+              "legendFormat": "sec/hr",
+              "refId": "A"
+            }
+          ],
+          "title": "Run Duration / Hour",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "sump-pump-archive"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
                   },
                   {
                     "color": "red",
@@ -338,7 +323,7 @@ data:
           "gridPos": {
             "h": 3,
             "w": 4,
-            "x": 13,
+            "x": 14,
             "y": 0
           },
           "id": 4,
@@ -359,7 +344,7 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "13.0.1+security-01",
+          "pluginVersion": "13.0.2",
           "targets": [
             {
               "datasource": {
@@ -387,7 +372,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "transparent",
                     "value": 0
                   },
                   {
@@ -402,7 +387,7 @@ data:
           "gridPos": {
             "h": 3,
             "w": 3,
-            "x": 17,
+            "x": 18,
             "y": 0
           },
           "id": 12,
@@ -423,7 +408,7 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "13.0.1+security-01",
+          "pluginVersion": "13.0.2",
           "targets": [
             {
               "datasource": {
@@ -446,26 +431,41 @@ data:
           },
           "fieldConfig": {
             "defaults": {
-              "decimals": 0,
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 1,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "blue",
                     "value": 0
+                  },
+                  {
+                    "color": "green",
+                    "value": 32
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 80
+                  },
+                  {
+                    "color": "red",
+                    "value": 95
                   }
                 ]
               },
-              "unit": "s"
+              "unit": "fahrenheit"
             }
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 20,
+            "w": 3,
+            "x": 21,
             "y": 0
           },
-          "id": 26,
+          "id": 24,
           "options": {
             "colorMode": "none",
             "graphMode": "none",
@@ -483,20 +483,20 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "13.0.1+security-01",
+          "pluginVersion": "13.0.2",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "sump-pump-archive"
               },
-              "expr": "round(avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 3600)",
+              "expr": "max(weather_temperature_fahrenheit{job=\"weather-exporter\"})",
               "instant": true,
-              "legendFormat": "sec/hr",
+              "legendFormat": "\u00b0F",
               "refId": "A"
             }
           ],
-          "title": "Run Duration / Hour",
+          "title": "Current Temp",
           "type": "stat"
         },
         {
@@ -639,7 +639,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "°F"
+                  "options": "\u00b0F"
                 },
                 "properties": [
                   {
@@ -760,7 +760,7 @@ data:
               "sort": "none"
             }
           },
-          "pluginVersion": "13.0.1+security-01",
+          "pluginVersion": "13.0.2",
           "targets": [
             {
               "datasource": {
@@ -786,7 +786,7 @@ data:
                 "uid": "sump-pump-archive"
               },
               "expr": "max(weather_temperature_fahrenheit{job=\"weather-exporter\"})",
-              "legendFormat": "°F",
+              "legendFormat": "\u00b0F",
               "refId": "C"
             },
             {
@@ -954,7 +954,7 @@ data:
               }
             ]
           },
-          "pluginVersion": "13.0.1+security-01",
+          "pluginVersion": "13.0.2",
           "targets": [
             {
               "datasource": {
@@ -1009,20 +1009,11 @@ data:
           "type": "table"
         },
         {
-          "id": 30,
-          "type": "heatmap",
-          "title": "Pump Wattage Distribution",
-          "description": "Distribution of wattage readings over time. Shows motor load variation — wider spread or drift upward can indicate pump wear.",
-          "gridPos": {
-            "x": 0,
-            "y": 31,
-            "w": 24,
-            "h": 10
-          },
           "datasource": {
             "type": "prometheus",
             "uid": "sump-pump-archive"
           },
+          "description": "Distribution of wattage readings over time. Shows motor load variation \u2014 wider spread or drift upward can indicate pump wear.",
           "fieldConfig": {
             "defaults": {
               "custom": {
@@ -1032,9 +1023,15 @@ data:
                   "viz": false
                 }
               }
-            },
-            "overrides": []
+            }
           },
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 31
+          },
+          "id": 30,
           "options": {
             "calculate": true,
             "calculation": {
@@ -1080,6 +1077,7 @@ data:
               "unit": "watt"
             }
           },
+          "pluginVersion": "",
           "targets": [
             {
               "datasource": {
@@ -1090,7 +1088,9 @@ data:
               "legendFormat": "watts",
               "refId": "A"
             }
-          ]
+          ],
+          "title": "Pump Wattage Distribution",
+          "type": "heatmap"
         }
       ],
       "preload": false,
