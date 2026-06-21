@@ -123,11 +123,11 @@ spec:
             apiVersion: iam.aws.upbound.io/v1beta1
             kind: Role
             metadata:
-              name: {{ $name }}-cache
+              name: {{ $name }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: cache-role
                 gotemplating.fn.crossplane.io/ready: "True"
-                crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}-cache
+                crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}
             spec:
               deletionPolicy: Delete
               forProvider:
@@ -150,7 +150,7 @@ spec:
             apiVersion: rolesanywhere.aws.upbound.io/v1beta1
             kind: Profile
             metadata:
-              name: {{ $name }}-cache
+              name: {{ $name }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: cache-profile
                 gotemplating.fn.crossplane.io/ready: "True"
@@ -158,7 +158,7 @@ spec:
             spec:
               deletionPolicy: Delete
               forProvider:
-                name: crossplane-{{ $ns }}-{{ $name }}-cache
+                name: crossplane-{{ $ns }}-{{ $name }}
                 enabled: true
                 durationSeconds: 3600
                 roleArns:
@@ -176,6 +176,7 @@ spec:
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: replication-group
                 gotemplating.fn.crossplane.io/ready: {{ $rgReady | quote }}
+                crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}
             spec:
               forProvider:
                 region: {{ $region }}
