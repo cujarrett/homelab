@@ -644,6 +644,10 @@ spec:
                 - port: metrics
                   path: /metrics
                   interval: {{ $scrapeInterval }}
+                  metricRelabelings:
+                    - sourceLabels: [__name__]
+                      regex: "go_.*|process_.*|promhttp_.*"
+                      action: drop
             {{- if $host }}
             ---
             # tlsIssuer: local-lab-ca-issuer for .local.lab; letsencrypt-prod for public hosts
