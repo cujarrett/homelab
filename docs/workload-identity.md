@@ -1,5 +1,7 @@
 # Workload Identity
 
+Every pod that needs AWS access gets its own short-lived identity — no static keys, no shared credentials, no Secrets containing anything sensitive. This is done by combining SPIRE (a certificate authority that knows which pod is which), IAM Roles Anywhere (AWS's bridge from certificates to IAM), and [`aws-spiffe-helper`](https://github.com/cujarrett/aws-spiffe-helper) (a sidecar that exchanges the certificate for STS credentials and keeps them fresh). Crossplane compositions wire it all together so application teams declare what they need and get a credentials file — nothing else to configure.
+
 ## The problem
 
 The naive approach is a Secret containing static AWS keys:
@@ -43,10 +45,32 @@ flowchart LR
 
 **IAM Roles Anywhere** is AWS's bridge between certificate-based identity and IAM. You register a trust anchor (the SPIRE CA cert). AWS validates the cert chain and reads the URI SAN as a principal tag. IAM trust policies can then condition on that tag — locking a role to one exact pod identity.
 
-**`aws_signing_helper`** handles the exchange. Give it an SVID cert + key, a role ARN, a profile ARN, and a trust anchor ARN. It calls IAM Roles Anywhere and writes the resulting STS credentials to a named profile in a credentials file.
+**[`aws-spiffe-helper`](https://github.com/cujarrett/aws-spiffe-helper)** is the sidecar that glues SPIRE and Roles Anywhere together. It fetches the pod's SVID from the SPIRE agent via the Workload API socket, then calls `aws_signing_helper` (an AWS-provided binary) once per binding — each with a different role ARN and profile ARN — writing the resulting STS credentials as named profiles in a shared credentials file. Every 50 minutes it repeats the cycle. The app reads credentials from that file; it never touches a certificate or calls AWS for credentials itself.
 
-> **Why IAM Roles Anywhere and not OIDC?**
-> OIDC requires AWS to reach the cluster's JWKS endpoint. For an on-prem cluster that means a public URL — unnecessary attack surface. IAM Roles Anywhere is certificate-based; the workload presents its cert directly. No public endpoint.
+---
+
+## Why Roles Anywhere instead of OIDC or IRSA
+
+IRSA (IAM Roles for Service Accounts) is the standard AWS answer to this problem. Kubernetes injects a projected OIDC token into each pod; AWS validates it against your cluster's JWKS endpoint and lets the pod assume an IAM role. On EKS it works transparently — a single annotation on the service account, no sidecars, no extra binaries.
+
+Two things make it a poor fit here.
+
+**The JWKS endpoint must be publicly reachable.** AWS reaches out to `{cluster-issuer}/.well-known/openid-configuration` to validate tokens. For a self-hosted on-prem cluster, that means either punching a hole through the firewall or proxying the endpoint to the public internet. That's unnecessary attack surface for a homelab with no reason to be public.
+
+**One service account, one role.** The IRSA trust condition keys on `system:serviceaccount:{namespace}:{sa}`. A pod that needs access to both S3 and DynamoDB has two options: combine both permissions into one role (breaking least-privilege), or run two service accounts and a lot of ceremony. This cluster's composition model provisions *multiple bindings per XApi* — each with its own scoped IAM role. [`aws-spiffe-helper`](https://github.com/cujarrett/aws-spiffe-helper) calls `aws_signing_helper` once per binding, writing a distinct named profile for each. With IRSA, each binding would require its own service account, its own pod annotation, and a fundamentally different runtime model.
+
+Roles Anywhere sidesteps both constraints. It's certificate-based — the workload presents its SVID directly to AWS with no external endpoint involved. And the sidecar can exchange one SVID for multiple roles in a single refresh cycle.
+
+**What you give up.**
+
+This is not a free upgrade over IRSA. Honest trade-offs:
+
+- **SPIRE is another system to operate.** Server deployment, per-node agent DaemonSet, trust bundle rotation, registration entry management. If SPIRE is unhealthy, pods can't renew SVIDs, and credential refresh silently fails until the sidecar's retry budget is exhausted.
+- **`aws_signing_helper` is not an AWS SDK primitive.** It's a standalone binary AWS ships separately. If AWS changes the signing protocol or stops maintaining the binary, every pod breaks. The AWS SDKs have no native Roles Anywhere support — the sidecar is load-bearing scaffolding, not a first-class feature.
+- **More moving parts on the pod.** IRSA on EKS requires zero sidecars and zero init containers. This setup requires a credential sidecar, an init container, a SPIFFE CSI volume, and a shared in-memory credentials volume. More things that can be misconfigured.
+- **The provider bug.** The nil UUID workaround works, but it's brittle — it depends on specific provider behavior that could change between `provider-aws-rolesanywhere` releases.
+
+For an EKS cluster, IRSA is almost certainly the right choice. For on-prem with no public JWKS endpoint and a multi-binding composition model, Roles Anywhere is the better fit — but go in knowing the operational cost.
 
 ---
 
@@ -55,28 +79,18 @@ flowchart LR
 When an XApi XR with a cloud binding is applied, Crossplane runs a deferred reconcile chain. Each step waits for the previous step's output to appear in observed state.
 
 ```mermaid
-%%{init: {'flowchart': {'nodeSpacing': 50, 'rankSpacing': 70}}}%%
-flowchart TB
-    xr["XApi XR applied"]
+%%{init: {'flowchart': {'nodeSpacing': 40, 'rankSpacing': 60}}}%%
+flowchart LR
+    xr["XApi XR\napplied"]
+    role["IAM Role\npass 1\ntrust: spiffe://…/ns/foo/sa/foo-api\ninline policy: this bucket only"]
+    profile["RolesAnywhere Profile\npass 2 — after role ARN known\nlinks role → trust anchor · 1h TTL"]
+    secret["Binding Secret\npass 3 — after profile ARN known\nrole-arn · profile-arn · resource metadata\nno credentials"]
+    pod["Pod\ninit container waits\nthen app starts"]
 
-    subgraph r1["Reconcile pass 1"]
-        role["IAM Role\ntrust: spiffe://…/ns/foo/sa/foo-api\ninline policy: this bucket only"]
-    end
-
-    subgraph r2["Reconcile pass 2 — deferred until role ARN is known"]
-        profile["RolesAnywhere Profile\nlinks role → cluster trust anchor\n1h session duration"]
-    end
-
-    subgraph r3["Reconcile pass 3 — deferred until profile ARN is known"]
-        secret["Binding Secret\nrole-arn · profile-arn · resource metadata\nno credentials"]
-    end
-
-    pod["Pod\ninit container waits for Secret\nthen app starts"]
-
-    xr --> r1
-    r1 -->|"role ARN in observed state"| r2
-    r2 -->|"profile ARN in observed state"| r3
-    r3 -->|"Secret synced to volume"| pod
+    xr -->|"pass 1"| role
+    role -->|"role ARN\nin observed state"| profile
+    profile -->|"profile ARN\nin observed state"| secret
+    secret -->|"Secret synced\nto volume"| pod
 ```
 
 ### IAM Role
@@ -103,7 +117,13 @@ The profile links the role to the trust anchor and sets session duration. It's c
 >
 > `provider-aws-rolesanywhere` calls `GetProfile` using `spec.forProvider.name` (the human-readable name) as the profileId. Profile IDs are UUIDs assigned by AWS. When the profile doesn't exist yet, AWS returns HTTP 400 ("not a UUID") instead of HTTP 404. Crossplane treats 400 as a terminal error and never calls Create — the profile never gets made.
 >
-> The fix: set `crossplane.io/external-name` to `"00000000-0000-0000-0000-000000000000"` on first render. AWS returns 404 (valid UUID format, just doesn't exist) → Crossplane calls Create → AWS assigns a real UUID → the template reads it back from observed state on every subsequent reconcile and uses the real UUID. It works. It's not pretty.
+> Three things you'd try first that don't work:
+>
+> - **Wildcard in `roleArns`** — `arn:aws:iam::…:role/crossplane/*` looks reasonable. AWS stores it literally. At session-create time it does exact string matching, so the literal `crossplane/*` never matches `crossplane/crossplane-phase6-test-...`. Silently fails.
+> - **`managementPolicies: ["Create", "Delete"]`** — skipping Observe would sidestep the 400 entirely, but `provider-aws-rolesanywhere` rejects non-default management policies with `spec.managementPolicies is set to a value([Create Delete]) which is not supported`. The provider simply hasn't implemented that capability. Upgrading to v2.6.1 didn't change it.
+> - **Setting `crossplane.io/external-name` to a human-readable string** — makes things worse. Now every Observe call permanently fails with 400 because the external-name is the value used as the UUID, and it will never be valid.
+>
+> The fix: set `crossplane.io/external-name` to `"00000000-0000-0000-0000-000000000000"` on first render. It's a valid UUID format that doesn't exist in AWS, so AWS returns 404 → Crossplane calls Create → AWS creates the profile and assigns a real UUID → the provider writes that UUID back as `crossplane.io/external-name` on the object. On subsequent reconciles, the template reads the UUID from observed state and uses it in the desired state so the function pipeline never overwrites it. It works. It's not pretty.
 
 > **Choice: one profile per binding, not a shared platform profile**
 > A shared profile's `roleArns` list is an exact-match allowlist with no wildcards. Every new binding would need to add its role ARN to the shared profile — a coordination point that doesn't compose. Per-binding profiles let each XApi manage its own identity independently.
@@ -146,21 +166,21 @@ The sidecar runs this cycle every 50 minutes while the pod is alive.
 %%{init: {'flowchart': {'nodeSpacing': 50, 'rankSpacing': 60}}}%%
 flowchart LR
     csi["SPIFFE CSI Driver\n/var/run/secrets/spiffe.io"]
-    sidecar["aws-credentials-sidecar"]
+    sidecar["aws-spiffe-helper\nsidecar"]
     ra["IAM Roles Anywhere\nvalidates cert chain\nchecks SPIFFE ID condition"]
     sts["STS"]
     creds["/aws-credentials/credentials\nnamed profiles — one per binding"]
     app["api container\nAWS_PROFILE_OBJECT_STORAGE\nAWS_PROFILE_NOSQL"]
 
     csi -->|"SVID cert + key"| sidecar
-    sidecar -->|"cert + role ARN\n+ profile ARN\n+ trust anchor ARN"| ra
+    sidecar -->|"cert + role ARN\n+ profile ARN\n+ trust anchor ARN\nonce per binding"| ra
     ra -->|"assume role"| sts
     sts -->|"1h credentials"| sidecar
     sidecar -->|"writes"| creds
     creds -->|"AWS SDK reads"| app
 ```
 
-The app doesn't know SPIRE exists. The composition injects `AWS_PROFILE_*` env vars. The sidecar handles the exchange.
+The app doesn't know SPIRE exists. The composition injects `AWS_PROFILE_*` env vars and `AWS_SHARED_CREDENTIALS_FILE`. [`aws-spiffe-helper`](https://github.com/cujarrett/aws-spiffe-helper) handles the exchange — once per binding, every 50 minutes.
 
 ```go
 s3Cfg, _ := config.LoadDefaultConfig(ctx,
