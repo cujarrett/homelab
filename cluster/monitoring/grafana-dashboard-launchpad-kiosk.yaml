@@ -19,7 +19,6 @@ data:
       "panels": [
         {
           "id": 1, "type": "stat", "title": "Guest Workspaces (now)",
-          "description": "Active guest sandbox workspaces right now (max 5).",
           "gridPos": { "x": 0, "y": 0, "w": 3, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
@@ -33,7 +32,6 @@ data:
         },
         {
           "id": 4, "type": "stat", "title": "Guest Workspaces (24h peak)",
-          "description": "Peak number of concurrent guest workspaces in the last 24 hours.",
           "gridPos": { "x": 3, "y": 0, "w": 3, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "none", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
@@ -47,7 +45,6 @@ data:
         },
         {
           "id": 2, "type": "stat", "title": "Guest Resources (now)",
-          "description": "Total resources across all active guest workspaces right now.",
           "gridPos": { "x": 6, "y": 0, "w": 3, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
@@ -61,7 +58,6 @@ data:
         },
         {
           "id": 5, "type": "stat", "title": "Guest Resources (24h peak)",
-          "description": "Peak total resources across guest workspaces in the last 24 hours.",
           "gridPos": { "x": 9, "y": 0, "w": 3, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "none", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
@@ -75,7 +71,6 @@ data:
         },
         {
           "id": 3, "type": "timeseries", "title": "Workspace & Resource Usage",
-          "description": "Active guest workspaces and total resources over the last 24 hours.",
           "gridPos": { "x": 12, "y": 0, "w": 12, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {

@@ -19,7 +19,6 @@ data:
       "panels": [
         {
           "id": 1, "type": "stat", "title": "Released PVs",
-          "description": "PersistentVolumes in Released state.",
           "gridPos": { "x": 0, "y": 0, "w": 4, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
@@ -33,7 +32,6 @@ data:
         },
         {
           "id": 2, "type": "stat", "title": "Failed PVs",
-          "description": "PersistentVolumes in Failed state.",
           "gridPos": { "x": 4, "y": 0, "w": 4, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
@@ -47,7 +45,6 @@ data:
         },
         {
           "id": 3, "type": "stat", "title": "Terminating NS",
-          "description": "Namespaces stuck in Terminating.",
           "gridPos": { "x": 8, "y": 0, "w": 4, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
@@ -61,7 +58,6 @@ data:
         },
         {
           "id": 4, "type": "stat", "title": "Degraded Apps",
-          "description": "ArgoCD apps in Degraded health state.",
           "gridPos": { "x": 12, "y": 0, "w": 4, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },

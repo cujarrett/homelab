@@ -19,7 +19,6 @@ data:
       "panels": [
         {
           "id": 1, "type": "stat", "title": "Runs / Hour",
-          "description": "Rolling sump pump runs per hour based on the last 60 minutes.",
           "gridPos": { "x": 0, "y": 0, "w": 4, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "sump-pump-archive" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "none", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
@@ -28,7 +27,6 @@ data:
         },
         {
           "id": 2, "type": "timeseries", "title": "Runs, Duration, Temp, Rain",
-          "description": "Pump run rate and run duration per hour with rainfall and temperature overlay.",
           "gridPos": { "x": 4, "y": 0, "w": 20, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "sump-pump-archive" },
           "fieldConfig": {
