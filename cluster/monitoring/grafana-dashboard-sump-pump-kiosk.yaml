@@ -27,30 +27,36 @@ data:
           "targets": [{ "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)", "legendFormat": "runs/hr", "instant": true, "refId": "A" }]
         },
         {
-          "id": 2, "type": "timeseries", "title": "Runs per Hour",
-          "description": "Pump run rate with rainfall overlay.",
+          "id": 2, "type": "timeseries", "title": "Runs, Duration, Temp, Rain",
+          "description": "Pump run rate and run duration per hour with rainfall and temperature overlay.",
           "gridPos": { "x": 4, "y": 0, "w": 20, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "sump-pump-archive" },
           "fieldConfig": {
             "defaults": {
-              "unit": "short", "decimals": 1,
+              "unit": "short", "decimals": 0,
               "color": { "fixedColor": "rgba(38, 198, 218, 0.95)", "mode": "fixed" },
-              "custom": { "lineWidth": 2, "fillOpacity": 15, "lineInterpolation": "smooth", "drawStyle": "line", "spanNulls": true }
+              "custom": { "lineWidth": 2, "fillOpacity": 0, "lineInterpolation": "smooth", "drawStyle": "line", "spanNulls": true }
             },
             "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "runs/hr" },
+                "properties": [
+                  { "id": "color", "value": { "fixedColor": "rgba(140, 140, 140, 0.95)", "mode": "fixed" } },
+                  { "id": "custom.axisPlacement", "value": "left" },
+                  { "id": "custom.lineWidth", "value": 2 },
+                  { "id": "custom.fillOpacity", "value": 0 }
+                ]
+              },
               {
                 "matcher": { "id": "byName", "options": "in/hr" },
                 "properties": [
                   { "id": "unit", "value": "lengthin" },
-                  { "id": "decimals", "value": 3 },
-                  { "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } },
+                  { "id": "decimals", "value": 2 },
+                  { "id": "color", "value": { "fixedColor": "rgba(90, 168, 255, 0.9)", "mode": "fixed" } },
                   { "id": "custom.drawStyle", "value": "bars" },
                   { "id": "custom.lineWidth", "value": 0 },
-                  { "id": "custom.fillOpacity", "value": 50 },
-                  { "id": "custom.axisPlacement", "value": "right" },
-                  { "id": "custom.axisLabel", "value": "rainfall (in/hr)" },
-                  { "id": "custom.axisSoftMin", "value": 0 },
-                  { "id": "custom.axisSoftMax", "value": 0.1 },
+                  { "id": "custom.fillOpacity", "value": 35 },
+                  { "id": "custom.axisPlacement", "value": "hidden" },
                   { "id": "custom.spanNulls", "value": true }
                 ]
               },
@@ -59,20 +65,37 @@ data:
                 "properties": [
                   { "id": "unit", "value": "fahrenheit" },
                   { "id": "decimals", "value": 1 },
-                  { "id": "color", "value": { "fixedColor": "rgba(255, 152, 48, 0.26)", "mode": "fixed" } },
+                  { "id": "color", "value": { "fixedColor": "rgba(255, 230, 120, 0.95)", "mode": "fixed" } },
                   { "id": "custom.lineWidth", "value": 2 },
                   { "id": "custom.lineInterpolation", "value": "smooth" },
                   { "id": "custom.fillOpacity", "value": 0 },
+                  { "id": "custom.spanNulls", "value": true },
+                  { "id": "custom.axisPlacement", "value": "hidden" },
+                  { "id": "custom.hideFrom", "value": { "legend": false, "tooltip": true, "viz": true } }
+                ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "min/hr" },
+                "properties": [
+                  { "id": "unit", "value": "min" },
+                  { "id": "decimals", "value": 0 },
+                  { "id": "color", "value": { "fixedColor": "rgba(38, 198, 218, 0.95)", "mode": "fixed" } },
+                  { "id": "custom.axisPlacement", "value": "right" },
+                  { "id": "custom.axisLabel", "value": "weather" },
+                  { "id": "custom.lineWidth", "value": 2 },
+                  { "id": "custom.lineInterpolation", "value": "smooth" },
+                  { "id": "custom.fillOpacity", "value": 35 },
                   { "id": "custom.spanNulls", "value": true }
                 ]
               }
             ]
           },
-          "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "none" } },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "multi", "sort": "none" } },
           "targets": [
             { "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)", "legendFormat": "runs/hr", "refId": "A" },
             { "expr": "max(weather_precipitation_mm{job=\"weather-exporter\"}) * 0.03937", "legendFormat": "in/hr", "refId": "B" },
-            { "expr": "max(weather_temperature_fahrenheit{job=\"weather-exporter\"})", "legendFormat": "\u00b0F", "refId": "C" }
+            { "expr": "max(weather_temperature_fahrenheit{job=\"weather-exporter\"})", "legendFormat": "\u00b0F", "refId": "C" },
+            { "expr": "round(avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 60)", "legendFormat": "min/hr", "refId": "D" }
           ]
         }
       ]
