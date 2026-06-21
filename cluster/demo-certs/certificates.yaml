@@ -1,0 +1,134 @@
+# Long-lived TLS certificates for the 5 fixed demo slot hostnames.
+# These are permanent — they survive sandbox churn so we never re-issue
+# against Let's Encrypt's "5 certs per exact hostname per 168h" limit.
+# launchpad-api copies the resulting secrets into each sandbox namespace
+# at creation time so cert-manager skips issuance there.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: demo1-api-tls
+  namespace: demo-certs
+spec:
+  secretName: demo1-api-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - demo1-api.mattjarrett.dev
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: demo1-tls
+  namespace: demo-certs
+spec:
+  secretName: demo1-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - demo1.mattjarrett.dev
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: demo2-api-tls
+  namespace: demo-certs
+spec:
+  secretName: demo2-api-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - demo2-api.mattjarrett.dev
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: demo2-tls
+  namespace: demo-certs
+spec:
+  secretName: demo2-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - demo2.mattjarrett.dev
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: demo3-api-tls
+  namespace: demo-certs
+spec:
+  secretName: demo3-api-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - demo3-api.mattjarrett.dev
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: demo3-tls
+  namespace: demo-certs
+spec:
+  secretName: demo3-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - demo3.mattjarrett.dev
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: demo4-api-tls
+  namespace: demo-certs
+spec:
+  secretName: demo4-api-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - demo4-api.mattjarrett.dev
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: demo4-tls
+  namespace: demo-certs
+spec:
+  secretName: demo4-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - demo4.mattjarrett.dev
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: demo5-api-tls
+  namespace: demo-certs
+spec:
+  secretName: demo5-api-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - demo5-api.mattjarrett.dev
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: demo5-tls
+  namespace: demo-certs
+spec:
+  secretName: demo5-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - demo5.mattjarrett.dev
