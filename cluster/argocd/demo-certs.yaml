@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: demo-certs
+  namespace: argocd
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/cujarrett/homelab.git
+    targetRevision: main
+    path: cluster/demo-certs
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: demo-certs
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
