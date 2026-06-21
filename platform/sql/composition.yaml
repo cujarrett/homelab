@@ -8,6 +8,17 @@ spec:
     kind: XSql
   mode: Pipeline
   pipeline:
+    - step: load-environment-configs
+      functionRef:
+        name: function-environment-configs
+      input:
+        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+        kind: Input
+        spec:
+          environmentConfigs:
+            - type: Reference
+              ref:
+                name: aws-platform-config
     - step: render-database
       # environment: cluster → in-cluster Postgres; cloud → AWS RDS Postgres
       functionRef:
@@ -22,6 +33,8 @@ spec:
             {{- $name := $xr.metadata.name }}
             {{- $uid := $xr.metadata.uid }}
             {{- $env := $xr.spec.parameters.backend | default "private-cloud" }}
+            {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
+            {{- $awsAccountId := index $envCtx "awsAccountId" | default "*" }}
             {{- $dataRetention := $xr.spec.parameters.dataRetention | default "retain" }}
             {{- $storageClass := "longhorn-retain" }}
             {{- if eq $dataRetention "delete" }}{{- $storageClass = "longhorn-delete" }}{{- end }}
@@ -215,7 +228,7 @@ spec:
             {{- /* references this XSql will be in the same namespace. Full per-workload scoping   */}}
             {{- /* would require XApi to create this role — acceptable homelab trade-off.          */}}
             {{- $sqlTrustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringLike" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/*" $ns))))) | toJson }}
-            {{- $sqlInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" "rds-db:connect" "Resource" (printf "arn:aws:rds-db:%s:*:dbuser/*/app" $region))) | toJson }}
+            {{- $sqlInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" "rds-db:connect" "Resource" (printf "arn:aws:rds-db:%s:%s:dbuser/*/app" $region $awsAccountId))) | toJson }}
             ---
             # IAM Role for RDS IAM DB Auth. Trust scoped to all service accounts in the XSql namespace.
             apiVersion: iam.aws.upbound.io/v1beta1
