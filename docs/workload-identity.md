@@ -33,13 +33,13 @@ IRSA can't express multiple scoped roles per pod and requires a public JWKS endp
 - **More moving parts on the pod.** IRSA on ROSA/ EKS requires zero sidecars and zero init containers. This setup requires a credential sidecar, an init container, a SPIFFE CSI volume, and a shared in-memory credentials volume. More things that can be misconfigured.
 - **The provider bug.** The nil UUID workaround works, but it's brittle — it depends on specific provider behavior that could change between `provider-aws-rolesanywhere` releases.
 
-For an ROSA/ EKS cluster, IRSA is almost certainly the right choice. For on-prem with no public JWKS endpoint and a multi-binding composition model, Roles Anywhere is the better fit — but go in knowing the operational cost.
+This platform needs multiple scoped IAM roles per pod. IRSA can't do that. So the choice is Roles Anywhere or stick with static keys in Secrets. Roles Anywhere wins: short-lived credentials, least-privilege per binding, no secrets in git.
 
 ---
 
 ## Provisioning
 
-Crossplane runs a three-pass chain per binding: first creates the IAM role, then the Roles Anywhere profile once the role exists, then the binding Secret once the profile exists. Each step reads observed state and feeds into the next — no imperative orchestration.
+Crossplane runs a three-pass chain per binding. Each step depends on the previous step's output, so they must happen in order. No imperative scripting; Crossplane reads what exists in AWS, fills in the gaps, and repeats until done.
 
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 40, 'rankSpacing': 60}}}%%
@@ -56,7 +56,13 @@ flowchart LR
     secret -->|"Secret synced\nto volume"| pod
 ```
 
-This three-pass chain repeats **per binding**. If an XApi declares three object storage refs, three nosql refs, and one cache backend, you get three role+profile+secret chains (one for each object storage binding), one for nosql, and one for cache.
+**Pass 1: IAM Role.** Crossplane creates an IAM role scoped to this binding. The trust policy is hardcoded: only the pod's SPIFFE ID can assume it. An inline policy grants access to exactly one resource (one bucket, one DynamoDB table, etc). The role ARN is written to AWS and read back.
+
+**Pass 2: RolesAnywhere Profile.** Once the role ARN is visible in observed state, Crossplane creates a profile linking that role to your SPIRE trust anchor. The profile tells AWS: "When you see an SVID signed by this CA with this SPIFFE ID, exchange it for this role's temporary credentials (valid 1 hour)." The profile ARN is written to AWS and read back.
+
+**Pass 3: Binding Secret.** Once the profile ARN is visible, Crossplane writes a Kubernetes Secret containing the role ARN, profile ARN, and resource metadata (bucket name, table name, etc). The pod's init container waits for this Secret to sync to its volume, then the app starts.
+
+**Per-binding chain.** This three-pass sequence repeats for every binding. An XApi with three object storage refs, two nosql refs, and one cache backend gets nine separate role+profile+secret chains running in parallel — one for each resource. If one binding stalls (e.g., AWS API throttle), the others keep going.
 
 ### IAM Role
 
