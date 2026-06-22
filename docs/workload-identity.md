@@ -4,7 +4,7 @@ Every pod that needs AWS access gets its own short-lived identity — no static 
 
 ## The problem
 
-IAM Roles for Service Accounts (IRSA) breaks down when you need multiple scoped IAM roles per pod and no public JWKS endpoint. The alternative — static keys in a Secret — never expires and shares blast radius across all workloads.
+IAM Roles for Service Accounts (IRSA) breaks down when you need multiple scoped IAM roles per pod and no public JWKS endpoint. The alternative is static keys in a Secret: they never expire and share blast radius across all workloads.
 
 The goal: every pod gets its own short-lived AWS identity, scoped to exactly the resources it needs, with no credential stored in git or a Secret.
 
@@ -12,19 +12,19 @@ The goal: every pod gets its own short-lived AWS identity, scoped to exactly the
 
 ## The pieces
 
-Three systems work together. Here's the approach I landed on — pragmatic trade-offs, no ego.
+Three systems work together. Here's the approach — pragmatic trade-offs, no ego.
 
 **SPIRE** is the certificate authority for the cluster. It knows which pod is running where by checking with the kubelet. When a pod has a registration entry, SPIRE issues it a short-lived X.509 certificate whose URI SAN is the pod's SPIFFE ID — `spiffe://homelab.local/ns/{namespace}/sa/{service-account}`. That URI is the identity.
 
 **IAM Roles Anywhere** is AWS's bridge between certificate-based identity and IAM. You register a trust anchor (the SPIRE CA cert). AWS validates the cert chain and reads the URI SAN as a principal tag. IAM trust policies can then condition on that tag — locking a role to one exact pod identity.
 
-**[`aws-spiffe-helper`](https://github.com/cujarrett/aws-spiffe-helper)** (your custom sidecar) is the glue between SPIRE and Roles Anywhere. It fetches the pod's single SVID from the SPIRE agent via the Workload API socket, then exchanges that one SVID for multiple AWS roles by calling `aws_signing_helper` (an AWS-provided binary) once per binding — each call uses a different role ARN and profile ARN. It writes the resulting STS credentials as named profiles in a shared credentials file. Every 50 minutes it repeats the cycle. The app reads credentials from that file; it never touches a certificate or calls AWS for credentials itself.
+**[`aws-spiffe-helper`](https://github.com/cujarrett/aws-spiffe-helper)** (the custom sidecar) is the glue between SPIRE and Roles Anywhere. It fetches the pod's single SVID from the SPIRE agent via the Workload API socket, then exchanges that one SVID for multiple AWS roles by calling `aws_signing_helper` (an AWS-provided binary) once per binding: each call uses a different role ARN and profile ARN. It writes the resulting STS credentials as named profiles in a shared credentials file. Every 50 minutes it repeats the cycle. The app reads credentials from that file; it never touches a certificate or calls AWS for credentials itself.
 
 ---
 
 ## Why Roles Anywhere instead of OIDC or IRSA
 
-Roles Anywhere sidesteps both IRSA constraints: it's certificate-based (no public endpoint needed), and one SVID can be exchanged for multiple roles (one per binding). The trade-off: you operate SPIRE, manage an AWS binary, and add complexity to the pod.
+IRSA can't express multiple scoped roles per pod and requires a public JWKS endpoint. Roles Anywhere sidesteps both constraints: it's certificate-based (no public endpoint needed), and one SVID can be exchanged for multiple roles (one per binding). The trade-off: you operate SPIRE, manage an AWS binary, and add complexity to the pod.
 
 **What you give up.**
 
@@ -84,14 +84,14 @@ A RolesAnywhere Profile is AWS's configuration object that links an IAM role to 
 > A shared profile's `roleArns` list is an exact-match allowlist with no wildcards. Every new binding would need to add its role ARN to the shared profile — a coordination point that doesn't compose. Per-binding profiles let each XApi manage its own identity independently.
 
 <details>
-<summary>Side Quest: The nil UUID Hack</summary>
-The Crossplane provider for Roles Anywhere has a quirk. When reading a profile that doesn't exist yet, it treats the HTTP 400 ("not a UUID") as terminal instead of recoverable. I worked around this:
+<summary>Crossplane Provider Workaround: The nil UUID Pattern</summary>
+The Crossplane provider for Roles Anywhere has a quirk. When reading a profile that doesn't exist yet, it treats the HTTP 400 ("not a UUID") as terminal instead of recoverable. This workaround handles it:
 
 - **Wildcard in `roleArns`** — `arn:aws:iam::…:role/crossplane/*` looks reasonable. AWS stores it literally. At session-create time it does exact string matching, so the literal `crossplane/*` never matches `crossplane/crossplane-phase6-test-...`. Silently fails.
 - **`managementPolicies: ["Create", "Delete"]`** — skipping Observe would sidestep the 400 entirely, but the provider rejects non-default management policies with an "not supported" error. The feature simply isn't implemented. Upgrading didn't change it.
 - **Setting `crossplane.io/external-name` to a human-readable string** — makes things worse. Now Observe permanently fails with 400 because the external-name becomes the UUID lookup, and it will never be valid.
 
-The fix I landed on: set `crossplane.io/external-name` to `"00000000-0000-0000-0000-000000000000"` on first render. It's a valid UUID that doesn't exist in AWS, so AWS returns 404 → Crossplane creates the profile → AWS assigns a real UUID → the provider writes that UUID back. On reconciles after that, the template reads the UUID from observed state, so the function never overwrites it. Not elegant, but it works.
+The solution: set `crossplane.io/external-name` to `"00000000-0000-0000-0000-000000000000"` on first render. It's a valid UUID that doesn't exist in AWS, so AWS returns 404 → Crossplane creates the profile → AWS assigns a real UUID → the provider writes that UUID back. On reconciles after that, the template reads the UUID from observed state, so the function never overwrites it. Not elegant, but it works.
 </details>
 
 ### Binding Secret
