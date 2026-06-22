@@ -24,11 +24,9 @@ Three systems work together.
 
 ## Why Roles Anywhere instead of OIDC or IRSA
 
-IRSA can't express multiple scoped roles per pod and requires a public JWKS endpoint. Roles Anywhere sidesteps both constraints: it's certificate-based (no public endpoint needed), and one SVID can be exchanged for multiple roles (one per binding). The trade-off: you operate SPIRE, manage an AWS binary, and add complexity to the pod.
+IRSA can't express multiple scoped roles per pod and requires a public JWKS endpoint. Roles Anywhere sidesteps both constraints: it's certificate-based (no public endpoint needed), and one SVID can be exchanged for multiple roles (one per binding).
 
 **What you give up.**
-
-This is not a free upgrade over IRSA. Honest trade-offs:
 
 - **SPIRE is another system to operate.** Server deployment, per-node agent DaemonSet, trust bundle rotation, registration entry management. If SPIRE is unhealthy, pods can't renew SVIDs, and credential refresh silently fails until the sidecar's retry budget is exhausted.
 - **`aws_signing_helper` is not an AWS SDK primitive.** It's a standalone binary AWS ships separately. If AWS changes the signing protocol or stops maintaining the binary, every pod breaks. The AWS SDKs have no native Roles Anywhere support — the sidecar is load-bearing scaffolding, not a first-class feature.
