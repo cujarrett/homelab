@@ -12,7 +12,7 @@ The goal: every pod gets its own short-lived AWS identity, scoped to exactly the
 
 ## The pieces
 
-Three systems work together. Here's the approach — pragmatic trade-offs, no ego.
+Three systems work together.
 
 **SPIRE** is the certificate authority for the cluster. It knows which pod is running where by checking with the kubelet. When a pod has a registration entry, SPIRE issues it a short-lived X.509 certificate whose URI SAN is the pod's SPIFFE ID — `spiffe://homelab.local/ns/{namespace}/sa/{service-account}`. That URI is the identity.
 
