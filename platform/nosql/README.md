@@ -1,39 +1,40 @@
 # XNoSql
 
-Crossplane platform primitive that provisions an AWS DynamoDB table and exposes connection details as a [servicebinding.io](https://servicebinding.io)-compliant Secret.
+Crossplane platform primitive that provisions a key-value / document store.
 
 Standalone resource with a lifecycle independent of any one API. Bind to an `XApi` via `nosqlRef.name`.
 
 ## What it provisions
-- **AWS DynamoDB table** — always cloud; no in-cluster equivalent
-- **Scoped IAM user + access key** — credentials locked to this table via ABAC policy
-- **Binding Secret** — written to the tenant namespace; contains everything the app needs to connect
+- `public-cloud` — **AWS DynamoDB table**
+- `private-cloud` — *(in-cluster ExtendDB planned)*
+
+The IAM Role, RolesAnywhere Profile, and binding Secret are **not** created by XNoSql. They are created by the `XApi` composition when `nosqlRef` is declared. XNoSql manages only the table's lifecycle.
 
 DynamoDB tables are ready in ~10–30 seconds after Crossplane calls the API, making the commit-to-running loop fast regardless of environment.
 
 ## Binding secret
 
-Secret name equals the XR name; namespace comes from the `namespace` parameter passed by the parent `XApi`. Mounted at `/bindings/nosql/` inside the container.
+Written by the `XApi` composition (not by XNoSql) once the IAM Role and RolesAnywhere Profile ARNs are available. Secret name equals the XR name; namespace comes from the `XApi` that references it. Mounted at `/bindings/nosql/` inside the container.
 
 | Key | Value |
 |---|---|
 | `type` | `dynamodb` |
 | `provider` | `aws` |
 | `table-name` | Table name |
-| `region` | AWS region |
-| `access-key-id` | IAM access key ID (scoped to this table) |
-| `secret-access-key` | IAM secret access key |
+| `region` | `us-east-1` |
+| `role-arn` | IAM role ARN (scoped to this table, created by XApi) |
+| `profile-arn` | RolesAnywhere profile ARN (created by XApi) |
 
-Apps configure the AWS SDK from these keys. No custom endpoint required — the SDK resolves the DynamoDB endpoint from `region` automatically.
+The `aws-spiffe-helper` sidecar (injected by XApi) exchanges the pod's SVID for short-lived STS credentials and writes them as the `nosql` named profile. The app reads `AWS_PROFILE_NOSQL` and uses the standard AWS SDK — no custom endpoint required, the SDK resolves DynamoDB from `region`.
 
 ## Parameters
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
 | `namespace` | yes | — | Namespace to write the binding Secret into. |
-| `region` | no | `us-east-1` | AWS region for the DynamoDB table |
-| `partitionKey` | no | `id` | Partition key attribute name |
-| `partitionKeyType` | no | `S` | Partition key type: `S`=string, `N`=number, `B`=binary |
+| `partitionKey` | no | `id` | Partition key attribute name. |
+| `partitionKeyType` | no | `S` | Partition key type: `S`=string, `N`=number, `B`=binary. |
+| `dataRetention` | no | `delete` | AWS resource reclaim on XR deletion: `delete`=table is deleted (data unrecoverable); `retain`=table is orphaned in AWS (data recoverable). |
 
 ## Example
 
@@ -45,7 +46,7 @@ metadata:
 spec:
   parameters:
     namespace: foo
-    # region and partitionKey default to us-east-1 and id
+    # partitionKey defaults to id; partitionKeyType defaults to S
 ```
 
 ```yaml
@@ -56,9 +57,9 @@ metadata:
 spec:
   parameters:
     namespace: foo
-    region: us-east-1
     partitionKey: userId
     partitionKeyType: S
+    dataRetention: retain
 ```
 
 Then reference from an `XApi`:
@@ -74,21 +75,21 @@ Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 
 ## Per-workload auth
 
-Each `XNoSql` instance creates a dedicated IAM user with credentials scoped to its specific table via ABAC. The policy ARN is stored in the `aws-platform-config` EnvironmentConfig (`dynamoDbPolicyArn`). The ABAC policy grants `dynamodb:*` scoped to `arn:aws:dynamodb:{region}:*:table/${aws:PrincipalTag/Table}` — the IAM user can only access the table it was created for. See `todo/workload-identity.md` for the full roadmap.
+When `XApi` declares `nosqlRef`, it creates an IAM Role whose trust policy is locked to the pod's exact SPIFFE ID (`spiffe://homelab.local/ns/{namespace}/sa/{service-account}`). The inline policy grants specific DynamoDB actions (GetItem, PutItem, UpdateItem, DeleteItem, Query, Scan, BatchGetItem, BatchWriteItem) scoped to this table's ARN and its indexes — no other table is reachable. For the full design: [`docs/workload-identity.md`](../../../docs/workload-identity.md)
 
 ## Operations
 
 ```bash
 # XR status — SYNCED=composition ran, READY=all children healthy
-kubectl get xnosqls foo-nosql
+kubectl get xnosqls foo-events
 
 # Detailed conditions — shows exactly WHY something is not ready
-kubectl get xnosql foo-nosql -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get xnosql foo-events -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
-# Binding secret — confirm all 6 keys are present
-kubectl get secret foo-nosql -n foo \
+# Binding secret — confirm all keys are present (written by XApi, not XNoSql)
+kubectl get secret foo-events -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 
 # Verify table exists in AWS
-aws dynamodb describe-table --table-name foo-nosql --region us-east-1
+aws dynamodb describe-table --table-name foo-events --region us-east-1
 ```

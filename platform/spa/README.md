@@ -3,10 +3,12 @@
 Crossplane composition that hosts an Angular (or any static) SPA on nginx.
 
 ## What it provisions
-- **ConfigMap** — nginx config with SPA routing (`try_files` → `index.html`), security headers, asset caching, and a health check endpoint
+- **ConfigMap** — nginx config with SPA routing (`try_files` → `index.html`), security headers, asset caching, probe path, and extensive scanner/credential-probe blocking rules
 - **Deployment** — nginx container running the pre-built SPA image
 - **Service** — ClusterIP on port 80
-- **Ingress** — Traefik `websecure` entrypoint with cert-manager TLS
+- **Middleware** — Traefik rate limiter: 60 requests/min average, burst of 20, per source IP
+- **Ingress** — Traefik `websecure` entrypoint with cert-manager TLS; rate limit middleware applied
+- **HTTPRoute** — default 30s request timeout
 
 The namespace is owned by the tenant — created by `namespace.yaml` in the tenant directory, not by this composition.
 
@@ -17,18 +19,15 @@ The namespace is owned by the tenant — created by `namespace.yaml` in the tena
 | `namespace` | yes | — | Tenant namespace to deploy into. Must already exist. |
 | `image` | yes | — | Container image (`ghcr.io/owner/app:sha-abc123`). CI builds on merge to main and commits the new tag back to trigger sync. |
 | `host` | yes | — | Ingress hostname (e.g. `myapp.local.lab` or `myapp.example.com`) |
-| `tlsIssuer` | no | `local-lab-ca-issuer` | cert-manager ClusterIssuer. Use `letsencrypt-prod` for public hosts. |
-| `imagePullSecret` | no | — | Registry pull secret name (e.g. `ghcr-pull-secret`). Omit for public images. |
+| `repo` | no | — | GitHub repository URL for this app's source code. |
+| `size` | no | `sm` | Compute tier for the nginx container: `xs=25m/100m CPU, 32Mi/64Mi mem` · `sm=50m/200m CPU, 64Mi/128Mi mem` · `md=100m/500m CPU, 128Mi/256Mi mem` · `lg=250m/1000m CPU, 256Mi/512Mi mem`. |
+| `tlsIssuer` | no | `local-lab-ca-issuer` | cert-manager ClusterIssuer. `local-lab-ca-issuer` for internal `.local.lab` hostnames; `letsencrypt-prod` for public internet hosts. |
 | `contentSecurityPolicy` | no | `default-src 'self'; frame-ancestors 'none'; base-uri 'self';` | CSP header value. Override with app-specific origins (Google Fonts, external APIs, etc.). |
-| `healthCheckPath` | no | `/healthz` | Path nginx serves for readiness probes. Returns HTTP 200. |
 | `replicas` | no | `1` | Number of nginx replicas. Stateless — safe to scale freely. |
-| `cpuRequest` | no | `50m` | CPU request |
-| `cpuLimit` | no | `200m` | CPU limit |
-| `memoryRequest` | no | `32Mi` | Memory request |
-| `memoryLimit` | no | `64Mi` | Memory limit |
-| `apiProxy.enabled` | no | `false` | Proxy `/api/` to an in-cluster service (keeps API off the public internet). |
-| `apiProxy.upstream` | no | — | FQDN of the upstream service (e.g. `my-api.my-tenant.svc.cluster.local`). |
-| `mesh.enabled` | no | `true` | Proxy injection follows the namespace annotation. No parameter needed for the default case. Not configurable per-instance on XSpa. |
+| `apiProxy.enabled` | no | `false` | Proxy `/api/` to an in-cluster service (keeps the API off the public internet). |
+| `apiProxy.upstream` | no | — | FQDN of the upstream service (e.g. `my-api.my-tenant.svc.cluster.local`). nginx proxies `/api/` → `http://<upstream>/`. |
+
+The health check endpoint is always `/healthz` — not configurable. Mesh injection follows the namespace annotation; there is no per-instance mesh parameter on XSpa.
 
 ## Example
 

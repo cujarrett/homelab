@@ -6,38 +6,27 @@ Standalone resource with a lifecycle independent of any one API. Bind to an `XAp
 
 ## What it provisions
 - `backend: private-cloud` — **in-cluster Postgres** (Deployment + PVC on Longhorn) + binding Secret; no cloud resources
-- `backend: public-cloud` — **AWS RDS Postgres** instance + binding Secret (see [Deployability](#deployability) for limitations)
-
-## Deployability
-
-**⚠️ Not for scale** The `public-cloud` backend stores master passwords in Kubernetes Secrets. This is acceptable for homelab because apps use IAM DB auth as the primary method and passwords are fallback-only. For production use at scale:
-
-1. Replace Secret-based storage with AWS Secrets Manager + ExternalSecret
-2. Generate random passwords at composition time (not deterministic)
-3. Enable automatic rotation in Secrets Manager
-4. This prevents cluster admins from reading database credentials
-
-Currently, in-cluster databases are the recommended approach for this platform.
+- `backend: public-cloud` — **AWS RDS Postgres** + IAM Role + RolesAnywhere Profile + binding Secret; IAM DB auth; no password in the binding Secret
 
 ## Binding secret
 
 Secret name equals the XR name; namespace comes from the `namespace` parameter. Mounted at `/bindings/sql/` inside the container.
 
-**For `private-cloud`:** Standard username/password auth.
-
-**For `public-cloud`:** IAM DB auth — no password in the Secret. Apps exchange SVID for STS credentials (via sidecar), then call `rds generate-db-auth-token` with those credentials as the password.
-
-| Key | Value | Used by |
+| Key | Value | Backend |
 |---|---|---|
-| `type` | `postgresql` | servicebinding.io spec |
-| `provider` | `aws` (public-cloud) or `in-cluster` (private-cloud) | app routing |
-| `host` | Database endpoint hostname | all backends |
-| `port` | `5432` | all backends |
-| `database` | Database name | all backends |
-| `username` | Username | private-cloud only; public-cloud uses IAM DB auth |
-| `password` | Password (private-cloud) or omitted (public-cloud) | private-cloud only |
-| `role-arn` | IAM role ARN | public-cloud only; read by sidecar |
-| `profile-arn` | RolesAnywhere profile ARN | public-cloud only; read by sidecar |
+| `type` | `postgresql` | all |
+| `provider` | `in-cluster` or `aws` | all |
+| `host` | Database endpoint hostname | all |
+| `port` | `5432` | all |
+| `database` | Database name (dashes in XR name replaced with underscores) | all |
+| `username` | Database user (`app`) | all |
+| `password` | Database password | `private-cloud` only |
+| `role-arn` | IAM role ARN | `public-cloud` only |
+| `profile-arn` | RolesAnywhere profile ARN | `public-cloud` only |
+
+**`public-cloud` auth flow:** No password is written to the binding Secret. The `aws-spiffe-helper` sidecar exchanges the pod's SVID for short-lived STS credentials. The app then calls `aws rds generate-db-auth-token` using those credentials to produce a short-lived RDS auth token, which it uses as the database password. No static password is stored anywhere accessible to the app.
+
+> **Note: master password exists but is not app-visible.** The RDS instance requires a master password at creation time. The composition generates one deterministically from the XR UID and stores it in `{name}-master-secret`. This is the RDS admin password — the app never sees it. The app authenticates via IAM DB auth only.
 
 ## Parameters
 
@@ -47,7 +36,7 @@ Secret name equals the XR name; namespace comes from the `namespace` parameter. 
 | `backend` | no | `private-cloud` | `public-cloud` provisions AWS RDS Postgres; `private-cloud` provisions in-cluster Postgres. |
 | `region` | no | `us-east-1` | Cloud region for the RDS instance (public-cloud only). |
 | `size` | no | `sm` | T-shirt size for the RDS instance (public-cloud only): `xs=db.t4g.micro`, `sm=db.t4g.small`, `md=db.t4g.medium`, `lg=db.t4g.large` |
-| `dataRetention` | no | `delete` | Longhorn PVC reclaim: `retain` (survives XR deletion) or `delete` (wiped on deletion). |
+| `dataRetention` | no | `delete` | Longhorn PVC reclaim: `retain` (PVC survives XR deletion, data recoverable) or `delete` (PVC wiped on deletion, data unrecoverable). |
 
 ## Example
 
@@ -69,7 +58,7 @@ metadata:
   name: foo-db
 spec:
   parameters:
-    backend: public-cloud   # provisions AWS RDS Postgres (Phase 7 testing only)
+    backend: public-cloud   # provisions AWS RDS Postgres
     region: us-east-1
     size: sm   # xs=db.t4g.micro | sm=db.t4g.small | md=db.t4g.medium | lg=db.t4g.large
     namespace: foo
@@ -86,21 +75,45 @@ spec:
 
 Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 
+## Public-cloud provisioning
+
+The `public-cloud` backend runs a multi-pass chain. The RDS instance and IAM Role are created in parallel on the first pass; subsequent steps wait for their prerequisites to appear in observed state.
+
+```
+Pass 1: RDS Instance created (iamDatabaseAuthenticationEnabled: true; master password from {name}-master-secret)
+        IAM Role created (trust policy: StringLike on spiffe://homelab.local/ns/{namespace}/sa/*)
+Pass 2: RolesAnywhere Profile created (deferred until role ARN is in observed state)
+Pass 3: Binding Secret written (deferred until RDS is ready and both ARNs are known)
+```
+
+**Trust policy scope.** The IAM role trust policy uses a namespace-level wildcard (`sa/*`) rather than locking to a specific service account. This is because `XSql` is created independently of any `XApi` and doesn't know which service account will consume it. Any pod in the same namespace with a valid SVID can assume the role. This is a deliberate homelab trade-off — full per-workload scoping would require the `XApi` to create the role instead.
+
+The inline policy grants only `rds-db:connect` scoped to the `app` database user on any RDS instance in the account:
+
+```json
+"Action": "rds-db:connect",
+"Resource": "arn:aws:rds-db:{region}:{account}:dbuser/*/app"
+```
+
+For the full workload identity design: [`docs/workload-identity.md`](../../../docs/workload-identity.md)
+
+> **`skipFinalSnapshot: true`** The RDS instance is created without a final snapshot. Deleting the XR permanently destroys the data with no recovery path. Intentional for homelab cost management.
+
 ## Operations
 
 ```bash
 # XR status — SYNCED=composition ran, READY=all children healthy
-k get xsqls foo-db
+kubectl get xsqls foo-db
 
 # Detailed conditions — shows exactly WHY something is not ready
-k get xsql foo-db -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get xsql foo-db -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
-# Binding secret — confirm all 7 keys are present
-k get secret foo-db -n foo \
+# Binding secret — confirm all keys are present
+kubectl get secret foo-db -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 
 # Connect to in-cluster Postgres directly
-k exec -it -n foo deploy/foo-db-postgres -- psql -U app -d foo-db
+kubectl exec -it -n foo deploy/foo-db-postgres -- psql -U app -d foo-db
 
 # RDS instance status (public-cloud backend)
 aws rds describe-db-instances --db-instance-identifier foo-db

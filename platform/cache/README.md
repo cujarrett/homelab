@@ -4,37 +4,36 @@ Crossplane platform primitive that provisions a Redis-compatible cache cluster a
 
 Owned by `XApi` — created and deleted with it when `cache.enabled: true`. Not intended for standalone use.
 
-**⚠️ Not for scale** The `public-cloud` backend stores auth tokens in Kubernetes Secrets, which is not suitable for production at scale. Before using ElastiCache in production, replace Secret-based auth with AWS Secrets Manager + ExternalSecret, or use the `private-cloud` backend (in-cluster Redis). Currently, in-cluster caching is the recommended approach for this platform.
-
 ## What it provisions
 - `backend: private-cloud` — **in-cluster Redis** + binding Secret; no cloud resources
-- `backend: public-cloud` — **AWS ElastiCache** + binding Secret (Phase 7 testing; manual binding Secret required due to provider limitations)
-
-## Binding secret
-
-Secret name equals the XR name; namespace comes from the explicit `namespace` parameter passed by the parent `XApi`.
-
-**For `private-cloud`:** All keys are automatically written by the composition — no manual steps required.
-
-**For `public-cloud` (Phase 7):** The composition provisions the cache but does not automatically write the binding Secret due to ElastiCache User/UserGroup API provider limitations. **Manual workaround:** After the ReplicationGroup (and IAM role/profile) are `READY=True`, manually create the binding Secret with the keys below. See [Operations](#operations) for the command.
-
-| Key | Value | Source |
-|---|---|---|
-| `type` | `redis` | literal |
-| `provider` | `aws` | literal |
-| `host` | Cache endpoint hostname | ReplicationGroup connection details |
-| `port` | Cache port (`6379`) | ReplicationGroup connection details |
-| `role-arn` | IAM role ARN | Role resource `.status.atProvider.arn` |
-| `profile-arn` | RolesAnywhere profile ARN | Profile resource `.status.atProvider.arn` |
+- `backend: public-cloud` — **AWS ElastiCache** (IAM auth) + IAM Role + RolesAnywhere Profile + binding Secret; no static credentials
 
 ## Parameters
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
 | `namespace` | yes | — | Namespace to write the binding Secret into. Passed automatically by `XApi`. |
-| `backend` | no | `private-cloud` | `private-cloud` uses in-cluster Redis; `public-cloud` uses AWS ElastiCache (Phase 7 testing only). |
+| `backend` | no | `private-cloud` | `private-cloud` uses in-cluster Redis; `public-cloud` uses AWS ElastiCache with IAM auth. |
 | `region` | no | `us-east-1` | Cloud region for the cache cluster (public-cloud only). |
 | `size` | no | `sm` | T-shirt size for the cache cluster (public-cloud only): `xs=cache.t4g.micro`, `sm=cache.t4g.small`, `md=cache.t4g.medium`, `lg=cache.t4g.medium`. |
+| `consumerServiceAccount` | set by XApi | — | Name of the XApi service account. Used to scope the IAM trust policy to the pod's exact SPIFFE ID. Set automatically by the XApi composition — not a tenant concern. |
+
+## Binding secret
+
+Secret name equals the XR name; namespace comes from the `namespace` parameter.
+
+**For `private-cloud`:** Written automatically by the composition once the Redis Deployment is ready.
+
+**For `public-cloud`:** Written automatically by the composition once the ReplicationGroup is ready and the role ARN and profile ARN are available. No manual steps required.
+
+| Key | Value | Backend |
+|---|---|---|
+| `type` | `redis` | all |
+| `provider` | `in-cluster` or `aws` | all |
+| `host` | Cache endpoint hostname | all |
+| `port` | Cache port (`6379`) | all |
+| `role-arn` | IAM role ARN (scoped to this cache) | `public-cloud` only |
+| `profile-arn` | RolesAnywhere profile ARN | `public-cloud` only |
 
 ## Example
 
@@ -46,8 +45,7 @@ metadata:
 spec:
   parameters:
     namespace: foo
-    environment: cluster   # in-cluster Redis — no AWS resources provisioned
-# Secret written to: foo/foo-cache
+    backend: private-cloud   # in-cluster Redis — no AWS resources provisioned
 ```
 
 ```yaml
@@ -58,11 +56,30 @@ metadata:
 spec:
   parameters:
     namespace: foo
-    environment: cloud  # explicit cloud — provisions AWS ElastiCache
+    backend: public-cloud   # AWS ElastiCache with IAM auth
     region: us-east-1
-    size: small   # small=cache.t4g.micro | medium=cache.t4g.small | large=cache.t4g.medium
-# Secret written to: foo/foo-cache
+    size: sm
 ```
+
+## Public-cloud provisioning
+
+The `public-cloud` backend runs a multi-pass chain. Each step is deferred until the previous step's output is available in observed state.
+
+```
+Pass 1: ElastiCache IAM User + UserGroup created
+Pass 2: ReplicationGroup created (deferred until UserGroup is ready — AWS requirement)
+Pass 3: IAM Role created (trust policy locked to pod's SPIFFE ID; inline policy grants elasticache:Connect to this cluster and user)
+Pass 4: RolesAnywhere Profile created (deferred until role ARN is in observed state)
+Pass 5: Binding Secret written (deferred until ReplicationGroup is ready and both ARNs are known)
+```
+
+The ElastiCache cluster uses IAM authentication with TLS required. The IAM Role's inline policy grants only `elasticache:Connect` scoped to this specific ReplicationGroup and User ARN — no other cluster is reachable. The trust policy is locked to the XApi pod's exact SPIFFE ID:
+
+```json
+"aws:PrincipalTag/x509SAN/URI": "spiffe://homelab.local/ns/{namespace}/sa/{service-account}"
+```
+
+The `aws-spiffe-helper` sidecar exchanges the pod's SVID for short-lived STS credentials every 50 minutes. The app reads `AWS_PROFILE_CACHE` and uses those credentials when connecting to ElastiCache — no password, no static keys. For the full design: [`docs/workload-identity.md`](../../../docs/workload-identity.md)
 
 ## Operations
 
@@ -70,23 +87,12 @@ spec:
 # XR status
 kubectl get xcache foo-cache -n foo
 
-# Binding secret (private-cloud) — confirm all keys are present
+# Binding secret — confirm all keys are present
 kubectl get secret foo-cache -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 
 # ReplicationGroup status (public-cloud)
-kubectl get replicationgroup foo-cache -n foo -o jsonpath='{.status.atProvider | {engine, status, primaryEndpoint}}'
-
-# Manual binding Secret creation (public-cloud) — required after ReplicationGroup is READY
-# Replace ROLE_ARN and PROFILE_ARN with actual values from the Role and Profile resources
-kubectl create secret generic foo-cache -n foo \
-  --from-literal=type=redis \
-  --from-literal=provider=aws \
-  --from-literal=host=<replicationgroup-endpoint> \
-  --from-literal=port=6379 \
-  --from-literal=role-arn=arn:aws:iam::...:role/crossplane/... \
-  --from-literal=profile-arn=arn:aws:rolesanywhere:us-east-1:...:profile/... \
-  --type=servicebinding.io/redis
+kubectl get replicationgroup -n foo -o jsonpath='{.items[*].status.atProvider | {engine, status, primaryEndpoint}}'
 
 # Detailed conditions — shows exactly WHY something is not ready
 kubectl get xcache foo-cache -n foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
