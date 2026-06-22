@@ -33,6 +33,7 @@ LCD display on `ctrl-1`.
 | External access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; zero-trust public ingress, no exposed firewall ports |
 | Remote access | Tailscale | Subnet router on `ctrl-1`; advertises `192.168.10.0/24`; split DNS for `local.lab` |
 | Platform | Crossplane | XRDs + Compositions in `platform/`; see [Platform](platform.md) |
+| Service mesh | Linkerd | Automatic mTLS between all meshed pods; cert-manager handles trust anchor rotation; HTTPRoute policies in XApi/XSpa compositions; see [Service Mesh](service-mesh.md) |
 | Observability | kube-prometheus-stack | Prometheus (365d retention), Grafana, Alertmanager |
 | Logs | Loki + Promtail | Loki SingleBinary, 30d retention; Promtail DaemonSet ships logs |
 | Messaging | NATS JetStream | 3-replica cluster in `nats`; NACK controller manages Stream and Consumer CRDs |
@@ -50,9 +51,11 @@ LCD display on `ctrl-1`.
 | `longhorn-system` | Longhorn | `longhorn.local.lab` |
 | `adguard` | AdGuard Home | Pinned to `ctrl-1` via hostPort 53 |
 | `cloudflare` | cloudflared | Cloudflare Tunnel; public ingress entry point |
-| `cert-manager` | cert-manager | TLS issuers for internal and public hosts |
+| `cert-manager` | cert-manager | TLS issuers for internal and public hosts; manages Linkerd identity cert rotation |
+| `linkerd` | Linkerd | Service mesh control plane; automatic mTLS, HTTPRoute policies |
+| `linkerd-viz` | Linkerd Viz | Observability extension (`linkerd viz` CLI dashboard) |
 | `crossplane-system` | Crossplane | Platform compositions, XRDs, AWS provider |
-| `nats` | NATS + NACK | JetStream cluster (3 replicas) |
+| `nats` | NATS + NACK | JetStream cluster (3 replicas); port 4222 marked opaque for Linkerd |
 
 Application namespaces (`mattjarrett-com`, `my-vinyl`, etc.) are owned by tenant
 `namespace.yaml` files, not by the cluster bootstrap.
@@ -62,15 +65,16 @@ Application namespaces (`mattjarrett-com`, `my-vinyl`, etc.) are owned by tenant
 ## Networking
 
 External traffic enters through Cloudflare Tunnel to Traefik on `work-1`. Traefik
-terminates TLS and routes to in-cluster Services.
+terminates TLS and routes to in-cluster Services. Traefik is meshed; all pod-to-pod traffic uses mTLS via Linkerd.
 
 ```
-Internet → Cloudflare → cloudflared (cloudflare ns)
-         → Traefik (kube-system, hostPort 443) → Service → Pod
+Internet → Cloudflare → cloudflared (cloudflare ns, unmeshed)
+         → Traefik (kube-system, meshed) ──mTLS→ Pod (meshed)
+                                          (via linkerd-proxy sidecars)
 ```
 
 Internal traffic (`*.local.lab`) routes via AdGuard's wildcard DNS entry → Traefik on
-`192.168.10.100`.
+`192.168.10.100`. Mesh excludes: `longhorn-system`, `cert-manager`, `cloudflare` namespace.
 
 Off-network: Tailscale subnet router on `ctrl-1` exposes `192.168.10.0/24`. Split DNS in
 the Tailscale admin console resolves `*.local.lab` via AdGuard from any network.
