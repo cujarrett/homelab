@@ -14,9 +14,9 @@ The goal: every pod gets its own short-lived AWS identity, scoped to exactly the
 
 Three systems work together.
 
-**SPIRE** is the certificate authority for the cluster. It knows which pod is running where by checking with the kubelet. When a pod has a registration entry, SPIRE issues it a short-lived X.509 certificate whose URI SAN is the pod's SPIFFE ID — `spiffe://homelab.local/ns/{namespace}/sa/{service-account}`. That URI is the identity.
+**[SPIRE](https://spiffe.io/docs/latest/spire-about/spire-concepts/)** is the certificate authority for the cluster. It knows which pod is running where by checking with the kubelet. When a pod has a registration entry, SPIRE issues it a short-lived X.509 certificate whose URI SAN is the pod's SPIFFE ID — `spiffe://homelab.local/ns/{namespace}/sa/{service-account}`. That URI is the identity.
 
-**IAM Roles Anywhere** is AWS's bridge between certificate-based identity and IAM. You register a trust anchor (the SPIRE CA cert). AWS validates the cert chain and reads the URI SAN as a principal tag. IAM trust policies can then condition on that tag — locking a role to one exact pod identity.
+**[IAM Roles Anywhere](https://aws.amazon.com/iam/roles-anywhere/)** is AWS's bridge between certificate-based identity and IAM. You register a trust anchor (the SPIRE CA cert). AWS validates the cert chain and reads the URI SAN as a principal tag. IAM trust policies can then condition on that tag — locking a role to one exact pod identity.
 
 **[`aws-spiffe-helper`](https://github.com/cujarrett/aws-spiffe-helper)** (the custom sidecar) is the glue between SPIRE and Roles Anywhere. It fetches the pod's single SVID from the SPIRE agent via the Workload API socket, then exchanges that one SVID for multiple AWS roles by calling `aws_signing_helper` (an AWS-provided binary) once per binding: each call uses a different role ARN and profile ARN. It writes the resulting STS credentials as named profiles in a shared credentials file. Every 50 minutes it repeats the cycle. The app reads credentials from that file; it never touches a certificate or calls AWS for credentials itself.
 
