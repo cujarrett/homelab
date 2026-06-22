@@ -44,9 +44,11 @@ spec:
                     index index.html;
 
                     # Block known vulnerability scanners — return 403 and close cheaply.
-                    # TLM-Audit-Scanner: bulk credential/config scanner.
-                    # python-requests: generic scraper/scanner (no legit browser sends this UA raw).
-                    if ($http_user_agent ~* "TLM-Audit-Scanner|python-requests/") {
+                    # curl: raw curl without browser UA (legitimate tools usually identify themselves)
+                    # python-requests: generic scraper/scanner (no legit browser sends this UA raw)
+                    # TLM-Audit-Scanner: bulk credential/config scanner
+                    # nmap, nikto, sqlmap, nessus, qualys, burp, zaproxy: common security scanners
+                    if ($http_user_agent ~* "^curl/|python-requests/|TLM-Audit-Scanner|nmap|nikto|sqlmap|nessus|qualys|burp|zaproxy|masscan|wpscan|nuclei") {
                         return 403;
                     }
 
@@ -405,9 +407,9 @@ spec:
                   targetPort: 80
             ---
             # --- Rate limit Middleware ---
-            # Caps requests per source IP to 120/min with a burst of 40.
-            # Stops credential-scanning bots (~8 req/s) while being transparent
-            # to real users (a full SPA page load is ~10-20 requests).
+            # Caps requests per source IP to 60/min with a burst of 20.
+            # Blocks credential-scanning bots (~8 req/s) while being transparent
+            # to real users (a full SPA page load is ~10-20 requests over 10-30s).
             apiVersion: traefik.io/v1alpha1
             kind: Middleware
             metadata:
@@ -418,8 +420,8 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               rateLimit:
-                average: 120
-                burst: 40
+                average: 60
+                burst: 20
                 period: 1m
             ---
             # --- Ingress ---
