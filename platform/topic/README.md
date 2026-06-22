@@ -11,12 +11,12 @@ The `XSubscription` type (see [`platform/subscription/`](../subscription/)) depl
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `streamName` | yes | — | Stream name (e.g. `FOO-TOPIC`). No spaces, dots, or wildcards. |
+| `streamName` | yes | — | Stream name (e.g. `FOO-TOPIC`). No spaces, dots, or wildcards. Uppercase is conventional. |
 | `subjects` | yes | — | List of subjects this stream captures. `*` matches one token, `>` matches all remaining tokens. e.g. `foo.events.*` matches `foo.events.created` but not `foo.events.user.created`; `foo.events.>` matches both. |
-| `retention` | no | `limits` | `limits` — remove oldest messages when size/age limits hit (~Kinesis retention). `interest` — remove when all consumers have read (~SNS fan-out). `workqueue` — remove when any one consumer acknowledges (~SQS). |
-| `maxAge` | no | `720h` | Go duration string. `720h` = 30 days. Empty = unlimited. |
-| `maxBytes` | no | `-1` | Max stream size in bytes. `-1` = unlimited. |
-| `replicas` | no | `3` | Number of NATS nodes that store each message. Must be ≤ NATS cluster size. |
+| `retention` | no | `limits` | `limits` — remove oldest messages when size/age limits hit (~Kafka log retention). `interest` — remove when all consumers have read (~SNS fan-out). `workqueue` — remove when any one consumer acknowledges (~SQS). |
+| `maxAge` | no | `720h` | Go duration string. `720h` = 30 days. Empty string = unlimited. |
+
+Replicas and max bytes are not configurable — the composition hardcodes 3 replicas (Raft across the NATS cluster) and unlimited max bytes.
 
 ## Example instance
 
@@ -31,8 +31,7 @@ spec:
     subjects:
       - "foo.events.>"
     retention: limits
-    maxAge: "720h"        # 30 days
-    replicas: 3
+    maxAge: "720h"   # 30 days
 ```
 
 Instance files live in [`workspaces/`](../../homelab-workspaces/).
@@ -47,8 +46,6 @@ Instance files live in [`workspaces/`](../../homelab-workspaces/).
 | `retention: interest` | Interest retention | — | SNS (fan-out, remove when all consumers read) |
 | `retention: workqueue` | Workqueue retention | Compacted topic | SQS (remove on acknowledgement) |
 | `maxAge` | `max_age` (Go duration) | `log.retention.ms` | Kinesis retention hours |
-| `maxBytes` | `max_bytes` | `log.retention.bytes` | — |
-| `replicas` | Stream replicas (Raft) | `replication.factor` | Kinesis (managed) |
 
 ## Operations
 

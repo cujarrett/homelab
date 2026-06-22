@@ -3,11 +3,16 @@
 Crossplane composition that deploys an API server (Go, Node, GraphQL, etc.) with optional bindings to platform data resources.
 
 ## What it provisions
-- **Deployment** — runs the API server with conditional init containers that block startup until bindings are ready
-- **Service** — ClusterIP on port 80 → container port (default 8080)
+- **Deployment** — runs the API server with init containers that block startup until each binding is ready
+- **Service** — ClusterIP on port 80 → container port (default 8080); separate metrics port (default 9090)
+- **ServiceAccount** — dedicated per-instance SA; pods do not use the namespace default SA
+- **Role + RoleBinding** — least-privilege RBAC: `get` only on the exact Secrets this instance mounts
+- **ServiceMonitor** — Prometheus scrape target on the metrics port
+- **Ingress** *(optional)* — Traefik `websecure` with cert-manager TLS; only created when `host` is set
+- **HTTPRoute** — default 30s request timeout
 - **XCache** *(optional)* — short-lived cache cluster owned by this XApi; created and deleted alongside it
 
-`XObjectStorage`, `XSql`, and `XNoSql` are created independently and bound via refs. They outlive any one XApi.
+`XObjectStorage`, `XSql`, and `XNoSql` are created independently and bound via refs. They outlive any one XApi. Their IAM Roles, RolesAnywhere Profiles, and binding Secrets are created by this composition when refs are declared.
 
 The namespace is owned by the tenant — created by `namespace.yaml` in the tenant directory, not by this composition.
 
@@ -17,20 +22,28 @@ The namespace is owned by the tenant — created by `namespace.yaml` in the tena
 |---|---|---|---|
 | `namespace` | yes | — | Tenant namespace to deploy into. Must already exist. |
 | `image` | yes | — | Container image (`ghcr.io/owner/api:sha-abc123`). CI builds on merge to main and commits the new tag back to trigger sync. |
+| `repo` | no | — | GitHub repository URL for this app's source code. |
 | `port` | no | `8080` | Port the container listens on. Service always exposes port 80 → this targetPort. |
+| `metricsPort` | no | `9090` | Port the container exposes Prometheus metrics on. Set to match `port` if the app serves metrics and traffic on the same port. |
+| `scrapeInterval` | no | `60s` | Prometheus scrape interval. Reduce for apps that emit short-lived state changes. |
+| `replicas` | no | `1` | Number of API replicas. |
+| `size` | no | `sm` | Compute tier: `xs=25m/100m CPU, 32Mi/64Mi mem` · `sm=50m/200m CPU, 64Mi/128Mi mem` · `md=100m/500m CPU, 128Mi/256Mi mem` · `lg=250m/1000m CPU, 256Mi/512Mi mem`. |
 | `host` | no | — | Hostname for the Ingress. If omitted, no Ingress is created. |
-| `tlsIssuer` | no | `local-lab-ca-issuer` | cert-manager ClusterIssuer for TLS. |
-| `cache.enabled` | no | `false` | Provision a cache cluster owned by this XApi and inject credentials at `/bindings/cache/`. |
-| `cache.environment` | no | `cluster` | Cache backend: `cluster`=in-cluster Redis, `cloud`=AWS ElastiCache. |
-| `objectStorageRef.name` | no | — | Name of an existing `XObjectStorage` instance to bind. Mounts its Secret at `/bindings/object-storage/`. |
-| `sqlRef.name` | no | — | Name of an existing `XSql` instance to bind. Mounts its Secret at `/bindings/sql/`. |
-| `nosqlRef.name` | no | — | Name of an existing `XNoSql` instance to bind. Mounts its Secret at `/bindings/nosql/`. |
-| `secretRef.name` | no | — | Name of a pre-existing Secret to inject via `envFrom`. |
-| `topicRef.name` | no | — | Name of an `XTopic` this API publishes to. Platform injects `NATS_URL` and `NATS_STREAM` env vars. |
-| `subscriptionRef.name` | no | — | Name of an `XSubscription` this API consumes from. Platform injects `NATS_CONSUMER` env var. |
-| `mesh.enabled` | no | `true` | Set to `false` to opt this instance out of proxy injection. Namespace-level injection must be enabled for the mesh to work — this only opts out a single instance. |
+| `tlsIssuer` | no | `local-lab-ca-issuer` | cert-manager ClusterIssuer. `local-lab-ca-issuer` for internal `.local.lab` hostnames; `letsencrypt-prod` for public internet hosts. |
+| `readinessCheckPath` | no | `/healthz` | HTTP path the readiness probe hits. Set to `/readyz` for apps that gate readiness on external dependencies. |
+| `cache.enabled` | no | `false` | Provision a cache cluster owned by this XApi. |
+| `cache.backend` | no | `private-cloud` | `private-cloud`=in-cluster Redis, `public-cloud`=AWS ElastiCache. |
+| `objectStorageRefs` | no | — | Array of references to existing `XObjectStorage` instances. Each creates an IAM Role, RolesAnywhere Profile, and binding Secret. |
+| `sqlRef.name` | no | — | Name of an existing `XSql` instance to bind. |
+| `sqlRef.backend` | no | `private-cloud` | Must match the `XSql` instance's backend. When `public-cloud`, the sidecar exchanges the SVID for STS credentials for RDS IAM DB auth. |
+| `nosqlRef.name` | no | — | Name of an existing `XNoSql` instance to bind. Creates an IAM Role, RolesAnywhere Profile, and binding Secret. |
+| `secretRef.name` | no | — | Name of a pre-existing Secret to inject into the container via `envFrom`. |
+| `topicRef.name` | no | — | Name of an `XTopic` this API publishes to. Injects `NATS_URL` and `NATS_STREAM` env vars. |
+| `topicRef.streamName` | no | — | NATS stream name from the XTopic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the XTopic's streamName differs from its metadata.name. |
+| `subscriptionRef.name` | no | — | Name of an `XSubscription` this API consumes from. Injects `NATS_URL` and `NATS_CONSUMER` env vars. |
+| `mesh.enabled` | no | `true` | Set to `false` to opt this instance out of proxy injection. Namespace-level injection must be enabled for the mesh to work. |
 
-## Example app
+## Example
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
@@ -43,46 +56,60 @@ spec:
     image: ghcr.io/owner/foo:main
     port: 8080
     host: foo.local.lab
-    objectStorageRef:
-      name: foo-assets
+    objectStorageRefs:
+      - name: foo-assets
     sqlRef:
       name: foo-db
+      backend: private-cloud
     nosqlRef:
       name: foo-nosql
-    # Cache is short-lived — owned and managed by this XApi
     cache:
       enabled: true
-      environment: cluster   # cluster=in-cluster Redis, cloud=AWS ElastiCache
+      backend: private-cloud   # private-cloud=in-cluster Redis, public-cloud=AWS ElastiCache
 ```
 
 Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 
 ## Binding secrets
 
-The platform mounts servicebinding.io-compliant Secrets at `$SERVICE_BINDING_ROOT/<binding>/`. Each file in that directory is one key. The app reads file contents at runtime — no env vars required.
+The platform mounts servicebinding.io-compliant Secrets at `/bindings/<binding>/`. Each file in that directory is one key. The app reads file contents at runtime.
 
-### `/bindings/object-storage/`
+### `/bindings/object-storage/` (first ref) · `/bindings/object-storage-1/` (second) · etc.
+
+Multiple `objectStorageRefs` each get their own mount. The first ref mounts at `/bindings/object-storage/`; subsequent refs mount at `/bindings/object-storage-1/`, `/bindings/object-storage-2/`, and so on.
 
 | File | Value |
 |---|---|
 | `type` | `s3` |
 | `provider` | `aws` |
-| `bucket` | Bucket name |
-| `region` | Region string |
-| `username` | Access key ID |
-| `password` | Secret access key |
+| `bucket` | Bucket name (`platform-{namespace}-{ref-name}`) |
+| `region` | `us-east-1` |
+| `role-arn` | IAM role ARN (scoped to this bucket, this pod's SPIFFE ID) |
+| `profile-arn` | RolesAnywhere profile ARN |
+
+The composition injects one `AWS_PROFILE_*` env var per object storage ref into the app container, named after the ref: `AWS_PROFILE_{REF_NAME_UPPER_SNAKE_CASE}`. For example, a ref named `foo-assets` gets `AWS_PROFILE_FOO_ASSETS=object-storage`.
+
+```go
+cfg, _ := config.LoadDefaultConfig(ctx,
+    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_FOO_ASSETS")))
+s3Client := s3.NewFromConfig(cfg)
+```
 
 ### `/bindings/sql/`
 
-| File | Value |
-|---|---|
-| `type` | `postgresql` |
-| `provider` | `aws` or `in-cluster` |
-| `host` | Postgres hostname |
-| `port` | `5432` |
-| `database` | Database name |
-| `username` | Database user |
-| `password` | Database password |
+| File | Value | Backend |
+|---|---|---|
+| `type` | `postgresql` | all |
+| `provider` | `in-cluster` or `aws` | all |
+| `host` | Postgres hostname | all |
+| `port` | `5432` | all |
+| `database` | Database name (dashes in XR name replaced with underscores) | all |
+| `username` | Database user (`app`) | all |
+| `password` | Database password | `private-cloud` only |
+| `role-arn` | IAM role ARN | `public-cloud` only |
+| `profile-arn` | RolesAnywhere profile ARN | `public-cloud` only |
+
+For `public-cloud`, the sidecar writes a `sql` named profile to the credentials file. The app uses that profile's STS credentials to call `rds:GenerateDBAuthToken` and uses the resulting short-lived token as the database password.
 
 ### `/bindings/nosql/`
 
@@ -91,18 +118,43 @@ The platform mounts servicebinding.io-compliant Secrets at `$SERVICE_BINDING_ROO
 | `type` | `dynamodb` |
 | `provider` | `aws` |
 | `table-name` | DynamoDB table name |
-| `region` | AWS region |
-| `access-key-id` | IAM access key ID |
-| `secret-access-key` | IAM secret access key |
+| `region` | `us-east-1` |
+| `role-arn` | IAM role ARN (scoped to this table, this pod's SPIFFE ID) |
+| `profile-arn` | RolesAnywhere profile ARN |
+
+The composition injects `AWS_PROFILE_NOSQL=nosql` into the app container.
+
+```go
+cfg, _ := config.LoadDefaultConfig(ctx,
+    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_NOSQL")))
+ddbClient := dynamodb.NewFromConfig(cfg)
+```
 
 ### `/bindings/cache/`
 
-| File | Value |
-|---|---|
-| `type` | `redis` |
-| `provider` | `aws` or `in-cluster` |
-| `host` | Cache endpoint hostname |
-| `port` | `6379` |
+| File | Value | Backend |
+|---|---|---|
+| `type` | `redis` | all |
+| `provider` | `in-cluster` or `aws` | all |
+| `host` | Cache endpoint hostname | all |
+| `port` | `6379` | all |
+| `role-arn` | IAM role ARN | `public-cloud` only |
+| `profile-arn` | RolesAnywhere profile ARN | `public-cloud` only |
+
+For `public-cloud`, the sidecar writes a `cache` named profile to the credentials file. The app uses those credentials to authenticate to ElastiCache via IAM auth.
+
+## AWS credential injection
+
+When any AWS cloud binding is declared, the composition adds:
+- An `aws-credentials-sidecar` container running [`aws-spiffe-helper`](https://github.com/cujarrett/aws-spiffe-helper). It fetches the pod's SVID from the SPIFFE CSI volume and exchanges it for STS credentials (once per binding, every 50 minutes).
+- A `spiffe-bundle` CSI volume (read-only SPIRE agent socket).
+- An `aws-credentials` emptyDir volume shared between the sidecar and the app container, mounted at `/aws-credentials/credentials`.
+- `AWS_SHARED_CREDENTIALS_FILE=/aws-credentials/credentials` env var in the app container.
+- `AWS_PROFILE_*` env vars for object storage and nosql bindings (see individual binding sections above).
+
+The `TRUST_ANCHOR_ARN` is injected into the sidecar from the `aws-platform-config` EnvironmentConfig — it never appears in user-visible binding Secrets.
+
+For the full workload identity design: [`docs/workload-identity.md`](../../../docs/workload-identity.md)
 
 ## Operations
 
@@ -113,7 +165,7 @@ kubectl get xapi foo
 # Detailed conditions — shows exactly WHY something is not ready
 kubectl get xapi foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
-# Pod status — init container blocks startup until binding secret is ready
+# Pod status — init containers block startup until each binding Secret is ready
 kubectl get pods -n foo
 
 # Binding secret — confirm all keys are present
@@ -121,5 +173,5 @@ kubectl get secret foo-assets -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 
 # Hit the Ingress
-curl https://foo.local.lab/health
+curl https://foo.local.lab/healthz
 ```

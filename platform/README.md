@@ -64,7 +64,8 @@ Credentials reach the pod as files under `/bindings/`, following the [servicebin
 
 ```
 /bindings/
-  sql/              type  host  port  database  username  password
+  sql/              type  host  port  database  username  password  (private-cloud)
+  sql/              type  host  port  database  username  role-arn  profile-arn  (public-cloud)
   cache/            type  host  port
   nosql/            type  table-name  region  role-arn  profile-arn
   object-storage/   type  bucket  region  role-arn  profile-arn
@@ -92,7 +93,7 @@ spec:
 
 ## AWS credential binding
 
-AWS-backed offerings (`XObjectStorage`, `XNoSql`, `XCache` with `backend: public-cloud`) use workload identity instead of static keys. The binding Secret contains ARNs and resource metadata — no access key, no secret.
+AWS-backed offerings (`XObjectStorage`, `XNoSql`, `XSql` with `backend: public-cloud`, `XCache` with `backend: public-cloud`) use workload identity instead of static keys. The binding Secret contains ARNs and resource metadata — no access key, no secret.
 
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 45, 'rankSpacing': 60}}}%%
@@ -117,11 +118,11 @@ flowchart LR
 
 Each binding gets its own IAM Role. The trust policy is locked to the pod's exact SPIFFE ID — wrong namespace, wrong service account, different cluster: rejected. If a pod is deleted, the role can't be assumed by anything.
 
-The app uses a named AWS profile injected by the composition:
+The app uses named AWS profiles injected by the composition. Profile env var names are derived from the ref name: `AWS_PROFILE_{REF_NAME_UPPER_SNAKE_CASE}` for object storage refs, `AWS_PROFILE_NOSQL` for nosql.
 
 ```go
 cfg, _ := config.LoadDefaultConfig(ctx,
-    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_OBJECT_STORAGE")))
+    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_FOO_ASSETS")))
 s3 := s3.NewFromConfig(cfg)
 ```
 

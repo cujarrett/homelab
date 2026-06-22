@@ -13,10 +13,12 @@ This is infrastructure only — it does not deploy any compute. Use an XApi inst
 | Field | Required | Default | Description |
 |---|---|---|---|
 | `topicRef.name` | yes | — | `metadata.name` of the XTopic to consume from. |
+| `topicRef.streamName` | no | — | NATS stream name from the XTopic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the XTopic's streamName differs from its metadata.name. |
 | `filterSubject` | no | `>` | Subject filter. `*` = one token, `>` = one or more. e.g. `foo.event.snapshot` |
 | `deliverPolicy` | no | `all` | `all` = replay from start. `new` = only new messages. `last` = most recent only. `lastPerSubject` = most recent per subject. |
 | `ackPolicy` | no | `explicit` | `explicit` = app must ack per message (at-least-once). `all` = cumulative ack. `none` = fire-and-forget. |
-| `ackWait` | no | `30s` | Go duration. Unacked messages are redelivered after this timeout. |
+
+Ack wait timeout is hardcoded at 30 seconds — unacked messages are redelivered after this interval and is not configurable per subscription.
 
 ## Example
 
@@ -55,4 +57,3 @@ kubectl get xsubscription foo-consumer
 # Check pod (deployed by the paired XApi)
 kubectl get pods -n foo
 ```
-
