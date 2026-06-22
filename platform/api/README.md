@@ -8,7 +8,7 @@ Crossplane composition that deploys an API server (Go, Node, GraphQL, etc.) with
 - **ServiceAccount** — dedicated per-instance SA; pods do not use the namespace default SA
 - **Role + RoleBinding** — least-privilege RBAC: `get` only on the exact Secrets this instance mounts
 - **ServiceMonitor** — Prometheus scrape target on the metrics port
-- **Ingress** *(optional)* — Traefik `websecure` with cert-manager TLS; only created when `host` is set
+- **Ingress** *(optional)* — Traefik `websecure` with TLS; only created when `host` is set. cert-manager issues a certificate via `tlsIssuer` unless `tlsSecret` points to a pre-existing Secret, in which case issuance is skipped.
 - **HTTPRoute** — default 30s request timeout
 - **XCache** *(optional)* — short-lived cache cluster owned by this XApi; created and deleted alongside it
 
@@ -29,7 +29,8 @@ The namespace is owned by the tenant — created by `namespace.yaml` in the tena
 | `replicas` | no | `1` | Number of API replicas. |
 | `size` | no | `sm` | Compute tier: `xs=25m/100m CPU, 32Mi/64Mi mem` · `sm=50m/200m CPU, 64Mi/128Mi mem` · `md=100m/500m CPU, 128Mi/256Mi mem` · `lg=250m/1000m CPU, 256Mi/512Mi mem`. |
 | `host` | no | — | Hostname for the Ingress. If omitted, no Ingress is created. |
-| `tlsIssuer` | no | `local-lab-ca-issuer` | cert-manager ClusterIssuer. `local-lab-ca-issuer` for internal `.local.lab` hostnames; `letsencrypt-prod` for public internet hosts. |
+| `tlsIssuer` | no | `local-lab-ca-issuer` | cert-manager ClusterIssuer. `local-lab-ca-issuer` for internal `.local.lab` hostnames; `letsencrypt-prod` for public internet hosts. Ignored when `tlsSecret` is set. |
+| `tlsSecret` | no | — | Name of a pre-existing TLS Secret in the app namespace. When set, the Ingress references it directly and cert-manager issuance is skipped. Used by sandbox slots to reuse long-lived demo certs. |
 | `readinessCheckPath` | no | `/healthz` | HTTP path the readiness probe hits. Set to `/readyz` for apps that gate readiness on external dependencies. |
 | `cache.enabled` | no | `false` | Provision a cache cluster owned by this XApi. |
 | `cache.backend` | no | `private-cloud` | `private-cloud`=in-cluster Redis, `public-cloud`=AWS ElastiCache. |

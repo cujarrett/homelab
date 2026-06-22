@@ -45,6 +45,9 @@ spec:
                       enum:
                         - local-lab-ca-issuer
                         - letsencrypt-prod
+                    tlsSecret:
+                      type: string
+                      description: "Name of a pre-existing TLS Secret in the app namespace. When set, the Ingress references it directly and cert-manager issuance is skipped."
                     contentSecurityPolicy:
                       type: string
                       default: "default-src 'self'; frame-ancestors 'none'; base-uri 'self';"

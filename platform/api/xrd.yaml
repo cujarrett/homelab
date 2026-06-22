@@ -98,6 +98,9 @@ spec:
                         - local-lab-ca-issuer
                         - letsencrypt-prod
                       description: "Certificate issuer. Internal for services only on the homelab network. External for services exposed via Cloudflare Tunnel to the public internet."
+                    tlsSecret:
+                      type: string
+                      description: "Name of a pre-existing TLS Secret in the app namespace. When set, the Ingress references it directly and cert-manager issuance is skipped."
                     secretRef:
                       type: object
                       description: "Optional reference to a pre-existing Secret in the app namespace to inject into the API container via envFrom."

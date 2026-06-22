@@ -426,6 +426,7 @@ spec:
             ---
             # --- Ingress ---
             # tlsIssuer: local-lab-ca-issuer for .local.lab; letsencrypt-prod for public hosts
+            # tlsSecret: skip issuance and reference a pre-existing secret (e.g. demo slot certs)
             apiVersion: networking.k8s.io/v1
             kind: Ingress
             metadata:
@@ -437,13 +438,15 @@ spec:
                 traefik.ingress.kubernetes.io/router.entrypoints: websecure
                 traefik.ingress.kubernetes.io/router.tls: "true"
                 traefik.ingress.kubernetes.io/router.middlewares: "{{ $namespace }}-{{ $name }}-ratelimit@kubernetescrd"
+                {{- if not $params.tlsSecret }}
                 cert-manager.io/cluster-issuer: {{ $params.tlsIssuer | default "local-lab-ca-issuer" }}
+                {{- end }}
             spec:
               ingressClassName: traefik
               tls:
                 - hosts:
                     - {{ $params.host }}
-                  secretName: {{ $name }}-tls
+                  secretName: {{ if $params.tlsSecret }}{{ $params.tlsSecret }}{{ else }}{{ $name }}-tls{{ end }}
               rules:
                 - host: {{ $params.host }}
                   http:
