@@ -139,5 +139,7 @@ Resources that support multiple backends use the same `XApi` binding regardless 
 |---|---|---|
 | `XSql` | In-cluster Postgres on Longhorn | AWS RDS Postgres |
 | `XCache` | In-cluster Redis | AWS ElastiCache |
-| `XNoSql` | — | DynamoDB |
-| `XObjectStorage` | — | S3 |
+| `XNoSql` | (In-cluster ExtendDB Planned) | AWS DynamoDB |
+| `XObjectStorage` | (In-cluster MinIO Planned) | AWS S3 |
+| `XTopic` | In-cluster NATS JetStream | - |
+| `XSubscription` | In-cluster NATS JetStream | - |
