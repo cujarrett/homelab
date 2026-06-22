@@ -55,6 +55,7 @@ spec:
             {{- end }}
             {{- $host := $xr.spec.parameters.host | default "" }}
             {{- $tlsIssuer := $xr.spec.parameters.tlsIssuer | default "local-lab-ca-issuer" }}
+            {{- $tlsSecret := $xr.spec.parameters.tlsSecret | default "" }}
             {{- $metricsPort := $xr.spec.parameters.metricsPort | default 9090 }}
             {{- $scrapeInterval := $xr.spec.parameters.scrapeInterval | default "60s" }}
             {{- $replicas := $xr.spec.parameters.replicas | default 1 }}
@@ -651,6 +652,7 @@ spec:
             {{- if $host }}
             ---
             # tlsIssuer: local-lab-ca-issuer for .local.lab; letsencrypt-prod for public hosts
+            # tlsSecret: skip issuance and reference a pre-existing secret (e.g. demo slot certs)
             apiVersion: networking.k8s.io/v1
             kind: Ingress
             metadata:
@@ -659,7 +661,9 @@ spec:
               annotations:
                 traefik.ingress.kubernetes.io/router.entrypoints: websecure
                 traefik.ingress.kubernetes.io/router.tls: "true"
+                {{- if not $tlsSecret }}
                 cert-manager.io/cluster-issuer: {{ $tlsIssuer }}
+                {{- end }}
                 gotemplating.fn.crossplane.io/composition-resource-name: ingress
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
@@ -667,7 +671,7 @@ spec:
               tls:
                 - hosts:
                     - {{ $host }}
-                  secretName: {{ $name }}-tls
+                  secretName: {{ if $tlsSecret }}{{ $tlsSecret }}{{ else }}{{ $name }}-tls{{ end }}
               rules:
                 - host: {{ $host }}
                   http:
