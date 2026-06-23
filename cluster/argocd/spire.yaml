@@ -24,6 +24,10 @@ spec:
         spire-server:
           replicaCount: 1
           caTTL: 8760h
+          caSubject:
+            country: US
+            organization: Homelab
+            commonName: homelab-spire
           affinity:
             nodeAffinity:
               preferredDuringSchedulingIgnoredDuringExecution:
