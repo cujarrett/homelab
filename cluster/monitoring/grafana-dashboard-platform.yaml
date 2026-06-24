@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-platform
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  platform.json: |-
+    {
+      "title": "Platform",
+      "uid": "homelab-platform",
+      "editable": true,
+      "graphTooltip": 1,
+      "time": { "from": "now-6h", "to": "now" },
+      "timepicker": {},
+      "refresh": "1m",
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "id": 1,
+          "type": "table",
+          "title": "XR Ready Status",
+          "description": "Current ready state for all platform composite resources.",
+          "gridPos": { "x": 0, "y": 0, "w": 24, "h": 10 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "footer": { "show": false } },
+          "fieldConfig": {
+            "defaults": { "custom": { "align": "left" } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "ready" }, "properties": [
+                { "id": "custom.width", "value": 110 },
+                { "id": "mappings", "value": [
+                  { "type": "value", "options": {
+                    "1": { "text": "Ready",     "color": "green", "index": 0 },
+                    "0": { "text": "Not Ready", "color": "red",   "index": 1 }
+                  } }
+                ] },
+                { "id": "custom.displayMode", "value": "color-text" }
+              ] },
+              { "matcher": { "id": "byName", "options": "Time" },     "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "__name__" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "job" },      "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "instance" }, "properties": [ { "id": "custom.hidden", "value": true } ] }
+            ]
+          },
+          "targets": [
+            { "expr": "platform_xr_ready", "instant": true, "legendFormat": "", "format": "table", "refId": "A" }
+          ],
+          "transformations": [
+            { "id": "filterFieldsByName", "options": { "include": { "names": ["kind", "name", "namespace", "backend", "Value"] } } },
+            { "id": "organize", "options": { "renameByName": { "Value": "ready" } } },
+            { "id": "sortBy", "options": { "fields": [{ "displayName": "kind", "desc": false }] } }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "table",
+          "title": "XApi Bindings",
+          "description": "Active bindings between XApi instances and their platform dependencies (sql, nosql, topic, subscription, object-storage).",
+          "gridPos": { "x": 0, "y": 10, "w": 24, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "footer": { "show": false } },
+          "fieldConfig": {
+            "defaults": { "custom": { "align": "left" } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "Value" },        "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "Time" },         "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "__name__" },     "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "job" },          "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "instance" },     "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "consumer_kind" }, "properties": [ { "id": "custom.hidden", "value": true } ] }
+            ]
+          },
+          "targets": [
+            { "expr": "platform_xr_binding", "instant": true, "legendFormat": "", "format": "table", "refId": "A" }
+          ],
+          "transformations": [
+            { "id": "filterFieldsByName", "options": { "include": { "names": ["consumer_name", "binding_type", "provider_name"] } } },
+            { "id": "sortBy", "options": { "fields": [{ "displayName": "consumer_name", "desc": false }] } }
+          ]
+        }
+      ]
+    }
