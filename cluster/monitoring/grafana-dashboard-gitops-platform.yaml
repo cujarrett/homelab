@@ -160,23 +160,17 @@ data:
           },
           "targets": [
             {
-              "expr": "{namespace=\"argocd\", container=\"application-controller\"} |= \"reason=OperationCompleted\" | regexp \"msg=\\\"[^\\\"]*operation to (?P<revision>[^ \\\"]+) (?P<status>succeeded|failed|error)\\\".*application=(?P<what>[^ ]+)\"",
+              "expr": "{namespace=\"argocd\", container=\"application-controller\"} |= \"reason=OperationCompleted\" | regexp \"msg=\\\"[^\\\"]*operation to (?P<revision>[^ \\\"]+) (?P<status>succeeded|failed|error)\\\".*application=(?P<what>[^ ]+)\" | line_format \"what={{.what}} status={{.status}} revision={{.revision}}\"",
               "queryType": "range",
               "refId": "A",
               "legendFormat": ""
             }
           ],
           "transformations": [
-            { "id": "labelsToFields", "options": { "mode": "columns" } },
+            { "id": "extractFields", "options": { "source": "Line", "format": "kvp" } },
             { "id": "organize", "options": {
               "renameByName": { "Time": "when" },
-              "indexByName": { "Time": 0, "what": 1, "status": 2, "revision": 3 },
-              "excludeByName": {
-                "labels": true, "Line": true, "id": true, "tsNs": true, "labelTypes": true,
-                "app": true, "component": true, "container": true, "detected_level": true,
-                "filename": true, "instance": true, "job": true, "namespace": true,
-                "node_name": true, "pod": true, "service_name": true, "stream": true
-              }
+              "excludeByName": { "Line": true, "labels": true, "id": true, "tsNs": true, "labelTypes": true }
             } },
             { "id": "sortBy", "options": { "fields": [ { "displayName": "when", "desc": true } ] } }
           ]
