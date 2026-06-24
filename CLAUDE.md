@@ -179,7 +179,7 @@ kubectl apply -f cluster/monitoring/<dashboard>.yaml
 | `web-traffic-kiosk` | `grafana-dashboard-web-traffic-kiosk.yaml` | Web traffic kiosk — 5 grid units tall, sparklines |
 | `homelab-cluster` | `grafana-dashboard-cluster-overview.yaml` | Cluster overview |
 | `homelab-gitops` | `grafana-dashboard-gitops-platform.yaml` | GitOps & Platform |
-| `homelab-platform` | `grafana-dashboard-platform.yaml` | Platform XR ready status and XApi bindings |
+| `homelab-platform` | `grafana-dashboard-platform.yaml` | Platform XR ready status, XApi bindings, rollout timing, managed resource provisioning, pod init container stages |
 | `my-vinyl-api` | `grafana-dashboard-my-vinyl-api.yaml` | my-vinyl API metrics |
 | `sump-pump` | `grafana-dashboard-sump-pump.yaml` | Sump pump IoT metrics |
 | `node-pod-workload` | `grafana-dashboard-node-pods.yaml` | Node pod workload |
