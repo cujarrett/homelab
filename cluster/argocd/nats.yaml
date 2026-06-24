@@ -26,11 +26,39 @@ spec:
                   storageClassName: longhorn
           promExporter:
             enabled: true
+            container:
+              merge:
+                resources:
+                  limits:
+                    cpu: "50m"
+                    memory: "64Mi"
+          container:
+            merge:
+              resources:
+                limits:
+                  cpu: "200m"
+                  memory: "256Mi"
+                requests:
+                  cpu: "50m"
+                  memory: "64Mi"
+          reloader:
+            container:
+              merge:
+                resources:
+                  limits:
+                    cpu: "50m"
+                    memory: "64Mi"
           # Pin pods to worker nodes, keep control plane clean
           podTemplate:
             merge:
               spec: {}
           natsBox:
+            container:
+              merge:
+                resources:
+                  limits:
+                    cpu: "50m"
+                    memory: "32Mi"
             podTemplate:
               merge:
                 spec: {}

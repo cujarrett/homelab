@@ -16,9 +16,32 @@ spec:
         global: {}
         dex:
           enabled: false
+        controller:
+          resources:
+            limits:
+              memory: 1.5Gi
+        repoServer:
+          resources:
+            limits:
+              memory: 512Mi
         server:
           extraArgs:
             - --insecure
+          resources:
+            limits:
+              memory: 256Mi
+        applicationSet:
+          resources:
+            limits:
+              memory: 128Mi
+        notifications:
+          resources:
+            limits:
+              memory: 128Mi
+        redis:
+          resources:
+            limits:
+              memory: 64Mi
         configs:
           params:
             server.insecure: "true"
