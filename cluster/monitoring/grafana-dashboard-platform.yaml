@@ -114,7 +114,7 @@ data:
           "id": 10,
           "type": "row",
           "title": "XApi Bindings",
-          "collapsed": false,
+          "collapsed": true,
           "gridPos": { "x": 0, "y": 23, "w": 24, "h": 1 },
           "panels": [
             {
@@ -256,7 +256,7 @@ data:
           },
           "targets": [
             {
-              "expr": "label_replace(\n  label_replace(\n    histogram_quantile(0.5,\n      sum(platform_pod_init_container_seconds_bucket{init_container!~\"linkerd.*\"})\n      by (le, init_container)\n    ),\n    \"init_container\", \"wait-for-object-storage-binding\",\n    \"init_container\", \"wait-for-object-storage-.*-binding\"\n  ),\n  \"init_container\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n)",
+              "expr": "label_replace(\n  histogram_quantile(0.5,\n    sum by (le, init_container) (\n      label_replace(\n        platform_pod_init_container_seconds_bucket{init_container!~\"linkerd.*\"},\n        \"init_container\", \"wait-for-object-storage-binding\",\n        \"init_container\", \"wait-for-object-storage-.*-binding\"\n      )\n    )\n  ),\n  \"init_container\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n)",
               "instant": true,
               "legendFormat": "{{init_container}}",
               "refId": "A"
