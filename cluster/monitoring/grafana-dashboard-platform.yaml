@@ -141,8 +141,8 @@ data:
           "id": 6,
           "type": "bargauge",
           "title": "XR Provisioning — p50 by Type",
-          "description": "Median time from XR creation to Ready=True per platform type, across all recorded rollouts. Use this to identify which offerings are slowest to provision.",
-          "gridPos": { "x": 0, "y": 31, "w": 24, "h": 8 },
+          "description": "Median time from XR creation to Ready=True per platform type, across all recorded rollouts. Excludes XWordpress.",
+          "gridPos": { "x": 0, "y": 31, "w": 12, "h": 8 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
             "reduceOptions": { "calcs": ["lastNotNull"] },
@@ -158,8 +158,8 @@ data:
                 "mode": "absolute",
                 "steps": [
                   { "color": "green", "value": null },
-                  { "color": "yellow", "value": 60 },
-                  { "color": "red", "value": 300 }
+                  { "color": "yellow", "value": 30 },
+                  { "color": "red", "value": 90 }
                 ]
               }
             }
@@ -176,8 +176,44 @@ data:
         {
           "id": 7,
           "type": "bargauge",
+          "title": "Recent XR Rollouts — Per Instance",
+          "description": "Per-instance provisioning time for recent rollouts only (< 30 min). Crossplane refreshes lastTransitionTime on reconcile so long-running XRs drift to show their age rather than provisioning time — this filter removes the noise.",
+          "gridPos": { "x": 12, "y": 31, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true,
+            "valueMode": "color"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 30 },
+                  { "color": "red", "value": 90 }
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "platform_xr_time_to_ready_seconds_instance < 1800",
+              "instant": true,
+              "legendFormat": "{{kind}} / {{name}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "type": "bargauge",
           "title": "AWS & NATS Resource Provisioning — p50 by Type",
-          "description": "Median time from managed resource creation to Ready=True. Shows how long AWS (RDS, DynamoDB, ElastiCache, S3, IAM) and NATS resources take to provision — the dominant cost for SQL, NoSql, Cache, and ObjectStorage offerings.",
+          "description": "Median time from managed resource creation to Ready=True per type. This is pure AWS/NATS provisioning cost — not the binding propagation lag that follows it.",
           "gridPos": { "x": 0, "y": 39, "w": 12, "h": 8 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
@@ -194,8 +230,8 @@ data:
                 "mode": "absolute",
                 "steps": [
                   { "color": "green", "value": null },
-                  { "color": "yellow", "value": 60 },
-                  { "color": "red", "value": 300 }
+                  { "color": "yellow", "value": 30 },
+                  { "color": "red", "value": 120 }
                 ]
               }
             }
@@ -210,10 +246,10 @@ data:
           ]
         },
         {
-          "id": 8,
+          "id": 9,
           "type": "bargauge",
-          "title": "XApi Service Binding Wait — p50 by Stage",
-          "description": "Median time each XApi pod waits per binding stage before the app container starts. Linkerd sidecar excluded. Shows which dependency is the bottleneck in the credential and service binding initialization sequence.",
+          "title": "XApi Binding Wait — p50 by Stage",
+          "description": "Median time each XApi pod init container waits per binding stage before the app starts. Linkerd excluded. This is the binding propagation lag after AWS provisioning completes — the dominant cost for public-cloud XApis (e.g. DynamoDB provisions in 16s but nosql-binding waits ~95s total).",
           "gridPos": { "x": 12, "y": 39, "w": 12, "h": 8 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
