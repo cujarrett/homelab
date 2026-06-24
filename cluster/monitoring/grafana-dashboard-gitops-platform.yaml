@@ -156,7 +156,7 @@ data:
           },
           "targets": [
             {
-              "expr": "{namespace=\"argocd\", container=\"application-controller\"} |= \"Updating operation state\" | regexp \"(?P<status>Succeeded|Failed|Error).*application=(?P<what>[^ ]+) project=(?P<project>[^ ]+)\" | line_format \"what={{.what}} project={{.project}} status={{.status}}\"",
+              "expr": "{namespace=\"argocd\", container=\"application-controller\"} |= \"Updating operation state\" |~ \"Succeeded|Failed|Error\" | regexp \"(?P<status>Succeeded|Failed|Error).*application=(?P<what>[^ ]+) project=(?P<project>[^ ]+)\" | status != \"\" | line_format \"what={{.what}} project={{.project}} status={{.status}}\"",
               "queryType": "range",
               "refId": "A",
               "legendFormat": ""
