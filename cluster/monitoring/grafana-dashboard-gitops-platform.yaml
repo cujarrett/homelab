@@ -158,15 +158,15 @@ data:
           },
           "targets": [
             {
-              "expr": "{namespace=\"argocd\", container=\"application-controller\"} |= \"reason=OperationCompleted\" | logfmt | regexp \"(?P<status>succeeded|failed|error)\" | application != \"\"",
+              "expr": "{namespace=\"argocd\", container=\"application-controller\"} |= \"reason=OperationCompleted\" | regexp \"msg=\\\"[^\\\"]*(?P<status>succeeded|failed|error)\\\".*application=(?P<what>[^ ]+)\"",
               "queryType": "range",
               "refId": "A",
               "legendFormat": ""
             }
           ],
           "transformations": [
-            { "id": "filterFieldsByName", "options": { "include": { "names": ["Time", "application", "status"] } } },
-            { "id": "organize", "options": { "renameByName": { "application": "what", "Time": "when" } } },
+            { "id": "filterFieldsByName", "options": { "include": { "names": ["Time", "what", "status"] } } },
+            { "id": "organize", "options": { "renameByName": { "Time": "when" } } },
             { "id": "sortBy", "options": { "fields": [ { "displayName": "when", "desc": true } ] } }
           ]
         },
