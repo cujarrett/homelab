@@ -92,5 +92,6 @@ spec:
       kind: ValidatingWebhookConfiguration
       name: spire-server-spire-controller-manager-webhook
       jqPathExpressions:
-        # SPIRE controller-manager auto-injects its CA into caBundle after startup; Helm has it empty
-        - .webhooks[].clientConfig.caBundle
+        # SPIRE controller-manager owns this webhook after startup — injects caBundle and
+        # reorders entries. Ignore the whole array to avoid permanent ordering drift.
+        - .webhooks
