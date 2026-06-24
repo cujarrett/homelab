@@ -158,7 +158,7 @@ data:
           },
           "targets": [
             {
-              "expr": "{namespace=\"argocd\", container=\"argocd-application-controller\"} |= \"reason=OperationCompleted\" | logfmt | regexp \"(?P<status>succeeded|failed|error)\" | application != \"\"",
+              "expr": "{namespace=\"argocd\", container=\"application-controller\"} |= \"reason=OperationCompleted\" | logfmt | regexp \"(?P<status>succeeded|failed|error)\" | application != \"\"",
               "queryType": "range",
               "refId": "A",
               "legendFormat": ""
