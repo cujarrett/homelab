@@ -146,10 +146,9 @@ data:
                 { "id": "custom.width", "value": 130 },
                 { "id": "mappings", "value": [
                   { "type": "value", "options": {
-                    "Succeeded": { "text": "Succeeded", "color": "green",  "index": 0 },
-                    "Failed":    { "text": "Failed",    "color": "red",    "index": 1 },
-                    "Error":     { "text": "Error",     "color": "orange", "index": 2 },
-                    "Running":   { "text": "Running",   "color": "yellow", "index": 3 }
+                    "succeeded": { "text": "Succeeded", "color": "green",  "index": 0 },
+                    "failed":    { "text": "Failed",    "color": "red",    "index": 1 },
+                    "error":     { "text": "Error",     "color": "orange", "index": 2 }
                   } }
                 ] },
                 { "id": "custom.displayMode", "value": "color-text" }
@@ -159,15 +158,15 @@ data:
           },
           "targets": [
             {
-              "expr": "{namespace=\"argocd\", container=\"argocd-application-controller\"} |= \"Sync operation\" | json | phase != \"\"",
+              "expr": "{namespace=\"argocd\", container=\"argocd-application-controller\"} |= \"reason=OperationCompleted\" | logfmt | regexp \"(?P<status>succeeded|failed|error)\" | application != \"\"",
               "queryType": "range",
               "refId": "A",
               "legendFormat": ""
             }
           ],
           "transformations": [
-            { "id": "filterFieldsByName", "options": { "include": { "names": ["Time", "application", "phase"] } } },
-            { "id": "organize", "options": { "renameByName": { "application": "what", "Time": "when", "phase": "status" } } },
+            { "id": "filterFieldsByName", "options": { "include": { "names": ["Time", "application", "status"] } } },
+            { "id": "organize", "options": { "renameByName": { "application": "what", "Time": "when" } } },
             { "id": "sortBy", "options": { "fields": [ { "displayName": "when", "desc": true } ] } }
           ]
         },
