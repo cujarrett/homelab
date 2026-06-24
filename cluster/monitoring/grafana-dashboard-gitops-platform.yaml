@@ -151,27 +151,31 @@ data:
                     "error":     { "text": "Error",     "color": "orange", "index": 2 }
                   } }
                 ] },
-                { "id": "custom.displayMode", "value": "color-text" }
+                { "id": "custom.displayMode", "value": "color-background" }
               ] },
-              { "matcher": { "id": "byName", "options": "when" }, "properties": [ { "id": "custom.width", "value": 200 } ] }
+              { "matcher": { "id": "byName", "options": "when" },     "properties": [ { "id": "custom.width", "value": 180 } ] },
+              { "matcher": { "id": "byName", "options": "what" },     "properties": [ { "id": "custom.width", "value": 160 } ] },
+              { "matcher": { "id": "byName", "options": "revision" }, "properties": [ { "id": "custom.width", "value": 160 }, { "id": "custom.monospace", "value": true } ] }
             ]
           },
           "targets": [
             {
-              "expr": "{namespace=\"argocd\", container=\"application-controller\"} |= \"reason=OperationCompleted\" | regexp \"msg=\\\"[^\\\"]*(?P<status>succeeded|failed|error)\\\".*application=(?P<what>[^ ]+)\"",
+              "expr": "{namespace=\"argocd\", container=\"application-controller\"} |= \"reason=OperationCompleted\" | regexp \"msg=\\\"[^\\\"]*operation to (?P<revision>[^ \\\"]+) (?P<status>succeeded|failed|error)\\\".*application=(?P<what>[^ ]+)\"",
               "queryType": "range",
               "refId": "A",
               "legendFormat": ""
             }
           ],
           "transformations": [
+            { "id": "labelsToFields", "options": { "mode": "columns" } },
             { "id": "organize", "options": {
               "renameByName": { "Time": "when" },
+              "indexByName": { "Time": 0, "what": 1, "status": 2, "revision": 3 },
               "excludeByName": {
-                "Line": true, "app": true, "component": true, "container": true,
-                "detected_level": true, "filename": true, "instance": true,
-                "job": true, "namespace": true, "node_name": true,
-                "pod": true, "service_name": true, "stream": true
+                "labels": true, "Line": true, "id": true, "tsNs": true, "labelTypes": true,
+                "app": true, "component": true, "container": true, "detected_level": true,
+                "filename": true, "instance": true, "job": true, "namespace": true,
+                "node_name": true, "pod": true, "service_name": true, "stream": true
               }
             } },
             { "id": "sortBy", "options": { "fields": [ { "displayName": "when", "desc": true } ] } }
