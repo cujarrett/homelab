@@ -19,10 +19,67 @@ data:
       "panels": [
         {
           "id": 1,
+          "type": "stat",
+          "title": "Active Guest Workspaces",
+          "description": "Number of live guest sandbox workspaces (max 5).",
+          "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 4 }, { "color": "red", "value": 5 } ] }
+            }
+          },
+          "targets": [
+            { "expr": "sum(launchpad_guest_workspace_count)", "legendFormat": "workspaces", "instant": true }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Guest Resource Count",
+          "description": "Total resources across all active guest workspaces.",
+          "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "none", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
+          "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 } },
+          "targets": [
+            { "expr": "sum(launchpad_guest_resource_count)", "legendFormat": "resources", "instant": true }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "Guest Workspace & Resource Usage",
+          "description": "Active guest workspace count and total resource count over time.",
+          "gridPos": { "x": 0, "y": 4, "w": 24, "h": 9 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "custom": { "lineWidth": 2, "fillOpacity": 10, "lineInterpolation": "smooth" }
+            },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "workspaces" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "resources" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+            ]
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            { "expr": "sum(launchpad_guest_workspace_count)", "legendFormat": "workspaces", "refId": "A" },
+            { "expr": "sum(launchpad_guest_resource_count)", "legendFormat": "resources", "refId": "B" }
+          ]
+        },
+        {
+          "id": 4,
           "type": "table",
           "title": "XR Ready Status",
           "description": "Current ready state for all platform composite resources.",
-          "gridPos": { "x": 0, "y": 0, "w": 24, "h": 10 },
+          "gridPos": { "x": 0, "y": 13, "w": 24, "h": 10 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "footer": { "show": false } },
           "fieldConfig": {
@@ -54,11 +111,11 @@ data:
           ]
         },
         {
-          "id": 2,
+          "id": 5,
           "type": "table",
           "title": "XApi Bindings",
           "description": "Active bindings between XApi instances and their platform dependencies (sql, nosql, topic, subscription, object-storage).",
-          "gridPos": { "x": 0, "y": 10, "w": 24, "h": 8 },
+          "gridPos": { "x": 0, "y": 23, "w": 24, "h": 8 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "footer": { "show": false } },
           "fieldConfig": {
@@ -78,6 +135,139 @@ data:
           "transformations": [
             { "id": "filterFieldsByName", "options": { "include": { "names": ["consumer_name", "binding_type", "provider_name"] } } },
             { "id": "sortBy", "options": { "fields": [{ "displayName": "consumer_name", "desc": false }] } }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "bargauge",
+          "title": "XR Provisioning Time by Instance",
+          "description": "Time from creation to Ready=True per XR instance. Green <60s, yellow <120s, red ≥120s.",
+          "gridPos": { "x": 0, "y": 31, "w": 24, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true,
+            "valueMode": "color"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 60 },
+                  { "color": "red", "value": 120 }
+                ]
+              }
+            }
+          },
+          "targets": [
+            { "expr": "platform_xr_time_to_ready_seconds_instance", "instant": true, "legendFormat": "{{kind}} / {{name}}", "refId": "A" }
+          ]
+        },
+        {
+          "id": 7,
+          "type": "table",
+          "title": "Managed Resource Provisioning Time",
+          "description": "Time from creation to Ready=True per AWS and NATS managed resource. Sorted slowest first.",
+          "gridPos": { "x": 0, "y": 39, "w": 12, "h": 10 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "footer": { "show": false } },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": { "align": "left" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 30 },
+                  { "color": "red", "value": 120 }
+                ]
+              }
+            },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "seconds" }, "properties": [ { "id": "custom.displayMode", "value": "color-background" } ] }
+            ]
+          },
+          "targets": [
+            { "expr": "platform_managed_time_to_ready_seconds_instance", "instant": true, "legendFormat": "", "format": "table", "refId": "A" }
+          ],
+          "transformations": [
+            { "id": "filterFieldsByName", "options": { "include": { "names": ["kind", "name", "Value"] } } },
+            { "id": "organize", "options": { "renameByName": { "Value": "seconds" } } },
+            { "id": "sortBy", "options": { "fields": [{ "displayName": "seconds", "desc": true }] } }
+          ]
+        },
+        {
+          "id": 8,
+          "type": "table",
+          "title": "Pod Init Container Stage Durations",
+          "description": "Time from pod creation to each init container completing. Shows where time was spent during service-binding initialization, per pod.",
+          "gridPos": { "x": 12, "y": 39, "w": 12, "h": 10 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "footer": { "show": false } },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": { "align": "left" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 15 },
+                  { "color": "red", "value": 60 }
+                ]
+              }
+            },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "seconds" }, "properties": [ { "id": "custom.displayMode", "value": "color-background" } ] }
+            ]
+          },
+          "targets": [
+            { "expr": "platform_pod_init_container_seconds_instance", "instant": true, "legendFormat": "", "format": "table", "refId": "A" }
+          ],
+          "transformations": [
+            { "id": "filterFieldsByName", "options": { "include": { "names": ["pod", "init_container", "Value"] } } },
+            { "id": "organize", "options": { "renameByName": { "Value": "seconds" } } },
+            { "id": "sortBy", "options": { "fields": [{ "displayName": "pod", "desc": false }] } }
+          ]
+        },
+        {
+          "id": 9,
+          "type": "table",
+          "title": "Pod Ready Time",
+          "description": "Total time from pod creation to Ready=True per pod. Sorted slowest first.",
+          "gridPos": { "x": 0, "y": 49, "w": 24, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "footer": { "show": false } },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": { "align": "left" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 60 },
+                  { "color": "red", "value": 120 }
+                ]
+              }
+            },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "seconds" }, "properties": [ { "id": "custom.displayMode", "value": "color-background" } ] }
+            ]
+          },
+          "targets": [
+            { "expr": "platform_pod_time_to_ready_seconds_instance", "instant": true, "legendFormat": "", "format": "table", "refId": "A" }
+          ],
+          "transformations": [
+            { "id": "filterFieldsByName", "options": { "include": { "names": ["namespace", "pod", "Value"] } } },
+            { "id": "organize", "options": { "renameByName": { "Value": "seconds" } } },
+            { "id": "sortBy", "options": { "fields": [{ "displayName": "seconds", "desc": true }] } }
           ]
         }
       ]
