@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: platform-exporter
+  namespace: platform-exporter
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: platform-exporter
+rules:
+  - apiGroups: ["platform.local.lab"]
+    resources: ["xapis", "xspas", "xsqls", "xnosqls", "xobjectstorages", "xcaches", "xtopics", "xsubscriptions"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["dynamodb.aws.upbound.io"]
+    resources: ["tables"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["elasticache.aws.upbound.io"]
+    resources: ["replicationgroups", "users", "usergroups"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["iam.aws.upbound.io"]
+    resources: ["roles"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["rds.aws.upbound.io"]
+    resources: ["instances"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["rolesanywhere.aws.upbound.io"]
+    resources: ["profiles"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["s3.aws.upbound.io"]
+    resources: ["buckets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["jetstream.nats.io"]
+    resources: ["streams", "consumers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: platform-exporter
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: platform-exporter
+subjects:
+  - kind: ServiceAccount
+    name: platform-exporter
+    namespace: platform-exporter
