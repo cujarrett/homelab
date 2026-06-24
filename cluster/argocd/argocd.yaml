@@ -17,6 +17,9 @@ spec:
         dex:
           enabled: false
         controller:
+          extraArgs:
+            - --status-processors=5
+            - --operation-processors=5
           resources:
             limits:
               memory: 1.5Gi
@@ -26,6 +29,7 @@ spec:
               memory: 512Mi
         server:
           extraArgs:
+            # ArgoCD's server has built-in TLS. --insecure disables it so ArgoCD listens on plain HTTP internally. That's correct here because Traefik is handling TLS termination — HTTPS hits Traefik, which strips TLS and proxies plain HTTP to ArgoCD. If you didn't set --insecure, you'd get a double-TLS situation and the ingress would break.
             - --insecure
           resources:
             limits:
