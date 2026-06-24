@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: platform-exporter
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - platform-exporter
+  selector:
+    matchLabels:
+      app: platform-exporter
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
