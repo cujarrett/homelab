@@ -25,6 +25,14 @@ spec:
             externalCA: true
             issuer:
               scheme: kubernetes.io/tls
+          proxy:
+            resources:
+              cpu:
+                limit: "100m"
+                request: "10m"
+              memory:
+                limit: "64Mi"
+                request: "10Mi"
     # Linkerd namespace label + cert-manager Certificate + trust Bundle resources
     - repoURL: https://github.com/cujarrett/homelab.git
       targetRevision: main

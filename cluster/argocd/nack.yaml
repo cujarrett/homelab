@@ -17,6 +17,10 @@ spec:
             # Points the NACK controller at the in-cluster NATS service.
             # NACK reconciles Stream and Consumer CRDs against this server.
             url: nats://nats.nats.svc.cluster.local:4222
+        resources:
+          limits:
+            cpu: "100m"
+            memory: "64Mi"
 
   destination:
     server: https://kubernetes.default.svc
