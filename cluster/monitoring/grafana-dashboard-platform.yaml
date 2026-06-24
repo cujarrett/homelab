@@ -111,30 +111,39 @@ data:
           ]
         },
         {
-          "id": 5,
-          "type": "table",
+          "id": 10,
+          "type": "row",
           "title": "XApi Bindings",
-          "description": "Active bindings between XApi instances and their platform dependencies (sql, nosql, topic, subscription, object-storage).",
-          "gridPos": { "x": 0, "y": 23, "w": 24, "h": 8 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "options": { "footer": { "show": false } },
-          "fieldConfig": {
-            "defaults": { "custom": { "align": "left" } },
-            "overrides": [
-              { "matcher": { "id": "byName", "options": "Value" },         "properties": [ { "id": "custom.hidden", "value": true } ] },
-              { "matcher": { "id": "byName", "options": "Time" },          "properties": [ { "id": "custom.hidden", "value": true } ] },
-              { "matcher": { "id": "byName", "options": "__name__" },      "properties": [ { "id": "custom.hidden", "value": true } ] },
-              { "matcher": { "id": "byName", "options": "job" },           "properties": [ { "id": "custom.hidden", "value": true } ] },
-              { "matcher": { "id": "byName", "options": "instance" },      "properties": [ { "id": "custom.hidden", "value": true } ] },
-              { "matcher": { "id": "byName", "options": "consumer_kind" }, "properties": [ { "id": "custom.hidden", "value": true } ] }
-            ]
-          },
-          "targets": [
-            { "expr": "platform_xr_binding", "instant": true, "legendFormat": "", "format": "table", "refId": "A" }
-          ],
-          "transformations": [
-            { "id": "filterFieldsByName", "options": { "include": { "names": ["consumer_name", "binding_type", "provider_name"] } } },
-            { "id": "sortBy", "options": { "fields": [{ "displayName": "consumer_name", "desc": false }] } }
+          "collapsed": true,
+          "gridPos": { "x": 0, "y": 23, "w": 24, "h": 1 },
+          "panels": [
+            {
+              "id": 5,
+              "type": "table",
+              "title": "XApi Bindings",
+              "description": "Active bindings between XApi instances and their platform dependencies (sql, nosql, topic, subscription, object-storage).",
+              "gridPos": { "x": 0, "y": 24, "w": 24, "h": 8 },
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "options": { "footer": { "show": false } },
+              "fieldConfig": {
+                "defaults": { "custom": { "align": "left" } },
+                "overrides": [
+                  { "matcher": { "id": "byName", "options": "Value" },         "properties": [ { "id": "custom.hidden", "value": true } ] },
+                  { "matcher": { "id": "byName", "options": "Time" },          "properties": [ { "id": "custom.hidden", "value": true } ] },
+                  { "matcher": { "id": "byName", "options": "__name__" },      "properties": [ { "id": "custom.hidden", "value": true } ] },
+                  { "matcher": { "id": "byName", "options": "job" },           "properties": [ { "id": "custom.hidden", "value": true } ] },
+                  { "matcher": { "id": "byName", "options": "instance" },      "properties": [ { "id": "custom.hidden", "value": true } ] },
+                  { "matcher": { "id": "byName", "options": "consumer_kind" }, "properties": [ { "id": "custom.hidden", "value": true } ] }
+                ]
+              },
+              "targets": [
+                { "expr": "platform_xr_binding", "instant": true, "legendFormat": "", "format": "table", "refId": "A" }
+              ],
+              "transformations": [
+                { "id": "filterFieldsByName", "options": { "include": { "names": ["consumer_name", "binding_type", "provider_name"] } } },
+                { "id": "sortBy", "options": { "fields": [{ "displayName": "consumer_name", "desc": false }] } }
+              ]
+            }
           ]
         },
         {
@@ -142,7 +151,7 @@ data:
           "type": "table",
           "title": "XR Time-to-Ready — p50 and p99 per Type",
           "description": "Zero to Ready for each platform offering, split by backend. XApi private-cloud (sql/cache only) vs public-cloud (nosql/objstorage) differ significantly — grouping by backend makes that visible. XTopic and XSubscription excluded (single instances, percentiles are not meaningful).",
-          "gridPos": { "x": 0, "y": 31, "w": 24, "h": 8 },
+          "gridPos": { "x": 0, "y": 24, "w": 12, "h": 10 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "footer": { "show": false } },
           "fieldConfig": {
@@ -183,11 +192,53 @@ data:
           ]
         },
         {
+          "id": 11,
+          "type": "bargauge",
+          "title": "XR Time-to-Ready — p50 / p99 Visual",
+          "description": "p50 and p99 per XR type and backend side-by-side. Use alongside the table to spot outliers at a glance. XTopic and XSubscription excluded.",
+          "gridPos": { "x": 12, "y": 24, "w": 12, "h": 10 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true,
+            "valueMode": "color"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 30 },
+                  { "color": "red", "value": 90 }
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(platform_xr_time_to_ready_seconds_bucket{kind!~\"XTopic|XSubscription\"}) by (le, kind, backend))",
+              "instant": true,
+              "legendFormat": "p50 — {{kind}} / {{backend}}",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(platform_xr_time_to_ready_seconds_bucket{kind!~\"XTopic|XSubscription\"}) by (le, kind, backend))",
+              "instant": true,
+              "legendFormat": "p99 — {{kind}} / {{backend}}",
+              "refId": "B"
+            }
+          ]
+        },
+        {
           "id": 7,
           "type": "bargauge",
           "title": "XApi Binding Wait — p50 per Stage",
           "description": "Median time spent waiting in each XApi pod init container stage (time from pod creation to that stage completing). Linkerd excluded. Object-storage init containers are normalized to a single label — the instance name is stripped. The nosql and object-storage stages are slow because Crossplane binding propagation adds ~75s on top of the AWS provision time (DynamoDB 16s + 75s propagation = ~90s total).",
-          "gridPos": { "x": 0, "y": 39, "w": 12, "h": 8 },
+          "gridPos": { "x": 0, "y": 34, "w": 12, "h": 8 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
             "reduceOptions": { "calcs": ["lastNotNull"] },
@@ -223,7 +274,7 @@ data:
           "type": "bargauge",
           "title": "AWS Resource Provisioning — p50 per Type",
           "description": "Median time from managed resource creation to Ready=True. This is the pure AWS provisioning cost — the binding propagation lag on top of this is what dominates XApi nosql/objstorage wait times. NATS resources excluded (their lastTransitionTime drifts for long-running resources).",
-          "gridPos": { "x": 12, "y": 39, "w": 12, "h": 8 },
+          "gridPos": { "x": 12, "y": 34, "w": 12, "h": 8 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
             "reduceOptions": { "calcs": ["lastNotNull"] },
@@ -256,38 +307,43 @@ data:
         },
         {
           "id": 9,
-          "type": "bargauge",
-          "title": "Recent XR Rollouts — Per Instance",
-          "description": "Per-instance provisioning time for recent rollouts only (values under 30 min). Long-running XRs are filtered out — Crossplane refreshes lastTransitionTime on reconcile so older instances drift to show XR age rather than provisioning time.",
-          "gridPos": { "x": 0, "y": 47, "w": 24, "h": 6 },
+          "type": "table",
+          "title": "XR Rollouts — Per Instance",
+          "description": "Per-instance provisioning time for all XR types. Scroll to find any instance; click a column header to re-sort. Note: long-running XRs drift because Crossplane refreshes lastTransitionTime on reconcile — values for instances older than ~30 min reflect XR age rather than original provisioning time.",
+          "gridPos": { "x": 0, "y": 42, "w": 24, "h": 12 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"] },
-            "orientation": "horizontal",
-            "displayMode": "gradient",
-            "showUnfilled": true,
-            "valueMode": "color"
-          },
+          "options": { "footer": { "show": false } },
           "fieldConfig": {
-            "defaults": {
-              "unit": "s",
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
+            "defaults": { "unit": "s", "custom": { "align": "left" } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "time_to_ready" }, "properties": [
+                { "id": "custom.width", "value": 160 },
+                { "id": "custom.displayMode", "value": "color-background" },
+                { "id": "thresholds", "value": { "mode": "absolute", "steps": [
                   { "color": "green", "value": null },
                   { "color": "yellow", "value": 30 },
                   { "color": "red", "value": 90 }
-                ]
-              }
-            }
+                ] } }
+              ] },
+              { "matcher": { "id": "byName", "options": "Time" },     "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "__name__" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "job" },      "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "instance" }, "properties": [ { "id": "custom.hidden", "value": true } ] }
+            ]
           },
           "targets": [
             {
-              "expr": "platform_xr_time_to_ready_seconds_instance < 1800",
+              "expr": "platform_xr_time_to_ready_seconds_instance",
               "instant": true,
-              "legendFormat": "{{kind}} / {{name}}",
+              "legendFormat": "",
+              "format": "table",
               "refId": "A"
             }
+          ],
+          "transformations": [
+            { "id": "filterFieldsByName", "options": { "include": { "names": ["kind", "name", "namespace", "backend", "Value"] } } },
+            { "id": "organize", "options": { "renameByName": { "Value": "time_to_ready" } } },
+            { "id": "sortBy", "options": { "fields": [{ "displayName": "kind", "desc": false }] } }
           ]
         }
       ]
