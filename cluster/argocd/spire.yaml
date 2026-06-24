@@ -22,12 +22,15 @@ spec:
               storageClass: longhorn-retain
 
         spire-server:
+          # HA requires a shared datastore; single replica is sufficient for homelab.
           replicaCount: 1
+          # 1 year — avoids frequent CA rotation with no automated rotation tooling in place.
           caTTL: 8760h
           caSubject:
             country: US
             organization: Homelab
             commonName: homelab-spire
+          # Prefer worker nodes — ctrl-1 runs AdGuard (DNS) and the kiosk display.
           affinity:
             nodeAffinity:
               preferredDuringSchedulingIgnoredDuringExecution:
@@ -56,13 +59,14 @@ spec:
                           - xspa
 
         spire-agent:
-          logLevel: DEBUG
+          logLevel: INFO
 
         # CSI driver mounts each pod's SVID (cert + key) as files via a volume.
         # Required before any workload can consume its identity for AWS credential exchange.
         spiffe-csi-driver:
           enabled: true
 
+        # Not needed — AWS trust uses RolesAnywhere (cert-based), not OIDC federation.
         spiffe-oidc-discovery-provider:
           enabled: false
   destination:
@@ -84,3 +88,9 @@ spec:
       jqPathExpressions:
         # Kubernetes strips apiVersion/kind from volumeClaimTemplates after creation; chart includes them
         - .spec.volumeClaimTemplates
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      name: spire-server-spire-controller-manager-webhook
+      jqPathExpressions:
+        # SPIRE controller-manager auto-injects its CA into caBundle after startup; Helm has it empty
+        - .webhooks[].clientConfig.caBundle
