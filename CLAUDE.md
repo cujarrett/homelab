@@ -301,10 +301,10 @@ bash scripts/restore-wordpress.sh \
 Four projects scope workloads by concern:
 | Project | Allowed source repos | Contents |
 |---|---|---|
-| `platform` | homelab git + `argoproj.github.io/argo-helm` | ArgoCD, Crossplane, compositions, bootstrap |
-| `infrastructure` | homelab git | Longhorn, Traefik, cert-manager, AdGuard, Cloudflare |
-| `observability` | homelab git + `prometheus-community.github.io/helm-charts` + `grafana.github.io/helm-charts` | kube-prometheus-stack, Loki, Promtail |
-| `workloads` | homelab git | All XR instances (mattjarrett-com, mattjarrett-dev, blog); `sourceNamespaces: ["*"]` for app-in-any-namespace |
+| `platform` | homelab git + `argoproj.github.io/argo-helm` + `charts.crossplane.io/stable` | ArgoCD, Crossplane, compositions, bootstrap |
+| `cluster` | homelab git + `nats-io.github.io/k8s/helm/charts` + `charts.jetstack.io` + `helm.linkerd.io/edge` + `spiffe.github.io/helm-charts-hardened` | Longhorn, Traefik, cert-manager, AdGuard, Cloudflare, NATS, Linkerd, SPIRE |
+| `observability` | homelab git + `prometheus-community.github.io/helm-charts` + `grafana.github.io/helm-charts` | kube-prometheus-stack, Loki, Promtail, platform-exporter |
+| `workloads` | homelab git + homelab-workspaces git | All XR instances (mattjarrett-com, mattjarrett-dev, blog); `sourceNamespaces: ["*"]` for app-in-any-namespace |
 
 Applications from the `workloads` project can live in any namespace (`sourceNamespaces: ["*"]`).
 
