@@ -121,11 +121,11 @@ data:
           "fieldConfig": {
             "defaults": { "custom": { "align": "left" } },
             "overrides": [
-              { "matcher": { "id": "byName", "options": "Value" },        "properties": [ { "id": "custom.hidden", "value": true } ] },
-              { "matcher": { "id": "byName", "options": "Time" },         "properties": [ { "id": "custom.hidden", "value": true } ] },
-              { "matcher": { "id": "byName", "options": "__name__" },     "properties": [ { "id": "custom.hidden", "value": true } ] },
-              { "matcher": { "id": "byName", "options": "job" },          "properties": [ { "id": "custom.hidden", "value": true } ] },
-              { "matcher": { "id": "byName", "options": "instance" },     "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "Value" },         "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "Time" },          "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "__name__" },      "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "job" },           "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "instance" },      "properties": [ { "id": "custom.hidden", "value": true } ] },
               { "matcher": { "id": "byName", "options": "consumer_kind" }, "properties": [ { "id": "custom.hidden", "value": true } ] }
             ]
           },
@@ -140,8 +140,8 @@ data:
         {
           "id": 6,
           "type": "bargauge",
-          "title": "XR Provisioning Time by Instance",
-          "description": "Time from creation to Ready=True per XR instance. Green <60s, yellow <120s, red ≥120s.",
+          "title": "XR Provisioning — p50 by Type",
+          "description": "Median time from XR creation to Ready=True per platform type, across all recorded rollouts. Use this to identify which offerings are slowest to provision.",
           "gridPos": { "x": 0, "y": 31, "w": 24, "h": 8 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
@@ -159,61 +159,73 @@ data:
                 "steps": [
                   { "color": "green", "value": null },
                   { "color": "yellow", "value": 60 },
-                  { "color": "red", "value": 120 }
+                  { "color": "red", "value": 300 }
                 ]
               }
             }
           },
           "targets": [
-            { "expr": "platform_xr_time_to_ready_seconds_instance", "instant": true, "legendFormat": "{{kind}} / {{name}}", "refId": "A" }
+            {
+              "expr": "histogram_quantile(0.5, sum(platform_xr_time_to_ready_seconds_bucket) by (le, kind))",
+              "instant": true,
+              "legendFormat": "{{kind}}",
+              "refId": "A"
+            }
           ]
         },
         {
           "id": 7,
-          "type": "table",
-          "title": "Managed Resource Provisioning Time",
-          "description": "Time from creation to Ready=True per AWS and NATS managed resource. Sorted slowest first.",
-          "gridPos": { "x": 0, "y": 39, "w": 12, "h": 10 },
+          "type": "bargauge",
+          "title": "AWS & NATS Resource Provisioning — p50 by Type",
+          "description": "Median time from managed resource creation to Ready=True. Shows how long AWS (RDS, DynamoDB, ElastiCache, S3, IAM) and NATS resources take to provision — the dominant cost for SQL, NoSql, Cache, and ObjectStorage offerings.",
+          "gridPos": { "x": 0, "y": 39, "w": 12, "h": 8 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "options": { "footer": { "show": false } },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true,
+            "valueMode": "color"
+          },
           "fieldConfig": {
             "defaults": {
               "unit": "s",
-              "custom": { "align": "left" },
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   { "color": "green", "value": null },
-                  { "color": "yellow", "value": 30 },
-                  { "color": "red", "value": 120 }
+                  { "color": "yellow", "value": 60 },
+                  { "color": "red", "value": 300 }
                 ]
               }
-            },
-            "overrides": [
-              { "matcher": { "id": "byName", "options": "seconds" }, "properties": [ { "id": "custom.displayMode", "value": "color-background" } ] }
-            ]
+            }
           },
           "targets": [
-            { "expr": "platform_managed_time_to_ready_seconds_instance", "instant": true, "legendFormat": "", "format": "table", "refId": "A" }
-          ],
-          "transformations": [
-            { "id": "filterFieldsByName", "options": { "include": { "names": ["kind", "name", "Value"] } } },
-            { "id": "organize", "options": { "renameByName": { "Value": "seconds" } } },
-            { "id": "sortBy", "options": { "fields": [{ "displayName": "seconds", "desc": true }] } }
+            {
+              "expr": "histogram_quantile(0.5, sum(platform_managed_time_to_ready_seconds_bucket) by (le, kind))",
+              "instant": true,
+              "legendFormat": "{{kind}}",
+              "refId": "A"
+            }
           ]
         },
         {
           "id": 8,
-          "type": "table",
-          "title": "Pod Init Container Stage Durations",
-          "description": "Time from pod creation to each init container completing. Shows where time was spent during service-binding initialization, per pod.",
-          "gridPos": { "x": 12, "y": 39, "w": 12, "h": 10 },
+          "type": "bargauge",
+          "title": "XApi Service Binding Wait — p50 by Stage",
+          "description": "Median time each XApi pod waits per binding stage before the app container starts. Linkerd sidecar excluded. Shows which dependency is the bottleneck in the credential and service binding initialization sequence.",
+          "gridPos": { "x": 12, "y": 39, "w": 12, "h": 8 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "options": { "footer": { "show": false } },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true,
+            "valueMode": "color"
+          },
           "fieldConfig": {
             "defaults": {
               "unit": "s",
-              "custom": { "align": "left" },
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -222,52 +234,15 @@ data:
                   { "color": "red", "value": 60 }
                 ]
               }
-            },
-            "overrides": [
-              { "matcher": { "id": "byName", "options": "seconds" }, "properties": [ { "id": "custom.displayMode", "value": "color-background" } ] }
-            ]
+            }
           },
           "targets": [
-            { "expr": "platform_pod_init_container_seconds_instance", "instant": true, "legendFormat": "", "format": "table", "refId": "A" }
-          ],
-          "transformations": [
-            { "id": "filterFieldsByName", "options": { "include": { "names": ["pod", "init_container", "Value"] } } },
-            { "id": "organize", "options": { "renameByName": { "Value": "seconds" } } },
-            { "id": "sortBy", "options": { "fields": [{ "displayName": "pod", "desc": false }] } }
-          ]
-        },
-        {
-          "id": 9,
-          "type": "table",
-          "title": "Pod Ready Time",
-          "description": "Total time from pod creation to Ready=True per pod. Sorted slowest first.",
-          "gridPos": { "x": 0, "y": 49, "w": 24, "h": 8 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "options": { "footer": { "show": false } },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "s",
-              "custom": { "align": "left" },
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "yellow", "value": 60 },
-                  { "color": "red", "value": 120 }
-                ]
-              }
-            },
-            "overrides": [
-              { "matcher": { "id": "byName", "options": "seconds" }, "properties": [ { "id": "custom.displayMode", "value": "color-background" } ] }
-            ]
-          },
-          "targets": [
-            { "expr": "platform_pod_time_to_ready_seconds_instance", "instant": true, "legendFormat": "", "format": "table", "refId": "A" }
-          ],
-          "transformations": [
-            { "id": "filterFieldsByName", "options": { "include": { "names": ["namespace", "pod", "Value"] } } },
-            { "id": "organize", "options": { "renameByName": { "Value": "seconds" } } },
-            { "id": "sortBy", "options": { "fields": [{ "displayName": "seconds", "desc": true }] } }
+            {
+              "expr": "histogram_quantile(0.5, sum(platform_pod_init_container_seconds_bucket{init_container!~\"linkerd.*\"}) by (le, init_container))",
+              "instant": true,
+              "legendFormat": "{{init_container}}",
+              "refId": "A"
+            }
           ]
         }
       ]
