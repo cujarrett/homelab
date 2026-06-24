@@ -16,7 +16,7 @@ spec:
       serviceAccountName: platform-exporter
       containers:
         - name: platform-exporter
-          image: ghcr.io/cujarrett/platform-exporter:latest
+          image: ghcr.io/cujarrett/platform-exporter:main
           ports:
             - name: metrics
               containerPort: 8080
