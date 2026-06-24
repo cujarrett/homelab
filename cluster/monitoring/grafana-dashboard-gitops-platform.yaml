@@ -127,6 +127,53 @@ data:
         {
           "collapsed": false,
           "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 },
+          "id": 300,
+          "title": "Rollouts",
+          "type": "row"
+        },
+        {
+          "id": 301,
+          "type": "table",
+          "title": "Recent Rollouts",
+          "description": "ArgoCD sync events — app synced, when it happened, and whether it succeeded. Sourced from argocd-application-controller logs.",
+          "gridPos": { "x": 0, "y": 17, "w": 24, "h": 8 },
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "options": { "footer": { "show": false } },
+          "fieldConfig": {
+            "defaults": { "custom": { "align": "left" } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "status" }, "properties": [
+                { "id": "custom.width", "value": 130 },
+                { "id": "mappings", "value": [
+                  { "type": "value", "options": {
+                    "Succeeded": { "text": "Succeeded", "color": "green",  "index": 0 },
+                    "Failed":    { "text": "Failed",    "color": "red",    "index": 1 },
+                    "Error":     { "text": "Error",     "color": "orange", "index": 2 },
+                    "Running":   { "text": "Running",   "color": "yellow", "index": 3 }
+                  } }
+                ] },
+                { "id": "custom.displayMode", "value": "color-text" }
+              ] },
+              { "matcher": { "id": "byName", "options": "when" }, "properties": [ { "id": "custom.width", "value": 200 } ] }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "{namespace=\"argocd\", container=\"argocd-application-controller\"} |= \"Sync operation\" | json | phase != \"\"",
+              "queryType": "range",
+              "refId": "A",
+              "legendFormat": ""
+            }
+          ],
+          "transformations": [
+            { "id": "filterFieldsByName", "options": { "include": { "names": ["Time", "application", "phase"] } } },
+            { "id": "organize", "options": { "renameByName": { "application": "what", "Time": "when", "phase": "status" } } },
+            { "id": "sortBy", "options": { "fields": [ { "displayName": "when", "desc": true } ] } }
+          ]
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 },
           "id": 104,
           "title": "Workloads",
           "type": "row"
@@ -136,7 +183,7 @@ data:
           "type": "timeseries",
           "title": "Running Pods by Namespace",
           "description": "Count of Running pods per namespace over time. Drops indicate restarts or scaling events.",
-          "gridPos": { "x": 0, "y": 17, "w": 12, "h": 9 },
+          "gridPos": { "x": 0, "y": 26, "w": 12, "h": 9 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": {
@@ -157,7 +204,7 @@ data:
           "type": "timeseries",
           "title": "Container Restarts per Hour (by Namespace)",
           "description": "Container restart rate per namespace. Spikes indicate crash-looping or OOM events.",
-          "gridPos": { "x": 12, "y": 17, "w": 12, "h": 9 },
+          "gridPos": { "x": 12, "y": 26, "w": 12, "h": 9 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": {
@@ -178,7 +225,7 @@ data:
           "type": "timeseries",
           "title": "ArgoCD Reconciliation Rate",
           "description": "ArgoCD application controller reconcile operations per minute. High rate may indicate frequent drift.",
-          "gridPos": { "x": 0, "y": 26, "w": 12, "h": 8 },
+          "gridPos": { "x": 0, "y": 35, "w": 12, "h": 8 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": {
@@ -199,7 +246,7 @@ data:
           "type": "timeseries",
           "title": "Longhorn Volume Usage",
           "description": "Longhorn actual size on disk per volume. Helps identify volumes growing unexpectedly.",
-          "gridPos": { "x": 12, "y": 26, "w": 12, "h": 8 },
+          "gridPos": { "x": 12, "y": 35, "w": 12, "h": 8 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": {
