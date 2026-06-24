@@ -139,10 +139,91 @@ data:
         },
         {
           "id": 6,
+          "type": "table",
+          "title": "XR Time-to-Ready — p50 and p99 per Type",
+          "description": "Zero to Ready for each platform offering, split by backend. XApi private-cloud (sql/cache only) vs public-cloud (nosql/objstorage) differ significantly — grouping by backend makes that visible. XTopic and XSubscription excluded (single instances, percentiles are not meaningful).",
+          "gridPos": { "x": 0, "y": 31, "w": 24, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "footer": { "show": false } },
+          "fieldConfig": {
+            "defaults": { "unit": "s", "custom": { "align": "left" } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "p50" }, "properties": [
+                { "id": "custom.width", "value": 160 },
+                { "id": "custom.displayMode", "value": "color-background" },
+                { "id": "thresholds", "value": { "mode": "absolute", "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 30 },
+                  { "color": "red", "value": 90 }
+                ] } }
+              ] },
+              { "matcher": { "id": "byName", "options": "p99" }, "properties": [
+                { "id": "custom.width", "value": 160 }
+              ] },
+              { "matcher": { "id": "byName", "options": "Time" },     "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "job" },      "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "instance" }, "properties": [ { "id": "custom.hidden", "value": true } ] }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(platform_xr_time_to_ready_seconds_bucket{kind!~\"XTopic|XSubscription\"}) by (le, kind, backend))",
+              "instant": true, "legendFormat": "", "format": "table", "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(platform_xr_time_to_ready_seconds_bucket{kind!~\"XTopic|XSubscription\"}) by (le, kind, backend))",
+              "instant": true, "legendFormat": "", "format": "table", "refId": "B"
+            }
+          ],
+          "transformations": [
+            { "id": "merge", "options": {} },
+            { "id": "filterFieldsByName", "options": { "include": { "names": ["kind", "backend", "Value #A", "Value #B"] } } },
+            { "id": "organize", "options": { "renameByName": { "Value #A": "p50", "Value #B": "p99" } } },
+            { "id": "sortBy", "options": { "fields": [{ "displayName": "p50", "desc": false }] } }
+          ]
+        },
+        {
+          "id": 7,
           "type": "bargauge",
-          "title": "XR Provisioning — p50 by Type",
-          "description": "Median time from XR creation to Ready=True per platform type, across all recorded rollouts. Excludes XWordpress.",
-          "gridPos": { "x": 0, "y": 31, "w": 12, "h": 8 },
+          "title": "XApi Binding Wait — p50 per Stage",
+          "description": "Median time spent waiting in each XApi pod init container stage (time from pod creation to that stage completing). Linkerd excluded. Object-storage init containers are normalized to a single label — the instance name is stripped. The nosql and object-storage stages are slow because Crossplane binding propagation adds ~75s on top of the AWS provision time (DynamoDB 16s + 75s propagation = ~90s total).",
+          "gridPos": { "x": 0, "y": 39, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true,
+            "valueMode": "color"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 15 },
+                  { "color": "red", "value": 60 }
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "label_replace(\n  label_replace(\n    histogram_quantile(0.5,\n      sum(platform_pod_init_container_seconds_bucket{init_container!~\"linkerd.*\"})\n      by (le, init_container)\n    ),\n    \"init_container\", \"wait-for-object-storage-binding\",\n    \"init_container\", \"wait-for-object-storage-.*-binding\"\n  ),\n  \"init_container\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n)",
+              "instant": true,
+              "legendFormat": "{{init_container}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "type": "bargauge",
+          "title": "AWS Resource Provisioning — p50 per Type",
+          "description": "Median time from managed resource creation to Ready=True. This is the pure AWS provisioning cost — the binding propagation lag on top of this is what dominates XApi nosql/objstorage wait times. NATS resources excluded (their lastTransitionTime drifts for long-running resources).",
+          "gridPos": { "x": 12, "y": 39, "w": 12, "h": 8 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
             "reduceOptions": { "calcs": ["lastNotNull"] },
@@ -159,14 +240,14 @@ data:
                 "steps": [
                   { "color": "green", "value": null },
                   { "color": "yellow", "value": 30 },
-                  { "color": "red", "value": 90 }
+                  { "color": "red", "value": 120 }
                 ]
               }
             }
           },
           "targets": [
             {
-              "expr": "histogram_quantile(0.5, sum(platform_xr_time_to_ready_seconds_bucket) by (le, kind))",
+              "expr": "histogram_quantile(0.5, sum(platform_managed_time_to_ready_seconds_bucket{kind!~\"NATS.*\"}) by (le, kind))",
               "instant": true,
               "legendFormat": "{{kind}}",
               "refId": "A"
@@ -174,11 +255,11 @@ data:
           ]
         },
         {
-          "id": 7,
+          "id": 9,
           "type": "bargauge",
           "title": "Recent XR Rollouts — Per Instance",
-          "description": "Per-instance provisioning time for recent rollouts only (< 30 min). Crossplane refreshes lastTransitionTime on reconcile so long-running XRs drift to show their age rather than provisioning time — this filter removes the noise.",
-          "gridPos": { "x": 12, "y": 31, "w": 12, "h": 8 },
+          "description": "Per-instance provisioning time for recent rollouts only (values under 30 min). Long-running XRs are filtered out — Crossplane refreshes lastTransitionTime on reconcile so older instances drift to show XR age rather than provisioning time.",
+          "gridPos": { "x": 0, "y": 47, "w": 24, "h": 6 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
             "reduceOptions": { "calcs": ["lastNotNull"] },
@@ -205,78 +286,6 @@ data:
               "expr": "platform_xr_time_to_ready_seconds_instance < 1800",
               "instant": true,
               "legendFormat": "{{kind}} / {{name}}",
-              "refId": "A"
-            }
-          ]
-        },
-        {
-          "id": 8,
-          "type": "bargauge",
-          "title": "AWS & NATS Resource Provisioning — p50 by Type",
-          "description": "Median time from managed resource creation to Ready=True per type. This is pure AWS/NATS provisioning cost — not the binding propagation lag that follows it.",
-          "gridPos": { "x": 0, "y": 39, "w": 12, "h": 8 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"] },
-            "orientation": "horizontal",
-            "displayMode": "gradient",
-            "showUnfilled": true,
-            "valueMode": "color"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "s",
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "yellow", "value": 30 },
-                  { "color": "red", "value": 120 }
-                ]
-              }
-            }
-          },
-          "targets": [
-            {
-              "expr": "histogram_quantile(0.5, sum(platform_managed_time_to_ready_seconds_bucket) by (le, kind))",
-              "instant": true,
-              "legendFormat": "{{kind}}",
-              "refId": "A"
-            }
-          ]
-        },
-        {
-          "id": 9,
-          "type": "bargauge",
-          "title": "XApi Binding Wait — p50 by Stage",
-          "description": "Median time each XApi pod init container waits per binding stage before the app starts. Linkerd excluded. This is the binding propagation lag after AWS provisioning completes — the dominant cost for public-cloud XApis (e.g. DynamoDB provisions in 16s but nosql-binding waits ~95s total).",
-          "gridPos": { "x": 12, "y": 39, "w": 12, "h": 8 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "options": {
-            "reduceOptions": { "calcs": ["lastNotNull"] },
-            "orientation": "horizontal",
-            "displayMode": "gradient",
-            "showUnfilled": true,
-            "valueMode": "color"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "s",
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "yellow", "value": 15 },
-                  { "color": "red", "value": 60 }
-                ]
-              }
-            }
-          },
-          "targets": [
-            {
-              "expr": "histogram_quantile(0.5, sum(platform_pod_init_container_seconds_bucket{init_container!~\"linkerd.*\"}) by (le, init_container))",
-              "instant": true,
-              "legendFormat": "{{init_container}}",
               "refId": "A"
             }
           ]
