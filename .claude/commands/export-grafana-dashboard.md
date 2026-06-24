@@ -1,9 +1,11 @@
 ---
-description: Export a Grafana dashboard from the live cluster and update its ConfigMap in the repo. Pass the full dashboard URL as the argument.
+description: Sync a Grafana dashboard saved in the UI back to its ConfigMap in the repo. Pass the full dashboard URL as the argument.
 argument: '<grafana-dashboard-url>'
 ---
 
-Export the Grafana dashboard at `$ARGUMENTS` and update its ConfigMap file in the repo.
+Sync the Grafana dashboard at `$ARGUMENTS` to its ConfigMap in the repo.
+
+**Format note:** The Grafana API always returns v1 (`panels`-based) format — this is what Grafana provisioning expects in ConfigMaps. The Grafana UI "Export" button produces v2 (`elements`-based) format which fails provisioning. Always fetch from the API, never from the UI export dialog.
 
 ## Steps
 
@@ -11,60 +13,78 @@ Export the Grafana dashboard at `$ARGUMENTS` and update its ConfigMap file in th
 
 The URL format is: `https://grafana.local.lab/d/<uid>/<slug>?...`
 
-Extract the `<uid>` segment (e.g. `service-mesh`, `homelab-kiosk`, `web-traffic`).
+Extract the `<uid>` segment (e.g. `homelab-kiosk`, `web-traffic`, `homelab-mbp`).
 
-### 2. Fetch the dashboard JSON via the API
+### 2. Fetch the dashboard JSON and write the ConfigMap
 
-Run this in the terminal, replacing `<uid>`:
-
-```bash
-curl -sk "https://grafana.local.lab/api/dashboards/uid/<uid>" \
-  | python3 -c "
-import json, sys
-d = json.load(sys.stdin)
-dash = d['dashboard']
-dash.pop('id', None)
-dash.pop('version', None)
-print(json.dumps(dash, indent=2))
-" | pbcopy
-```
-
-- Use `https://` and `-k` — `http://` returns 404 (self-signed cert)
-- This strips `id` (DB row ID) and `version` (managed by provisioning) before copying
-- The API returns the classic `panels`-based format — do NOT use the Grafana UI export dialogs, they produce the new `elements` format which fails provisioning
-
-### 3. Find the matching ConfigMap file
+Run this in one shot — it fetches from the API, finds the matching ConfigMap, and writes the updated file directly:
 
 ```bash
-grep -rl '"uid": "<uid>"' cluster/monitoring/
+python3 - << 'EOF'
+import subprocess, json, sys, re
+
+uid = "<uid>"  # ← replace with extracted UID
+
+# Fetch from Grafana API
+result = subprocess.run(
+    ["curl", "-sk", f"https://grafana.local.lab/api/dashboards/uid/{uid}"],
+    capture_output=True, text=True, check=True
+)
+d = json.loads(result.stdout)
+dash = d["dashboard"]
+dash.pop("id", None)
+dash.pop("version", None)
+
+# Find the ConfigMap file
+grep = subprocess.run(
+    ["grep", "-rl", f'"uid": "{uid}"', "cluster/monitoring/"],
+    capture_output=True, text=True
+)
+cm_file = grep.stdout.strip()
+if not cm_file:
+    print(f"ERROR: No ConfigMap found for uid={uid}", file=sys.stderr)
+    sys.exit(1)
+
+# Replace the JSON block (everything after `|-`)
+with open(cm_file) as f:
+    content = f.read()
+
+match = re.search(r'^(.*\.json: \|-\n)', content, re.MULTILINE)
+if not match:
+    print("ERROR: Could not find the JSON block marker in ConfigMap", file=sys.stderr)
+    sys.exit(1)
+
+header = content[:match.end()]
+json_str = json.dumps(dash, indent=2)
+indented = "\n".join("    " + line for line in json_str.splitlines())
+
+with open(cm_file, "w") as f:
+    f.write(header + indented + "\n")
+
+print(f"Updated {cm_file}")
+EOF
 ```
 
-### 4. Replace the JSON in the ConfigMap
-
-The ConfigMap structure is:
-
-```yaml
-data:
-  <name>.json: |-
-    {   <-- replace everything from here down
-```
-
-Replace all content after `|-` with the clipboard JSON, indented **4 spaces**.
-
-### 5. Apply and verify
+### 3. Apply to cluster
 
 ```bash
 k apply -f cluster/monitoring/<dashboard-configmap>.yaml
 ```
 
-Grafana hot-reloads provisioned dashboards — no restart needed. Open the dashboard in the browser and confirm it loads before committing.
+Grafana hot-reloads provisioned dashboards — no restart needed. Open the dashboard URL and confirm it loads correctly before committing.
 
-### 6. Check stat panels for `"instant": true`
+### 4. Check `"instant": true` for kiosk dashboards
 
-Dashboards on the kiosk playlist must use `"instant": true` on all stat panel targets to avoid heavy range queries crashing the Pi. After updating, verify:
+First check whether this dashboard is in the kiosk playlist:
+
+```bash
+grep '<uid>' cluster/monitoring/grafana-playlist-kiosk.yaml
+```
+
+If it is, verify all stat panel targets have `"instant": true` — range queries on stat panels crash the Pi on the kiosk display:
 
 ```bash
 grep -c '"instant"' cluster/monitoring/<dashboard-configmap>.yaml
 ```
 
-If new stat panels were added without it, add `"instant": true` to their targets manually.
+If any stat panels are missing it, add `"instant": true` to their targets manually.

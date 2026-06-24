@@ -5,7 +5,7 @@ argument: '<app-name>'
 
 # New Go API
 
-Scaffold a new homelab Go HTTP API from the canonical templates in [.github/skills/new-go-api/assets/](.github/skills/new-go-api/assets/).
+Scaffold a new homelab Go HTTP API from the canonical templates in [.claude/assets/new-go-api/](.claude/assets/new-go-api/).
 
 ## Inputs
 
@@ -25,11 +25,11 @@ Create a new directory `./<app-name>/` containing the following files. In every 
 
 | Destination | Source |
 |---|---|
-| `./<app-name>/main.go` | [.github/skills/new-go-api/assets/main.go](.github/skills/new-go-api/assets/main.go) |
-| `./<app-name>/Dockerfile` | [.github/skills/new-go-api/assets/Dockerfile](.github/skills/new-go-api/assets/Dockerfile) |
-| `./<app-name>/justfile` | [.github/skills/new-go-api/assets/justfile](.github/skills/new-go-api/assets/justfile) |
-| `./<app-name>/.github/workflows/ci.yml` | [.github/skills/new-go-api/assets/ci.yml](.github/skills/new-go-api/assets/ci.yml) |
-| `homelab-workspaces/<workspace>/<app-name>.yaml` | [.github/skills/new-go-api/assets/xapi.yaml](.github/skills/new-go-api/assets/xapi.yaml) |
+| `./<app-name>/main.go` | [.claude/assets/new-go-api/main.go](.claude/assets/new-go-api/main.go) |
+| `./<app-name>/Dockerfile` | [.claude/assets/new-go-api/Dockerfile](.claude/assets/new-go-api/Dockerfile) |
+| `./<app-name>/justfile` | [.claude/assets/new-go-api/justfile](.claude/assets/new-go-api/justfile) |
+| `./<app-name>/.github/workflows/ci.yml` | [.claude/assets/new-go-api/ci.yml](.claude/assets/new-go-api/ci.yml) |
+| `homelab-workspaces/<workspace>/<app-name>.yaml` | [.claude/assets/new-go-api/xapi.yaml](.claude/assets/new-go-api/xapi.yaml) |
 
 Also create:
 
