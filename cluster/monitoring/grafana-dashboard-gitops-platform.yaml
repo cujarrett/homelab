@@ -143,24 +143,20 @@ data:
             "defaults": { "custom": { "align": "left" } },
             "overrides": [
               { "matcher": { "id": "byName", "options": "status" }, "properties": [
-                { "id": "custom.width", "value": 130 },
                 { "id": "mappings", "value": [
                   { "type": "value", "options": {
-                    "succeeded": { "text": "Succeeded", "color": "green",  "index": 0 },
-                    "failed":    { "text": "Failed",    "color": "red",    "index": 1 },
-                    "error":     { "text": "Error",     "color": "orange", "index": 2 }
+                    "Succeeded": { "text": "Succeeded", "color": "green",  "index": 0 },
+                    "Failed":    { "text": "Failed",    "color": "red",    "index": 1 },
+                    "Error":     { "text": "Error",     "color": "orange", "index": 2 }
                   } }
                 ] },
                 { "id": "custom.displayMode", "value": "color-background" }
-              ] },
-              { "matcher": { "id": "byName", "options": "when" },     "properties": [ { "id": "custom.width", "value": 180 } ] },
-              { "matcher": { "id": "byName", "options": "what" },     "properties": [ { "id": "custom.width", "value": 160 } ] },
-              { "matcher": { "id": "byName", "options": "revision" }, "properties": [ { "id": "custom.width", "value": 160 }, { "id": "custom.monospace", "value": true } ] }
+              ] }
             ]
           },
           "targets": [
             {
-              "expr": "{namespace=\"argocd\", container=\"application-controller\"} |= \"reason=OperationCompleted\" | regexp \"msg=\\\"[^\\\"]*operation to (?P<revision>[^ \\\"]+) (?P<status>succeeded|failed|error)\\\".*application=(?P<what>[^ ]+)\" | line_format \"what={{.what}} status={{.status}} revision={{.revision}}\"",
+              "expr": "{namespace=\"argocd\", container=\"application-controller\"} |= \"Updating operation state\" | regexp \"(?P<status>Succeeded|Failed|Error).*application=(?P<what>[^ ]+) project=(?P<project>[^ ]+)\" | line_format \"what={{.what}} project={{.project}} status={{.status}}\"",
               "queryType": "range",
               "refId": "A",
               "legendFormat": ""
