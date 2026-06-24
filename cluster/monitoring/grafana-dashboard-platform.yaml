@@ -178,6 +178,10 @@ data:
             {
               "expr": "histogram_quantile(0.5, sum(platform_xr_time_to_ready_seconds_bucket{kind!~\"XTopic|XSubscription\"}) by (le, kind, backend))",
               "instant": true, "legendFormat": "", "format": "table", "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(platform_xr_time_to_ready_seconds_bucket{kind!~\"XTopic|XSubscription\"}) by (le, kind, backend))",
+              "instant": true, "legendFormat": "", "format": "table", "refId": "B"
             }
           ],
           "transformations": [
@@ -220,12 +224,6 @@ data:
               "instant": true,
               "legendFormat": "p50 — {{kind}} / {{backend}}",
               "refId": "A"
-            },
-            {
-              "expr": "histogram_quantile(0.99, sum(platform_xr_time_to_ready_seconds_bucket{kind!~\"XTopic|XSubscription\"}) by (le, kind, backend))",
-              "instant": true,
-              "legendFormat": "p99 — {{kind}} / {{backend}}",
-              "refId": "B"
             }
           ]
         },
