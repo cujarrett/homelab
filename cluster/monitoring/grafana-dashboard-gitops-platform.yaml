@@ -165,8 +165,15 @@ data:
             }
           ],
           "transformations": [
-            { "id": "filterFieldsByName", "options": { "include": { "names": ["Time", "what", "status"] } } },
-            { "id": "organize", "options": { "renameByName": { "Time": "when" } } },
+            { "id": "organize", "options": {
+              "renameByName": { "Time": "when" },
+              "excludeByName": {
+                "Line": true, "app": true, "component": true, "container": true,
+                "detected_level": true, "filename": true, "instance": true,
+                "job": true, "namespace": true, "node_name": true,
+                "pod": true, "service_name": true, "stream": true
+              }
+            } },
             { "id": "sortBy", "options": { "fields": [ { "displayName": "when", "desc": true } ] } }
           ]
         },
