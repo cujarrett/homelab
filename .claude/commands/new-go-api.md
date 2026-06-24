@@ -29,6 +29,7 @@ Create a new directory `./<app-name>/` containing the following files. In every 
 | `./<app-name>/Dockerfile` | [.claude/assets/new-go-api/Dockerfile](.claude/assets/new-go-api/Dockerfile) |
 | `./<app-name>/justfile` | [.claude/assets/new-go-api/justfile](.claude/assets/new-go-api/justfile) |
 | `./<app-name>/.github/workflows/ci.yml` | [.claude/assets/new-go-api/ci.yml](.claude/assets/new-go-api/ci.yml) |
+| `./<app-name>/.github/dependabot.yml` | [.claude/assets/new-go-api/dependabot.yml](.claude/assets/new-go-api/dependabot.yml) |
 | `homelab-workspaces/<workspace>/<app-name>.yaml` | [.claude/assets/new-go-api/xapi.yaml](.claude/assets/new-go-api/xapi.yaml) |
 
 Also create:
