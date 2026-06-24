@@ -10,22 +10,22 @@ Run `crossplane render` for every XApi workspace against the current composition
 crossplane render \
   ../homelab-workspaces/my-vinyl/my-vinyl-api.yaml \
   platform/api/composition.yaml \
-  .github/prompts/render-functions.yaml
+  platform/api/render-functions.yaml
 
 crossplane render \
   ../homelab-workspaces/sump-pump/sump-pump-bridge.yaml \
   platform/api/composition.yaml \
-  .github/prompts/render-functions.yaml
+  platform/api/render-functions.yaml
 
 crossplane render \
   ../homelab-workspaces/sump-pump/sump-pump-consumer.yaml \
   platform/api/composition.yaml \
-  .github/prompts/render-functions.yaml
+  platform/api/render-functions.yaml
 
 crossplane render \
   ../homelab-workspaces/sump-pump/weather-exporter.yaml \
   platform/api/composition.yaml \
-  .github/prompts/render-functions.yaml
+  platform/api/render-functions.yaml
 ```
 
 For each render:
