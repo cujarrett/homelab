@@ -1,9 +1,0 @@
-# Functions manifest for `crossplane render` (used by render-check.prompt.md).
-# Lists the Crossplane Functions referenced in platform/api/composition.yaml so
-# the render command knows which OCI images to pull and run locally via Docker.
-apiVersion: pkg.crossplane.io/v1beta1
-kind: Function
-metadata:
-  name: function-go-templating
-spec:
-  package: xpkg.upbound.io/crossplane-contrib/function-go-templating:v0.12.0
