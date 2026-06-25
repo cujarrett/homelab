@@ -276,8 +276,8 @@ spec:
             stringData:
               type: redis
               provider: aws
-              host: {{ index $rgConn "host" | default "" }}
-              port: {{ index $rgConn "port" | default "6379" }}
+              host: {{ index $rgConn "primary_endpoint_address" | default "" | b64dec }}
+              port: {{ index $rgConn "port" | default "" | b64dec }}
               role-arn: {{ $cachePredictedRoleArn }}
               profile-arn: {{ $cacheProfileArn }}
             {{- end }}
