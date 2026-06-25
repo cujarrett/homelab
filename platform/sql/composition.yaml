@@ -296,7 +296,7 @@ spec:
               type: postgresql
               provider: aws
               host: {{ index $rdsConn "host" | default "" | b64dec }}
-              port: {{ index $rdsConn "port" | default "" | b64dec }}
+              port: {{ index $rdsConn "port" | default "" | b64dec | quote }}
               database: {{ $name | replace "-" "_" }}
               username: {{ index $rdsConn "username" | default "" | b64dec }}
               role-arn: {{ $sqlPredictedRoleArn }}
