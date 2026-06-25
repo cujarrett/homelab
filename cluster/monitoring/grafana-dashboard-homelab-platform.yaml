@@ -354,16 +354,13 @@ data:
             "namePlacement": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
+              "calcs": [],
               "fields": "",
-              "values": false
+              "values": true
             },
             "showUnfilled": true,
             "sizing": "auto",
-            "valueMode": "color",
-            "sortSeries": "asc"
+            "valueMode": "color"
           },
           "pluginVersion": "13.0.2",
           "targets": [
@@ -379,7 +376,27 @@ data:
             }
           ],
           "title": "XR Time-to-Ready \u2014 p50 Visual",
-          "transformations": [],
+          "transformations": [
+            {
+              "id": "reduce",
+              "options": {
+                "reducers": [
+                  "lastNotNull"
+                ]
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": [
+                  {
+                    "displayName": "Last *",
+                    "desc": true
+                  }
+                ]
+              }
+            }
+          ],
           "type": "bargauge"
         },
         {
@@ -431,16 +448,13 @@ data:
             "namePlacement": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
+              "calcs": [],
               "fields": "",
-              "values": false
+              "values": true
             },
             "showUnfilled": true,
             "sizing": "auto",
-            "valueMode": "color",
-            "sortSeries": "asc"
+            "valueMode": "color"
           },
           "pluginVersion": "13.0.2",
           "targets": [
@@ -456,7 +470,27 @@ data:
             }
           ],
           "title": "AWS Resource Provisioning \u2014 p50 per Type",
-          "transformations": [],
+          "transformations": [
+            {
+              "id": "reduce",
+              "options": {
+                "reducers": [
+                  "lastNotNull"
+                ]
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": [
+                  {
+                    "displayName": "Last *",
+                    "desc": true
+                  }
+                ]
+              }
+            }
+          ],
           "type": "bargauge"
         },
         {
@@ -508,16 +542,13 @@ data:
             "namePlacement": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
+              "calcs": [],
               "fields": "",
-              "values": false
+              "values": true
             },
             "showUnfilled": true,
             "sizing": "auto",
-            "valueMode": "color",
-            "sortSeries": "asc"
+            "valueMode": "color"
           },
           "pluginVersion": "13.0.2",
           "targets": [
@@ -533,7 +564,27 @@ data:
             }
           ],
           "title": "XApi Binding Wait \u2014 p50 per Stage",
-          "transformations": [],
+          "transformations": [
+            {
+              "id": "reduce",
+              "options": {
+                "reducers": [
+                  "lastNotNull"
+                ]
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": [
+                  {
+                    "displayName": "Last *",
+                    "desc": true
+                  }
+                ]
+              }
+            }
+          ],
           "type": "bargauge"
         },
         {
