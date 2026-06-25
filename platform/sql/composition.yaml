@@ -295,10 +295,10 @@ spec:
             stringData:
               type: postgresql
               provider: aws
-              host: {{ index $rdsConn "endpoint" | default "" }}
-              port: {{ index $rdsConn "port" | default "5432" }}
+              host: {{ index $rdsConn "host" | default "" | b64dec }}
+              port: {{ index $rdsConn "port" | default "" | b64dec }}
               database: {{ $name | replace "-" "_" }}
-              username: {{ index $rdsConn "username" | default "app" }}
+              username: {{ index $rdsConn "username" | default "" | b64dec }}
               role-arn: {{ $sqlPredictedRoleArn }}
               profile-arn: {{ $sqlProfileArn }}
             {{- end }}
