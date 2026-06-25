@@ -20,6 +20,40 @@ LCD display on `ctrl-1`.
 
 ---
 
+## Kiosk Display
+
+The 1U LCD on `ctrl-1` runs a Chromium kiosk displaying the Grafana playlist. It autostarts via `getty@tty1` → autologin → `startx` → `/home/pi/kiosk.sh`.
+
+Playlist URL: `https://grafana.local.lab/playlists/play/bfkvgx130fncwc?kiosk`
+
+**Restart the display** (if black or hung):
+
+```bash
+ssh pi@192.168.10.100 "sudo systemctl restart getty@tty1.service"
+```
+
+Do not `pkill chromium` — the `while` loop in `kiosk.sh` relaunches it with a stale URL.
+
+**Take a remote screenshot** (`scrot` is installed on `ctrl-1`):
+
+```bash
+ssh pi@192.168.10.100 "DISPLAY=:0 scrot /tmp/kiosk.png" && scp pi@192.168.10.100:/tmp/kiosk.png /tmp/kiosk.png && open /tmp/kiosk.png
+```
+
+Suggested shell alias:
+
+```bash
+alias kiosk-shot='ssh pi@192.168.10.100 "DISPLAY=:0 scrot /tmp/kiosk.png" && scp pi@192.168.10.100:/tmp/kiosk.png /tmp/kiosk.png && open /tmp/kiosk.png'
+```
+
+**Check status**:
+
+```bash
+ssh pi@192.168.10.100 "journalctl -u getty@tty1 -n 30 --no-pager && ps aux | grep -E 'chromium|kiosk|Xorg' | grep -v grep"
+```
+
+---
+
 ## Stack
 
 | Layer | Tool | Notes |
