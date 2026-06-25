@@ -14,16 +14,16 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 
 ## Offerings
 
-| XR | What it provisions | Backend |
-|---|---|---|
-| [`XApi`](api/README.md) | Deployment · Service · Ingress · TLS | — |
-| [`XSpa`](spa/README.md) | Static frontend via nginx | — |
-| [`XSql`](sql/README.md) | Relational database | `private-cloud` (Postgres) · `public-cloud` (RDS) |
-| [`XNoSql`](nosql/README.md) | Key-value / document store | DynamoDB |
-| [`XObjectStorage`](object-storage/README.md) | Object store | S3 |
-| [`XCache`](cache/README.md) | Cache cluster (owned by XApi) | `private-cloud` (Redis) · `public-cloud` (ElastiCache) |
-| [`XTopic`](topic/README.md) | Durable message stream | NATS JetStream |
-| [`XSubscription`](subscription/README.md) | Durable consumer cursor | NATS JetStream |
+| XR | What it provisions | `private-cloud` | `public-cloud` |
+|---|---|---|---|
+| [`XApi`](api/README.md) | Deployment · Service · Ingress · TLS | — | — |
+| [`XSpa`](spa/README.md) | Static frontend via nginx | — | — |
+| [`XSql`](sql/README.md) | Relational database | Postgres on Longhorn | AWS RDS Postgres |
+| [`XCache`](cache/README.md) | Cache cluster (owned by XApi) | Redis | AWS ElastiCache |
+| [`XNoSql`](nosql/README.md) | Key-value / document store | ExtendDB *(planned)* | AWS DynamoDB |
+| [`XObjectStorage`](object-storage/README.md) | Object store | MinIO *(planned)* | AWS S3 |
+| [`XTopic`](topic/README.md) | Durable message stream | NATS JetStream | — |
+| [`XSubscription`](subscription/README.md) | Durable consumer cursor | NATS JetStream | — |
 
 ---
 
@@ -123,19 +123,6 @@ s3 := s3.NewFromConfig(cfg)
 ```
 
 For the full design: [`docs/workload-identity.md`](../docs/workload-identity.md)
-
----
-
-## Backend options
-
-| XR | `private-cloud` | `public-cloud` |
-|---|---|---|
-| `XSql` | In-cluster Postgres on Longhorn | AWS RDS Postgres |
-| `XCache` | In-cluster Redis | AWS ElastiCache |
-| `XNoSql` | (In-cluster ExtendDB Planned) | AWS DynamoDB |
-| `XObjectStorage` | (In-cluster MinIO Planned) | AWS S3 |
-| `XTopic` | In-cluster NATS JetStream | - |
-| `XSubscription` | In-cluster NATS JetStream | - |
 
 ---
 
