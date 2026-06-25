@@ -557,7 +557,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "label_replace(\n  histogram_quantile(0.5,\n    sum by (le, init_container) (\n      label_replace(\n        platform_pod_init_container_seconds_bucket{init_container!~\"linkerd.*\"},\n        \"init_container\", \"wait-for-object-storage-binding\",\n        \"init_container\", \"wait-for-object-storage-.*-binding\"\n      )\n    )\n  ),\n  \"init_container\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n)",
+              "expr": "label_replace(\n  (\n    histogram_quantile(0.5,\n      sum by (le, init_container) (\n        platform_pod_init_container_seconds_bucket{init_container!~\"linkerd.*|wait-for-object-storage-.*-binding\"}\n      )\n    )\n    or\n    label_replace(\n      histogram_quantile(0.5,\n        sum by (le) (\n          platform_pod_init_container_seconds_bucket{init_container=~\"wait-for-object-storage-.*-binding\"}\n        )\n      ),\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \"\"\n    )\n  ),\n  \"init_container\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n)",
               "instant": true,
               "legendFormat": "{{init_container}}",
               "refId": "A"
