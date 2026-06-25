@@ -277,7 +277,7 @@ spec:
               type: redis
               provider: aws
               host: {{ index $rgConn "primary_endpoint_address" | default "" | b64dec }}
-              port: {{ index $rgConn "port" | default "" | b64dec }}
+              port: {{ index $rgConn "port" | default "" | b64dec | quote }}
               role-arn: {{ $cachePredictedRoleArn }}
               profile-arn: {{ $cacheProfileArn }}
             {{- end }}
