@@ -12,7 +12,7 @@ Crossplane composition that deploys an API server (Go, Node, GraphQL, etc.) with
 - **HTTPRoute** — default 30s request timeout
 - **XCache** *(optional)* — short-lived cache cluster owned by this XApi; created and deleted alongside it
 
-`XObjectStorage`, `XSql`, and `XNoSql` are created independently and bound via refs. They outlive any one XApi. Their IAM Roles, RolesAnywhere Profiles, and binding Secrets are created by this composition when refs are declared.
+`XObjectStorage`, `XSql`, and `XNoSql` are created independently and bound via refs. They outlive any one XApi. For `XObjectStorage` and `XNoSql`, this composition creates the IAM Role, RolesAnywhere Profile, and binding Secret when the ref is declared — their binding secrets only contain names, region, and ARNs, which XApi can compute. For `XSql`, those are created by the XSql composition itself, because its binding secret contains RDS connection details (host, port, username) that are only known after RDS provisioning. The tenant lists consuming XApi names in `consumerServiceAccounts` on the XSql — each gets its own IAM role and binding secret scoped to its SA.
 
 The namespace is owned by the tenant — created by `namespace.yaml` in the tenant directory, not by this composition.
 
@@ -170,7 +170,8 @@ kubectl get xapi foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
 kubectl get pods -n foo
 
 # Binding secret — confirm all keys are present
-kubectl get secret foo-assets -n foo \
+# Object storage secrets are named <xapi-name>-<ref-name>; nosql is <xapi-name>-nosql
+kubectl get secret foo-foo-assets -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 
 # Hit the Ingress

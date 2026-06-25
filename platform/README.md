@@ -4,14 +4,10 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 
 ## Philosophy
 
-Kubernetes is powerful. Deployments, Services, Ingresses, ConfigMaps, Secrets—you can build anything. But they're still infrastructure concepts. Nobody wakes up wanting to write a Deployment. They want an API. They want a database. There's a gap between what Kubernetes exposes and what developers actually need.
-
-This platform closes that gap. You describe *what* you need—a database, object storage, a message queue. The platform figures out *how*—which IAM roles to wire, how to rotate credentials, where to mount secrets, which init containers to add. The app doesn't care about infrastructure. It just reads from `/bindings/` and works.
-
 - **Declare resources, not steps.** An `XApi` with a `sqlRef` is a statement of intent. The composition figures out IAM roles, init containers, volume mounts, credential rotation — none of that is the app's problem.
 - **Credentials reach the pod as files, not env vars.** The [servicebinding.io](https://servicebinding.io) convention makes bindings portable and predictable. The app reads `/bindings/sql/host`. It doesn't care whether that's in-cluster Postgres or RDS.
-- **Data resources outlive APIs.** `XSql`, `XNoSql`, `XObjectStorage` have lifecycles independent of any one `XApi`. Create them once, reference them by name, bind them to multiple APIs if needed.
 - **Choose your backend, keep your app the same.** Some resources offer both in-cluster and cloud-managed variants: Postgres or RDS, Redis or ElastiCache. The `sqlRef` works for both. The app reads `/bindings/sql/host`. It doesn't care where the database lives.
+- **Data resources outlive APIs.** `XSql`, `XNoSql`, `XObjectStorage` have lifecycles independent of any one `XApi`. Create them once, reference them by name.
 - **No static credentials for AWS.** Every AWS binding uses workload identity: a short-lived X.509 certificate exchanged for temporary STS credentials via IAM Roles Anywhere. No access keys in Secrets or config files.
 
 ---
@@ -54,7 +50,7 @@ flowchart TD
     xspa -.->|"companion API"| xapi
 ```
 
-`XCache` is created and destroyed with its `XApi`. Everything else is independent — bind the same `XSql` to multiple APIs, or delete an `XApi` without touching its database.
+`XCache` is created and destroyed with its `XApi`. Everything else is independent — delete an `XApi` without touching its database.
 
 ---
 
@@ -116,7 +112,7 @@ flowchart LR
     sts -->|"access key + session token"| sidecar
 ```
 
-Each binding gets its own IAM Role. The trust policy is locked to the pod's exact SPIFFE ID — wrong namespace, wrong service account, different cluster: rejected. If a pod is deleted, the role can't be assumed by anything.
+Each binding gets its own IAM Role scoped to the pod's exact SPIFFE ID — wrong namespace, wrong service account, different cluster: rejected.
 
 The app uses named AWS profiles injected by the composition. Profile env var names are derived from the ref name: `AWS_PROFILE_{REF_NAME_UPPER_SNAKE_CASE}` for object storage refs, `AWS_PROFILE_NOSQL` for nosql.
 
@@ -126,15 +122,11 @@ cfg, _ := config.LoadDefaultConfig(ctx,
 s3 := s3.NewFromConfig(cfg)
 ```
 
-No credential management in application code. No access keys in git.
-
 For the full design: [`docs/workload-identity.md`](../docs/workload-identity.md)
 
 ---
 
 ## Backend options
-
-Resources that support multiple backends use the same `XApi` binding regardless of where they run. The app doesn't change when you switch backends.
 
 | XR | `private-cloud` | `public-cloud` |
 |---|---|---|
@@ -144,3 +136,40 @@ Resources that support multiple backends use the same `XApi` binding regardless 
 | `XObjectStorage` | (In-cluster MinIO Planned) | AWS S3 |
 | `XTopic` | In-cluster NATS JetStream | - |
 | `XSubscription` | In-cluster NATS JetStream | - |
+
+---
+
+## Environments and feature branches
+
+**The namespace is the environment boundary.** Every AWS resource name embeds both namespace and XR name — `crossplane-{ns}-{name}-*` for IAM roles, `platform-{ns}-{name}` for S3 buckets. Within a namespace, XApi names must be unique (standard Kubernetes). Across namespaces, names are independent — `foo-api` in `ns-alice` and `foo-api` in `ns-bob` produce completely separate IAM roles, secrets, and buckets.
+
+### Feature branch pattern
+
+Each engineer or branch gets its own namespace.
+
+```
+namespace: foo-alice          namespace: foo-bob
+────────────────────          ─────────────────────
+XSql    foo-db                XSql    foo-db
+XNoSql  foo-events            XNoSql  foo-events
+XApi    foo-api               XApi    foo-api
+```
+
+IAM roles: `crossplane-foo-alice-foo-api-nosql` vs `crossplane-foo-bob-foo-api-nosql`. S3 buckets: `platform-foo-alice-foo-assets` vs `platform-foo-bob-foo-assets`.
+
+### Test / QA / Prod tiers
+
+Use `private-cloud` backends for feature branches and test to avoid AWS cost. Promote to `public-cloud` at QA and above. The `XApi` binding is identical — only `backend:` changes in the resource YAML.
+
+| Tier | Namespace pattern | Backend | Notes |
+|---|---|---|---|
+| Feature branch | `{app}-{branch}` or `{app}-{engineer}` | `private-cloud` | Short-lived; cheap; spun up per-branch |
+| Test | `{app}-test` | `private-cloud` | Persistent; no AWS cost |
+| QA | `{app}-qa` | `public-cloud` | Real AWS; shared QA dataset |
+| Prod | `{app}-prod` | `public-cloud` | Real AWS; production data |
+
+### XSql and shared databases
+
+`XSql` creates the underlying RDS instance. Multiple XApis can share one RDS instance by listing themselves in `consumerServiceAccounts` — each gets its own IAM role and binding secret scoped to its SA, identical to how XNoSql and XObjectStorage work.
+
+For feature branches and test, use `backend: private-cloud`. Each branch gets its own in-cluster Postgres at near-zero cost and full isolation. Reserve `public-cloud` XSql for QA and prod.

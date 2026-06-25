@@ -14,7 +14,7 @@ DynamoDB tables are ready in ~10–30 seconds after Crossplane calls the API, ma
 
 ## Binding secret
 
-Written by the `XApi` composition (not by XNoSql) once the IAM Role and RolesAnywhere Profile ARNs are available. Secret name equals the XR name; namespace comes from the `XApi` that references it. Mounted at `/bindings/nosql/` inside the container.
+Written by the `XApi` composition (not by XNoSql) once the RolesAnywhere Profile ARN is available. Secret name is `{xapi-name}-nosql`; namespace comes from the `XApi` that references it. Mounted at `/bindings/nosql/` inside the container.
 
 | Key | Value |
 |---|---|
@@ -87,7 +87,8 @@ kubectl get xnosqls foo-events
 kubectl get xnosql foo-events -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
 # Binding secret — confirm all keys are present (written by XApi, not XNoSql)
-kubectl get secret foo-events -n foo \
+# Secret is named {xapi-name}-nosql, e.g. foo-nosql for an XApi named "foo"
+kubectl get secret foo-nosql -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 
 # Verify table exists in AWS

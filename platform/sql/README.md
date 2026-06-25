@@ -10,7 +10,13 @@ Standalone resource with a lifecycle independent of any one API. Bind to an `XAp
 
 ## Binding secret
 
-Secret name equals the XR name; namespace comes from the `namespace` parameter. Mounted at `/bindings/sql/` inside the container.
+Secret name:
+- `public-cloud` → one secret per consumer: `{consumer}-sql` (e.g. `foo-api-sql`, `bar-api-sql`)
+- `private-cloud` → `{xsql-name}`
+
+Namespace comes from the `namespace` parameter. Mounted at `/bindings/sql/` inside the container.
+
+Multiple consumers' secrets coexist in the same namespace but each XApi's RBAC Role grants `get` only on its own named secrets — `foo-api`'s ServiceAccount cannot read `bar-api-sql`.
 
 | Key | Value | Backend |
 |---|---|---|
@@ -37,6 +43,7 @@ Secret name equals the XR name; namespace comes from the `namespace` parameter. 
 | `region` | no | `us-east-1` | Cloud region for the RDS instance (public-cloud only). |
 | `size` | no | `sm` | T-shirt size for the RDS instance (public-cloud only): `xs=db.t4g.micro`, `sm=db.t4g.small`, `md=db.t4g.medium`, `lg=db.t4g.large` |
 | `dataRetention` | no | `delete` | Longhorn PVC reclaim: `retain` (PVC survives XR deletion, data recoverable) or `delete` (PVC wiped on deletion, data unrecoverable). |
+| `consumerServiceAccounts` | public-cloud | — | List of XApi names that will bind this database. Each entry gets its own IAM role and binding secret scoped to that SA's exact SPIFFE ID. Each entry must match an XApi `metadata.name`. |
 
 ## Example
 
@@ -62,6 +69,8 @@ spec:
     region: us-east-1
     size: sm   # xs=db.t4g.micro | sm=db.t4g.small | md=db.t4g.medium | lg=db.t4g.large
     namespace: foo
+    consumerServiceAccounts:
+      - foo-api   # each entry gets its own IAM role and binding secret
 ```
 
 Then reference from an `XApi`:
@@ -81,12 +90,15 @@ The `public-cloud` backend runs a multi-pass chain. The RDS instance and IAM Rol
 
 ```
 Pass 1: RDS Instance created (iamDatabaseAuthenticationEnabled: true; master password from {name}-master-secret)
-        IAM Role created (trust policy: StringLike on spiffe://homelab.local/ns/{namespace}/sa/*)
-Pass 2: RolesAnywhere Profile created (deferred until role ARN is in observed state)
-Pass 3: Binding Secret written (deferred until RDS is ready and both ARNs are known)
+        Per consumer in consumerServiceAccounts:
+          IAM Role created (trust policy StringEquals scoped to that SA's SPIFFE ID)
+          RolesAnywhere Profile created (role ARN computed from deterministic naming — not deferred)
+Pass 2: Per consumer: Binding Secret written (deferred until RDS is ready and profile ARN is known)
 ```
 
-**Trust policy scope.** The IAM role trust policy uses a namespace-level wildcard (`sa/*`) rather than locking to a specific service account. This is because `XSql` is created independently of any `XApi` and doesn't know which service account will consume it. Any pod in the same namespace with a valid SVID can assume the role. This is a deliberate homelab trade-off — full per-workload scoping would require the `XApi` to create the role instead.
+**Trust policy scope.** Each consumer gets its own IAM role with a `StringEquals` trust policy scoped to `spiffe://homelab.local/ns/{namespace}/sa/{consumer}`. Multiple XApis can share one RDS instance — each declares itself in `consumerServiceAccounts` and gets an independent role and binding secret.
+
+Because XSql is standalone, consumer names must be declared upfront. Each consumer must match an XApi `metadata.name` in the same namespace.
 
 The inline policy grants only `rds-db:connect` scoped to the `app` database user on any RDS instance in the account:
 
@@ -108,12 +120,12 @@ kubectl get xsqls foo-db
 # Detailed conditions — shows exactly WHY something is not ready
 kubectl get xsql foo-db -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
-# Binding secret — confirm all keys are present
-kubectl get secret foo-db -n foo \
+# Binding secrets — one per consumer, named {consumer}-sql
+kubectl get secret foo-api-sql -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 
 # Connect to in-cluster Postgres directly
-kubectl exec -it -n foo deploy/foo-db-postgres -- psql -U app -d foo-db
+kubectl exec -it -n foo deploy/foo-db-postgres -- psql -U app -d foo_db
 
 # RDS instance status (public-cloud backend)
 aws rds describe-db-instances --db-instance-identifier foo-db

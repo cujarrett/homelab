@@ -19,7 +19,7 @@ The IAM Role, RolesAnywhere Profile, and binding Secret are **not** created by X
 
 ## Binding secret
 
-Written by the `XApi` composition (not by XObjectStorage) once the IAM Role and RolesAnywhere Profile ARNs are available. Secret name equals the XR name; namespace comes from the `XApi` that references it. Mounted at `/bindings/object-storage/` (first ref), `/bindings/object-storage-1/` (second), etc.
+Written by the `XApi` composition (not by XObjectStorage) once the RolesAnywhere Profile ARN is available. Secret name is `{xapi-name}-{ref-name}`; namespace comes from the `XApi` that references it. Mounted at `/bindings/object-storage/` (first ref), `/bindings/object-storage-1/` (second), etc.
 
 | Key | Value |
 |---|---|
@@ -43,7 +43,7 @@ spec:
   parameters:
     namespace: foo
 # Bucket "platform-foo-foo-assets" is created in AWS.
-# Binding Secret "foo-assets" is written to namespace "foo" by the referencing XApi.
+# Binding Secret "{xapi-name}-foo-assets" is written to namespace "foo" by the referencing XApi.
 ```
 
 Then reference from an `XApi`:
@@ -67,6 +67,7 @@ kubectl get xobjectstorages foo-assets
 kubectl get xobjectstorage foo-assets -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
 # Binding secret — confirm all keys are present (written by XApi, not XObjectStorage)
-kubectl get secret foo-assets -n foo \
+# Secret is named {xapi-name}-{ref-name}, e.g. foo-foo-assets for XApi "foo" + ref "foo-assets"
+kubectl get secret foo-foo-assets -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 ```
