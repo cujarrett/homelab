@@ -39,30 +39,28 @@ This platform needs multiple scoped IAM roles per pod. IRSA can't do that. So th
 
 ## Provisioning
 
-Crossplane runs a three-pass chain per binding. Each step depends on the previous step's output, so they must happen in order. No imperative scripting; Crossplane reads what exists in AWS, fills in the gaps, and repeats until done.
+Crossplane runs a two-pass chain per binding. No imperative scripting; Crossplane reads what exists in AWS, fills in the gaps, and repeats until done.
 
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 40, 'rankSpacing': 60}}}%%
 flowchart LR
     xr["XApi XR\napplied"]
     role["IAM Role\npass 1\ntrust: spiffe://…/ns/foo/sa/foo-api\ninline policy: this bucket only"]
-    profile["RolesAnywhere Profile\npass 2 — after role ARN known\nlinks role → trust anchor · 1h TTL"]
-    secret["Binding Secret\npass 3 — after profile ARN known\nrole-arn · profile-arn · resource metadata\nno credentials"]
+    profile["RolesAnywhere Profile\npass 1 — alongside role\nrole ARN predicted from naming convention"]
+    secret["Binding Secret\npass 2 — after profile ARN known\nrole-arn · profile-arn · resource metadata\nno credentials"]
     pod["Pod\ninit container waits\nthen app starts"]
 
     xr -->|"pass 1"| role
-    role -->|"role ARN\nin observed state"| profile
+    xr -->|"pass 1"| profile
     profile -->|"profile ARN\nin observed state"| secret
     secret -->|"Secret synced\nto volume"| pod
 ```
 
-**Pass 1: IAM Role.** Crossplane creates an IAM role scoped to this binding. The trust policy is hardcoded: only the pod's SPIFFE ID can assume it. An inline policy grants access to exactly one resource (one bucket, one DynamoDB table, etc). The role ARN is written to AWS and read back.
+**Pass 1: IAM Role + RolesAnywhere Profile.** Crossplane creates both in the same reconcile pass. The IAM role ARN is computed deterministically from the naming convention (`arn:aws:iam::{account}:role/crossplane/crossplane-{ns}-{xr-name}-{suffix}`) — no need to wait for AWS to confirm it. This predicted ARN is used immediately in the Profile's `roleArns` field, so role and profile are created together. The profile tells AWS: "When you see an SVID signed by this CA with this SPIFFE ID, exchange it for this role's credentials (valid 1 hour)." The profile ARN is written to AWS and read back.
 
-**Pass 2: RolesAnywhere Profile.** Once the role ARN is visible in observed state, Crossplane creates a profile linking that role to your SPIRE trust anchor. The profile tells AWS: "When you see an SVID signed by this CA with this SPIFFE ID, exchange it for this role's temporary credentials (valid 1 hour)." The profile ARN is written to AWS and read back.
+**Pass 2: Binding Secret.** Once the profile ARN is visible in observed state, Crossplane writes a Kubernetes Secret containing the role ARN, profile ARN, and resource metadata (bucket name, table name, etc). The pod's init container waits for this Secret to sync to its volume, then the app starts.
 
-**Pass 3: Binding Secret.** Once the profile ARN is visible, Crossplane writes a Kubernetes Secret containing the role ARN, profile ARN, and resource metadata (bucket name, table name, etc). The pod's init container waits for this Secret to sync to its volume, then the app starts.
-
-**Per-binding chain.** This three-pass sequence repeats for every binding. An XApi with three object storage refs, two nosql refs, and one cache backend gets nine separate role+profile+secret chains running in parallel — one for each resource. If one binding stalls (e.g., AWS API throttle), the others keep going.
+**Per-binding chain.** This two-pass sequence repeats for every binding. An XApi with three object storage refs, two nosql refs, and one cache binding gets six separate chains running in parallel — one for each resource. If one binding stalls (e.g., AWS API throttle), the others keep going.
 
 ### IAM Role
 
@@ -77,12 +75,14 @@ Only a certificate with that exact URI SAN — signed by the cluster's SPIRE CA 
 > **Choice: one role per binding, not a shared role**
 > A shared role means any workload can reach any resource. Per-binding roles mean the object-storage role cannot touch DynamoDB. A compromised pod's blast radius is one resource.
 
-> **Choice: XApi creates the role, not XObjectStorage**
-> The trust policy needs the XApi's service account name and namespace. XObjectStorage doesn't know who will consume it. XApi creates the role, locks it to itself, writes the ARN into the binding Secret.
+> **Choice: XApi creates the role, not XObjectStorage or XNoSql**
+> The trust policy needs the XApi's service account name and namespace. XObjectStorage and XNoSql don't know who will consume them — any XApi can reference them. XApi creates the role, locks it to itself, writes the ARN into the binding Secret.
+>
+> **Exception: XSql creates its own IAM roles.** Unlike XObjectStorage and XNoSql, the XSql binding Secret must include RDS connection details (host, port, username) that are only known after RDS provisioning completes. XApi has no way to read another XR's status, so XSql manages its own IAM. Consuming XApis declare themselves in `consumerServiceAccounts` — each gets its own IAM role and binding Secret scoped to its SA's exact SPIFFE ID.
 
 ### RolesAnywhere Profile
 
-A RolesAnywhere Profile is AWS's configuration object that links an IAM role to a trust anchor (your SPIRE CA) and sets the credential session duration. It's the bridge that tells AWS "when you see a certificate signed by this CA with this SPIFFE ID, you can exchange it for this role's credentials, valid for 1 hour." Each binding gets its own profile. The profile is created on the second reconcile pass once the role ARN is available in observed state.
+A RolesAnywhere Profile is AWS's configuration object that links an IAM role to a trust anchor (your SPIRE CA) and sets the credential session duration. It's the bridge that tells AWS "when you see a certificate signed by this CA with this SPIFFE ID, you can exchange it for this role's credentials, valid for 1 hour." Each binding gets its own profile. The profile is created in the same reconcile pass as the IAM role — the role ARN is computed deterministically from the naming convention rather than read from observed state, so both resources are created together.
 
 > **Choice: one profile per binding, not a shared platform profile**
 > A shared profile's `roleArns` list is an exact-match allowlist with no wildcards. Every new binding would need to add its role ARN to the shared profile — a coordination point that doesn't compose. Per-binding profiles let each XApi manage its own identity independently.
