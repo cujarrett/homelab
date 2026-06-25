@@ -37,6 +37,7 @@ spec:
             {{- $objectStorageRefs := $xr.spec.parameters.objectStorageRefs | default list }}
             {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
             {{- $trustAnchorArn := index $envCtx "trustAnchorArn" | default "" }}
+            {{- $awsAccountId := index $envCtx "awsAccountId" | default "" }}
             {{- $sqlRefName := "" }}
             {{- if $xr.spec.parameters.sqlRef }}{{- $sqlRefName = $xr.spec.parameters.sqlRef.name }}{{- end }}
             {{- $nosqlRefName := "" }}
@@ -129,9 +130,15 @@ spec:
                 gotemplating.fn.crossplane.io/composition-resource-name: serviceaccount
                 gotemplating.fn.crossplane.io/ready: "True"
             {{- $boundSecrets := list }}
-            {{- range $objectStorageRefs }}{{- $boundSecrets = append $boundSecrets .name }}{{- end }}
-            {{- if $sqlRefName }}{{- $boundSecrets = append $boundSecrets $sqlRefName }}{{- end }}
-            {{- if $nosqlRefName }}{{- $boundSecrets = append $boundSecrets $nosqlRefName }}{{- end }}
+            {{- range $objectStorageRefs }}{{- $boundSecrets = append $boundSecrets (printf "%s-%s" $name .name) }}{{- end }}
+            {{- if $sqlRefName }}
+              {{- if eq $sqlBackend "public-cloud" }}
+                {{- $boundSecrets = append $boundSecrets (printf "%s-sql" $name) }}
+              {{- else }}
+                {{- $boundSecrets = append $boundSecrets $sqlRefName }}
+              {{- end }}
+            {{- end }}
+            {{- if $nosqlRefName }}{{- $boundSecrets = append $boundSecrets (printf "%s-nosql" $name) }}{{- end }}
             {{- if $cacheEnabled }}{{- $boundSecrets = append $boundSecrets (printf "%s-cache" $name) }}{{- end }}
             {{- if $secretRefName }}{{- $boundSecrets = append $boundSecrets $secretRefName }}{{- end }}
             {{- if $boundSecrets }}
@@ -399,19 +406,19 @@ spec:
                     {{- range $objectStorageRefs }}
                     - name: object-storage-{{ .name }}-binding
                       secret:
-                        secretName: {{ .name }}
+                        secretName: {{ $name }}-{{ .name }}
                         optional: true
                     {{- end }}
                     {{- if $sqlRefName }}
                     - name: sql-binding
                       secret:
-                        secretName: {{ $sqlRefName }}
+                        secretName: {{ if eq $sqlBackend "public-cloud" }}{{ $name }}-sql{{ else }}{{ $sqlRefName }}{{ end }}
                         optional: true
                     {{- end }}
                     {{- if $nosqlRefName }}
                     - name: nosql-binding
                       secret:
-                        secretName: {{ $nosqlRefName }}
+                        secretName: {{ $name }}-nosql
                         optional: true
                     {{- end }}
                     {{- if $cacheEnabled }}
@@ -433,13 +440,11 @@ spec:
             {{- $refName := $ref.name }}
             {{- $roleKey := printf "role-object-storage-%s" $refName }}
             {{- $profileKey := printf "profile-object-storage-%s" $refName }}
-            {{- $roleObs := index ($.observed.resources | default dict) $roleKey | default dict }}
-            {{- $roleArn := "" }}
-            {{- if $roleObs.resource }}{{- $roleArn = $roleObs.resource.status.atProvider.arn | default "" }}{{- end }}
             {{- $profileObs := index ($.observed.resources | default dict) $profileKey | default dict }}
             {{- $profileArn := "" }}
             {{- if $profileObs.resource }}{{- $profileArn = $profileObs.resource.status.atProvider.arn | default "" }}{{- end }}
             {{- $bucketName := printf "platform-%s-%s" $ns $refName }}
+            {{- $predictedRoleArn := printf "arn:aws:iam::%s:role/crossplane/crossplane-%s-%s-%s" $awsAccountId $ns $name $refName }}
             {{- $trustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringEquals" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $name))))) | toJson }}
             {{- $inlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "s3:GetObject" "s3:PutObject" "s3:DeleteObject" "s3:ListBucket") "Resource" (list (printf "arn:aws:s3:::%s" $bucketName) (printf "arn:aws:s3:::%s/*" $bucketName)))) | toJson }}
             ---
@@ -451,7 +456,7 @@ spec:
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: {{ $roleKey }}
                 gotemplating.fn.crossplane.io/ready: "True"
-                crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}-obj{{ $i }}
+                crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}-{{ $refName }}
             spec:
               deletionPolicy: Delete
               forProvider:
@@ -465,7 +470,6 @@ spec:
                   - name: platform-object-storage-{{ $ns }}-{{ $refName }}
                     policy: {{ $inlinePolicy | quote }}
 
-            {{- if $roleArn }}
             {{- /* Profile external-name workaround: provider uses spec.forProvider.name (string) as  */}}
             {{- /* profileId in GetProfile — a bug that returns 400 instead of 404.                   */}}
             {{- /* Fix: set external-name to a nil UUID on first create (valid UUID format → 404).     */}}
@@ -477,10 +481,7 @@ spec:
               {{- if $observedExternalName }}{{- $profileExternalName = $observedExternalName }}{{- end }}
             {{- end }}
             ---
-            # RolesAnywhere Profile for {{ $refName }}. Deferred until role ARN is known.
-            # External-name is set to a nil UUID on first create so AWS returns 404 (not 400),
-            # allowing Crossplane to call Create. After creation the real UUID is read back from
-            # observed state so the function pipeline never overwrites the provider-assigned UUID.
+            # RolesAnywhere Profile for {{ $refName }}.
             apiVersion: rolesanywhere.aws.upbound.io/v1beta1
             kind: Profile
             metadata:
@@ -492,24 +493,23 @@ spec:
             spec:
               deletionPolicy: Delete
               forProvider:
-                name: crossplane-{{ $ns }}-{{ $name }}-obj{{ $i }}
+                name: crossplane-{{ $ns }}-{{ $name }}-{{ $refName }}
                 enabled: true
                 durationSeconds: 3600
                 roleArns:
-                  - {{ $roleArn }}
+                  - {{ $predictedRoleArn }}
                 tags:
                   App: {{ $name }}
                   Namespace: {{ $ns }}
                   ObjectStorageRef: {{ $refName }}
-            {{- end }}
 
-            {{- if and $roleArn $profileArn }}
+            {{- if $profileArn }}
             ---
-            # Binding Secret for {{ $refName }}. Written once both role ARN and profile ARN are known.
+            # Binding Secret for {{ $refName }}. Written once profile ARN is known.
             apiVersion: v1
             kind: Secret
             metadata:
-              name: {{ $refName }}
+              name: {{ $name }}-{{ $refName }}
               namespace: {{ $ns }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: binding-secret-object-storage-{{ $refName }}
@@ -520,7 +520,7 @@ spec:
               provider: aws
               bucket: {{ $bucketName }}
               region: us-east-1
-              role-arn: {{ $roleArn }}
+              role-arn: {{ $predictedRoleArn }}
               profile-arn: {{ $profileArn }}
 
             {{- end }}
@@ -528,13 +528,11 @@ spec:
             {{- if $nosqlRefName }}
             {{- $nosqlRoleKey := "role-nosql" }}
             {{- $nosqlProfileKey := "profile-nosql" }}
-            {{- $nosqlRoleObs := index ($.observed.resources | default dict) $nosqlRoleKey | default dict }}
-            {{- $nosqlRoleArn := "" }}
-            {{- if $nosqlRoleObs.resource }}{{- $nosqlRoleArn = $nosqlRoleObs.resource.status.atProvider.arn | default "" }}{{- end }}
             {{- $nosqlProfileObs := index ($.observed.resources | default dict) $nosqlProfileKey | default dict }}
             {{- $nosqlProfileArn := "" }}
             {{- if $nosqlProfileObs.resource }}{{- $nosqlProfileArn = $nosqlProfileObs.resource.status.atProvider.arn | default "" }}{{- end }}
             {{- $tableName := $nosqlRefName }}
+            {{- $nosqlPredictedRoleArn := printf "arn:aws:iam::%s:role/crossplane/crossplane-%s-%s-nosql" $awsAccountId $ns $name }}
             {{- $nosqlTrustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringEquals" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $name))))) | toJson }}
             {{- $nosqlInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "dynamodb:GetItem" "dynamodb:PutItem" "dynamodb:UpdateItem" "dynamodb:DeleteItem" "dynamodb:Query" "dynamodb:Scan" "dynamodb:BatchGetItem" "dynamodb:BatchWriteItem") "Resource" (list (printf "arn:aws:dynamodb:us-east-1:*:table/%s" $tableName) (printf "arn:aws:dynamodb:us-east-1:*:table/%s/index/*" $tableName)))) | toJson }}
             ---
@@ -559,14 +557,13 @@ spec:
                 inlinePolicy:
                   - name: platform-nosql-{{ $ns }}-{{ $nosqlRefName }}
                     policy: {{ $nosqlInlinePolicy | quote }}
-            {{- if $nosqlRoleArn }}
             {{- $nosqlProfileExternalName := "00000000-0000-0000-0000-000000000000" }}
             {{- if $nosqlProfileObs.resource }}
               {{- $nosqlObservedExternalName := index ($nosqlProfileObs.resource.metadata.annotations | default dict) "crossplane.io/external-name" | default "" }}
               {{- if $nosqlObservedExternalName }}{{- $nosqlProfileExternalName = $nosqlObservedExternalName }}{{- end }}
             {{- end }}
             ---
-            # RolesAnywhere Profile for nosqlRef {{ $nosqlRefName }}. Deferred until role ARN is known.
+            # RolesAnywhere Profile for nosqlRef {{ $nosqlRefName }}.
             apiVersion: rolesanywhere.aws.upbound.io/v1beta1
             kind: Profile
             metadata:
@@ -582,19 +579,18 @@ spec:
                 enabled: true
                 durationSeconds: 3600
                 roleArns:
-                  - {{ $nosqlRoleArn }}
+                  - {{ $nosqlPredictedRoleArn }}
                 tags:
                   App: {{ $name }}
                   Namespace: {{ $ns }}
                   NoSqlRef: {{ $nosqlRefName }}
-            {{- end }}
-            {{- if and $nosqlRoleArn $nosqlProfileArn }}
+            {{- if $nosqlProfileArn }}
             ---
-            # Binding Secret for nosqlRef {{ $nosqlRefName }}. Written once both role ARN and profile ARN are known.
+            # Binding Secret for nosqlRef {{ $nosqlRefName }}. Written once profile ARN is known.
             apiVersion: v1
             kind: Secret
             metadata:
-              name: {{ $nosqlRefName }}
+              name: {{ $name }}-nosql
               namespace: {{ $ns }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: binding-secret-nosql
@@ -605,7 +601,7 @@ spec:
               provider: aws
               table-name: {{ $tableName }}
               region: us-east-1
-              role-arn: {{ $nosqlRoleArn }}
+              role-arn: {{ $nosqlPredictedRoleArn }}
               profile-arn: {{ $nosqlProfileArn }}
             {{- end }}
             {{- end }}{{- /* end nosqlRefName */}}

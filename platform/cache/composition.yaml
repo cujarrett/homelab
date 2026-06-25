@@ -8,6 +8,17 @@ spec:
     kind: XCache
   mode: Pipeline
   pipeline:
+    - step: load-environment-configs
+      functionRef:
+        name: function-environment-configs
+      input:
+        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+        kind: Input
+        spec:
+          environmentConfigs:
+            - type: Reference
+              ref:
+                name: aws-platform-config
     - step: render-cache
       # environment: cluster → in-cluster Redis; cloud → AWS ElastiCache
       functionRef:
@@ -37,11 +48,12 @@ spec:
               {{- end }}
             {{- end }}
             {{- $cacheRoleObs := index (.observed.resources | default dict) "cache-role" | default dict }}
-            {{- $cacheRoleArn := "" }}
-            {{- if $cacheRoleObs.resource }}{{- $cacheRoleArn = $cacheRoleObs.resource.status.atProvider.arn | default "" }}{{- end }}
             {{- $cacheProfileObs := index (.observed.resources | default dict) "cache-profile" | default dict }}
             {{- $cacheProfileArn := "" }}
             {{- if $cacheProfileObs.resource }}{{- $cacheProfileArn = $cacheProfileObs.resource.status.atProvider.arn | default "" }}{{- end }}
+            {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
+            {{- $awsAccountId := index $envCtx "awsAccountId" | default "" }}
+            {{- $cachePredictedRoleArn := printf "arn:aws:iam::%s:role/crossplane/crossplane-%s-%s" $awsAccountId $ns $name }}
             {{- if eq $env "private-cloud" }}
             ---
             apiVersion: apps/v1
@@ -192,14 +204,14 @@ spec:
                 inlinePolicy:
                   - name: platform-cache-{{ $ns }}-{{ $name }}
                     policy: {{ $cacheInlinePolicy | quote }}
-            {{- if $cacheRoleArn }}
             {{- $cacheProfileExternalName := "00000000-0000-0000-0000-000000000000" }}
             {{- if $cacheProfileObs.resource }}
               {{- $cacheObservedExternalName := index ($cacheProfileObs.resource.metadata.annotations | default dict) "crossplane.io/external-name" | default "" }}
               {{- if $cacheObservedExternalName }}{{- $cacheProfileExternalName = $cacheObservedExternalName }}{{- end }}
             {{- end }}
             ---
-            # RolesAnywhere Profile for ElastiCache. Deferred until role ARN is known.
+            # RolesAnywhere Profile for ElastiCache. Role ARN is computed from the deterministic
+            # external-name convention — no longer deferred waiting for observed role ARN.
             apiVersion: rolesanywhere.aws.upbound.io/v1beta1
             kind: Profile
             metadata:
@@ -215,11 +227,10 @@ spec:
                 enabled: true
                 durationSeconds: 3600
                 roleArns:
-                  - {{ $cacheRoleArn }}
+                  - {{ $cachePredictedRoleArn }}
                 tags:
                   App: {{ $name }}
                   Namespace: {{ $ns }}
-            {{- end }}
             {{- if $ugReady }}
             ---
             # ReplicationGroup. Deferred until UserGroup is ready so AWS can associate them.
@@ -231,6 +242,8 @@ spec:
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: replication-group
                 gotemplating.fn.crossplane.io/ready: {{ $rgReady | quote }}
+                # ElastiCache limits replication group IDs to 40 chars.
+                # "crossplane-" (11) + ns + "-" + name must stay ≤ 40.
                 crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}
             spec:
               forProvider:
@@ -247,10 +260,10 @@ spec:
                 name: {{ $name }}-rg-conn
                 namespace: {{ $ns }}
             {{- end }}
-            {{- if and $rgConn $cacheRoleArn $cacheProfileArn }}
+            {{- if and $rgConn $cacheProfileArn }}
             ---
-            # Binding Secret for ElastiCache. Written once the cluster is ready and IAM credentials
-            # are known. No password — the app calls elasticache generate-auth-token via the sidecar.
+            # Binding Secret for ElastiCache. Written once the cluster is ready and profile ARN is known.
+            # No password — the app calls elasticache generate-auth-token via the sidecar.
             apiVersion: v1
             kind: Secret
             metadata:
@@ -265,7 +278,7 @@ spec:
               provider: aws
               host: {{ index $rgConn "host" | default "" }}
               port: {{ index $rgConn "port" | default "6379" }}
-              role-arn: {{ $cacheRoleArn }}
+              role-arn: {{ $cachePredictedRoleArn }}
               profile-arn: {{ $cacheProfileArn }}
             {{- end }}
             {{- end }}

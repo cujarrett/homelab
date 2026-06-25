@@ -24,7 +24,7 @@ Secret name equals the XR name; namespace comes from the `namespace` parameter.
 
 **For `private-cloud`:** Written automatically by the composition once the Redis Deployment is ready.
 
-**For `public-cloud`:** Written automatically by the composition once the ReplicationGroup is ready and the role ARN and profile ARN are available. No manual steps required.
+**For `public-cloud`:** Written automatically by the composition once the ReplicationGroup is ready and the profile ARN is available. The role ARN is computed from the deterministic naming convention and does not need to be observed first. No manual steps required.
 
 | Key | Value | Backend |
 |---|---|---|
@@ -67,10 +67,10 @@ The `public-cloud` backend runs a multi-pass chain. Each step is deferred until 
 
 ```
 Pass 1: ElastiCache IAM User + UserGroup created
+        IAM Role created (trust policy locked to pod's SPIFFE ID; inline policy grants elasticache:Connect to this cluster and user)
+        RolesAnywhere Profile created (role ARN computed from deterministic naming — not deferred)
 Pass 2: ReplicationGroup created (deferred until UserGroup is ready — AWS requirement)
-Pass 3: IAM Role created (trust policy locked to pod's SPIFFE ID; inline policy grants elasticache:Connect to this cluster and user)
-Pass 4: RolesAnywhere Profile created (deferred until role ARN is in observed state)
-Pass 5: Binding Secret written (deferred until ReplicationGroup is ready and both ARNs are known)
+Pass 3: Binding Secret written (deferred until ReplicationGroup is ready and profile ARN is known)
 ```
 
 The ElastiCache cluster uses IAM authentication with TLS required. The IAM Role's inline policy grants only `elasticache:Connect` scoped to this specific ReplicationGroup and User ARN — no other cluster is reachable. The trust policy is locked to the XApi pod's exact SPIFFE ID:
@@ -84,16 +84,16 @@ The `aws-spiffe-helper` sidecar exchanges the pod's SVID for short-lived STS cre
 ## Operations
 
 ```bash
-# XR status
-kubectl get xcache foo-cache -n foo
+# XR status (XRs are cluster-scoped — no -n flag)
+kubectl get xcache foo-cache
 
 # Binding secret — confirm all keys are present
 kubectl get secret foo-cache -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 
-# ReplicationGroup status (public-cloud)
-kubectl get replicationgroup -n foo -o jsonpath='{.items[*].status.atProvider | {engine, status, primaryEndpoint}}'
+# ReplicationGroup status (public-cloud — managed resources are cluster-scoped)
+kubectl get replicationgroup -o jsonpath='{.items[*].status.atProvider | {engine, status, primaryEndpoint}}'
 
 # Detailed conditions — shows exactly WHY something is not ready
-kubectl get xcache foo-cache -n foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get xcache foo-cache -o jsonpath='{.status.conditions}' | python3 -m json.tool
 ```
