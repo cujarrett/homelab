@@ -76,9 +76,9 @@ data:
           "targets": [
             {
               "expr": "count(certmanager_certificate_ready_status{condition=\"True\"} == 1)",
+              "instant": true,
               "legendFormat": "Ready",
-              "refId": "A",
-              "instant": true
+              "refId": "A"
             }
           ],
           "title": "Ready",
@@ -131,9 +131,9 @@ data:
           "targets": [
             {
               "expr": "count(certmanager_certificate_ready_status{condition=\"False\"} == 1) or vector(0)",
+              "instant": true,
               "legendFormat": "Not Ready",
-              "refId": "A",
-              "instant": true
+              "refId": "A"
             }
           ],
           "title": "Not Ready",
@@ -150,7 +150,7 @@ data:
                     "value": 0
                   },
                   {
-                    "color": "orange",
+                    "color": "blue",
                     "value": 1
                   }
                 ]
@@ -186,9 +186,9 @@ data:
           "targets": [
             {
               "expr": "count((certmanager_certificate_expiration_timestamp_seconds - time()) < 7 * 86400) or vector(0)",
+              "instant": true,
               "legendFormat": "Expiring Soon",
-              "refId": "A",
-              "instant": true
+              "refId": "A"
             }
           ],
           "title": "Expiring < 7 days",
@@ -237,9 +237,9 @@ data:
           "targets": [
             {
               "expr": "sum(increase(certmanager_http_acme_client_request_count[1h]))",
+              "instant": true,
               "legendFormat": "Requests",
-              "refId": "A",
-              "instant": true
+              "refId": "A"
             }
           ],
           "title": "ACME Requests (1h)",
@@ -248,6 +248,10 @@ data:
         {
           "fieldConfig": {
             "defaults": {
+              "color": {
+                "fixedColor": "red",
+                "mode": "fixed"
+              },
               "custom": {
                 "align": "left",
                 "cellOptions": {
@@ -258,10 +262,6 @@ data:
                 },
                 "inspect": false
               },
-              "color": {
-                "fixedColor": "red",
-                "mode": "fixed"
-              },
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -271,8 +271,7 @@ data:
                   }
                 ]
               }
-            },
-            "overrides": []
+            }
           },
           "gridPos": {
             "h": 6,
@@ -313,20 +312,19 @@ data:
                   "issuer_group": true,
                   "issuer_kind": true
                 },
+                "indexByName": {
+                  "issuer_name": 2,
+                  "name": 0,
+                  "namespace": 1
+                },
                 "renameByName": {
                   "issuer_name": "Issuer",
                   "name": "Certificate",
                   "namespace": "Namespace"
-                },
-                "indexByName": {
-                  "name": 0,
-                  "namespace": 1,
-                  "issuer_name": 2
                 }
               }
             }
           ],
-          "noDataText": "No failing certificates",
           "type": "table"
         },
         {
@@ -431,20 +429,19 @@ data:
                   "issuer_kind": true,
                   "issuer_name": true
                 },
+                "indexByName": {
+                  "Value": 2,
+                  "name": 0,
+                  "namespace": 1
+                },
                 "renameByName": {
                   "Value": "Renews In",
                   "name": "Certificate",
                   "namespace": "Namespace"
-                },
-                "indexByName": {
-                  "name": 0,
-                  "namespace": 1,
-                  "Value": 2
                 }
               }
             }
           ],
-          "noDataText": "No upcoming renewals found",
           "type": "table"
         },
         {
