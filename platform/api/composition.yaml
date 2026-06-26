@@ -444,7 +444,13 @@ spec:
             {{- $profileArn := "" }}
             {{- if $profileObs.resource }}{{- $profileArn = $profileObs.resource.status.atProvider.arn | default "" }}{{- end }}
             {{- $bucketName := printf "platform-%s-%s" $ns $refName }}
-            {{- $predictedRoleArn := printf "arn:aws:iam::%s:role/crossplane/crossplane-%s-%s-%s" $awsAccountId $ns $name $refName }}
+            {{- /* IAM role names are capped at 64 chars. Hash the name when it would exceed that. */}}
+            {{- $rawRoleExternalName := printf "crossplane-%s-%s-%s" $ns $name $refName }}
+            {{- $roleExternalName := $rawRoleExternalName }}
+            {{- if gt (len $rawRoleExternalName) 64 }}
+            {{- $roleExternalName = printf "xp-%s" ($rawRoleExternalName | sha256sum | trunc 61) }}
+            {{- end }}
+            {{- $predictedRoleArn := printf "arn:aws:iam::%s:role/crossplane/%s" $awsAccountId $roleExternalName }}
             {{- $trustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringEquals" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $name))))) | toJson }}
             {{- $inlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "s3:GetObject" "s3:PutObject" "s3:DeleteObject" "s3:ListBucket") "Resource" (list (printf "arn:aws:s3:::%s" $bucketName) (printf "arn:aws:s3:::%s/*" $bucketName)))) | toJson }}
             ---
@@ -456,7 +462,7 @@ spec:
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: {{ $roleKey }}
                 gotemplating.fn.crossplane.io/ready: "True"
-                crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}-{{ $refName }}
+                crossplane.io/external-name: {{ $roleExternalName }}
             spec:
               deletionPolicy: Delete
               forProvider:
