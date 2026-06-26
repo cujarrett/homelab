@@ -611,6 +611,7 @@ spec:
               name: {{ $name }}-cache
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: cache
+                gotemplating.fn.crossplane.io/ready: "True"
             spec:
               parameters:
                 backend: {{ $cacheBackend }}
