@@ -14,7 +14,7 @@ The goal: every pod gets its own short-lived AWS identity, scoped to exactly the
 
 Three systems work together.
 
-**[SPIRE](https://spiffe.io/docs/latest/spire-about/spire-concepts/)** is the certificate authority. It's configured to issue certificates only to XApi and XSpa pods (identified by `app: xapi` or `app: xspa` labels set by their compositions). For these registered pods, SPIRE checks with the kubelet to verify they're actually running, then issues a short-lived X.509 certificate whose URI SAN is the pod's SPIFFE ID — `spiffe://homelab.local/ns/{namespace}/sa/{service-account}`. That URI is the identity.
+**[SPIRE](https://spiffe.io/docs/latest/spire-about/spire-concepts/)** is the certificate authority. It's configured to issue certificates only to XApi and XSpa pods (identified by `app: xapi` or `app: xspa` labels set by their compositions — see [`cluster/argocd/spire.yaml`](../cluster/argocd/spire.yaml) `identities.clusterSPIFFEIDs.homelab-workloads`). For these registered pods, SPIRE checks with the kubelet to verify they're actually running, then issues a short-lived X.509 certificate whose URI SAN is the pod's SPIFFE ID — `spiffe://homelab.local/ns/{namespace}/sa/{service-account}`. That URI is the identity.
 
 **[IAM Roles Anywhere](https://aws.amazon.com/iam/roles-anywhere/)** is AWS's bridge between certificate-based identity and IAM. You register a trust anchor (the SPIRE CA cert). AWS validates the cert chain and reads the URI SAN as a principal tag. IAM trust policies can then condition on that tag — locking a role to one exact pod identity.
 
@@ -56,7 +56,7 @@ flowchart LR
     secret -->|"Secret synced\nto volume"| pod
 ```
 
-**Pass 1: IAM Role + RolesAnywhere Profile.** Crossplane creates both in the same reconcile pass. The IAM role ARN is computed deterministically from the naming convention (`arn:aws:iam::{account}:role/crossplane/crossplane-{ns}-{xr-name}-{suffix}`) — no need to wait for AWS to confirm it. This predicted ARN is used immediately in the Profile's `roleArns` field, so role and profile are created together. The profile tells AWS: "When you see an SVID signed by this CA with this SPIFFE ID, exchange it for this role's credentials (valid 1 hour)." The profile ARN is written to AWS and read back.
+**Pass 1: IAM Role + RolesAnywhere Profile.** Crossplane creates both in the same reconcile pass. The IAM role ARN is computed deterministically from the naming convention (`arn:aws:iam::{account}:role/crossplane/crossplane-{ns}-{xr-name}-{suffix}`). Names exceeding AWS's 64-character limit use a sha256 hash fallback: `xp-{sha256sum[:61]}` — this applies to most guest workspace slugs. No need to wait for AWS to confirm the ARN. This predicted ARN is used immediately in the Profile's `roleArns` field, so role and profile are created together. The profile tells AWS: "When you see an SVID signed by this CA with this SPIFFE ID, exchange it for this role's credentials (valid 1 hour)." The profile ARN is written to AWS and read back.
 
 **Pass 2: Binding Secret.** Once the profile ARN is visible in observed state, Crossplane writes a Kubernetes Secret containing the role ARN, profile ARN, and resource metadata (bucket name, table name, etc). The pod's init container waits for this Secret to sync to its volume, then the app starts.
 
