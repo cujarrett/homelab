@@ -131,15 +131,6 @@ spec:
             {{- $userId := printf "%s-user" $name }}
             {{- $userGroupId := $name }}
             {{- $cacheInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" "elasticache:Connect" "Resource" (list (printf "arn:aws:elasticache:%s:*:replicationgroup:%s" $region $name) (printf "arn:aws:elasticache:%s:*:user:%s" $region $userId)))) | toJson }}
-            {{- $cacheUserGroupObs := index (.observed.resources | default dict) "cache-user-group" | default dict }}
-            {{- $ugReady := false }}
-            {{- if $cacheUserGroupObs.resource }}
-              {{- range ($cacheUserGroupObs.resource.status.conditions | default list) }}
-                {{- if and (eq .type "Ready") (eq .status "True") }}
-                  {{- $ugReady = true }}
-                {{- end }}
-              {{- end }}
-            {{- end }}
             ---
             # ElastiCache IAM User. Must exist before the UserGroup and ReplicationGroup.
             apiVersion: elasticache.aws.upbound.io/v1beta1
@@ -163,7 +154,7 @@ spec:
                   App: {{ $name }}
                   Namespace: {{ $ns }}
             ---
-            # ElastiCache UserGroup. Deferred: ReplicationGroup is created only once this is ready.
+            # ElastiCache UserGroup. Rendered immediately; Crossplane retries until User propagates to AWS.
             apiVersion: elasticache.aws.upbound.io/v1beta1
             kind: UserGroup
             metadata:
@@ -231,9 +222,8 @@ spec:
                 tags:
                   App: {{ $name }}
                   Namespace: {{ $ns }}
-            {{- if $ugReady }}
             ---
-            # ReplicationGroup. Deferred until UserGroup is ready so AWS can associate them.
+            # ReplicationGroup. Rendered immediately; Crossplane retries until UserGroup propagates to AWS.
             # Provider writes connection details to {name}-rg-conn once ElastiCache is up.
             apiVersion: elasticache.aws.upbound.io/v1beta2
             kind: ReplicationGroup
@@ -259,7 +249,6 @@ spec:
               writeConnectionSecretToRef:
                 name: {{ $name }}-rg-conn
                 namespace: {{ $ns }}
-            {{- end }}
             {{- if and $rgConn $cacheProfileArn }}
             ---
             # Binding Secret for ElastiCache. Written once the cluster is ready and profile ARN is known.
