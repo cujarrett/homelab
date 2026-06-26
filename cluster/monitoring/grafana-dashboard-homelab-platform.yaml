@@ -310,7 +310,7 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "p50 and p99 per XR type and backend side-by-side. Use alongside the table to spot outliers at a glance. XTopic and XSubscription excluded.",
+          "description": "p50 per XR type and backend. Each stat shows the current p50 with a sparkline trend over the time range. XTopic and XSubscription excluded.",
           "fieldConfig": {
             "defaults": {
               "thresholds": {
@@ -341,26 +341,21 @@ data:
           },
           "id": 11,
           "options": {
-            "displayMode": "gradient",
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": false
-            },
-            "maxVizHeight": 300,
-            "minVizHeight": 16,
-            "minVizWidth": 8,
-            "namePlacement": "auto",
-            "orientation": "horizontal",
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
-              "calcs": [],
+              "calcs": [
+                "lastNotNull"
+              ],
               "fields": "",
-              "values": true
+              "values": false
             },
-            "showUnfilled": true,
-            "sizing": "auto",
-            "valueMode": "color"
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
           },
           "pluginVersion": "13.0.2",
           "targets": [
@@ -370,41 +365,19 @@ data:
                 "uid": "prometheus"
               },
               "expr": "histogram_quantile(0.5, sum(platform_xr_time_to_ready_seconds_bucket{kind!~\"XTopic|XSubscription\"}) by (le, kind, backend))",
-              "instant": true,
               "legendFormat": "{{kind}} / {{backend}}",
               "refId": "A"
             }
           ],
           "title": "XR Time-to-Ready \u2014 p50 Visual",
-          "transformations": [
-            {
-              "id": "reduce",
-              "options": {
-                "reducers": [
-                  "lastNotNull"
-                ]
-              }
-            },
-            {
-              "id": "sortBy",
-              "options": {
-                "fields": [
-                  {
-                    "displayName": "Last *",
-                    "desc": true
-                  }
-                ]
-              }
-            }
-          ],
-          "type": "bargauge"
+          "type": "stat"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Median time from managed resource creation to Ready=True. This is the pure AWS provisioning cost \u2014 the binding propagation lag on top of this is what dominates XApi nosql/objstorage wait times. NATS resources excluded (their lastTransitionTime drifts for long-running resources).",
+          "description": "Median time from managed resource creation to Ready=True. Each stat shows the current p50 with a sparkline trend. NATS resources excluded (their lastTransitionTime drifts for long-running resources).",
           "fieldConfig": {
             "defaults": {
               "thresholds": {
@@ -435,26 +408,21 @@ data:
           },
           "id": 8,
           "options": {
-            "displayMode": "gradient",
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": false
-            },
-            "maxVizHeight": 300,
-            "minVizHeight": 16,
-            "minVizWidth": 8,
-            "namePlacement": "auto",
-            "orientation": "horizontal",
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
-              "calcs": [],
+              "calcs": [
+                "lastNotNull"
+              ],
               "fields": "",
-              "values": true
+              "values": false
             },
-            "showUnfilled": true,
-            "sizing": "auto",
-            "valueMode": "color"
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
           },
           "pluginVersion": "13.0.2",
           "targets": [
@@ -464,41 +432,19 @@ data:
                 "uid": "prometheus"
               },
               "expr": "histogram_quantile(0.5, sum(platform_managed_time_to_ready_seconds_bucket{kind!~\"NATS.*\"}) by (le, kind))",
-              "instant": true,
               "legendFormat": "{{kind}}",
               "refId": "A"
             }
           ],
           "title": "AWS Resource Provisioning \u2014 p50 per Type",
-          "transformations": [
-            {
-              "id": "reduce",
-              "options": {
-                "reducers": [
-                  "lastNotNull"
-                ]
-              }
-            },
-            {
-              "id": "sortBy",
-              "options": {
-                "fields": [
-                  {
-                    "displayName": "Last *",
-                    "desc": true
-                  }
-                ]
-              }
-            }
-          ],
-          "type": "bargauge"
+          "type": "stat"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Median time spent waiting in each XApi pod init container stage (time from pod creation to that stage completing). Linkerd excluded. Object-storage init containers are normalized to a single label \u2014 the instance name is stripped. The nosql and object-storage stages are slow because Crossplane binding propagation adds ~75s on top of the AWS provision time (DynamoDB 16s + 75s propagation = ~90s total).",
+          "description": "Median time spent waiting in each XApi pod init container stage. Each stat shows the current p50 with a sparkline trend. Linkerd excluded. Object-storage init containers normalized to a single label. The nosql and object-storage stages are slow because Crossplane binding propagation adds ~75s on top of the AWS provision time (DynamoDB 16s + 75s propagation = ~90s total).",
           "fieldConfig": {
             "defaults": {
               "thresholds": {
@@ -529,26 +475,21 @@ data:
           },
           "id": 7,
           "options": {
-            "displayMode": "gradient",
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": false
-            },
-            "maxVizHeight": 300,
-            "minVizHeight": 16,
-            "minVizWidth": 8,
-            "namePlacement": "auto",
-            "orientation": "horizontal",
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
-              "calcs": [],
+              "calcs": [
+                "lastNotNull"
+              ],
               "fields": "",
-              "values": true
+              "values": false
             },
-            "showUnfilled": true,
-            "sizing": "auto",
-            "valueMode": "color"
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
           },
           "pluginVersion": "13.0.2",
           "targets": [
@@ -558,34 +499,12 @@ data:
                 "uid": "prometheus"
               },
               "expr": "label_replace(\n  (\n    histogram_quantile(0.5,\n      sum by (le, init_container) (\n        platform_pod_init_container_seconds_bucket{init_container!~\"linkerd.*|wait-for-object-storage-.*-binding\"}\n      )\n    )\n    or\n    label_replace(\n      histogram_quantile(0.5,\n        sum by (le) (\n          platform_pod_init_container_seconds_bucket{init_container=~\"wait-for-object-storage-.*-binding\"}\n        )\n      ),\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"init_container\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n)",
-              "instant": true,
               "legendFormat": "{{init_container}}",
               "refId": "A"
             }
           ],
           "title": "XApi Binding Wait \u2014 p50 per Stage",
-          "transformations": [
-            {
-              "id": "reduce",
-              "options": {
-                "reducers": [
-                  "lastNotNull"
-                ]
-              }
-            },
-            {
-              "id": "sortBy",
-              "options": {
-                "fields": [
-                  {
-                    "displayName": "Last *",
-                    "desc": true
-                  }
-                ]
-              }
-            }
-          ],
-          "type": "bargauge"
+          "type": "stat"
         },
         {
           "datasource": {
