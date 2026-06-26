@@ -489,16 +489,13 @@ data:
           "transformations": [
             { "id": "merge", "options": {} },
             {
-              "id": "filterFieldsByName",
-              "options": {
-                "include": {
-                  "names": ["kind", "name", "namespace", "backend", "Value #A", "Value #B"]
-                }
-              }
-            },
-            {
               "id": "organize",
               "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "job": true,
+                  "instance": true
+                },
                 "renameByName": {
                   "Value #A": "ready",
                   "Value #B": "ttr"
