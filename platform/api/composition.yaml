@@ -45,15 +45,6 @@ spec:
             {{- $sqlBackend := "private-cloud" }}
             {{- if $xr.spec.parameters.sqlRef }}{{- $sqlBackend = $xr.spec.parameters.sqlRef.backend | default "private-cloud" }}{{- end }}
             {{- $cacheEnabled := and $xr.spec.parameters.cache $xr.spec.parameters.cache.enabled }}
-            {{- $cacheReady := "False" }}
-            {{- $cacheObserved := index (.observed.resources | default dict) "cache" }}
-            {{- if $cacheObserved }}
-              {{- range ($cacheObserved.resource.status.conditions | default list) }}
-                {{- if and (eq .type "Ready") (eq .status "True") }}
-                  {{- $cacheReady = "True" }}
-                {{- end }}
-              {{- end }}
-            {{- end }}
             {{- $host := $xr.spec.parameters.host | default "" }}
             {{- $tlsIssuer := $xr.spec.parameters.tlsIssuer | default "local-lab-ca-issuer" }}
             {{- $tlsSecret := $xr.spec.parameters.tlsSecret | default "" }}
@@ -620,7 +611,6 @@ spec:
               name: {{ $name }}-cache
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: cache
-                gotemplating.fn.crossplane.io/ready: {{ $cacheReady | quote }}
             spec:
               parameters:
                 backend: {{ $cacheBackend }}
