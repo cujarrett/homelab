@@ -371,19 +371,19 @@ data:
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "platform_xr_time_to_ready_seconds_instance{kind!~\"XTopic|XSubscription\"}",
+              "expr": "platform_xr_time_to_ready_seconds_instance{kind!~\"XTopic|XSubscription\"} < 3600",
               "legendFormat": "{{kind}} · {{name}}",
               "refId": "A"
             },
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "platform_pod_time_to_ready_seconds_instance",
+              "expr": "platform_pod_time_to_ready_seconds_instance < 3600",
               "legendFormat": "pod · {{namespace}}",
               "refId": "B"
             },
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "label_replace(\n  (\n    platform_pod_init_container_seconds_instance{init_container!~\"linkerd.*|wait-for-object-storage-.*-binding\"}\n    or\n    label_replace(\n      platform_pod_init_container_seconds_instance{init_container=~\"wait-for-object-storage-.*-binding\"},\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"stage\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n)",
+              "expr": "label_replace(\n  (\n    platform_pod_init_container_seconds_instance{init_container!~\"linkerd.*|wait-for-object-storage-.*-binding\"}\n    or\n    label_replace(\n      platform_pod_init_container_seconds_instance{init_container=~\"wait-for-object-storage-.*-binding\"},\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"stage\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n) < 3600",
               "legendFormat": "{{namespace}} · {{stage}}",
               "refId": "C"
             }
