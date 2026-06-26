@@ -374,8 +374,10 @@ spec:
             spec:
               rateLimit:
                 average: 5
-                burst: 10
-                period: 1m
+                burst: 5
+                period: 1h
+                sourceCriterion:
+                  requestHeaderName: CF-Connecting-IP
             ---
             # --- IngressRoute applying rate limit to sensitive WordPress endpoints ---
             apiVersion: traefik.io/v1alpha1
