@@ -490,8 +490,8 @@ data:
             {
               "id": "filterFieldsByName",
               "options": {
-                "include": {
-                  "names": ["kind", "name", "namespace", "backend", "Value"]
+                "exclude": {
+                  "names": ["Time", "__name__", "namespace", "container", "endpoint", "pod", "job", "instance"]
                 }
               }
             },
@@ -500,6 +500,7 @@ data:
               "id": "organize",
               "options": {
                 "renameByName": {
+                  "Value": "ready",
                   "Value #A": "ready",
                   "Value #B": "ttr"
                 }
@@ -508,7 +509,7 @@ data:
             {
               "id": "sortBy",
               "options": {
-                "fields": [{ "desc": false, "displayName": "namespace" }]
+                "fields": [{ "desc": false, "displayName": "name" }]
               }
             }
           ],
