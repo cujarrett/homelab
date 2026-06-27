@@ -487,19 +487,18 @@ data:
           ],
           "title": "XR Status & Provisioning Time",
           "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": ["kind", "name", "namespace", "backend", "Value"]
+                }
+              }
+            },
             { "id": "merge", "options": {} },
             {
               "id": "organize",
               "options": {
-                "excludeByName": {
-                  "Time": true,
-                  "__name__": true,
-                  "container": true,
-                  "endpoint": true,
-                  "instance": true,
-                  "job": true,
-                  "pod": true
-                },
                 "renameByName": {
                   "Value #A": "ready",
                   "Value #B": "ttr"
