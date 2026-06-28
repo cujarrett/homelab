@@ -1,0 +1,13 @@
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: allow-intra-cluster-egress
+spec:
+  # All pods may reach other pods and the node — required for DNS, health checks,
+  # service discovery, and SPIRE workload identity exchange.
+  endpointSelector: {}
+  egress:
+    - toEntities:
+        - cluster
+    - toEntities:
+        - host

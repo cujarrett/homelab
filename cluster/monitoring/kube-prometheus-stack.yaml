@@ -24,9 +24,7 @@ spec:
           serviceMonitor:
             selfMonitor: false
           admissionWebhooks:
-            patch:
-              podAnnotations:
-                linkerd.io/inject: disabled
+            patch: {}
         alertmanager:
           alertmanagerSpec:
             affinity:

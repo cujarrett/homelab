@@ -458,24 +458,3 @@ spec:
                             name: {{ $name }}
                             port:
                               number: 80
-            ---
-            # --- HTTPRoute ---
-            # Default timeout — rendered for every XSpa instance automatically.
-            # No retries: nginx serving static files either works or it doesn't.
-            apiVersion: gateway.networking.k8s.io/v1
-            kind: HTTPRoute
-            metadata:
-              name: {{ $name }}
-              namespace: {{ $namespace }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: httproute
-                gotemplating.fn.crossplane.io/ready: "True"
-            spec:
-              parentRefs:
-                - name: {{ $name }}
-                  kind: Service
-                  group: ""
-                  port: 80
-              rules:
-                - timeouts:
-                    request: 30s
