@@ -197,11 +197,6 @@ spec:
                   labels:
                     app: xapi
                     app.kubernetes.io/instance: {{ $name }}
-                  {{- $meshDisabled := and $xr.spec.parameters.mesh (eq $xr.spec.parameters.mesh.enabled false) }}
-                  {{- if $meshDisabled }}
-                  annotations:
-                    linkerd.io/inject: disabled
-                  {{- end }}
                 spec:
                   serviceAccountName: {{ $name }}
                   {{- if or (gt (len $objectStorageRefs) 0) $sqlRefName $nosqlRefName $cacheEnabled }}
@@ -679,24 +674,3 @@ spec:
                             port:
                               number: 80
             {{- end }}
-            ---
-            # --- HTTPRoute ---
-            # Default timeout + retry — rendered for every XApi instance automatically.
-            # Retries on 502/503/504 (pod crash, restart) — safe because Go handlers are stateless.
-            apiVersion: gateway.networking.k8s.io/v1
-            kind: HTTPRoute
-            metadata:
-              name: {{ $name }}
-              namespace: {{ $ns }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: httproute
-                gotemplating.fn.crossplane.io/ready: "True"
-            spec:
-              parentRefs:
-                - name: {{ $name }}
-                  kind: Service
-                  group: ""
-                  port: 80
-              rules:
-                - timeouts:
-                    request: 30s

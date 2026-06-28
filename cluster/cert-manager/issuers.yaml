@@ -60,31 +60,3 @@ metadata:
 spec:
   ca:
     secretName: local-lab-ca-secret
----
-# Linkerd trust anchor — self-signed Issuer and long-lived Certificate.
-# The private key stays in the cert-manager namespace; Linkerd never touches it.
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  name: linkerd-trust-root-issuer
-  namespace: cert-manager
-spec:
-  selfSigned: {}
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: linkerd-trust-anchor
-  namespace: cert-manager
-spec:
-  issuerRef:
-    kind: Issuer
-    name: linkerd-trust-root-issuer
-  secretName: linkerd-trust-anchor
-  isCA: true
-  commonName: root.linkerd.cluster.local
-  duration: 87600h0m0s   # 10 years
-  renewBefore: 720h0m0s  # rotate 30 days before expiry
-  privateKey:
-    rotationPolicy: Always
-    algorithm: ECDSA
