@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ghost-backup
+  namespace: blog
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          nodeSelector:
+            node-role.kubernetes.io/worker: worker
+          containers:
+            - name: backup
+              image: python:3.12-alpine
+              command: ["python", "/scripts/backup.py"]
+              env:
+                - name: GHOST_CONTENT_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: ghost-backup-creds
+                      key: content-api-key
+                - name: GITHUB_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: ghost-backup-creds
+                      key: github-token
+                - name: GITHUB_REPO
+                  value: cujarrett/blog-backups
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+          volumes:
+            - name: scripts
+              configMap:
+                name: ghost-backup-script
