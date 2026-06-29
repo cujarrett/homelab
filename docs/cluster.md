@@ -61,13 +61,13 @@ ssh pi@192.168.10.100 "journalctl -u getty@tty1 -n 30 --no-pager && ps aux | gre
 | Kubernetes | k3s | Lightweight distro |
 | GitOps | ArgoCD | App-of-apps pattern; recurses `cluster/` |
 | Ingress | Traefik | DaemonSet via k3s `HelmChartConfig`; binds hostPorts 80/443 |
-| TLS | cert-manager | Local CA (`local-lab-ca-issuer`) for `.local.lab`; Let's Encrypt for public hosts |
+| TLS | cert-manager | Local CA (`local-lab-ca-issuer`) for `.local.lab`; Let's Encrypt for public hosts; SPIRE identity certs for mTLS |
 | Storage | Longhorn | StorageClasses: `longhorn` (default, Delete), `longhorn-retain` (Retain), `longhorn-delete` (explicit Delete) |
 | DNS | AdGuard Home | Pinned to `ctrl-1`; wildcard `*.local.lab → 192.168.10.100` for all cluster hosts |
 | External access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; zero-trust public ingress, no exposed firewall ports |
 | Remote access | Tailscale | Subnet router on `ctrl-1`; advertises `192.168.10.0/24`; split DNS for `local.lab` |
 | Platform | Crossplane | XRDs + Compositions in `platform/`; see [Platform](platform.md) |
-| Service mesh | Linkerd | Automatic mTLS between all meshed pods; cert-manager handles trust anchor rotation; HTTPRoute policies in XApi/XSpa compositions; see [Service Mesh](service-mesh.md) |
+| Service mesh | Cilium | eBPF CNI + mesh; mTLS via SPIRE Mutual Auth; `toFQDNs` egress enforcement; Hubble observability |
 | Observability | kube-prometheus-stack | Prometheus (365d retention), Grafana, Alertmanager |
 | Logs | Loki + Promtail | Loki SingleBinary, 30d retention; Promtail DaemonSet ships logs |
 | Messaging | NATS JetStream | 3-replica cluster in `nats`; NACK controller manages Stream and Consumer CRDs |
@@ -85,11 +85,11 @@ ssh pi@192.168.10.100 "journalctl -u getty@tty1 -n 30 --no-pager && ps aux | gre
 | `longhorn-system` | Longhorn | `longhorn.local.lab` |
 | `adguard` | AdGuard Home | Pinned to `ctrl-1` via hostPort 53 |
 | `cloudflare` | cloudflared | Cloudflare Tunnel; public ingress entry point |
-| `cert-manager` | cert-manager | TLS issuers for internal and public hosts; manages Linkerd identity cert rotation |
-| `linkerd` | Linkerd | Service mesh control plane; automatic mTLS, HTTPRoute policies |
-| `linkerd-viz` | Linkerd Viz | Observability extension (`linkerd viz` CLI dashboard) |
+| `cert-manager` | cert-manager | TLS issuers for internal and public hosts |
+| `spire` | SPIRE | Workload identity; backs Cilium Mutual Auth mTLS and AWS IAM Roles Anywhere |
+| `kube-system` | Cilium | eBPF CNI, service mesh, Hubble relay (`hubble.local.lab`) |
 | `crossplane-system` | Crossplane | Platform compositions, XRDs, AWS provider |
-| `nats` | NATS + NACK | JetStream cluster (3 replicas); port 4222 marked opaque for Linkerd |
+| `nats` | NATS + NACK | JetStream cluster (3 replicas) |
 
 Application namespaces (`mattjarrett-com`, `my-vinyl`, etc.) are owned by tenant
 `namespace.yaml` files, not by the cluster bootstrap.
@@ -99,16 +99,16 @@ Application namespaces (`mattjarrett-com`, `my-vinyl`, etc.) are owned by tenant
 ## Networking
 
 External traffic enters through Cloudflare Tunnel to Traefik on `work-1`. Traefik
-terminates TLS and routes to in-cluster Services. Traefik is meshed; all pod-to-pod traffic uses mTLS via Linkerd.
+terminates TLS and routes to in-cluster Services. All pod-to-pod traffic uses mTLS via
+Cilium Mutual Auth at the kernel level — no sidecar required.
 
 ```
-Internet → Cloudflare → cloudflared (cloudflare ns, unmeshed)
-         → Traefik (kube-system, meshed) ──mTLS→ Pod (meshed)
-                                          (via linkerd-proxy sidecars)
+Internet → Cloudflare → cloudflared (cloudflare ns)
+         → Traefik (kube-system) ──mTLS (eBPF)──► Pod
 ```
 
 Internal traffic (`*.local.lab`) routes via AdGuard's wildcard DNS entry → Traefik on
-`192.168.10.100`. Mesh excludes: `longhorn-system`, `cert-manager`, `cloudflare` namespace.
+`192.168.10.100`.
 
 Off-network: Tailscale subnet router on `ctrl-1` exposes `192.168.10.0/24`. Split DNS in
 the Tailscale admin console resolves `*.local.lab` via AdGuard from any network.
@@ -127,6 +127,7 @@ TLS from `local-lab-ca-issuer`. DNS via AdGuard wildcard `*.local.lab → 192.16
 | `grafana.local.lab` | Grafana |
 | `prometheus.local.lab` | Prometheus |
 | `longhorn.local.lab` | Longhorn |
+| `hubble.local.lab` | Hubble UI (Cilium flow observability) |
 
 ### Public
 
@@ -164,5 +165,4 @@ stored in Git.
 
 - [How it was built](how-it-was-built.md) — step-by-step build history from bare Pi to this state
 - [Cluster upgrade](cluster-upgrade.md) — k3s upgrade procedure
-- [Service mesh](service-mesh.md) — Linkerd installation roadmap and Istio translation guide
 - [Platform](platform.md) — Crossplane-based internal developer platform
