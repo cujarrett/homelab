@@ -31,7 +31,7 @@ data:
       "panels": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Fraction of HTTP responses not classified as 5xx over the last 5 minutes.",
+          "description": "Fraction of flows forwarded vs (forwarded + dropped) over the last 5 minutes. Drops indicate policy denials.",
           "fieldConfig": {
             "defaults": {
               "color": { "mode": "thresholds" },
@@ -61,16 +61,16 @@ data:
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(rate(hubble_http_responses_total{status_code!~\"5..\"}[5m])) / sum(rate(hubble_http_responses_total[5m])) * 100",
-              "instant": true, "legendFormat": "Success Rate", "refId": "A"
+              "expr": "sum(rate(hubble_flows_processed_total{verdict=\"FORWARDED\"}[5m])) / sum(rate(hubble_flows_processed_total{verdict=~\"FORWARDED|DROPPED\"}[5m])) * 100",
+              "instant": true, "legendFormat": "Forward Rate", "refId": "A"
             }
           ],
-          "title": "Success Rate",
+          "title": "Forward Rate",
           "type": "stat"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Total HTTP requests per second observed by Hubble across all meshed workloads.",
+          "description": "Total network flows per second observed by Hubble across all workloads.",
           "fieldConfig": {
             "defaults": {
               "color": { "mode": "thresholds" },
@@ -94,11 +94,11 @@ data:
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(rate(hubble_http_requests_total[5m]))",
-              "instant": true, "legendFormat": "RPS", "refId": "A"
+              "expr": "sum(rate(hubble_flows_processed_total[5m]))",
+              "instant": true, "legendFormat": "Flows/s", "refId": "A"
             }
           ],
-          "title": "Req/s",
+          "title": "Flows/s",
           "type": "stat"
         },
         {
@@ -140,20 +140,20 @@ data:
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "99th percentile HTTP response latency across all meshed workloads over the last 5 minutes.",
+          "description": "DNS responses with non-zero return codes (NXDOMAIN, SERVFAIL, etc.) per second.",
           "fieldConfig": {
             "defaults": {
               "color": { "mode": "thresholds" },
-              "decimals": 0,
+              "decimals": 2,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   { "color": "green", "value": 0 },
-                  { "color": "yellow", "value": 500 },
-                  { "color": "red", "value": 1000 }
+                  { "color": "yellow", "value": 1 },
+                  { "color": "red", "value": 10 }
                 ]
               },
-              "unit": "ms"
+              "unit": "reqps"
             }
           },
           "gridPos": { "h": 3, "w": 4, "x": 12, "y": 0 },
@@ -168,11 +168,11 @@ data:
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "histogram_quantile(0.99, sum(rate(hubble_http_duration_seconds_bucket[5m])) by (le)) * 1000",
-              "instant": true, "legendFormat": "p99", "refId": "A"
+              "expr": "sum(rate(hubble_dns_responses_total{rcode!=\"No Error\"}[5m])) or vector(0)",
+              "instant": true, "legendFormat": "DNS Errors/s", "refId": "A"
             }
           ],
-          "title": "p99 Latency",
+          "title": "DNS Errors/s",
           "type": "stat"
         },
         {
@@ -243,7 +243,7 @@ data:
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "HTTP success rate broken down by source namespace over time.",
+          "description": "Forwarded flows as a percentage of (forwarded + dropped) by source namespace over time.",
           "fieldConfig": {
             "defaults": {
               "color": { "mode": "palette-classic" },
@@ -273,16 +273,16 @@ data:
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(rate(hubble_http_responses_total{status_code!~\"5..\"}[$__rate_interval])) by (source) / sum(rate(hubble_http_responses_total[$__rate_interval])) by (source) * 100",
+              "expr": "sum(rate(hubble_flows_processed_total{verdict=\"FORWARDED\"}[$__rate_interval])) by (source) / sum(rate(hubble_flows_processed_total{verdict=~\"FORWARDED|DROPPED\"}[$__rate_interval])) by (source) * 100",
               "legendFormat": "{{source}}", "refId": "A"
             }
           ],
-          "title": "Success Rate by Namespace",
+          "title": "Forward Rate by Namespace",
           "type": "timeseries"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "HTTP requests per second broken down by source namespace over time.",
+          "description": "Total network flows per second broken down by source namespace over time.",
           "fieldConfig": {
             "defaults": {
               "color": { "mode": "palette-classic" },
@@ -314,51 +314,63 @@ data:
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(rate(hubble_http_requests_total[$__rate_interval])) by (source)",
+              "expr": "sum(rate(hubble_flows_processed_total[$__rate_interval])) by (source)",
               "legendFormat": "{{source}}", "refId": "A"
             }
           ],
-          "title": "RPS by Namespace",
+          "title": "Flows/s by Namespace",
           "type": "timeseries"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "HTTP response latency distribution across all meshed services. X=time, Y=latency bucket (s), color=request volume.",
+          "description": "All Hubble flows broken down by verdict over time. FORWARDED is normal traffic; DROPPED indicates policy denials.",
           "fieldConfig": {
             "defaults": {
+              "color": { "mode": "palette-classic" },
               "custom": {
+                "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text",
+                "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "barWidthFactor": 0.6,
+                "drawStyle": "line", "fillOpacity": 20, "gradientMode": "none",
                 "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-                "scaleDistribution": { "type": "linear" }
+                "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5,
+                "scaleDistribution": { "type": "linear" }, "showPoints": "never", "showValues": false,
+                "spanNulls": false, "stacking": { "group": "A", "mode": "normal" },
+                "thresholdsStyle": { "mode": "off" }
+              },
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }] },
+              "unit": "reqps"
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "DROPPED" },
+                "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }]
+              },
+              {
+                "matcher": { "id": "byName", "options": "FORWARDED" },
+                "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }]
               }
-            }
+            ]
           },
           "gridPos": { "h": 8, "w": 24, "x": 0, "y": 11 },
           "id": 20,
           "options": {
             "annotations": { "clustering": -1, "multiLane": false },
-            "calculate": false,
-            "cellGap": 1,
-            "color": {
-              "exponent": 0.5, "fill": "dark-orange", "mode": "scheme",
-              "reverse": false, "scale": "exponential", "scheme": "Cool", "steps": 64
+            "legend": {
+              "calcs": ["lastNotNull"], "displayMode": "table", "placement": "right",
+              "showLegend": true, "sortBy": "Last *", "sortDesc": true
             },
-            "exemplars": { "color": "rgba(255,255,120,0.7)" },
-            "filterValues": { "le": 1e-09 },
-            "legend": { "show": true },
-            "rowsFrame": { "layout": "auto" },
-            "tooltip": { "mode": "single", "showColorScale": false, "yHistogram": false },
-            "yAxis": { "axisPlacement": "left", "reverse": false, "unit": "s" }
+            "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
           },
           "pluginVersion": "13.0.1+security-01",
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum by (le) (increase(hubble_http_duration_seconds_bucket[2m]))",
-              "format": "heatmap", "legendFormat": "{{le}}", "refId": "A"
+              "expr": "sum by (verdict) (rate(hubble_flows_processed_total[$__rate_interval]))",
+              "legendFormat": "{{verdict}}", "refId": "A"
             }
           ],
-          "title": "Response Latency Distribution",
-          "type": "heatmap"
+          "title": "Flows by Verdict",
+          "type": "timeseries"
         }
       ],
       "preload": false,
