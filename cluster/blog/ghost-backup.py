@@ -2,7 +2,7 @@ import os, json, base64, re, urllib.request, urllib.error, urllib.parse
 
 # Credentials and config come from environment variables,
 # which Kubernetes populates from the ghost-backup-creds Secret.
-ghost_url    = "http://ghost.blog.svc.cluster.local"  # in-cluster DNS for the Ghost Service
+ghost_url    = "https://blog.mattjarrett.dev"  # Ghost redirects in-cluster HTTP to this URL anyway
 content_key  = os.environ["GHOST_CONTENT_KEY"]        # Ghost Content API key (read-only)
 github_token = os.environ["GITHUB_TOKEN"]             # GitHub PAT with contents: write
 github_repo  = os.environ["GITHUB_REPO"]              # e.g. cujarrett/blog-backups
