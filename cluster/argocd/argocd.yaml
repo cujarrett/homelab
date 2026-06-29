@@ -53,6 +53,7 @@ spec:
           cm:
             timeout.reconciliation: 10s
             timeout.reconciliation.jitter: 0s
+            controller.diff.server.side: "true"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
