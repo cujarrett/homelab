@@ -63,10 +63,10 @@ def fetch_images(html, slug):
         img_path = re.sub(r"/content/images/size/w\d+/", "/content/images/", src)
         img_path = urllib.parse.urlparse(img_path).path  # strip any host/scheme
 
-        # Download via the in-cluster Ghost service (avoids going out through Cloudflare).
         fetch_url = f"{ghost_url}{img_path}"
         try:
-            with urllib.request.urlopen(fetch_url) as r:
+            img_req = urllib.request.Request(fetch_url, headers={"User-Agent": "blog-backup/1.0"})
+            with urllib.request.urlopen(img_req) as r:
                 img_bytes = r.read()
         except Exception as e:
             print(f"  warning: could not fetch {src}: {e}")
@@ -89,7 +89,9 @@ url = (
     f"{ghost_url}/ghost/api/content/posts/"
     f"?key={content_key}&formats=html&limit=all&include=tags"
 )
-with urllib.request.urlopen(url) as r:
+# Cloudflare blocks Python's default user agent — use a neutral one.
+req = urllib.request.Request(url, headers={"User-Agent": "blog-backup/1.0"})
+with urllib.request.urlopen(req) as r:
     posts = json.load(r)["posts"]
 
 print(f"Found {len(posts)} published posts")
