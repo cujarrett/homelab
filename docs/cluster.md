@@ -24,7 +24,7 @@ LCD display on `ctrl-1`.
 
 The 1U LCD on `ctrl-1` runs a Chromium kiosk displaying the Grafana playlist. It autostarts via `getty@tty1` → autologin → `startx` → `/home/pi/kiosk.sh`.
 
-Playlist URL: `https://grafana.local.lab/playlists/play/bfkvgx130fncwc?kiosk`
+Playlist URL: `https://grafana.local.lab/playlists/play/adc6g24?kiosk`
 
 **Restart the display** (if black or hung):
 

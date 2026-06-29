@@ -206,7 +206,7 @@ Service label format: `{namespace}-{servicename}-{port}@kubernetes`
 `ctrl-1` runs a kiosk browser on the attached display. It is **not** managed by systemd — it's a bare background process under the `pi` user.
 
 - Script: `~/kiosk.sh` on `ctrl-1`
-- Current URL: `https://grafana.local.lab/playlists/play/bfkvgx130fncwc?kiosk`
+- Current URL: `https://grafana.local.lab/playlists/play/adc6g24?kiosk`
 
 ### X server config (manual — not in Git)
 The Pi 5 has two DRM devices (`card0` = v3d, `card1` = display). Without explicit config, Xorg fails with "Cannot run in framebuffer mode". A config file must exist at `/etc/X11/xorg.conf.d/99-pi5.conf` on ctrl-1:
