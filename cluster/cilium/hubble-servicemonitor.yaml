@@ -11,7 +11,7 @@ spec:
       - kube-system
   selector:
     matchLabels:
-      k8s-app: hubble-relay
+      k8s-app: hubble
   endpoints:
-    - port: metrics
+    - port: hubble-metrics
       interval: 60s
