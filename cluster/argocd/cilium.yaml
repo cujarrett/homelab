@@ -32,10 +32,10 @@ spec:
             metrics:
               enableOpenMetrics: true
               enabled:
-                - dns
-                - drop
+                - dns:query;ignoreAAAA
+                - "drop:sourceContext=namespace;destinationContext=namespace"
                 - tcp
-                - flow
+                - "flow:sourceContext=namespace;destinationContext=namespace"
                 - port-distribution
                 - icmp
                 - httpV2
