@@ -133,9 +133,10 @@ echo "==> Extracting wp-content..."
 kubectl exec -n "$NAMESPACE" "$WP_POD" -- bash -c \
   "tar xzf /tmp/wp-content.tar.gz -C /var/www/html/ 2>&1 | grep -v 'Ignoring unknown extended header'; rc=\${PIPESTATUS[0]}; rm -f /tmp/wp-content.tar.gz; exit \$rc"
 
-# Fix ownership so Apache can serve files
+# Fix ownership so Apache can serve files.
+# --mount skips read-only bind mounts (e.g. mu-plugins ConfigMap volumes).
 kubectl exec -n "$NAMESPACE" "$WP_POD" -- bash -c \
-  "chown -R www-data:www-data /var/www/html/wp-content"
+  "find /var/www/html/wp-content -mount -exec chown www-data:www-data {} + 2>/dev/null || true"
 
 if [[ "${CLEANUP_TAR:-false}" == "true" ]]; then
   rm -f "$WP_CONTENT_TAR"
