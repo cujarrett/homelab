@@ -54,6 +54,10 @@ spec:
             timeout.reconciliation: 10s
             timeout.reconciliation.jitter: 0s
             controller.diff.server.side: "true"
+            resource.customizations.health.networking.k8s.io_Ingress: |
+              hs = {}
+              hs.status = "Healthy"
+              return hs
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
