@@ -69,6 +69,7 @@ spec:
           persistence:
             enabled: true
             size: 2Gi
+            storageClassName: longhorn
           additionalDataSources:
             - name: Loki
               type: loki
