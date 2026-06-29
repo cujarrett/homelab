@@ -180,7 +180,7 @@ spec:
 
                     # Endpoint/framework probes (Spring Boot, Symfony, Magento, etc.)
                     # Note: _profiler intentionally has no ^ anchor — matches nested paths like /symfony/public/_profiler/
-                    location ~* (^/actuator(/|$)|^/swagger(/|$)|^/openapi(/|$)|^/v2/_catalog(/|$)|^/v3/api-docs(/|$)|^/console(/|$)|^/telescope(/|$)|^/server-status$|/_profiler(/|$)|^/_environment(/|$)|^/rest/(V[0-9]+|default)(/|$)) {
+                    location ~* (^/actuator(/|$)|^/jolokia(/|$)|^/swagger(/|$)|^/openapi(/|$)|^/v2/_catalog(/|$)|^/v3/api-docs(/|$)|^/console(/|$)|^/telescope(/|$)|^/server-status$|/_profiler(/|$)|^/_environment(/|$)|^/rest/(V[0-9]+|default)(/|$)) {
                         return 404;
                     }
 
