@@ -41,6 +41,7 @@ spec:
                 - httpV2
           # Mutual auth via SPIRE — Cilium integrates with the cluster's existing SPIRE deployment.
           authentication:
+            enabled: true
             mutual:
               spire:
                 enabled: true
