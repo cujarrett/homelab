@@ -13,7 +13,7 @@ Runs a fullscreen Chromium kiosk on `ctrl-1`'s attached 1U display, showing the 
 ## Display
 
 - Resolution: 1424×280 (1U rack display)
-- URL: `https://grafana.local.lab/playlists/play/bfkvgx130fncwc?kiosk`
+- URL: `https://grafana.local.lab/playlists/play/adc6g24?kiosk`
 - Memory-constrained flags: `--max-old-space-size=64`, `--renderer-process-limit=1`
 
 ## How to update the URL without rebooting
