@@ -3424,7 +3424,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sort_desc(sum by (pod, node) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"} * on(pod, namespace) group_left(node) kube_pod_info{}))",
+              "expr": "sort_desc(sum by (pod, node) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"}))",
               "format": "table",
               "instant": true,
               "legendFormat": "{{pod}}",
