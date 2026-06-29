@@ -58,6 +58,9 @@ spec:
               hs = {}
               hs.status = "Healthy"
               return hs
+            resource.customizations.ignoreDifferences.core_PersistentVolumeClaim: |
+              jsonPointers:
+              - /spec/volumeName
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
