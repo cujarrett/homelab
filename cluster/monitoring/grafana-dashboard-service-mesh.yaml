@@ -12,10 +12,7 @@ data:
         "list": [
           {
             "builtIn": 1,
-            "datasource": {
-              "type": "grafana",
-              "uid": "-- Grafana --"
-            },
+            "datasource": { "type": "grafana", "uid": "-- Grafana --" },
             "enable": true,
             "hide": true,
             "iconColor": "rgba(0, 211, 255, 1)",
@@ -31,7 +28,7 @@ data:
       "panels": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Fraction of flows forwarded vs (forwarded + dropped) over the last 5 minutes. Drops indicate policy denials.",
+          "description": "Fraction of flows forwarded vs (forwarded + dropped) over the last 5 minutes.",
           "fieldConfig": {
             "defaults": {
               "color": { "mode": "thresholds" },
@@ -103,7 +100,7 @@ data:
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Packets dropped by Cilium network policy per second. Spikes indicate denied connections.",
+          "description": "Policy-denied drops per second. POLICY_DENIED means a CiliumNetworkPolicy blocked the connection.",
           "fieldConfig": {
             "defaults": {
               "color": { "mode": "thresholds" },
@@ -131,8 +128,8 @@ data:
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(rate(hubble_drop_total[5m])) or vector(0)",
-              "instant": true, "legendFormat": "Drops/s", "refId": "A"
+              "expr": "sum(rate(hubble_drop_total{reason=\"POLICY_DENIED\"}[5m])) or vector(0)",
+              "instant": true, "legendFormat": "Policy Drops/s", "refId": "A"
             }
           ],
           "title": "Policy Drops/s",
@@ -140,7 +137,7 @@ data:
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "DNS responses with non-zero return codes (NXDOMAIN, SERVFAIL, etc.) per second.",
+          "description": "All drops per second regardless of reason — includes policy denials, routing failures, and other errors.",
           "fieldConfig": {
             "defaults": {
               "color": { "mode": "thresholds" },
@@ -149,8 +146,8 @@ data:
                 "mode": "absolute",
                 "steps": [
                   { "color": "green", "value": 0 },
-                  { "color": "yellow", "value": 1 },
-                  { "color": "red", "value": 10 }
+                  { "color": "yellow", "value": 10 },
+                  { "color": "red", "value": 100 }
                 ]
               },
               "unit": "reqps"
@@ -168,11 +165,11 @@ data:
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(rate(hubble_dns_responses_total{rcode!=\"No Error\"}[5m])) or vector(0)",
-              "instant": true, "legendFormat": "DNS Errors/s", "refId": "A"
+              "expr": "sum(rate(hubble_drop_total[5m])) or vector(0)",
+              "instant": true, "legendFormat": "Drops/s", "refId": "A"
             }
           ],
-          "title": "DNS Errors/s",
+          "title": "Total Drops/s",
           "type": "stat"
         },
         {
@@ -238,12 +235,12 @@ data:
               "instant": true, "legendFormat": "SYN/s", "refId": "A"
             }
           ],
-          "title": "TCP Connections/s",
+          "title": "TCP New Conns/s",
           "type": "stat"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Forwarded flows as a percentage of (forwarded + dropped) by source namespace over time.",
+          "description": "Forwarded flows as a percentage of (forwarded + dropped) by source namespace. Requires sourceContext=namespace in Cilium metrics config.",
           "fieldConfig": {
             "defaults": {
               "color": { "mode": "palette-classic" },
@@ -282,7 +279,7 @@ data:
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Total network flows per second broken down by source namespace over time.",
+          "description": "Total flows per second broken down by source namespace. Requires sourceContext=namespace in Cilium metrics config.",
           "fieldConfig": {
             "defaults": {
               "color": { "mode": "palette-classic" },
@@ -323,7 +320,7 @@ data:
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "All Hubble flows broken down by verdict over time. FORWARDED is normal traffic; DROPPED indicates policy denials.",
+          "description": "All Hubble flows broken down by verdict. FORWARDED is normal traffic; DROPPED indicates policy denials or routing failures.",
           "fieldConfig": {
             "defaults": {
               "color": { "mode": "palette-classic" },
@@ -351,7 +348,7 @@ data:
               }
             ]
           },
-          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 11 },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 11 },
           "id": 20,
           "options": {
             "annotations": { "clustering": -1, "multiLane": false },
@@ -370,6 +367,47 @@ data:
             }
           ],
           "title": "Flows by Verdict",
+          "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "description": "Drop rate broken down by reason. POLICY_DENIED means a CiliumNetworkPolicy blocked it; STALE_OR_UNROUTABLE_IP is normal background noise.",
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text",
+                "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "barWidthFactor": 0.6,
+                "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
+                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+                "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5,
+                "scaleDistribution": { "type": "linear" }, "showPoints": "never", "showValues": false,
+                "spanNulls": false, "stacking": { "group": "A", "mode": "none" },
+                "thresholdsStyle": { "mode": "off" }
+              },
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }] },
+              "unit": "reqps"
+            }
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 11 },
+          "id": 21,
+          "options": {
+            "annotations": { "clustering": -1, "multiLane": false },
+            "legend": {
+              "calcs": ["lastNotNull"], "displayMode": "table", "placement": "right",
+              "showLegend": true, "sortBy": "Last *", "sortDesc": true
+            },
+            "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
+          },
+          "pluginVersion": "13.0.1+security-01",
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum by (reason) (rate(hubble_drop_total[$__rate_interval]))",
+              "legendFormat": "{{reason}}", "refId": "A"
+            }
+          ],
+          "title": "Drops by Reason",
           "type": "timeseries"
         }
       ],
