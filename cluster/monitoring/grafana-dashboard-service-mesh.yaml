@@ -1,0 +1,271 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-service-mesh
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  service-mesh.json: |-
+    {
+      "title": "Service Mesh",
+      "uid": "homelab-service-mesh",
+      "editable": true,
+      "graphTooltip": 1,
+      "time": { "from": "now-30m", "to": "now" },
+      "timepicker": {},
+      "refresh": "30s",
+      "schemaVersion": 38,
+      "version": 1,
+      "links": [],
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "HTTP RPS",
+          "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "colorMode": "background", "graphMode": "none",
+            "justifyMode": "center", "orientation": "auto", "textMode": "auto"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps", "decimals": 1, "mappings": [],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": 0 }] }
+            },
+            "overrides": []
+          },
+          "targets": [
+            { "expr": "sum(rate(hubble_http_requests_total[5m])) or vector(0)", "instant": true, "legendFormat": "RPS", "refId": "A" }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "HTTP Success Rate",
+          "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "colorMode": "background", "graphMode": "none",
+            "justifyMode": "center", "orientation": "auto", "textMode": "auto"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit", "decimals": 2, "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": 0 },
+                  { "color": "yellow", "value": 0.95 },
+                  { "color": "green", "value": 0.99 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(hubble_http_requests_total{status_code!~\"5..\"}[5m])) / sum(rate(hubble_http_requests_total[5m])) or vector(1)",
+              "instant": true, "legendFormat": "Success Rate", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Drop Rate",
+          "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "colorMode": "background", "graphMode": "none",
+            "justifyMode": "center", "orientation": "auto", "textMode": "auto"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps", "decimals": 2, "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{ "color": "green", "value": 0 }, { "color": "yellow", "value": 0.1 }, { "color": "red", "value": 1 }]
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            { "expr": "sum(rate(hubble_drop_total[5m])) or vector(0)", "instant": true, "legendFormat": "Drops/s", "refId": "A" }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "DNS Queries/s",
+          "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "colorMode": "background", "graphMode": "none",
+            "justifyMode": "center", "orientation": "auto", "textMode": "auto"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps", "decimals": 1, "mappings": [],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": 0 }] }
+            },
+            "overrides": []
+          },
+          "targets": [
+            { "expr": "sum(rate(hubble_dns_queries_total[5m])) or vector(0)", "instant": true, "legendFormat": "Queries/s", "refId": "A" }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "HTTP Request Rate by Source Namespace",
+          "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "list", "placement": "bottom" }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": { "lineWidth": 2, "fillOpacity": 10, "gradientMode": "none", "spanNulls": false }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum by(source) (rate(hubble_http_requests_total[5m]))",
+              "legendFormat": "{{source}}", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "HTTP Errors by Status Code",
+          "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "list", "placement": "bottom" }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": { "lineWidth": 2, "fillOpacity": 10, "gradientMode": "none", "spanNulls": false },
+              "color": { "mode": "palette-classic" }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum by(status_code) (rate(hubble_http_requests_total{status_code=~\"[45]..\"}[5m]))",
+              "legendFormat": "{{status_code}}", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "Policy Drops by Reason",
+          "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "list", "placement": "bottom" }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": { "lineWidth": 2, "fillOpacity": 10, "gradientMode": "none", "spanNulls": false },
+              "color": { "mode": "palette-classic" }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum by(reason) (rate(hubble_drop_total[5m]))",
+              "legendFormat": "{{reason}}", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "TCP Connections (SYN / RST / FIN)",
+          "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "list", "placement": "bottom" }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": { "lineWidth": 2, "fillOpacity": 10, "gradientMode": "none", "spanNulls": false }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum by(flag) (rate(hubble_tcp_flags_total{flag=~\"SYN|RST|FIN\"}[5m]))",
+              "legendFormat": "{{flag}}", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "type": "timeseries",
+          "title": "DNS Queries by Source Namespace",
+          "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "list", "placement": "bottom" }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": { "lineWidth": 2, "fillOpacity": 10, "gradientMode": "none", "spanNulls": false }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum by(source) (rate(hubble_dns_queries_total[5m]))",
+              "legendFormat": "{{source}}", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "type": "timeseries",
+          "title": "DNS Errors (NXDOMAIN / SERVFAIL)",
+          "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "list", "placement": "bottom" }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": { "lineWidth": 2, "fillOpacity": 10, "gradientMode": "none", "spanNulls": false },
+              "color": { "mode": "palette-classic" }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum by(rcode) (rate(hubble_dns_responses_total{rcode!=\"No Error\"}[5m]))",
+              "legendFormat": "{{rcode}}", "refId": "A"
+            }
+          ]
+        }
+      ]
+    }
