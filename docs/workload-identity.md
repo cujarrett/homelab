@@ -126,6 +126,8 @@ The init container blocks on `[ -f /bindings/{name}/type ]` with a 5s retry. The
 > **Smell: file polling**
 > It is polling. But it's a local `stat()` on a kubelet-synced volume — not a remote API call. The practical upside: `Init:0/4 → Init:1/4` gives a clear provisioning progress signal rather than a `Pending` pod that looks like an error. The alternative (projected secret volume with `optional: false`) blocks the same way but shows worse in the Launchpad UI.
 
+**Why the sidecar image pull is last.** Kubernetes pulls regular container images only after all init containers complete. The `aws-credentials-sidecar` is a regular container, so during initial provisioning the delay is compounded: Crossplane provisions all bindings → secrets sync to volumes → init containers clear one by one → then the sidecar image is pulled and the SVID exchange happens. A pod showing `Init:0/4` for 60–90 seconds is normal; it's waiting on Crossplane, not stuck.
+
 ---
 
 ## Runtime
@@ -193,24 +195,3 @@ These decisions are sticky: the SPIRE trust domain bakes itself into every SVID 
 | One credential sidecar per XApi, multiple bindings per sidecar | The sidecar manages all AWS resource bindings for a single XApi (object storage, nosql, cache, sql). Each binding gets its own IAM role scoped to this XApi's SPIFFE ID. A cross-XApi shared sidecar would require merging IAM permissions across workloads, breaking least-privilege. |
 
 ---
-
-## What's next
-
-Once every workload has a SPIFFE identity and Linkerd is running, the composition can layer on connection topology enforcement — not just "who can access S3", but "who can talk to the database."
-
-```yaml
-apiVersion: policy.linkerd.io/v1alpha1
-kind: AuthorizationPolicy
-metadata:
-  name: foo-db-only-from-foo-api
-  namespace: foo
-spec:
-  targetRef:
-    kind: Server
-    name: foo-db
-  requiredAuthenticationRefs:
-    - name: foo-api-identity
-      kind: MeshTLSAuthentication
-```
-
-If `XApi foo` declares `sqlRef: name: foo-db`, the composition creates the AuthorizationPolicy automatically. Topology is declared once, enforced at runtime, visible in observability — no app code changes needed.
