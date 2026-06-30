@@ -17,7 +17,7 @@ spec:
             node-role.kubernetes.io/worker: worker
           containers:
             - name: backup
-              image: python:3.12-alpine
+              image: python:3.14-alpine
               command: ["python", "/scripts/backup.py"]
               env:
                 - name: GHOST_CONTENT_KEY
