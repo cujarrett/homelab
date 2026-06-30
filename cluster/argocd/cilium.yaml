@@ -23,6 +23,9 @@ spec:
             replicas: 1
           bpf:
             masquerade: true
+          encryption:
+            enabled: true
+            type: wireguard
           hubble:
             enabled: true
             relay:
