@@ -70,7 +70,7 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
+            "w": 3,
             "x": 0,
             "y": 0
           },
@@ -135,7 +135,7 @@ data:
           "gridPos": {
             "h": 3,
             "w": 3,
-            "x": 4,
+            "x": 3,
             "y": 0
           },
           "id": 2,
@@ -199,7 +199,7 @@ data:
           "gridPos": {
             "h": 3,
             "w": 3,
-            "x": 7,
+            "x": 6,
             "y": 0
           },
           "id": 3,
@@ -258,8 +258,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 10,
+            "w": 3,
+            "x": 9,
             "y": 0
           },
           "id": 26,
@@ -322,8 +322,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 14,
+            "w": 3,
+            "x": 12,
             "y": 0
           },
           "id": 4,
@@ -387,7 +387,7 @@ data:
           "gridPos": {
             "h": 3,
             "w": 3,
-            "x": 18,
+            "x": 15,
             "y": 0
           },
           "id": 12,
@@ -462,7 +462,7 @@ data:
           "gridPos": {
             "h": 3,
             "w": 3,
-            "x": 21,
+            "x": 18,
             "y": 0
           },
           "id": 24,
@@ -497,6 +497,70 @@ data:
             }
           ],
           "title": "Current Temp",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "description": "Total electricity cost for sump pump runs over the last 30 days at $0.16/kWh.",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "currencyUSD"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 3,
+            "x": 21,
+            "y": 0
+          },
+          "id": 27,
+          "options": {
+            "colorMode": "none",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "sum"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.0.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "direction": "backward",
+              "editorMode": "code",
+              "expr": "sum_over_time({namespace=\"sump-pump\"} |= \"run_complete\" | logfmt | unwrap cost_usd [30d])",
+              "instant": true,
+              "legendFormat": "cost",
+              "queryType": "instant",
+              "refId": "A"
+            }
+          ],
+          "title": "Cost Last 30d",
           "type": "stat"
         },
         {
