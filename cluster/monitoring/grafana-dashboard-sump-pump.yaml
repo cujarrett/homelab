@@ -553,7 +553,7 @@ data:
               },
               "direction": "backward",
               "editorMode": "code",
-              "expr": "sum_over_time({namespace=\"sump-pump\"} |= \"run_complete\" | logfmt | unwrap cost_usd [30d])",
+              "expr": "sum(sum_over_time({namespace=\"sump-pump\"} |= \"run_complete\" | logfmt | unwrap cost_usd [30d]))",
               "instant": true,
               "legendFormat": "cost",
               "queryType": "instant",
