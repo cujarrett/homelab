@@ -2,7 +2,7 @@
 
 Kubernetes gave us CRDs to describe custom resources, and tools like [Crossplane](https://crossplane.io) turned them into a powerful way to provision infrastructure through APIs. You can declare what you want like S3 or RDS and the platform takes care of the rest.
 
-But there’s still a gap in the experience: getting those provisioned credentials into the application without turning every team into accidental infrastructure plumbers.
+But there's still a gap in the experience: getting those provisioned credentials into the application without turning every team into accidental infrastructure plumbers.
 
 [Service Binding](https://servicebinding.io) closes that gap by standardizing how credentials are delivered to workloads—consistently, predictably, as files mounted into the container where the app already lives.
 
@@ -182,7 +182,7 @@ var s3Client = buildS3Client(os.ReadFile("/bindings/object-storage/username"))
 
 ## Environment-Aware Bindings (Test vs. Prod)
 
-The composition is the only layer that knows what backs a binding. The consumer app see identical binding files regardless of whether the Secret came from ElastiCache or an in-cluster Redis pod.
+The composition is the only layer that knows what backs a binding. The consumer app sees identical binding files regardless of whether the Secret came from ElastiCache or an in-cluster Redis pod.
 
 The `XApi` XRD example has an `environment` field (`test` or `prod`, default `test`). The composition forks on it:
 
