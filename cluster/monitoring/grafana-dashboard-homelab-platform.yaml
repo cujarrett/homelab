@@ -12,7 +12,10 @@ data:
         "list": [
           {
             "builtIn": 1,
-            "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
             "enable": true,
             "hide": true,
             "iconColor": "rgba(0, 211, 255, 1)",
@@ -27,7 +30,10 @@ data:
       "liveNow": false,
       "panels": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "description": "Number of live guest sandbox workspaces (max 5).",
           "fieldConfig": {
             "defaults": {
@@ -35,29 +41,54 @@ data:
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "yellow", "value": 4 },
-                  { "color": "red", "value": 5 }
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 4
+                  },
+                  {
+                    "color": "red",
+                    "value": 5
+                  }
                 ]
               },
               "unit": "short"
             }
           },
-          "gridPos": { "h": 3, "w": 5, "x": 0, "y": 0 },
+          "gridPos": {
+            "h": 3,
+            "w": 5,
+            "x": 0,
+            "y": 0
+          },
           "id": 1,
           "options": {
             "colorMode": "background",
             "graphMode": "none",
             "justifyMode": "center",
             "orientation": "auto",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "13.0.2",
+          "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sum(launchpad_guest_workspace_count)",
               "instant": true,
               "legendFormat": "workspaces",
@@ -68,7 +99,154 @@ data:
           "type": "stat"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Active guest workspace count and total resource count over time.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "workspaces"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "resources"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "green",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 19,
+            "x": 5,
+            "y": 0
+          },
+          "id": 3,
+          "options": {
+            "annotations": {
+              "clustering": -1,
+              "multiLane": false
+            },
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "enableFacetedFilter": false,
+              "overflow": "ellipsis",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "13.1.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(launchpad_guest_workspace_count)",
+              "legendFormat": "workspaces",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(launchpad_guest_resource_count)",
+              "legendFormat": "resources",
+              "refId": "B"
+            }
+          ],
+          "title": "Guest Workspace & Resource Usage",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "description": "Total resources across all active guest workspaces.",
           "fieldConfig": {
             "defaults": {
@@ -76,28 +254,50 @@ data:
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "red", "value": 80 }
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
                 ]
               },
               "unit": "short"
             }
           },
-          "gridPos": { "h": 3, "w": 5, "x": 0, "y": 3 },
+          "gridPos": {
+            "h": 3,
+            "w": 5,
+            "x": 0,
+            "y": 3
+          },
           "id": 2,
           "options": {
             "colorMode": "none",
             "graphMode": "none",
             "justifyMode": "center",
             "orientation": "auto",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "13.0.2",
+          "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sum(launchpad_guest_resource_count)",
               "instant": true,
               "legendFormat": "resources",
@@ -108,368 +308,597 @@ data:
           "type": "stat"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Active guest workspace count and total resource count over time.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "fieldConfig": {
             "defaults": {
-              "color": { "mode": "palette-classic" },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "drawStyle": "line",
-                "fillOpacity": 10,
-                "gradientMode": "none",
-                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-                "insertNulls": false,
-                "lineInterpolation": "smooth",
-                "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": { "type": "linear" },
-                "showPoints": "auto",
-                "spanNulls": false,
-                "stacking": { "group": "A", "mode": "none" },
-                "thresholdsStyle": { "mode": "off" }
+              "color": {
+                "mode": "thresholds"
               },
-              "decimals": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "red", "value": 80 }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": [
-              {
-                "matcher": { "id": "byName", "options": "workspaces" },
-                "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }]
-              },
-              {
-                "matcher": { "id": "byName", "options": "resources" },
-                "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }]
-              }
-            ]
-          },
-          "gridPos": { "h": 6, "w": 19, "x": 5, "y": 0 },
-          "id": 3,
-          "options": {
-            "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
-            "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
-          },
-          "pluginVersion": "13.0.2",
-          "targets": [
-            {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(launchpad_guest_workspace_count)",
-              "legendFormat": "workspaces",
-              "refId": "A"
-            },
-            {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(launchpad_guest_resource_count)",
-              "legendFormat": "resources",
-              "refId": "B"
-            }
-          ],
-          "title": "Guest Workspace & Resource Usage",
-          "type": "timeseries"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Median XR provisioning time by kind and backend. Only includes XRs created while the exporter was running (pre-existing XRs excluded to avoid lastTransitionTime drift skew). Green < 30s, yellow < 90s, red ≥ 90s.",
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "yellow", "value": 30 },
-                  { "color": "red", "value": 90 }
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 30
+                  },
+                  {
+                    "color": "red",
+                    "value": 90
+                  }
                 ]
               },
               "unit": "s"
             }
           },
-          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 6 },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 6
+          },
           "id": 10,
           "options": {
             "displayMode": "lcd",
             "fillOpacity": 80,
             "gradientMode": "none",
-            "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": false },
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "overflow": "ellipsis",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "maxVizHeight": 300,
+            "minVizHeight": 16,
+            "minVizWidth": 8,
+            "namePlacement": "auto",
             "orientation": "horizontal",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "sizing": "auto",
             "text": {},
-            "valueMapping": []
+            "valueMapping": [],
+            "valueMode": "color"
           },
-          "pluginVersion": "13.0.2",
+          "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "histogram_quantile(0.5, sum(platform_xr_time_to_ready_seconds_bucket{kind!~\"XTopic|XSubscription\"}) by (le, kind, backend))",
               "legendFormat": "{{kind}} / {{backend}}",
               "refId": "A"
             }
           ],
-          "title": "XR Time-to-Ready — p50 by Kind",
+          "title": "XR Time-to-Ready \u2014 p50 by Kind",
           "type": "bargauge"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Median time spent waiting in each XApi pod init container stage. Green < 15s, yellow < 60s, red ≥ 60s. Object-storage variants normalized to one label. nosql and object-storage stages are slow because Crossplane binding propagation adds ~75s on top of AWS provision time.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "fieldConfig": {
             "defaults": {
-              "color": { "mode": "thresholds" },
+              "color": {
+                "mode": "thresholds"
+              },
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "yellow", "value": 15 },
-                  { "color": "red", "value": 60 }
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 80
+                  },
+                  {
+                    "color": "red",
+                    "value": 90
+                  }
                 ]
               },
               "unit": "s"
             }
           },
-          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 6 },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 6
+          },
           "id": 11,
           "options": {
             "displayMode": "lcd",
             "fillOpacity": 80,
             "gradientMode": "none",
-            "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": false },
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "overflow": "ellipsis",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "maxVizHeight": 300,
+            "minVizHeight": 16,
+            "minVizWidth": 8,
+            "namePlacement": "auto",
             "orientation": "horizontal",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "sizing": "auto",
             "text": {},
-            "valueMapping": []
+            "valueMapping": [],
+            "valueMode": "color"
           },
-          "pluginVersion": "13.0.2",
+          "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "label_replace(\n  (\n    histogram_quantile(0.5,\n      sum by (le, init_container) (\n        platform_pod_init_container_seconds_bucket{init_container!~\"linkerd.*|wait-for-object-storage-.*-binding\"}\n      )\n    )\n    or\n    label_replace(\n      histogram_quantile(0.5,\n        sum by (le) (\n          platform_pod_init_container_seconds_bucket{init_container=~\"wait-for-object-storage-.*-binding\"}\n        )\n      ),\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"init_container\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n)",
               "legendFormat": "{{init_container}}",
               "refId": "A"
             }
           ],
-          "title": "Binding Wait — p50 per Stage",
+          "title": "Binding Wait \u2014 p50 per Stage",
           "type": "bargauge"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Median time from AWS managed resource creation to Ready=True. NATS resources excluded (lastTransitionTime drifts for long-running resources). Green < 30s, yellow < 120s, red ≥ 120s.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "fieldConfig": {
             "defaults": {
-              "color": { "mode": "thresholds" },
+              "color": {
+                "mode": "thresholds"
+              },
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "yellow", "value": 30 },
-                  { "color": "red", "value": 120 }
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 30
+                  },
+                  {
+                    "color": "red",
+                    "value": 120
+                  }
                 ]
               },
               "unit": "s"
             }
           },
-          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 6 },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 6
+          },
           "id": 8,
           "options": {
             "displayMode": "lcd",
             "fillOpacity": 80,
             "gradientMode": "none",
-            "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": false },
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "overflow": "ellipsis",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "maxVizHeight": 300,
+            "minVizHeight": 16,
+            "minVizWidth": 8,
+            "namePlacement": "auto",
             "orientation": "horizontal",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "sizing": "auto",
             "text": {},
-            "valueMapping": []
+            "valueMapping": [],
+            "valueMode": "color"
           },
-          "pluginVersion": "13.0.2",
+          "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "histogram_quantile(0.5, sum(platform_managed_time_to_ready_seconds_bucket{kind!~\"NATS.*\"}) by (le, kind))",
               "legendFormat": "{{kind}}",
               "refId": "A"
             }
           ],
-          "title": "AWS Provisioning — p50 by Type",
+          "title": "AWS Provisioning \u2014 p50 by Type",
           "type": "bargauge"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Each series is one rollout event — the line appears when that XR or pod first becomes ready, and its height is how long it took. Solid lines = total XR TTR; dashed = pod ready (init containers done); dotted = per-stage binding wait. Zoom into a provisioning window to see individual rollout shapes.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Each series is one rollout event \u2014 the line appears when that XR or pod first becomes ready, and its height is how long it took. Solid lines = total XR TTR; dashed = pod ready (init containers done); dotted = per-stage binding wait. Zoom into a provisioning window to see individual rollout shapes.",
           "fieldConfig": {
             "defaults": {
-              "color": { "mode": "palette-classic" },
+              "color": {
+                "mode": "palette-classic"
+              },
               "custom": {
                 "axisBorderShow": false,
                 "axisCenteredZero": false,
                 "axisColorMode": "text",
                 "axisLabel": "seconds to ready",
                 "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 4,
                 "gradientMode": "none",
-                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
                 "insertNulls": false,
                 "lineInterpolation": "stepAfter",
                 "lineWidth": 2,
                 "pointSize": 5,
-                "scaleDistribution": { "type": "linear" },
+                "scaleDistribution": {
+                  "type": "linear"
+                },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": false,
-                "stacking": { "group": "A", "mode": "none" },
-                "thresholdsStyle": { "mode": "line" }
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "line"
+                }
               },
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
-                  { "color": "transparent", "value": 0 },
-                  { "color": "yellow", "value": 30 },
-                  { "color": "red", "value": 90 }
+                  {
+                    "color": "transparent",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 90
+                  }
                 ]
               },
               "unit": "s"
             },
             "overrides": [
               {
-                "matcher": { "id": "byFrameRefID", "options": "B" },
+                "matcher": {
+                  "id": "byFrameRefID",
+                  "options": "B"
+                },
                 "properties": [
-                  { "id": "custom.lineWidth", "value": 1 },
-                  { "id": "custom.lineStyle", "value": { "dash": [8, 4], "fill": "dash" } },
-                  { "id": "custom.fillOpacity", "value": 0 }
+                  {
+                    "id": "custom.lineWidth",
+                    "value": 1
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "dash": [
+                        8,
+                        4
+                      ],
+                      "fill": "dash"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  }
                 ]
               },
               {
-                "matcher": { "id": "byFrameRefID", "options": "C" },
+                "matcher": {
+                  "id": "byFrameRefID",
+                  "options": "C"
+                },
                 "properties": [
-                  { "id": "custom.lineWidth", "value": 1 },
-                  { "id": "custom.lineStyle", "value": { "dash": [2, 4], "fill": "dot" } },
-                  { "id": "custom.fillOpacity", "value": 0 }
+                  {
+                    "id": "custom.lineWidth",
+                    "value": 1
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "dash": [
+                        2,
+                        4
+                      ],
+                      "fill": "dot"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  }
                 ]
               }
             ]
           },
-          "gridPos": { "h": 9, "w": 24, "x": 0, "y": 14 },
+          "gridPos": {
+            "h": 9,
+            "w": 24,
+            "x": 0,
+            "y": 14
+          },
           "id": 12,
           "options": {
+            "annotations": {
+              "clustering": -1,
+              "multiLane": false
+            },
             "legend": {
               "calcs": [],
               "displayMode": "table",
+              "enableFacetedFilter": false,
+              "overflow": "ellipsis",
               "placement": "right",
               "showLegend": true
             },
-            "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
           },
-          "pluginVersion": "13.0.2",
+          "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "platform_xr_time_to_ready_seconds_instance{kind!~\"XTopic|XSubscription\"} < 3600",
-              "legendFormat": "{{kind}} · {{name}}",
+              "legendFormat": "{{kind}} \u00b7 {{name}}",
               "refId": "A"
             },
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "platform_pod_time_to_ready_seconds_instance{namespace!=\"platform-exporter\"} < 3600",
-              "legendFormat": "pod · {{namespace}}",
+              "legendFormat": "pod \u00b7 {{namespace}}",
               "refId": "B"
             },
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "label_replace(\n  (\n    platform_pod_init_container_seconds_instance{namespace!=\"platform-exporter\",init_container!~\"linkerd.*|wait-for-object-storage-.*-binding\"}\n    or\n    label_replace(\n      platform_pod_init_container_seconds_instance{namespace!=\"platform-exporter\",init_container=~\"wait-for-object-storage-.*-binding\"},\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"stage\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n) < 3600",
-              "legendFormat": "{{namespace}} · {{stage}}",
+              "legendFormat": "{{namespace}} \u00b7 {{stage}}",
               "refId": "C"
             }
           ],
-          "title": "Rollout History — Time-to-Ready per Instance & Stage",
+          "title": "Rollout History \u2014 Time-to-Ready per Instance & Stage",
           "type": "timeseries"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "description": "One row per XR. Ready status and provisioning time for all composite resources. TTR is set once when the XR first becomes ready and is not updated for subsequent reconciles.",
           "fieldConfig": {
             "defaults": {
               "custom": {
                 "align": "left",
-                "cellOptions": { "type": "auto" },
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "footer": {
+                  "reducers": []
+                },
                 "inspect": false
               },
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "red", "value": 80 }
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
                 ]
               }
             },
             "overrides": [
               {
-                "matcher": { "id": "byName", "options": "ready" },
+                "matcher": {
+                  "id": "byName",
+                  "options": "ready"
+                },
                 "properties": [
-                  { "id": "custom.width", "value": 100 },
+                  {
+                    "id": "custom.width",
+                    "value": 100
+                  },
                   {
                     "id": "mappings",
                     "value": [
                       {
                         "options": {
-                          "0": { "color": "red", "index": 1, "text": "Not Ready" },
-                          "1": { "color": "green", "index": 0, "text": "Ready" }
+                          "0": {
+                            "color": "red",
+                            "index": 1,
+                            "text": "Not Ready"
+                          },
+                          "1": {
+                            "color": "green",
+                            "index": 0,
+                            "text": "Ready"
+                          }
                         },
                         "type": "value"
                       }
                     ]
                   },
-                  { "id": "custom.cellOptions", "value": { "applyToRow": false, "type": "color-text" } }
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "applyToRow": false,
+                      "type": "color-text"
+                    }
+                  }
                 ]
               },
               {
-                "matcher": { "id": "byName", "options": "ttr" },
+                "matcher": {
+                  "id": "byName",
+                  "options": "ttr"
+                },
                 "properties": [
-                  { "id": "custom.width", "value": 130 },
-                  { "id": "unit", "value": "s" },
-                  { "id": "decimals", "value": 1 },
+                  {
+                    "id": "custom.width",
+                    "value": 130
+                  },
+                  {
+                    "id": "unit",
+                    "value": "s"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  },
                   {
                     "id": "thresholds",
                     "value": {
                       "mode": "absolute",
                       "steps": [
-                        { "color": "green", "value": 0 },
-                        { "color": "yellow", "value": 30 },
-                        { "color": "red", "value": 90 }
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 30
+                        },
+                        {
+                          "color": "red",
+                          "value": 90
+                        }
                       ]
                     }
                   },
-                  { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "gradient" } }
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "gradient",
+                      "type": "color-background"
+                    }
+                  }
                 ]
               },
               {
-                "matcher": { "id": "byName", "options": "Time" },
-                "properties": [{ "id": "custom.hidden", "value": true }]
+                "matcher": {
+                  "id": "byName",
+                  "options": "Time"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
               },
               {
-                "matcher": { "id": "byName", "options": "job" },
-                "properties": [{ "id": "custom.hidden", "value": true }]
+                "matcher": {
+                  "id": "byName",
+                  "options": "job"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
               },
               {
-                "matcher": { "id": "byName", "options": "instance" },
-                "properties": [{ "id": "custom.hidden", "value": true }]
+                "matcher": {
+                  "id": "byName",
+                  "options": "instance"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
               }
             ]
           },
-          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 23 },
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 23
+          },
           "id": 4,
-          "options": { "cellHeight": "sm", "showHeader": true },
-          "pluginVersion": "13.0.2",
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true
+          },
+          "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "platform_xr_ready",
               "format": "table",
               "instant": true,
@@ -477,7 +906,10 @@ data:
               "refId": "A"
             },
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "platform_xr_time_to_ready_seconds_instance",
               "format": "table",
               "instant": true,
@@ -491,11 +923,23 @@ data:
               "id": "filterFieldsByName",
               "options": {
                 "exclude": {
-                  "names": ["Time", "__name__", "namespace", "container", "endpoint", "pod", "job", "instance"]
+                  "names": [
+                    "Time",
+                    "__name__",
+                    "namespace",
+                    "container",
+                    "endpoint",
+                    "pod",
+                    "job",
+                    "instance"
+                  ]
                 }
               }
             },
-            { "id": "merge", "options": {} },
+            {
+              "id": "merge",
+              "options": {}
+            },
             {
               "id": "organize",
               "options": {
@@ -509,66 +953,143 @@ data:
             {
               "id": "sortBy",
               "options": {
-                "fields": [{ "desc": false, "displayName": "name" }]
+                "fields": [
+                  {
+                    "desc": false,
+                    "displayName": "name"
+                  }
+                ]
               }
             }
           ],
           "type": "table"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "description": "Per-pod init container wait time broken down by stage. Each row is one stage for one pod. Zoom the time range to recent rollout windows for meaningful data.",
           "fieldConfig": {
             "defaults": {
               "custom": {
                 "align": "left",
-                "cellOptions": { "type": "auto" },
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "footer": {
+                  "reducers": []
+                },
                 "inspect": false
               },
-              "unit": "s",
               "decimals": 1,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "yellow", "value": 15 },
-                  { "color": "red", "value": 60 }
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 15
+                  },
+                  {
+                    "color": "red",
+                    "value": 60
+                  }
                 ]
-              }
+              },
+              "unit": "s"
             },
             "overrides": [
               {
-                "matcher": { "id": "byName", "options": "wait_s" },
+                "matcher": {
+                  "id": "byName",
+                  "options": "wait_s"
+                },
                 "properties": [
-                  { "id": "custom.width", "value": 110 },
-                  { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "gradient" } }
+                  {
+                    "id": "custom.width",
+                    "value": 110
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "gradient",
+                      "type": "color-background"
+                    }
+                  }
                 ]
               },
               {
-                "matcher": { "id": "byName", "options": "Time" },
-                "properties": [{ "id": "custom.hidden", "value": true }]
+                "matcher": {
+                  "id": "byName",
+                  "options": "Time"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
               },
               {
-                "matcher": { "id": "byName", "options": "job" },
-                "properties": [{ "id": "custom.hidden", "value": true }]
+                "matcher": {
+                  "id": "byName",
+                  "options": "job"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
               },
               {
-                "matcher": { "id": "byName", "options": "instance" },
-                "properties": [{ "id": "custom.hidden", "value": true }]
+                "matcher": {
+                  "id": "byName",
+                  "options": "instance"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
               },
               {
-                "matcher": { "id": "byName", "options": "init_container" },
-                "properties": [{ "id": "custom.hidden", "value": true }]
+                "matcher": {
+                  "id": "byName",
+                  "options": "init_container"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
               }
             ]
           },
-          "gridPos": { "h": 9, "w": 14, "x": 0, "y": 33 },
+          "gridPos": {
+            "h": 9,
+            "w": 14,
+            "x": 0,
+            "y": 33
+          },
           "id": 13,
-          "options": { "cellHeight": "sm", "showHeader": true },
-          "pluginVersion": "13.0.2",
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true
+          },
+          "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "label_replace(\n  (\n    platform_pod_init_container_seconds_instance{init_container!~\"linkerd.*|wait-for-object-storage-.*-binding\"}\n    or\n    label_replace(\n      platform_pod_init_container_seconds_instance{init_container=~\"wait-for-object-storage-.*-binding\"},\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"stage\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n)",
               "format": "table",
               "instant": true,
@@ -576,79 +1097,156 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Pod Binding Wait — per Stage",
+          "title": "Pod Binding Wait \u2014 per Stage",
           "transformations": [
             {
               "id": "filterFieldsByName",
               "options": {
                 "include": {
-                  "names": ["namespace", "pod", "stage", "Value"]
+                  "names": [
+                    "namespace",
+                    "pod",
+                    "stage",
+                    "Value"
+                  ]
                 }
               }
             },
             {
               "id": "organize",
               "options": {
-                "renameByName": { "Value": "wait_s" }
+                "renameByName": {
+                  "Value": "wait_s"
+                }
               }
             },
             {
               "id": "sortBy",
               "options": {
-                "fields": [{ "desc": false, "displayName": "namespace" }]
+                "fields": [
+                  {
+                    "desc": false,
+                    "displayName": "namespace"
+                  }
+                ]
               }
             }
           ],
           "type": "table"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "description": "Active bindings between XApi instances and their platform dependencies (sql, nosql, topic, subscription, object-storage).",
           "fieldConfig": {
             "defaults": {
               "custom": {
                 "align": "left",
-                "cellOptions": { "type": "auto" },
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "footer": {
+                  "reducers": []
+                },
                 "inspect": false
               },
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "red", "value": 80 }
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
                 ]
               }
             },
             "overrides": [
               {
-                "matcher": { "id": "byName", "options": "Value" },
-                "properties": [{ "id": "custom.hidden", "value": true }]
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
               },
               {
-                "matcher": { "id": "byName", "options": "Time" },
-                "properties": [{ "id": "custom.hidden", "value": true }]
+                "matcher": {
+                  "id": "byName",
+                  "options": "Time"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
               },
               {
-                "matcher": { "id": "byName", "options": "job" },
-                "properties": [{ "id": "custom.hidden", "value": true }]
+                "matcher": {
+                  "id": "byName",
+                  "options": "job"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
               },
               {
-                "matcher": { "id": "byName", "options": "instance" },
-                "properties": [{ "id": "custom.hidden", "value": true }]
+                "matcher": {
+                  "id": "byName",
+                  "options": "instance"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
               },
               {
-                "matcher": { "id": "byName", "options": "consumer_kind" },
-                "properties": [{ "id": "custom.hidden", "value": true }]
+                "matcher": {
+                  "id": "byName",
+                  "options": "consumer_kind"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
               }
             ]
           },
-          "gridPos": { "h": 9, "w": 10, "x": 14, "y": 33 },
+          "gridPos": {
+            "h": 9,
+            "w": 10,
+            "x": 14,
+            "y": 33
+          },
           "id": 5,
-          "options": { "cellHeight": "sm", "showHeader": true },
-          "pluginVersion": "13.0.2",
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true
+          },
+          "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "platform_xr_binding",
               "format": "table",
               "instant": true,
@@ -662,14 +1260,23 @@ data:
               "id": "filterFieldsByName",
               "options": {
                 "include": {
-                  "names": ["consumer_name", "binding_type", "provider_name"]
+                  "names": [
+                    "consumer_name",
+                    "binding_type",
+                    "provider_name"
+                  ]
                 }
               }
             },
             {
               "id": "sortBy",
               "options": {
-                "fields": [{ "desc": false, "displayName": "consumer_name" }]
+                "fields": [
+                  {
+                    "desc": false,
+                    "displayName": "consumer_name"
+                  }
+                ]
               }
             }
           ],
@@ -679,9 +1286,23 @@ data:
       "preload": false,
       "refresh": "30s",
       "schemaVersion": 42,
-      "time": { "from": "now-6h", "to": "now" },
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
       "timepicker": {
-        "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+        "refresh_intervals": [
+          "5s",
+          "10s",
+          "30s",
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ]
       },
       "timezone": "browser",
       "title": "Platform",
