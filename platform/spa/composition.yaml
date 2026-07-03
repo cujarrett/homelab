@@ -36,6 +36,23 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
             data:
               default.conf: |
+                {{- if $apiProxyEnabled }}
+                # Redact sensitive query-string params before they hit the access log.
+                # Proxied API calls (e.g. SSE watch endpoints) sometimes carry bearer
+                # tokens as ?token=... because EventSource can't set custom headers —
+                # without this, the token is logged in full and retained in logs.
+                map $args $safe_args {
+                    default                                                                       $args;
+                    "~*(^|&)(token|access_token|api[_-]?key|secret|password|authorization)=" "redacted";
+                }
+                map $safe_args $safe_uri {
+                    ""      $uri;
+                    default "$uri?$safe_args";
+                }
+                log_format api_proxy '$remote_addr - $remote_user [$time_local] '
+                                      '"$request_method $safe_uri $server_protocol" '
+                                      '$status $body_bytes_sent "$http_referer" "$http_user_agent"';
+                {{- end }}
                 server {
                     listen 80;
                     server_tokens off;
@@ -129,6 +146,7 @@ spec:
                     {{- if $apiProxyEnabled }}
                     # API proxy: routes /api/ to in-cluster service (no public exposure needed)
                     location /api/ {
+                        access_log /var/log/nginx/access.log api_proxy;
                         proxy_pass http://{{ $params.apiProxy.upstream }}/;
                         proxy_set_header Host $host;
                         # Use Traefik's forwarded header — $remote_addr is Traefik's pod IP, not the client.
@@ -183,7 +201,7 @@ spec:
                     # Note: _profiler intentionally has no ^ anchor — matches nested paths like /symfony/public/_profiler/
                     # ";" is included as a terminator alongside "/" — matrix-parameter paths like
                     # /actuator;/env; otherwise slip past the "/" anchor and hit the SPA catch-all.
-                    location ~* (^/actuator(/|;|$)|^/jolokia(/|;|$)|^/swagger(/|;|$)|^/openapi(/|;|$)|^/v2/_catalog(/|;|$)|^/v3/api-docs(/|;|$)|^/console(/|;|$)|^/telescope(/|;|$)|^/server-status$|/_profiler(/|;|$)|^/_environment(/|;|$)|^/rest/(V[0-9]+|default)(/|;|$)) {
+                    location ~* "(^/actuator(/|;|$)|^/jolokia(/|;|$)|^/swagger(/|;|$)|^/openapi(/|;|$)|^/v2/_catalog(/|;|$)|^/v3/api-docs(/|;|$)|^/console(/|;|$)|^/telescope(/|;|$)|^/server-status$|/_profiler(/|;|$)|^/_environment(/|;|$)|^/rest/(V[0-9]+|default)(/|;|$))" {
                         return 404;
                     }
 
