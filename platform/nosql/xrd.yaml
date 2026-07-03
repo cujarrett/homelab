@@ -35,7 +35,7 @@ spec:
                       description: "Partition key type. S=string, N=number, B=binary."
                     namespace:
                       type: string
-                      description: "Namespace to write the binding Secret into. Passed automatically by XApi."
+                      description: "Namespace of the owning workload. Used for the Namespace cost-allocation tag. The binding Secret itself is written by the referencing XApi into its own namespace."
                     dataRetention:
                       type: string
                       default: delete

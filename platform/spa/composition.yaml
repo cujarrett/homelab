@@ -407,9 +407,13 @@ spec:
                   targetPort: 80
             ---
             # --- Rate limit Middleware ---
-            # Caps requests per source IP to 60/min with a burst of 20.
+            # Caps requests per client to 60/min with a burst of 20.
             # Blocks credential-scanning bots (~8 req/s) while being transparent
             # to real users (a full SPA page load is ~10-20 requests over 10-30s).
+            # Keyed on CF-Connecting-IP: public traffic all arrives from the two
+            # cloudflared pod IPs, so the default remote-address key would put every
+            # visitor in one shared bucket. Requests without the header (direct
+            # homelab-network access) share a single bucket.
             apiVersion: traefik.io/v1alpha1
             kind: Middleware
             metadata:
@@ -423,6 +427,8 @@ spec:
                 average: 60
                 burst: 20
                 period: 1m
+                sourceCriterion:
+                  requestHeaderName: CF-Connecting-IP
             ---
             # --- Ingress ---
             # tlsIssuer: local-lab-ca-issuer for .local.lab; letsencrypt-prod for public hosts

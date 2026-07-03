@@ -24,7 +24,7 @@ Multiple consumers' secrets coexist in the same namespace but each XApi's RBAC R
 | `provider` | `in-cluster` or `aws` | all |
 | `host` | Database endpoint hostname | all |
 | `port` | `5432` | all |
-| `database` | Database name (dashes in XR name replaced with underscores) | all |
+| `database` | Database name — the XSql name as-is (`private-cloud`) or with dashes replaced by underscores (`public-cloud`) | all |
 | `username` | Database user (`app`) | all |
 | `password` | Database password | `private-cloud` only |
 | `role-arn` | IAM role ARN | `public-cloud` only |
@@ -38,11 +38,10 @@ Multiple consumers' secrets coexist in the same namespace but each XApi's RBAC R
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `namespace` | yes | — | Namespace to write the binding Secret into. |
+| `namespace` | yes | — | Namespace to deploy the database into and write binding Secrets to. |
 | `backend` | no | `private-cloud` | `public-cloud` provisions AWS RDS Postgres; `private-cloud` provisions in-cluster Postgres. |
-| `region` | no | `us-east-1` | Cloud region for the RDS instance (public-cloud only). |
 | `size` | no | `sm` | T-shirt size for the RDS instance (public-cloud only): `xs=db.t4g.micro`, `sm=db.t4g.small`, `md=db.t4g.medium`, `lg=db.t4g.large` |
-| `dataRetention` | no | `delete` | Longhorn PVC reclaim: `retain` (PVC survives XR deletion, data recoverable) or `delete` (PVC wiped on deletion, data unrecoverable). |
+| `dataRetention` | no | `delete` | Longhorn PVC reclaim (private-cloud only): `retain` (PVC survives XR deletion, data recoverable) or `delete` (PVC wiped on deletion, data unrecoverable). |
 | `consumerServiceAccounts` | public-cloud | — | List of XApi names that will bind this database. Each entry gets its own IAM role and binding secret scoped to that SA's exact SPIFFE ID. Each entry must match an XApi `metadata.name`. |
 
 ## Example
@@ -66,7 +65,6 @@ metadata:
 spec:
   parameters:
     backend: public-cloud   # provisions AWS RDS Postgres
-    region: us-east-1
     size: sm   # xs=db.t4g.micro | sm=db.t4g.small | md=db.t4g.medium | lg=db.t4g.large
     namespace: foo
     consumerServiceAccounts:
@@ -124,8 +122,8 @@ kubectl get xsql foo-db -o jsonpath='{.status.conditions}' | python3 -m json.too
 kubectl get secret foo-api-sql -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 
-# Connect to in-cluster Postgres directly
-kubectl exec -it -n foo deploy/foo-db-postgres -- psql -U app -d foo_db
+# Connect to in-cluster Postgres directly (database name = XSql name)
+kubectl exec -it -n foo deploy/foo-db-postgres -- psql -U app -d foo-db
 
 # RDS instance status (public-cloud backend)
 aws rds describe-db-instances --db-instance-identifier foo-db

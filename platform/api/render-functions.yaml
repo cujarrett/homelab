@@ -1,0 +1,16 @@
+# Functions for local `crossplane render` (see .claude/commands/render-check.md).
+# Versions match cluster/crossplane/providers.yaml — keep them in sync.
+# No runtimeConfigRef here: render runs the functions as local Docker containers.
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-environment-configs
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-environment-configs:v0.3.0
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-go-templating
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-go-templating:v0.12.0

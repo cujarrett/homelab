@@ -286,6 +286,14 @@ spec:
                         - name: AWS_PROFILE_NOSQL
                           value: nosql
                         {{- end }}
+                        {{- if and $sqlRefName (eq $sqlBackend "public-cloud") }}
+                        - name: AWS_PROFILE_SQL
+                          value: sql
+                        {{- end }}
+                        {{- if and $cacheEnabled (eq $cacheBackend "public-cloud") }}
+                        - name: AWS_PROFILE_CACHE
+                          value: cache
+                        {{- end }}
                       {{- end }}
                       {{- if $topicRefName }}
                         # XTopic wiring: injected automatically from topicRef.

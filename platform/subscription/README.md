@@ -18,7 +18,7 @@ This is infrastructure only — it does not deploy any compute. Use an XApi inst
 | `deliverPolicy` | no | `all` | `all` = replay from start. `new` = only new messages. `last` = most recent only. `lastPerSubject` = most recent per subject. |
 | `ackPolicy` | no | `explicit` | `explicit` = app must ack per message (at-least-once). `all` = cumulative ack. `none` = fire-and-forget. |
 
-Ack wait timeout is hardcoded at 30 seconds — unacked messages are redelivered after this interval and is not configurable per subscription.
+Ack wait timeout is hardcoded at 30 seconds — unacked messages are redelivered after this interval. It is not configurable per subscription.
 
 ## Example
 
@@ -43,7 +43,8 @@ metadata:
   name: foo-consumer
 spec:
   parameters:
-    image: ghcr.io/example/foo-consumer:latest
+    namespace: foo
+    image: ghcr.io/example/foo-consumer:sha-abc123
     subscriptionRef:
       name: foo-consumer
 ```

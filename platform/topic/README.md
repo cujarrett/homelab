@@ -34,7 +34,7 @@ spec:
     maxAge: "720h"   # 30 days
 ```
 
-Instance files live in [`workspaces/`](../../homelab-workspaces/).
+Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 
 ## Kafka / AWS equivalent concepts
 

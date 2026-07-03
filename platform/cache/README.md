@@ -14,7 +14,6 @@ Owned by `XApi` — created and deleted with it when `cache.enabled: true`. Not 
 |---|---|---|---|
 | `namespace` | yes | — | Namespace to write the binding Secret into. Passed automatically by `XApi`. |
 | `backend` | no | `private-cloud` | `private-cloud` uses in-cluster Redis; `public-cloud` uses AWS ElastiCache with IAM auth. |
-| `region` | no | `us-east-1` | Cloud region for the cache cluster (public-cloud only). |
 | `size` | no | `sm` | T-shirt size for the cache cluster (public-cloud only): `xs=cache.t4g.micro`, `sm=cache.t4g.small`, `md=cache.t4g.medium`, `lg=cache.t4g.medium`. |
 | `consumerServiceAccount` | set by XApi | — | Name of the XApi service account. Used to scope the IAM trust policy to the pod's exact SPIFFE ID. Set automatically by the XApi composition — not a tenant concern. |
 
@@ -57,7 +56,6 @@ spec:
   parameters:
     namespace: foo
     backend: public-cloud   # AWS ElastiCache with IAM auth
-    region: us-east-1
     size: sm
 ```
 
