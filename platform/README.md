@@ -56,7 +56,7 @@ flowchart TD
 
 ## Service binding
 
-Credentials reach the pod as files under `/bindings/`, following the [servicebinding.io](https://servicebinding.io) spec. The composition provisions the resource, writes a Kubernetes Secret, and mounts it. The app reads files.
+Credentials reach the pod via `/bindings/`, following the [servicebinding.io](https://servicebinding.io) spec. The composition provisions the resource and writes a Kubernetes Secret in the app namespace; the pod mounts it at `/bindings/`.
 
 ```
 /bindings/
@@ -67,10 +67,14 @@ Credentials reach the pod as files under `/bindings/`, following the [servicebin
   object-storage/   type  bucket  region  role-arn  profile-arn
 ```
 
+For non-AWS resources (private-cloud SQL, in-cluster cache, NATS), the app reads credential files directly:
+
 ```go
 host, _ := os.ReadFile("/bindings/sql/host")
 port, _ := os.ReadFile("/bindings/sql/port")
 ```
+
+For AWS-backed resources (those with `role-arn`/`profile-arn`), the binding Secret contains ARNs — not credentials. The [`aws-spiffe-helper`](https://github.com/cujarrett/aws-spiffe-helper) sidecar reads those and writes actual STS credentials to a separate volume; the app uses `AWS_PROFILE_*` env vars instead. See [AWS credential binding](#aws-credential-binding) below.
 
 An init container blocks the app from starting until each binding's Secret is fully synced to the volume. Once it exits, every file is there — no retry logic needed in the app.
 
