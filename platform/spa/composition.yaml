@@ -48,7 +48,8 @@ spec:
                     # python-requests: generic scraper/scanner (no legit browser sends this UA raw)
                     # TLM-Audit-Scanner: bulk credential/config scanner
                     # nmap, nikto, sqlmap, nessus, qualys, burp, zaproxy: common security scanners
-                    if ($http_user_agent ~* "^curl/|python-requests/|TLM-Audit-Scanner|nmap|nikto|sqlmap|nessus|qualys|burp|zaproxy|masscan|wpscan|nuclei") {
+                    # pathscan: automated path-probing scanner seen sweeping credential/config paths
+                    if ($http_user_agent ~* "^curl/|python-requests/|TLM-Audit-Scanner|nmap|nikto|sqlmap|nessus|qualys|burp|zaproxy|masscan|wpscan|nuclei|pathscan") {
                         return 403;
                     }
 
@@ -180,7 +181,9 @@ spec:
 
                     # Endpoint/framework probes (Spring Boot, Symfony, Magento, etc.)
                     # Note: _profiler intentionally has no ^ anchor — matches nested paths like /symfony/public/_profiler/
-                    location ~* (^/actuator(/|$)|^/jolokia(/|$)|^/swagger(/|$)|^/openapi(/|$)|^/v2/_catalog(/|$)|^/v3/api-docs(/|$)|^/console(/|$)|^/telescope(/|$)|^/server-status$|/_profiler(/|$)|^/_environment(/|$)|^/rest/(V[0-9]+|default)(/|$)) {
+                    # ";" is included as a terminator alongside "/" — matrix-parameter paths like
+                    # /actuator;/env; otherwise slip past the "/" anchor and hit the SPA catch-all.
+                    location ~* (^/actuator(/|;|$)|^/jolokia(/|;|$)|^/swagger(/|;|$)|^/openapi(/|;|$)|^/v2/_catalog(/|;|$)|^/v3/api-docs(/|;|$)|^/console(/|;|$)|^/telescope(/|;|$)|^/server-status$|/_profiler(/|;|$)|^/_environment(/|;|$)|^/rest/(V[0-9]+|default)(/|;|$)) {
                         return 404;
                     }
 
@@ -326,6 +329,26 @@ spec:
 
                     # MCP/SSE endpoint probes — SPAs don't serve these; prevent catch-all 200
                     location ~* ^/(sse|mcp)(/|$) {
+                        return 404;
+                    }
+
+                    # AWS credential path probes — filenames not covered by the existing aws.yml/s3.yml block
+                    location ~* (aws_keys\.(json|ya?ml)|aws_parameters\.ya?ml|keys\.conf)$ {
+                        return 404;
+                    }
+
+                    # config.ini / config.local — not covered by the config.json|php|yaml|rb list above
+                    location ~* config\.(ini|local)$ {
+                        return 404;
+                    }
+
+                    # config.php backup/temp variants — config\.php$ only matched the bare file
+                    location ~* config(\.inc)?\.php(~|\.(old|txt|bak))?$ {
+                        return 404;
+                    }
+
+                    # Dev-tool dotfiles probed to fingerprint the stack
+                    location ~* /\.(rvmrc|stylelintrc(\.json)?|tool-versions|prettierrc|eslintrc\.json|editorconfig|babelrc|debug|debugbar|ruby-version)$ {
                         return 404;
                     }
 
