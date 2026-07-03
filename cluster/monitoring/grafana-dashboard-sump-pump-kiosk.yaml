@@ -23,7 +23,7 @@ data:
           "datasource": { "type": "prometheus", "uid": "sump-pump-archive" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "none", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 1, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }] } } },
-          "targets": [{ "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)", "instant": true, "refId": "A" }]
+          "targets": [{ "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)", "legendFormat": "runs/hr", "instant": true, "refId": "A" }]
         },
         {
           "id": 3, "type": "stat", "title": "Run Duration / Hour",
@@ -31,7 +31,7 @@ data:
           "datasource": { "type": "prometheus", "uid": "sump-pump-archive" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "none", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "dtdurations", "decimals": 1, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }] } } },
-          "targets": [{ "expr": "avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 3600", "instant": true, "refId": "A" }]
+          "targets": [{ "expr": "avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 3600", "legendFormat": "sec/hr", "instant": true, "refId": "A" }]
         },
         {
           "id": 2, "type": "timeseries", "title": "Runs, Duration, Temp, Rain",
