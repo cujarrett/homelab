@@ -26,8 +26,16 @@ data:
           "targets": [{ "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)", "legendFormat": "runs/hr", "instant": true, "refId": "A" }]
         },
         {
+          "id": 3, "type": "stat", "title": "Run Duration / Hour",
+          "gridPos": { "x": 4, "y": 0, "w": 4, "h": 5 },
+          "datasource": { "type": "prometheus", "uid": "sump-pump-archive" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "none", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": { "defaults": { "unit": "dtdurations", "decimals": 1, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }] } } },
+          "targets": [{ "expr": "avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 3600", "legendFormat": "sec/hr", "instant": true, "refId": "A" }]
+        },
+        {
           "id": 2, "type": "timeseries", "title": "Runs, Duration, Temp, Rain",
-          "gridPos": { "x": 4, "y": 0, "w": 20, "h": 5 },
+          "gridPos": { "x": 8, "y": 0, "w": 16, "h": 5 },
           "datasource": { "type": "prometheus", "uid": "sump-pump-archive" },
           "fieldConfig": {
             "defaults": {
