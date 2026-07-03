@@ -763,7 +763,7 @@ data:
                   },
                   {
                     "id": "decimals",
-                    "value": 0
+                    "value": 1
                   },
                   {
                     "id": "custom.axisPlacement",
@@ -858,7 +858,7 @@ data:
                 "type": "prometheus",
                 "uid": "sump-pump-archive"
               },
-              "expr": "round(avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 60)",
+              "expr": "avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 60",
               "legendFormat": "min/hr",
               "refId": "D"
             }
