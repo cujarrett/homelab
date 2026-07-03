@@ -99,6 +99,19 @@ ssh pi@192.168.10.102   # work-2
 ssh pi@192.168.10.103   # work-3
 ```
 
+### Case assembly note
+
+Each Pi 5 + NVMe HAT stack didn't fit the rack case cleanly with a single riser height — the stacks needed to clear the case wall on one side without the HATs touching each other on the other side. The fix was mixing riser lengths on the same board: 11mm risers on one pair of mounting holes and 13.5mm risers on the diagonally opposite pair, rather than four matching risers. This tilts each stack slightly, which was enough to solve both clearance problems at once. Worth knowing if you're replicating this build — a symmetric riser kit alone may not fit this case/HAT combination.
+
+<details>
+<summary>Photos</summary>
+
+<img src="./challenges/riser-challenge-1.jpg" alt="riser trouble 1" width="300">
+<img src="./challenges/riser-challenge-2.jpg" alt="riser trouble 2" width="300">
+<img src="./challenges/tight-spaces.jpg" alt="tight space" width="300">
+
+</details>
+
 ---
 
 <a id="k3s-install"></a>
