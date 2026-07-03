@@ -66,7 +66,7 @@ ssh pi@192.168.10.100 "journalctl -u getty@tty1 -n 30 --no-pager && ps aux | gre
 | DNS | AdGuard Home | Pinned to `ctrl-1`; wildcard `*.local.lab → 192.168.10.100` for all cluster hosts |
 | External access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; zero-trust public ingress, no exposed firewall ports |
 | Remote access | Tailscale | Subnet router on `ctrl-1`; advertises `192.168.10.0/24`; split DNS for `local.lab` |
-| Platform | Crossplane | XRDs + Compositions in `platform/`; see [Platform](platform.md) |
+| Platform | Crossplane | XRDs + Compositions in `platform/`; see [Platform](../platform/README.md) |
 | Service mesh | Cilium | eBPF CNI + mesh; mTLS via SPIRE Mutual Auth; `toFQDNs` egress enforcement; Hubble observability |
 | Observability | kube-prometheus-stack | Prometheus (365d retention), Grafana, Alertmanager |
 | Logs | Loki + Promtail | Loki SingleBinary, 30d retention; Promtail DaemonSet ships logs |
@@ -134,8 +134,8 @@ TLS from `local-lab-ca-issuer`. DNS via AdGuard wildcard `*.local.lab → 192.16
 TLS from `letsencrypt-prod`. Traffic via Cloudflare Tunnel.
 
 Adding a new hostname requires updating the Cloudflare Tunnel ingress config before
-the cert-manager HTTP-01 challenge can succeed. See `.github/copilot-instructions.md`
-for the API workflow.
+the cert-manager HTTP-01 challenge can succeed. See the "Cloudflare Tunnel Operations"
+section of [`CLAUDE.md`](../CLAUDE.md) for the API workflow.
 
 | Hostname | Namespace | Stack |
 |---|---|---|
@@ -144,6 +144,10 @@ for the API workflow.
 | `blog.mattjarrett.dev` | `blog` | Ghost (raw Deployment) |
 | `myvinyl.mattjarrett.dev` | `my-vinyl` | `XSpa` + `XApi` + `XCache` |
 | `jspollock.mattjarrett.dev` | `js-pollock` | `XSpa` |
+| `launchpad.mattjarrett.dev` | `launchpad` | `XSpa` + `XApi` (API cluster-internal, reached via nginx `/api/` proxy) |
+
+Guest sandbox slots (`demo1`–`demo5` and `demo1-api`–`demo5-api` under `mattjarrett.dev`)
+are pre-registered in the tunnel and reuse long-lived certs from the `demo-certs` namespace.
 
 ---
 
@@ -165,4 +169,4 @@ stored in Git.
 
 - [How it was built](how-it-was-built.md) — step-by-step build history from bare Pi to this state
 - [Cluster upgrade](cluster-upgrade.md) — k3s upgrade procedure
-- [Platform](platform.md) — Crossplane-based internal developer platform
+- [Platform](../platform/README.md) — Crossplane-based internal developer platform

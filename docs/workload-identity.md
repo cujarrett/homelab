@@ -30,7 +30,7 @@ IRSA can't express multiple scoped roles per pod and requires a public JWKS endp
 
 - **SPIRE is another system to operate.** Server deployment, per-node agent DaemonSet, trust bundle rotation, registration entry management. If SPIRE is unhealthy, pods can't renew SVIDs, and credential refresh silently fails until the sidecar's retry budget is exhausted.
 - **`aws_signing_helper` is not an AWS SDK primitive.** It's a standalone binary AWS ships separately. If AWS changes the signing protocol or stops maintaining the binary, every pod breaks. The AWS SDKs have no native Roles Anywhere support — the sidecar is load-bearing scaffolding, not a first-class feature.
-- **More moving parts on the pod.** IRSA on ROSA/ EKS requires zero sidecars and zero init containers. This setup requires a credential sidecar, an init container, a SPIFFE CSI volume, and a shared in-memory credentials volume. More things that can be misconfigured.
+- **More moving parts on the pod.** IRSA on ROSA / EKS requires zero sidecars and zero init containers. This setup requires a credential sidecar, an init container, a SPIFFE CSI volume, and a shared in-memory credentials volume. More things that can be misconfigured.
 - **The provider bug.** The nil UUID workaround works, but it's brittle — it depends on specific provider behavior that could change between `provider-aws-rolesanywhere` releases.
 
 This platform needs multiple scoped IAM roles per pod. IRSA can't do that. So the choice is Roles Anywhere or stick with static keys in Secrets. Roles Anywhere wins: short-lived credentials, least-privilege per binding, no secrets in git.
@@ -151,7 +151,7 @@ flowchart LR
     ra["IAM Roles Anywhere\nvalidates cert chain\nchecks SPIFFE ID condition"]
     sts["STS"]
     creds["/aws-credentials/credentials\nnamed profiles — one per binding"]
-    app["api container\nAWS_PROFILE_OBJECT_STORAGE\nAWS_PROFILE_NOSQL"]
+    app["api container\nAWS_PROFILE_FOO_ASSETS\nAWS_PROFILE_NOSQL"]
 
     csi -->|"SVID cert + key"| sidecar
     sidecar -->|"cert + role ARN\n+ profile ARN\n+ trust anchor ARN\nonce per binding"| ra
@@ -163,11 +163,11 @@ flowchart LR
 
 The app doesn't know SPIRE exists. The composition injects `AWS_PROFILE_*` env vars and `AWS_SHARED_CREDENTIALS_FILE`. The sidecar keeps credentials fresh; the app just reads env vars and uses the AWS SDK as normal — no special code, no token exchange, no awareness of certificates or SPIRE.
 
-Go example:
+Go example (for an object storage ref named `foo-assets` — the env var name is derived from the ref name):
 
 ```go
 s3Cfg, _ := config.LoadDefaultConfig(ctx,
-    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_OBJECT_STORAGE")))
+    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_FOO_ASSETS")))
 s3Client := s3.NewFromConfig(s3Cfg)
 
 ddbCfg, _ := config.LoadDefaultConfig(ctx,
@@ -179,7 +179,7 @@ JS example:
 
 ```js
 const s3 = new S3Client({
-  credentials: fromIni({ profile: process.env.AWS_PROFILE_OBJECT_STORAGE }),
+  credentials: fromIni({ profile: process.env.AWS_PROFILE_FOO_ASSETS }),
 });
 ```
 
