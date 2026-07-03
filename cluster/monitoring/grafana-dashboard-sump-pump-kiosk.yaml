@@ -75,8 +75,8 @@ data:
               {
                 "matcher": { "id": "byName", "options": "min/hr" },
                 "properties": [
-                  { "id": "unit", "value": "min" },
-                  { "id": "decimals", "value": 0 },
+                  { "id": "unit", "value": "dtdurations" },
+                  { "id": "decimals", "value": 1 },
                   { "id": "color", "value": { "fixedColor": "rgba(38, 198, 218, 0.95)", "mode": "fixed" } },
                   { "id": "custom.axisPlacement", "value": "right" },
                   { "id": "custom.axisLabel", "value": "weather" },
@@ -93,7 +93,7 @@ data:
             { "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)", "legendFormat": "runs/hr", "refId": "A" },
             { "expr": "max(weather_precipitation_mm{job=\"weather-exporter\"}) * 0.03937", "legendFormat": "in/hr", "refId": "B" },
             { "expr": "max(weather_temperature_fahrenheit{job=\"weather-exporter\"})", "legendFormat": "\u00b0F", "refId": "C" },
-            { "expr": "round(avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 60)", "legendFormat": "min/hr", "refId": "D" }
+            { "expr": "avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 3600", "legendFormat": "min/hr", "refId": "D" }
           ]
         }
       ]
