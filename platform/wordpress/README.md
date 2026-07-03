@@ -20,7 +20,7 @@ The namespace is owned by the tenant — created by `namespace.yaml` in the tena
 | `storageSize` | no | `10Gi` | `wp-content` PVC size (uploads, themes, plugins) |
 | `dbStorageSize` | no | `5Gi` | MariaDB PVC size |
 | `replicas` | no | `1` | WordPress pod replicas |
-| `dataRetention` | no | `retain` | `retain` — keep PV on XR delete (uses `longhorn` StorageClass). `delete` — wipe PV on XR delete (uses `longhorn-delete` StorageClass). |
+| `dataRetention` | no | `retain` | `retain` — keep PV on XR delete (uses `longhorn-retain` StorageClass). `delete` — wipe PV on XR delete (uses `longhorn-delete` StorageClass). |
 
 ### Size tiers
 
@@ -47,4 +47,4 @@ spec:
     dataRetention: retain
 ```
 
-Instance files live in [`workspaces/`](../../homelab-workspaces/).
+Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).

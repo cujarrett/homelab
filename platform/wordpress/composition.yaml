@@ -423,7 +423,9 @@ spec:
                   X-Content-Type-Options: "nosniff"
                   X-Frame-Options: "SAMEORIGIN"
                   Referrer-Policy: "strict-origin-when-cross-origin"
-                  X-XSS-Protection: "1; mode=block"
+                  # "0" disables the legacy XSS auditor — removed from modern browsers,
+                  # and enabling it created XS-Leak side channels in older ones. Matches XSpa.
+                  X-XSS-Protection: "0"
                   Strict-Transport-Security: "max-age=31536000; includeSubDomains"
                   Permissions-Policy: "camera=(), microphone=(), geolocation=(), payment=()"
             ---
