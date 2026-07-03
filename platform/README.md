@@ -24,8 +24,6 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 | [`XObjectStorage`](object-storage/README.md) | Object store | MinIO *(planned)* | AWS S3 |
 | [`XTopic`](topic/README.md) | Durable message stream | NATS JetStream | — |
 | [`XSubscription`](subscription/README.md) | Durable consumer cursor | NATS JetStream | — |
-| [`XWordpress`](wordpress/README.md) | WordPress site + database | WordPress + MariaDB on Longhorn | — |
-
 ---
 
 ## How resources connect
