@@ -262,7 +262,7 @@ data:
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Median time from AWS managed resource creation to Ready=True. NATS resources excluded (lastTransitionTime drifts for long-running resources). Green < 30s, yellow < 120s, red ≥ 120s.",
+          "description": "Median time from AWS managed resource creation to Ready=True. NATS resources excluded (lastTransitionTime drifts for long-running resources). Green < 30s, yellow < 180s, red ≥ 210s.",
           "fieldConfig": {
             "defaults": {
               "color": { "mode": "thresholds" },
@@ -270,8 +270,8 @@ data:
                 "mode": "absolute",
                 "steps": [
                   { "color": "green", "value": 0 },
-                  { "color": "yellow", "value": 30 },
-                  { "color": "red", "value": 120 }
+                  { "color": "yellow", "value": 180 },
+                  { "color": "red", "value": 210 }
                 ]
               },
               "unit": "s"
@@ -441,7 +441,6 @@ data:
                       "mode": "absolute",
                       "steps": [
                         { "color": "green", "value": 0 },
-                        { "color": "yellow", "value": 30 },
                         { "color": "red", "value": 90 }
                       ]
                     }
