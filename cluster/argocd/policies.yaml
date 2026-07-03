@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: policies
+  namespace: argocd
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/cujarrett/homelab.git
+    targetRevision: main
+    path: cluster/policies
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
