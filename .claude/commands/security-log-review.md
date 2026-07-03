@@ -26,6 +26,8 @@ For each, check:
 
 Pull logs for `mattjarrett-com` namespace (wordpress container):
 
+`mattjarrett-com` has MFA enabled (Two-Factor plugin, TOTP + recovery codes) — a correct password alone can't complete a login. Factor this into severity when reporting brute-force volume: still worth flagging bursts, but a password-guessing burst is not an imminent account-takeover risk the way it would be on a password-only site.
+
 1. **`/wp-login.php` brute force** — count POST attempts. Flag if > 10 in a rolling hour. Note user agents and IPs.
 
 2. **Successful logins vs failed** — a POST to `/wp-login.php` returning 302 (redirect to wp-admin) indicates success. A 200 response is a failed login (WP re-renders the form).
