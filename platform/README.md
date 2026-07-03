@@ -24,6 +24,7 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 | [`XObjectStorage`](object-storage/README.md) | Object store | MinIO *(planned)* | AWS S3 |
 | [`XTopic`](topic/README.md) | Durable message stream | NATS JetStream | — |
 | [`XSubscription`](subscription/README.md) | Durable consumer cursor | NATS JetStream | — |
+| [`XWordpress`](wordpress/README.md) | WordPress site + database | WordPress + MariaDB on Longhorn | — |
 
 ---
 
@@ -118,7 +119,7 @@ flowchart LR
 
 Each binding gets its own IAM Role scoped to the pod's exact SPIFFE ID — wrong namespace, wrong service account, different cluster: rejected.
 
-The app uses named AWS profiles injected by the composition. Profile env var names are derived from the ref name: `AWS_PROFILE_{REF_NAME_UPPER_SNAKE_CASE}` for object storage refs, `AWS_PROFILE_NOSQL` for nosql.
+The app uses named AWS profiles injected by the composition. Profile env var names are derived from the binding: `AWS_PROFILE_{REF_NAME_UPPER_SNAKE_CASE}` for object storage refs, `AWS_PROFILE_NOSQL` for nosql, `AWS_PROFILE_SQL` for public-cloud sql, and `AWS_PROFILE_CACHE` for public-cloud cache.
 
 ```go
 cfg, _ := config.LoadDefaultConfig(ctx,
