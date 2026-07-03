@@ -8,6 +8,8 @@ Owned by `XApi` — created and deleted with it when `cache.enabled: true`. Not 
 - `backend: private-cloud` — **in-cluster Redis** + binding Secret; no cloud resources
 - `backend: public-cloud` — **AWS ElastiCache** (IAM auth) + IAM Role + RolesAnywhere Profile + binding Secret; no static credentials
 
+> **Known limitation: `public-cloud` is not currently reachable from this cluster.** ElastiCache clusters are always VPC-internal — there is no public-access option at all, for any AWS account. There is no network path (VPN, peering, or otherwise) between this homelab cluster and the VPC the ReplicationGroup lands in, so pods cannot connect — verified: connection attempts fail with a raw TCP `i/o timeout`. Everything up to that point works correctly: the ReplicationGroup provisions, IAM Role + RolesAnywhere Profile are created, and the sidecar successfully exchanges the pod's SVID for real STS credentials. The gap is purely network reachability, not identity or credentials. No current workload uses `public-cloud` for XCache. Unlike XSql, there's no "make it internet-reachable" option here at all — the only way to close this gap is bridging into the VPC (e.g. a Tailscale subnet router running inside it, the same pattern already used for the homelab's own LAN) — worth doing only when a real workload needs it.
+
 ## Parameters
 
 | Parameter | Required | Default | Description |

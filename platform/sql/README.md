@@ -8,6 +8,8 @@ Standalone resource with a lifecycle independent of any one API. Bind to an `XAp
 - `backend: private-cloud` — **in-cluster Postgres** (Deployment + PVC on Longhorn) + binding Secret; no cloud resources
 - `backend: public-cloud` — **AWS RDS Postgres** + IAM Role + RolesAnywhere Profile + binding Secret; IAM DB auth; no password in the binding Secret
 
+> **Known limitation: `public-cloud` is not currently reachable from this cluster.** The RDS instance is created with `publiclyAccessible: false` and no explicit `dbSubnetGroupName`/security group, so it lands in the AWS account's default VPC. There is no network path (VPN, peering, or otherwise) between this homelab cluster and that VPC, so pods cannot open a connection to it — verified: the RDS hostname resolves only to a private VPC IP, and a raw TCP connection times out. Everything up to that point works correctly: the instance provisions, IAM Role + RolesAnywhere Profile are created, and the sidecar successfully exchanges the pod's SVID for real STS credentials. The gap is purely network reachability, not identity or credentials. No current workload uses `public-cloud` for XSql — closing this would mean either making the instance internet-reachable and security-group-restricted (fixes only XSql; XCache's ElastiCache has no public-access option at all), or bridging into the VPC (e.g. a Tailscale subnet router running inside it, the same pattern already used for the homelab's own LAN) — worth doing only when a real workload needs it.
+
 ## Binding secret
 
 Secret name:
