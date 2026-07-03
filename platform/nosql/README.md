@@ -31,7 +31,7 @@ The `aws-spiffe-helper` sidecar (injected by XApi) exchanges the pod's SVID for 
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `namespace` | yes | — | Namespace to write the binding Secret into. |
+| `namespace` | yes | — | Namespace of the owning workload. Used for the Namespace cost-allocation tag; the binding Secret is written by the referencing `XApi`. |
 | `partitionKey` | no | `id` | Partition key attribute name. |
 | `partitionKeyType` | no | `S` | Partition key type: `S`=string, `N`=number, `B`=binary. |
 | `dataRetention` | no | `delete` | AWS resource reclaim on XR deletion: `delete`=table is deleted (data unrecoverable); `retain`=table is orphaned in AWS (data recoverable). |

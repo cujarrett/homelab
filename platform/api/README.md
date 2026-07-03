@@ -9,7 +9,6 @@ Crossplane composition that deploys an API server (Go, Node, GraphQL, etc.) with
 - **Role + RoleBinding** — least-privilege RBAC: `get` only on the exact Secrets this instance mounts
 - **ServiceMonitor** — Prometheus scrape target on the metrics port
 - **Ingress** *(optional)* — Traefik `websecure` with TLS; only created when `host` is set. cert-manager issues a certificate via `tlsIssuer` unless `tlsSecret` points to a pre-existing Secret, in which case issuance is skipped.
-- **HTTPRoute** — default 30s request timeout
 - **XCache** *(optional)* — short-lived cache cluster owned by this XApi; created and deleted alongside it
 
 `XObjectStorage`, `XSql`, and `XNoSql` are created independently and bound via refs. They outlive any one XApi. For `XObjectStorage` and `XNoSql`, this composition creates the IAM Role, RolesAnywhere Profile, and binding Secret when the ref is declared — their binding secrets only contain names, region, and ARNs, which XApi can compute. For `XSql`, those are created by the XSql composition itself, because its binding secret contains RDS connection details (host, port, username) that are only known after RDS provisioning. The tenant lists consuming XApi names in `consumerServiceAccounts` on the XSql — each gets its own IAM role and binding secret scoped to its SA.
@@ -42,7 +41,6 @@ The namespace is owned by the tenant — created by `namespace.yaml` in the tena
 | `topicRef.name` | no | — | Name of an `XTopic` this API publishes to. Injects `NATS_URL` and `NATS_STREAM` env vars. |
 | `topicRef.streamName` | no | — | NATS stream name from the XTopic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the XTopic's streamName differs from its metadata.name. |
 | `subscriptionRef.name` | no | — | Name of an `XSubscription` this API consumes from. Injects `NATS_URL` and `NATS_CONSUMER` env vars. |
-| `mesh.enabled` | no | `true` | Set to `false` to opt this instance out of proxy injection. Namespace-level injection must be enabled for the mesh to work. |
 
 ## Example
 
@@ -104,13 +102,13 @@ s3Client := s3.NewFromConfig(cfg)
 | `provider` | `in-cluster` or `aws` | all |
 | `host` | Postgres hostname | all |
 | `port` | `5432` | all |
-| `database` | Database name (dashes in XR name replaced with underscores) | all |
+| `database` | Database name — the XSql name as-is (`private-cloud`) or with dashes replaced by underscores (`public-cloud`) | all |
 | `username` | Database user (`app`) | all |
 | `password` | Database password | `private-cloud` only |
 | `role-arn` | IAM role ARN | `public-cloud` only |
 | `profile-arn` | RolesAnywhere profile ARN | `public-cloud` only |
 
-For `public-cloud`, the sidecar writes a `sql` named profile to the credentials file. The app uses that profile's STS credentials to call `rds:GenerateDBAuthToken` and uses the resulting short-lived token as the database password.
+For `public-cloud`, the sidecar writes a `sql` named profile to the credentials file and the composition injects `AWS_PROFILE_SQL=sql`. The app uses that profile's STS credentials to call `rds:GenerateDBAuthToken` and uses the resulting short-lived token as the database password.
 
 ### `/bindings/nosql/`
 
@@ -142,7 +140,7 @@ ddbClient := dynamodb.NewFromConfig(cfg)
 | `role-arn` | IAM role ARN | `public-cloud` only |
 | `profile-arn` | RolesAnywhere profile ARN | `public-cloud` only |
 
-For `public-cloud`, the sidecar writes a `cache` named profile to the credentials file. The app uses those credentials to authenticate to ElastiCache via IAM auth.
+For `public-cloud`, the sidecar writes a `cache` named profile to the credentials file and the composition injects `AWS_PROFILE_CACHE=cache`. The app uses those credentials to authenticate to ElastiCache via IAM auth.
 
 ## AWS credential injection
 
@@ -151,7 +149,7 @@ When any AWS cloud binding is declared, the composition adds:
 - A `spiffe-bundle` CSI volume (read-only SPIRE agent socket).
 - An `aws-credentials` emptyDir volume shared between the sidecar and the app container, mounted at `/aws-credentials/credentials`.
 - `AWS_SHARED_CREDENTIALS_FILE=/aws-credentials/credentials` env var in the app container.
-- `AWS_PROFILE_*` env vars for object storage and nosql bindings (see individual binding sections above).
+- `AWS_PROFILE_*` env vars for every AWS binding: `AWS_PROFILE_{REF_NAME_UPPER_SNAKE_CASE}` per object storage ref, `AWS_PROFILE_NOSQL`, `AWS_PROFILE_SQL` (public-cloud sql), and `AWS_PROFILE_CACHE` (public-cloud cache).
 
 The `TRUST_ANCHOR_ARN` is injected into the sidecar from the `aws-platform-config` EnvironmentConfig — it never appears in user-visible binding Secrets.
 

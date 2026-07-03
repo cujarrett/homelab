@@ -6,9 +6,8 @@ Crossplane composition that hosts an Angular (or any static) SPA on nginx.
 - **ConfigMap** — nginx config with SPA routing (`try_files` → `index.html`), security headers, asset caching, probe path, and extensive scanner/credential-probe blocking rules
 - **Deployment** — nginx container running the pre-built SPA image
 - **Service** — ClusterIP on port 80
-- **Middleware** — Traefik rate limiter: 60 requests/min average, burst of 20, per source IP
+- **Middleware** — Traefik rate limiter: 60 requests/min average, burst of 20, keyed per client IP (`CF-Connecting-IP` header)
 - **Ingress** — Traefik `websecure` entrypoint with cert-manager TLS; rate limit middleware applied
-- **HTTPRoute** — default 30s request timeout
 
 The namespace is owned by the tenant — created by `namespace.yaml` in the tenant directory, not by this composition.
 
@@ -21,7 +20,8 @@ The namespace is owned by the tenant — created by `namespace.yaml` in the tena
 | `host` | yes | — | Ingress hostname (e.g. `myapp.local.lab` or `myapp.example.com`) |
 | `repo` | no | — | GitHub repository URL for this app's source code. |
 | `size` | no | `sm` | Compute tier for the nginx container: `xs=25m/100m CPU, 32Mi/64Mi mem` · `sm=50m/200m CPU, 64Mi/128Mi mem` · `md=100m/500m CPU, 128Mi/256Mi mem` · `lg=250m/1000m CPU, 256Mi/512Mi mem`. |
-| `tlsIssuer` | no | `local-lab-ca-issuer` | cert-manager ClusterIssuer. `local-lab-ca-issuer` for internal `.local.lab` hostnames; `letsencrypt-prod` for public internet hosts. |
+| `tlsIssuer` | no | `local-lab-ca-issuer` | cert-manager ClusterIssuer. `local-lab-ca-issuer` for internal `.local.lab` hostnames; `letsencrypt-prod` for public internet hosts. Ignored when `tlsSecret` is set. |
+| `tlsSecret` | no | — | Name of a pre-existing TLS Secret in the app namespace. When set, the Ingress references it directly and cert-manager issuance is skipped. Used by sandbox slots to reuse long-lived demo certs. |
 | `contentSecurityPolicy` | no | `default-src 'self'; frame-ancestors 'none'; base-uri 'self';` | CSP header value. Override with app-specific origins (Google Fonts, external APIs, etc.). |
 | `replicas` | no | `1` | Number of nginx replicas. Stateless — safe to scale freely. |
 | `apiProxy.enabled` | no | `false` | Proxy `/api/` to an in-cluster service (keeps the API off the public internet). |
@@ -43,7 +43,7 @@ spec:
     host: foo.local.lab
 ```
 
-Instance files live in [`workspaces/`](../../homelab-workspaces/).
+Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 
 ## App repo contract
 

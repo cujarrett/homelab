@@ -36,7 +36,7 @@ spec:
                       description: "Backend to provision. public-cloud provisions AWS RDS Postgres; private-cloud provisions in-cluster Postgres."
                     namespace:
                       type: string
-                      description: "Namespace to write the binding Secret into. Passed automatically by XApi."
+                      description: "Namespace to deploy the database into and write binding Secrets to. Must already exist (created by the tenant's namespace.yaml)."
                     dataRetention:
                       type: string
                       default: delete
