@@ -252,7 +252,7 @@ data:
                   }
                 ]
               },
-              "unit": "s"
+              "unit": "dthms"
             }
           },
           "gridPos": {
@@ -286,7 +286,7 @@ data:
                 "type": "prometheus",
                 "uid": "sump-pump-archive"
               },
-              "expr": "round(avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 3600)",
+              "expr": "avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 3600",
               "instant": true,
               "legendFormat": "sec/hr",
               "refId": "A"
@@ -757,11 +757,7 @@ data:
                 "properties": [
                   {
                     "id": "unit",
-                    "value": "min"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 1
+                    "value": "dthms"
                   },
                   {
                     "id": "custom.axisPlacement",
@@ -856,7 +852,7 @@ data:
                 "type": "prometheus",
                 "uid": "sump-pump-archive"
               },
-              "expr": "avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 60",
+              "expr": "avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 3600",
               "legendFormat": "min/hr",
               "refId": "D"
             }
