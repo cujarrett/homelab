@@ -91,7 +91,7 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "13.0.2",
+          "pluginVersion": "13.1.0",
           "targets": [
             {
               "datasource": {
@@ -104,7 +104,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Current State",
+          "title": "Status",
           "type": "stat"
         },
         {
@@ -155,7 +155,7 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "13.0.2",
+          "pluginVersion": "13.1.0",
           "targets": [
             {
               "datasource": {
@@ -219,7 +219,7 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "13.0.2",
+          "pluginVersion": "13.1.0",
           "targets": [
             {
               "datasource": {
@@ -257,7 +257,7 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
+            "w": 6,
             "x": 9,
             "y": 0
           },
@@ -279,7 +279,7 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "13.0.2",
+          "pluginVersion": "13.1.0",
           "targets": [
             {
               "datasource": {
@@ -322,7 +322,7 @@ data:
           "gridPos": {
             "h": 3,
             "w": 3,
-            "x": 12,
+            "x": 15,
             "y": 0
           },
           "id": 4,
@@ -343,7 +343,7 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "13.0.2",
+          "pluginVersion": "13.1.0",
           "targets": [
             {
               "datasource": {
@@ -386,7 +386,7 @@ data:
           "gridPos": {
             "h": 3,
             "w": 3,
-            "x": 15,
+            "x": 18,
             "y": 0
           },
           "id": 12,
@@ -407,7 +407,7 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "13.0.2",
+          "pluginVersion": "13.1.0",
           "targets": [
             {
               "datasource": {
@@ -421,81 +421,6 @@ data:
             }
           ],
           "title": "Rain Last 24h",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "sump-pump-archive"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "blue",
-                    "value": 0
-                  },
-                  {
-                    "color": "green",
-                    "value": 32
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 80
-                  },
-                  {
-                    "color": "red",
-                    "value": 95
-                  }
-                ]
-              },
-              "unit": "fahrenheit"
-            }
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 3,
-            "x": 18,
-            "y": 0
-          },
-          "id": 24,
-          "options": {
-            "colorMode": "none",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.0.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "sump-pump-archive"
-              },
-              "expr": "max(weather_temperature_fahrenheit{job=\"weather-exporter\"})",
-              "instant": true,
-              "legendFormat": "\u00b0F",
-              "refId": "A"
-            }
-          ],
-          "title": "Current Temp",
           "type": "stat"
         },
         {
@@ -542,7 +467,7 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "13.0.2",
+          "pluginVersion": "13.1.0",
           "targets": [
             {
               "datasource": {
@@ -809,6 +734,8 @@ data:
             "legend": {
               "calcs": [],
               "displayMode": "list",
+              "enableFacetedFilter": false,
+              "overflow": "ellipsis",
               "placement": "bottom",
               "showLegend": true
             },
@@ -818,7 +745,7 @@ data:
               "sort": "none"
             }
           },
-          "pluginVersion": "13.0.2",
+          "pluginVersion": "13.1.0",
           "targets": [
             {
               "datasource": {
@@ -1012,7 +939,7 @@ data:
               }
             ]
           },
-          "pluginVersion": "13.0.2",
+          "pluginVersion": "13.1.0",
           "targets": [
             {
               "datasource": {
@@ -1079,6 +1006,9 @@ data:
                   "legend": false,
                   "tooltip": false,
                   "viz": false
+                },
+                "scaleDistribution": {
+                  "type": "linear"
                 }
               }
             }
@@ -1091,6 +1021,10 @@ data:
           },
           "id": 30,
           "options": {
+            "annotations": {
+              "clustering": -1,
+              "multiLane": false
+            },
             "calculate": true,
             "calculation": {
               "xBuckets": {
@@ -1135,7 +1069,7 @@ data:
               "unit": "watt"
             }
           },
-          "pluginVersion": "",
+          "pluginVersion": "13.1.0",
           "targets": [
             {
               "datasource": {
