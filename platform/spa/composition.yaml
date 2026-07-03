@@ -39,11 +39,12 @@ spec:
                 {{- if $apiProxyEnabled }}
                 # Redact sensitive query-string params before they hit the access log.
                 # Proxied API calls (e.g. SSE watch endpoints) sometimes carry bearer
-                # tokens as ?token=... because EventSource can't set custom headers —
-                # without this, the token is logged in full and retained in logs.
+                # tokens or auth tickets as ?token=/?ticket=... because EventSource
+                # can't set custom headers — without this, the value is logged in
+                # full and retained in logs.
                 map $args $safe_args {
                     default                                                                       $args;
-                    "~*(^|&)(token|access_token|api[_-]?key|secret|password|authorization)=" "redacted";
+                    "~*(^|&)(token|access_token|ticket|api[_-]?key|secret|password|authorization)=" "redacted";
                 }
                 map $safe_args $safe_uri {
                     ""      $uri;
