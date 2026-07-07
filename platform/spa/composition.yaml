@@ -67,8 +67,19 @@ spec:
                     # TLM-Audit-Scanner: bulk credential/config scanner
                     # nmap, nikto, sqlmap, nessus, qualys, burp, zaproxy: common security scanners
                     # pathscan: automated path-probing scanner seen sweeping credential/config paths
-                    if ($http_user_agent ~* "^curl/|python-requests/|TLM-Audit-Scanner|nmap|nikto|sqlmap|nessus|qualys|burp|zaproxy|masscan|wpscan|nuclei|pathscan") {
+                    # l9scan: LeakIX internet-wide scanner (leakix.net) — swept all XSpa instances for
+                    # credential/config files in one pass; largest source of catch-all 200s seen in logs
+                    # YUTAA-SCANNER-DEFUNCT: self-identifying canary/recon scanner
+                    # Go-http-client: default Go UA — seen exclusively hitting FrontPage/SVN artifact and
+                    # canary-token probes (.svn, _vti_pvt, zzcanary-*) in the same sweep as l9scan
+                    if ($http_user_agent ~* "^curl/|python-requests/|TLM-Audit-Scanner|nmap|nikto|sqlmap|nessus|qualys|burp|zaproxy|masscan|wpscan|nuclei|pathscan|l9scan|YUTAA-SCANNER-DEFUNCT|^Go-http-client/") {
                         return 403;
+                    }
+
+                    # WordPress user-enumeration probe via query string on any path (?rest_route=/wp/v2/users/)
+                    # Not path-based, so it slips past every location block above and hits the SPA catch-all.
+                    if ($args ~* "^rest_route=") {
+                        return 404;
                     }
 
                     location /healthz {
@@ -119,28 +130,22 @@ spec:
                         add_header Permissions-Policy           "camera=(), microphone=(), geolocation=()"  always;
                     }
 
-
-                    # VCS credential files, IDE project dirs, and unhosted cloud CLI dirs not covered above.
-                    location ~* (^|/)(\.git-credentials|\.netrc|\.pgpass|\.pypirc|\.idea|\.github|\.firebase|\.next)(/|$|\.) {
-                        return 404;
+                    # Real static files the Angular CLI copies verbatim from each app's public/ dir
+                    # (robots.txt, PWA manifest) — without these, the default-deny rule below would
+                    # 404 them before the catch-all's try_files ever checks whether they exist on disk.
+                    # robots.txt is fetched by convention by crawlers regardless of HTML references;
+                    # site.webmanifest is explicitly linked via <link rel="manifest"> in several apps.
+                    location = /robots.txt {
+                        add_header Cache-Control "no-cache" always;
                     }
 
-                    # CI/CD pipeline definition files not covered above
-                    location ~* (^|/)(Jenkinsfile|amplify\.yml|buildspec\.yml|appspec\.yml|bitbucket-pipelines\.yml|\.travis\.yml)$ {
-                        return 404;
+                    location ~* \.webmanifest$ {
+                        add_header Cache-Control "no-cache" always;
                     }
 
-                    # config.yml (.yaml/.json variants blocked; .yml was missing)
-                    # docker-compose.yaml (.yaml ext; .yml already blocked)
-                    # application-<profile>.* (Spring Boot profile variants — application.properties blocked but not application-production.properties)
-                    # .yarnrc.yml (Yarn v2 format — .yarnrc blocked with $ anchor; .yarnrc.yml was not matched)
-                    location ~* (config\.yml|docker-compose\.yaml|application[^/]*\.(properties|yml|yaml)|\.yarnrc\.yml)$ {
-                        return 404;
-                    }
 
-                    # Nested config environment files — /config/production.json, /config/parameters.yml, etc.
-                    # config.json is blocked at root; /config/<env>.* paths are not
-                    location ~* (^|/)config/(production|development|staging|test|local|default|parameters)\.(json|yaml|yml)$ {
+                    # CI/CD and container files with no extension for the default-deny rule to catch
+                    location ~* (^|/)(Jenkinsfile|Dockerfile)$ {
                         return 404;
                     }
 
@@ -164,37 +169,8 @@ spec:
                     }
                     {{- end }}
 
-                    # Block credential/config probes before the catch-all.
-                    # Without these, try_files returns 200 for every .env scan.
-                    location ~* /\.git(/|$) {
-                        return 404;
-                    }
-
-                    location ~* /\.ssh(/|$) {
-                        return 404;
-                    }
-
-                    location ~* /\.vscode(/|$) {
-                        return 404;
-                    }
-
-                    location ~* (^|/)\.env[^/]* {
-                        return 404;
-                    }
-
-                    location ~* (\.htaccess|\.htpasswd|\.gitconfig|\.gitmodules|\.gitlab-ci\.yml|\.DS_Store|wp-config\.php|phpinfo\.php|settings\.py|settings\.json|settings\.yaml|config\.json|config\.php|config\.yaml|config\.rb|web\.config|composer\.(json|lock)|package(-lock)?\.json|yarn\.lock|Dockerfile|docker-compose\.yml|readme\.md|README\.md|wlwmanifest\.xml|xmlrpc\.php)$ {
-                        return 404;
-                    }
-
-                    location ~* (^|/)(\.aws|credentials|api-keys\.txt|logs/error\.log|var/log/)(/|$) {
-                        return 404;
-                    }
-
-                    location ~* \.(log)$ {
-                        return 404;
-                    }
-
-                    location ~* \.(php|php5|php7|php8|phtml|asp|aspx|jsp|cgi|sh|py|rb|pl)$ {
+                    # Bare credential/log paths with no extension for the default-deny rule to catch
+                    location ~* (^|/)(credentials|var/log)(/|$) {
                         return 404;
                     }
 
@@ -206,47 +182,9 @@ spec:
                         return 404;
                     }
 
-                    # Config/secret file probes not covered above
-                    location ~* (application\.(yml|yaml|properties)|aws\.(yml|yaml)|s3\.(yml|yaml)|appsettings(\.[^.]+)?\.json|terraform\.tfstate(\.backup)?|serverless\.yml|connectionstrings\.config|\.composer/) {
-                        return 404;
-                    }
-
-                    # Secret store / credential file name probes
-                    # /secrets.json, /serviceAccountKey.json, /config/secrets.yml
-                    location ~* (secrets\.(json|yaml|yml)|serviceAccountKey\.json|credentials\.json|database\.yml|\.npmrc|\.yarnrc)$ {
-                        return 404;
-                    }
-
-                    # GCP / Firebase / cloud service-account key file probes
-                    # These returned 200 via SPA catch-all in access logs — no real files served,
-                    # but scanners treat 200 as a hit and escalate probing.
-                    location ~* (gcp[_\-]?\.json|gcp[_\-]?key[^/]*\.json|gcloud[^/]*\.json|firebase[^/]*\.json|google[^/]*service[^/]*\.json|service[_\-]account[^/]*\.json|sa[_\-]key\.json|sa[_\-]private[^/]*\.json|keyfile\.json|client[_\-]?secret\.json|google[_\-]?services\.json|key\.json)$ {
-                        return 404;
-                    }
-
-                    # Crypto material probes
-                    location ~* \.(key|pem|p12|pfx|crt|cer|der|pub)$ {
-                        return 404;
-                    }
-
                     # SSH key files accessed outside .ssh/ directories (e.g. /devops/id_dsa, /pki/id_ecdsa)
+                    # id_rsa etc. have no extension when the optional .pub suffix is absent
                     location ~* /(id_rsa|id_dsa|id_ecdsa|id_ed25519)(\.pub)?$ {
-                        return 404;
-                    }
-
-                    # Files using .env as a suffix extension (not dotfile) — e.g. smtp.env, database.env
-                    # The (^|/)\.env[^/]* block above only catches dotfiles like .env, .env.local
-                    location ~* [^/]\.env$ {
-                        return 404;
-                    }
-
-                    # SQL dump files — api_keys.sql, tokens.sql, etc.
-                    location ~* \.(sql|bak|backup|dump)$ {
-                        return 404;
-                    }
-
-                    # Source map files — expose original source if served; block regardless of build config
-                    location ~* \.(map)$ {
                         return 404;
                     }
 
@@ -261,12 +199,8 @@ spec:
                         return 404;
                     }
 
-                    # Bare /env probe and env.* file variants — complements the \.env[^/]* block
-                    location ~* ^/env(/|\.) {
-                        return 404;
-                    }
-
-                    # Additional env probe variants seen in scanner traffic
+                    # Bare /env, /api/env, and env.* file variants seen in scanner traffic
+                    # (subsumes the narrower ^/env(/|\.) and exact `= /env` forms)
                     location ~* ^/(api/)?env(/|\.|$) {
                       return 404;
                     }
@@ -306,16 +240,6 @@ spec:
                         return 404;
                     }
 
-                    # environment.* config files — /environment.json, /environment.yml, /environment.yaml
-                    location ~* ^/environment\.(json|ya?ml)$ {
-                        return 404;
-                    }
-
-                    # Bare /env (exact) — ^/env(/|\.) misses exactly GET /env
-                    location = /env {
-                        return 404;
-                    }
-
                     # /_env, /__env env-dump path variants
                     location ~* ^/__?env(/|$) {
                         return 404;
@@ -323,21 +247,6 @@ spec:
 
                     # /manage/env and similar env management paths
                     location ~* ^/manage/env(/|$) {
-                        return 404;
-                    }
-
-                    # Config backup and account metadata probes
-                    location ~* (^|/)(config\.json\.(save|bak|old|orig)|account\.json)$ {
-                      return 404;
-                    }
-
-                    # Java app version file probes
-                    location ~* ^/data/conf/(%20)?version\.txt$ {
-                      return 404;
-                    }
-
-                    # Magento local.xml credential file — /app/etc/local.xml
-                    location ~* /etc/local\.xml$ {
                         return 404;
                     }
 
@@ -351,23 +260,23 @@ spec:
                         return 404;
                     }
 
-                    # AWS credential path probes — filenames not covered by the existing aws.yml/s3.yml block
-                    location ~* (aws_keys\.(json|ya?ml)|aws_parameters\.ya?ml|keys\.conf)$ {
+                    # Default-deny: assumes no XSpa app's client-side router defines a route with a
+                    # dot in a path segment, so any request whose last segment looks like a filename
+                    # (has a `.ext` suffix) or starts with a dotfile is a probe, not real navigation.
+                    # This replaces enumerating every new credential/config filename scanners try — one
+                    # rule instead of one commit per signature. The specific extension/asset blocks
+                    # above still take priority since nginx picks the first matching regex location in
+                    # file order. When onboarding a new XSpa instance, confirm its router doesn't use
+                    # dotted route segments before relying on this default.
+                    location ~ /\.well-known/acme-challenge/ {
+                        try_files $uri $uri/ /index.html;
+                    }
+
+                    location ~ /\. {
                         return 404;
                     }
 
-                    # config.ini / config.local — not covered by the config.json|php|yaml|rb list above
-                    location ~* config\.(ini|local)$ {
-                        return 404;
-                    }
-
-                    # config.php backup/temp variants — config\.php$ only matched the bare file
-                    location ~* config(\.inc)?\.php(~|\.(old|txt|bak))?$ {
-                        return 404;
-                    }
-
-                    # Dev-tool dotfiles probed to fingerprint the stack
-                    location ~* /\.(rvmrc|stylelintrc(\.json)?|tool-versions|prettierrc|eslintrc\.json|editorconfig|babelrc|debug|debugbar|ruby-version)$ {
+                    location ~* \.[^./]+$ {
                         return 404;
                     }
 
