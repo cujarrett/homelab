@@ -8,101 +8,477 @@ metadata:
 data:
   sump-pump-kiosk.json: |-
     {
-      "title": "Sump Pump — Kiosk",
-      "uid": "sump-pump-kiosk",
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
       "editable": true,
+      "fiscalYearStartMonth": 0,
       "graphTooltip": 1,
-      "time": { "from": "now-24h", "to": "now" },
-      "timepicker": { "hidden": true },
-      "refresh": "30s",
-      "schemaVersion": 38,
+      "liveNow": false,
       "panels": [
         {
-          "id": 1, "type": "stat", "title": "Runs / Hour",
-          "gridPos": { "x": 0, "y": 0, "w": 4, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "sump-pump-archive" },
-          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "none", "graphMode": "none", "textMode": "value", "justifyMode": "center" },
-          "fieldConfig": { "defaults": { "unit": "short", "decimals": 1, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }] } } },
-          "targets": [{ "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)", "legendFormat": "runs/hr", "instant": true, "refId": "A" }]
-        },
-        {
-          "id": 3, "type": "stat", "title": "Duration / Hour",
-          "gridPos": { "x": 4, "y": 0, "w": 4, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "sump-pump-archive" },
-          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "none", "graphMode": "none", "textMode": "value", "justifyMode": "center" },
-          "fieldConfig": { "defaults": { "unit": "dtdurations", "decimals": 1, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }] } } },
-          "targets": [{ "expr": "avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 3600", "legendFormat": "sec/hr", "instant": true, "refId": "A" }]
-        },
-        {
-          "id": 2, "type": "timeseries", "title": "Runs, Duration, Temp, Rain",
-          "gridPos": { "x": 8, "y": 0, "w": 16, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "sump-pump-archive" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "sump-pump-archive"
+          },
           "fieldConfig": {
             "defaults": {
-              "unit": "short", "decimals": 0,
-              "color": { "fixedColor": "rgba(38, 198, 218, 0.95)", "mode": "fixed" },
-              "custom": { "lineWidth": 2, "fillOpacity": 0, "lineInterpolation": "smooth", "drawStyle": "line", "spanNulls": true }
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 4,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "options": {
+            "colorMode": "none",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.1.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "sump-pump-archive"
+              },
+              "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)",
+              "instant": true,
+              "legendFormat": "runs/hr",
+              "refId": "A"
+            }
+          ],
+          "title": "Runs / Hour",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "sump-pump-archive"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "dtdurations"
+            }
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 5,
+            "x": 4,
+            "y": 0
+          },
+          "id": 3,
+          "options": {
+            "colorMode": "none",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.1.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "sump-pump-archive"
+              },
+              "expr": "avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 3600",
+              "instant": true,
+              "legendFormat": "sec/hr",
+              "refId": "A"
+            }
+          ],
+          "title": "Duration / Hour",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "sump-pump-archive"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "rgba(38, 198, 218, 0.95)",
+                "mode": "fixed"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "showValues": false,
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
             },
             "overrides": [
               {
-                "matcher": { "id": "byName", "options": "runs/hr" },
+                "matcher": {
+                  "id": "byName",
+                  "options": "runs/hr"
+                },
                 "properties": [
-                  { "id": "color", "value": { "fixedColor": "rgba(140, 140, 140, 0.95)", "mode": "fixed" } },
-                  { "id": "custom.axisPlacement", "value": "left" },
-                  { "id": "custom.lineWidth", "value": 2 },
-                  { "id": "custom.fillOpacity", "value": 0 }
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "rgba(140, 140, 140, 0.95)",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.axisPlacement",
+                    "value": "auto"
+                  },
+                  {
+                    "id": "custom.lineWidth",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  }
                 ]
               },
               {
-                "matcher": { "id": "byName", "options": "in/hr" },
+                "matcher": {
+                  "id": "byName",
+                  "options": "in/hr"
+                },
                 "properties": [
-                  { "id": "unit", "value": "lengthin" },
-                  { "id": "decimals", "value": 2 },
-                  { "id": "color", "value": { "fixedColor": "rgba(90, 168, 255, 0.9)", "mode": "fixed" } },
-                  { "id": "custom.drawStyle", "value": "bars" },
-                  { "id": "custom.lineWidth", "value": 0 },
-                  { "id": "custom.fillOpacity", "value": 35 },
-                  { "id": "custom.axisPlacement", "value": "hidden" },
-                  { "id": "custom.spanNulls", "value": true }
+                  {
+                    "id": "unit",
+                    "value": "lengthin"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "rgba(90, 168, 255, 0.9)",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.drawStyle",
+                    "value": "bars"
+                  },
+                  {
+                    "id": "custom.lineWidth",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 35
+                  },
+                  {
+                    "id": "custom.axisPlacement",
+                    "value": "hidden"
+                  },
+                  {
+                    "id": "custom.spanNulls",
+                    "value": true
+                  }
                 ]
               },
               {
-                "matcher": { "id": "byName", "options": "\u00b0F" },
+                "matcher": {
+                  "id": "byName",
+                  "options": "\u00b0F"
+                },
                 "properties": [
-                  { "id": "unit", "value": "fahrenheit" },
-                  { "id": "decimals", "value": 1 },
-                  { "id": "color", "value": { "fixedColor": "rgba(255, 230, 120, 0.95)", "mode": "fixed" } },
-                  { "id": "custom.lineWidth", "value": 2 },
-                  { "id": "custom.lineInterpolation", "value": "smooth" },
-                  { "id": "custom.fillOpacity", "value": 0 },
-                  { "id": "custom.spanNulls", "value": true },
-                  { "id": "custom.axisPlacement", "value": "hidden" },
-                  { "id": "custom.hideFrom", "value": { "legend": false, "tooltip": true, "viz": true } }
+                  {
+                    "id": "unit",
+                    "value": "fahrenheit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "rgba(255, 230, 120, 0.95)",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.lineWidth",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.lineInterpolation",
+                    "value": "smooth"
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.spanNulls",
+                    "value": true
+                  },
+                  {
+                    "id": "custom.axisPlacement",
+                    "value": "hidden"
+                  },
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": false,
+                      "tooltip": true,
+                      "viz": true
+                    }
+                  }
                 ]
               },
               {
-                "matcher": { "id": "byName", "options": "min/hr" },
+                "matcher": {
+                  "id": "byName",
+                  "options": "min/hr"
+                },
                 "properties": [
-                  { "id": "unit", "value": "dtdurations" },
-                  { "id": "decimals", "value": 1 },
-                  { "id": "color", "value": { "fixedColor": "rgba(38, 198, 218, 0.95)", "mode": "fixed" } },
-                  { "id": "custom.axisPlacement", "value": "right" },
-                  { "id": "custom.axisLabel", "value": "weather" },
-                  { "id": "custom.lineWidth", "value": 2 },
-                  { "id": "custom.lineInterpolation", "value": "smooth" },
-                  { "id": "custom.fillOpacity", "value": 35 },
-                  { "id": "custom.spanNulls", "value": true }
+                  {
+                    "id": "unit",
+                    "value": "dtdurations"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "rgba(38, 198, 218, 0.95)",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.axisPlacement",
+                    "value": "hidden"
+                  },
+                  {
+                    "id": "custom.axisLabel",
+                    "value": "weather"
+                  },
+                  {
+                    "id": "custom.lineWidth",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.lineInterpolation",
+                    "value": "smooth"
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 35
+                  },
+                  {
+                    "id": "custom.spanNulls",
+                    "value": true
+                  }
                 ]
               }
             ]
           },
-          "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "multi", "sort": "none" } },
+          "gridPos": {
+            "h": 5,
+            "w": 15,
+            "x": 9,
+            "y": 0
+          },
+          "id": 2,
+          "options": {
+            "annotations": {
+              "clustering": -1,
+              "multiLane": false
+            },
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "enableFacetedFilter": false,
+              "overflow": "ellipsis",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "13.1.0",
           "targets": [
-            { "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)", "legendFormat": "runs/hr", "refId": "A" },
-            { "expr": "max(weather_precipitation_mm{job=\"weather-exporter\"}) * 0.03937", "legendFormat": "in/hr", "refId": "B" },
-            { "expr": "max(weather_temperature_fahrenheit{job=\"weather-exporter\"})", "legendFormat": "\u00b0F", "refId": "C" },
-            { "expr": "avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 3600", "legendFormat": "min/hr", "refId": "D" }
-          ]
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "sump-pump-archive"
+              },
+              "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)",
+              "legendFormat": "runs/hr",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "sump-pump-archive"
+              },
+              "expr": "max(weather_precipitation_mm{job=\"weather-exporter\"}) * 0.03937",
+              "legendFormat": "in/hr",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "sump-pump-archive"
+              },
+              "expr": "max(weather_temperature_fahrenheit{job=\"weather-exporter\"})",
+              "legendFormat": "\u00b0F",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "sump-pump-archive"
+              },
+              "expr": "avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 3600",
+              "legendFormat": "min/hr",
+              "refId": "D"
+            }
+          ],
+          "title": "Runs, Duration, Temp, Rain",
+          "type": "timeseries"
         }
-      ]
+      ],
+      "preload": false,
+      "refresh": "30s",
+      "schemaVersion": 42,
+      "time": {
+        "from": "now-24h",
+        "to": "now"
+      },
+      "timepicker": {
+        "hidden": true,
+        "refresh_intervals": [
+          "5s",
+          "10s",
+          "30s",
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ]
+      },
+      "timezone": "browser",
+      "title": "Sump Pump \u2014 Kiosk",
+      "uid": "sump-pump-kiosk"
     }
