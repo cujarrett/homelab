@@ -1030,6 +1030,13 @@ data:
           "title": "PVC Usage",
           "transformations": [
             {
+              "id": "joinByField",
+              "options": {
+                "byField": "persistentvolumeclaim",
+                "mode": "outer"
+              }
+            },
+            {
               "id": "filterFieldsByName",
               "options": {
                 "include": {
