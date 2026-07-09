@@ -460,8 +460,8 @@ data:
             }
           },
           "gridPos": {
-            "h": 6,
-            "w": 12,
+            "h": 7,
+            "w": 8,
             "x": 0,
             "y": 4
           },
@@ -561,9 +561,9 @@ data:
             }
           },
           "gridPos": {
-            "h": 6,
-            "w": 12,
-            "x": 12,
+            "h": 7,
+            "w": 8,
+            "x": 8,
             "y": 4
           },
           "id": 8,
@@ -694,10 +694,10 @@ data:
             ]
           },
           "gridPos": {
-            "h": 5,
-            "w": 12,
-            "x": 0,
-            "y": 10
+            "h": 7,
+            "w": 8,
+            "x": 16,
+            "y": 4
           },
           "id": 9,
           "options": {
@@ -742,131 +742,6 @@ data:
           ],
           "title": "CPU & Memory Usage",
           "type": "timeseries"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "description": "Persistent volume claims in this namespace, used vs capacity.",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {
-                "align": "left",
-                "cellOptions": {
-                  "type": "auto"
-                },
-                "filterable": true,
-                "footer": {
-                  "reducers": []
-                },
-                "inspect": false
-              },
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "bytes"
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "PVC"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "short"
-                  }
-                ]
-              }
-            ]
-          },
-          "gridPos": {
-            "h": 5,
-            "w": 12,
-            "x": 12,
-            "y": 10
-          },
-          "id": 10,
-          "options": {
-            "cellHeight": "sm",
-            "showHeader": true,
-            "sortBy": [
-              {
-                "desc": false,
-                "displayName": "PVC"
-              }
-            ]
-          },
-          "pluginVersion": "13.1.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "kubelet_volume_stats_used_bytes{namespace=\"$namespace\"}",
-              "format": "table",
-              "instant": true,
-              "legendFormat": "",
-              "refId": "A"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "kubelet_volume_stats_capacity_bytes{namespace=\"$namespace\"}",
-              "format": "table",
-              "instant": true,
-              "legendFormat": "",
-              "refId": "B"
-            }
-          ],
-          "title": "PVC Usage",
-          "transformations": [
-            {
-              "id": "filterFieldsByName",
-              "options": {
-                "include": {
-                  "names": [
-                    "persistentvolumeclaim",
-                    "Value #A",
-                    "Value #B"
-                  ]
-                }
-              }
-            },
-            {
-              "id": "organize",
-              "options": {
-                "renameByName": {
-                  "Value #A": "Used",
-                  "Value #B": "Capacity",
-                  "persistentvolumeclaim": "PVC"
-                }
-              }
-            },
-            {
-              "id": "sortBy",
-              "options": {
-                "fields": [
-                  {
-                    "desc": false,
-                    "displayName": "PVC"
-                  }
-                ]
-              }
-            }
-          ],
-          "type": "table"
         },
         {
           "datasource": {
@@ -944,10 +819,10 @@ data:
             ]
           },
           "gridPos": {
-            "h": 5,
-            "w": 24,
+            "h": 7,
+            "w": 12,
             "x": 0,
-            "y": 15
+            "y": 11
           },
           "id": 11,
           "options": {
@@ -1011,6 +886,131 @@ data:
             }
           ],
           "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Persistent volume claims in this namespace, used vs capacity.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "left",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "footer": {
+                  "reducers": []
+                },
+                "inspect": false
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "bytes"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "PVC"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 12,
+            "y": 11
+          },
+          "id": 10,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": false,
+                "displayName": "PVC"
+              }
+            ]
+          },
+          "pluginVersion": "13.1.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "kubelet_volume_stats_used_bytes{namespace=\"$namespace\"}",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "kubelet_volume_stats_capacity_bytes{namespace=\"$namespace\"}",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "B"
+            }
+          ],
+          "title": "PVC Usage",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "persistentvolumeclaim",
+                    "Value #A",
+                    "Value #B"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "renameByName": {
+                  "Value #A": "Used",
+                  "Value #B": "Capacity",
+                  "persistentvolumeclaim": "PVC"
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": [
+                  {
+                    "desc": false,
+                    "displayName": "PVC"
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
         }
       ],
       "preload": false,
@@ -1065,7 +1065,7 @@ data:
           "1d"
         ]
       },
-      "timezone": "browser",
+      "timezone": "America/Chicago",
       "title": "Namespace Overview",
       "uid": "homelab-namespace-overview"
     }
