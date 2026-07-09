@@ -892,7 +892,7 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Persistent volume claims in this namespace, used vs capacity.",
+          "description": "Persistent volume claims in this namespace, used vs size.",
           "fieldConfig": {
             "defaults": {
               "custom": {
@@ -927,6 +927,48 @@ data:
                   {
                     "id": "unit",
                     "value": "short"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "% Used"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-background"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 0.75
+                        },
+                        {
+                          "color": "red",
+                          "value": 0.9
+                        }
+                      ]
+                    }
                   }
                 ]
               }
@@ -972,6 +1014,17 @@ data:
               "instant": true,
               "legendFormat": "",
               "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "kubelet_volume_stats_used_bytes{namespace=\"$namespace\"} / kubelet_volume_stats_capacity_bytes{namespace=\"$namespace\"}",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "C"
             }
           ],
           "title": "PVC Usage",
@@ -983,7 +1036,8 @@ data:
                   "names": [
                     "persistentvolumeclaim",
                     "Value #A",
-                    "Value #B"
+                    "Value #B",
+                    "Value #C"
                   ]
                 }
               }
@@ -993,7 +1047,8 @@ data:
               "options": {
                 "renameByName": {
                   "Value #A": "Used",
-                  "Value #B": "Capacity",
+                  "Value #B": "Size",
+                  "Value #C": "% Used",
                   "persistentvolumeclaim": "PVC"
                 }
               }
