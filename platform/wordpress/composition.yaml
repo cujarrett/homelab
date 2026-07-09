@@ -373,8 +373,8 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               rateLimit:
-                average: 5
-                burst: 5
+                average: 30
+                burst: 15
                 period: 1h
                 sourceCriterion:
                   requestHeaderName: CF-Connecting-IP
