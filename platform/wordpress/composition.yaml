@@ -288,7 +288,7 @@ spec:
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: wordpress-ingress
                 gotemplating.fn.crossplane.io/ready: "True"
-                cert-manager.io/cluster-issuer: local-lab-ca-issuer
+                cert-manager.io/cluster-issuer: letsencrypt-prod
                 traefik.ingress.kubernetes.io/router.entrypoints: websecure
                 traefik.ingress.kubernetes.io/router.tls: "true"
                 traefik.ingress.kubernetes.io/router.middlewares: "{{ $namespace }}-{{ $name }}-wp-security-headers@kubernetescrd"
