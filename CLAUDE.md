@@ -66,7 +66,9 @@ SSH access: `ssh pi@192.168.10.10x`
 | Storage | Longhorn | Three StorageClasses: `longhorn` (default, Delete), `longhorn-retain` (Retain — use for stateful platform XRs), `longhorn-delete` (explicit Delete) |
 | DNS | AdGuard Home | Runs in `adguard` namespace, pinned to node `ctrl-1` via nodeSelector, hostPort 53 UDP |
 | External Access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; token from secret `cloudflare-tunnel-token` |
-| Platform Abstraction | Crossplane | Three XR types: `XWordpress`, `XSpa`, `XApi` — all use `function-patch-and-transform` + `function-go-templating` |
+| Platform Abstraction | Crossplane | Nine XR types — see the Crossplane Platform section below |
+| CNI / Service Mesh | Cilium | DaemonSet in `kube-system` on all 4 nodes; Helm chart from `helm.cilium.io` |
+| Workload Identity | SPIRE | `spire-server` + `spire-system` namespaces; Helm chart from `spiffe.github.io/helm-charts-hardened` |
 
 ## Namespaces & Applications
 | Namespace | App | Notes |
@@ -83,11 +85,16 @@ SSH access: `ssh pi@192.168.10.10x`
 | `crossplane-system` | Crossplane | Platform compositions, XRDs, providers |
 | `nats` | NATS + NACK | JetStream cluster (3 replicas), NACK controller for Stream/Consumer CRDs |
 | `mattjarrett-com` | WordPress (XWordpress) | `mattjarrett.com` via Cloudflare Tunnel; 7Gi wp-content, 1Gi MariaDB |
+| `kentjarrett-com` | WordPress (XWordpress) | `kentjarrett.com` via Cloudflare Tunnel; 10Gi wp-content, 2Gi MariaDB |
 | `mattjarrett-dev` | Angular SPA (XSpa) | `mattjarrett.dev` via Cloudflare Tunnel |
 | `blog` | Ghost (Deployment) | `blog.mattjarrett.dev` via Cloudflare Tunnel; 2Gi content PVC |
 | `my-vinyl` | XSpa + XApi + XCache | `myvinyl.mattjarrett.dev` via Cloudflare Tunnel |
 | `js-pollock` | XSpa | `jspollock.mattjarrett.dev` via Cloudflare Tunnel |
 | `sump-pump` | XApi ×2 + XTopic + XSubscription | IoT sump pump bridge + consumer + weather-exporter |
+| `launchpad` | XApi | `launchpad.mattjarrett.dev` via Cloudflare Tunnel; BFF for Launchpad UI, provisions ephemeral demo sandboxes |
+| `demo-certs` | cert-manager `Certificate` objects only (no workloads) | 10 long-lived `letsencrypt-prod` certs for the 5 fixed demo sandbox slots (`demo{1-5}.mattjarrett.dev` + `demo{1-5}-api.mattjarrett.dev`); `launchpad-api` copies the resulting secrets into each sandbox namespace at creation time so cert-manager skips issuance there and Let's Encrypt's 5-certs-per-exact-hostname-per-168h limit is never hit |
+| `platform-exporter` | platform-exporter | Custom Prometheus exporter for platform metrics; scraped via `platform-exporter-servicemonitor` |
+| `spire-server`, `spire-system` | SPIRE | Workload identity (SPIFFE); agent DaemonSet on all nodes |
 
 ## Internal Hostnames (`.local.lab`)
 All use `local-lab-ca-issuer` (self-signed CA), TLS via Traefik `websecure` entrypoint.
@@ -100,32 +107,32 @@ UniFi DHCP DNS: primary `192.168.10.100`, fallback `1.1.1.1`.
 
 ## Public Hostnames
 - `mattjarrett.com` — WordPress, routed via Cloudflare Tunnel
+- `kentjarrett.com` — WordPress, routed via Cloudflare Tunnel
 - `mattjarrett.dev` — static site, routed via Cloudflare Tunnel
 - `blog.mattjarrett.dev` — Ghost blog, routed via Cloudflare Tunnel
 - `myvinyl.mattjarrett.dev` — my-vinyl SPA, routed via Cloudflare Tunnel
 - `jspollock.mattjarrett.dev` — js-pollock SPA, routed via Cloudflare Tunnel
+- `launchpad.mattjarrett.dev` — Launchpad BFF, routed via Cloudflare Tunnel
+- `demo{1-5}.mattjarrett.dev` / `demo{1-5}-api.mattjarrett.dev` — fixed ephemeral demo sandbox slots provisioned by `launchpad-api`, not permanently bound to any one app
 
 ## Cloudflare Tunnel Operations
 
-Tunnel ID: `REDACTED` — retrieve with:
+The `cloudflare-tunnel-token` secret has a single key, `tunnel-token` — a double-base64-encoded JSON blob with fields `a` (account ID), `t` (tunnel ID), and `s` (tunnel secret). Retrieve the IDs with:
 ```bash
-kubectl get secret cloudflare-tunnel-token -n cloudflare -o jsonpath='{.data.tunnelID}' | base64 -d
+kubectl get secret cloudflare-tunnel-token -n cloudflare -o jsonpath='{.data.tunnel-token}' | base64 -d | base64 -d | python3 -c "import json,sys; d=json.load(sys.stdin); print('account:', d['a'], 'tunnel:', d['t'])"
 ```
+The account ID is also visible in the Cloudflare dashboard URL (`dash.cloudflare.com/<account-id>/`).
 
-Account ID: `REDACTED` — visible in the Cloudflare dashboard URL (`dash.cloudflare.com/<account-id>/`) or retrieve with:
-```bash
-kubectl get secret cloudflare-tunnel-token -n cloudflare -o jsonpath='{.data.accountID}' | base64 -d
-```
-
-All hostnames route to: `https://192.168.10.101:443` with `noTLSVerify: true`
+All hostnames route to: `https://192.168.10.101:443`. WordPress hosts (`mattjarrett.com`, `kentjarrett.com`) use `noTLSVerify: false` + `originServerName: <hostname>` so cloudflared verifies the Let's Encrypt origin cert; all other hostnames use `noTLSVerify: true`. A hostname can only flip to verified after its `letsencrypt-prod` cert is issued and served by Traefik, otherwise the tunnel 502s — new hostnames must start with `noTLSVerify: true`.
 
 **Every new public hostname requires a tunnel config update.** The API is a full replace — always fetch first, append, then PUT back.
 
 Adding a new public hostname:
 ```bash
 # 0. Get IDs from cluster
-export ACCOUNT_ID=$(kubectl get secret cloudflare-tunnel-token -n cloudflare -o jsonpath='{.data.accountID}' | base64 -d)
-export TUNNEL_ID=$(kubectl get secret cloudflare-tunnel-token -n cloudflare -o jsonpath='{.data.tunnelID}' | base64 -d)
+CREDS=$(kubectl get secret cloudflare-tunnel-token -n cloudflare -o jsonpath='{.data.tunnel-token}' | base64 -d | base64 -d)
+export ACCOUNT_ID=$(echo "$CREDS" | python3 -c "import json,sys; print(json.load(sys.stdin)['a'])")
+export TUNNEL_ID=$(echo "$CREDS" | python3 -c "import json,sys; print(json.load(sys.stdin)['t'])")
 export CF_TOKEN=<token>
 
 # 1. Fetch current config
@@ -160,7 +167,7 @@ kubectl delete certificaterequest -n <namespace> --all
 ## Monitoring Stack Details
 - **Prometheus (main)**: `monitoring-kube-prometheus-prometheus`, port 9090, 365d retention, 35Gi PVC
 - **Prometheus (sump-pump)**: `prometheus-sump-pump`, port 9090, 18250d retention, 2Gi PVC (`local-path`, pinned to `work-1`); scrapes sump-pump-bridge, sump-pump-consumer, weather-exporter; Grafana datasource UID `sump-pump-archive`; **PVC mounts at `prometheus-db/` subdirectory** — migration jobs must write blocks there, not to the PVC root
-- **Grafana**: admin secret `grafana-admin-secret`, anonymous viewer access enabled, Loki datasource configured, dashboards loaded via sidecar from all namespaces, playlist provisioned via ConfigMap
+- **Grafana**: admin secret `grafana-admin-secret`, anonymous viewer access enabled, Loki datasource configured, dashboards loaded via sidecar from all namespaces; the kiosk playlist is managed in the Grafana UI (not provisioned from Git)
 - **Loki**: StatefulSet `loki`, SingleBinary, filesystem, 2Gi PVC (`storage-loki-0`), 30d retention, compactor enabled
 - **Promtail**: DaemonSet, ships logs to Loki
 - **Alertmanager**: 2Gi PVC
@@ -171,26 +178,32 @@ Dashboards are ConfigMaps with label `grafana_dashboard: "1"` in any namespace. 
 kubectl apply -f cluster/monitoring/<dashboard>.yaml
 ```
 
-| UID | File | Purpose |
+| UID | File | Title |
 |---|---|---|
-| `homelab-kiosk` | `grafana-dashboard-homelab-display.yaml` | Homelab kiosk — 5 grid units tall |
-| `homelab-mbp` | `grafana-dashboard-homelab-mbp.yaml` | Homelab MacBook Pro view |
-| `web-traffic` | `grafana-dashboard-web-traffic.yaml` | Web traffic MacBook view — defaults 24h |
-| `web-traffic-kiosk` | `grafana-dashboard-web-traffic-kiosk.yaml` | Web traffic kiosk — 5 grid units tall, sparklines |
-| `homelab-cluster` | `grafana-dashboard-cluster-overview.yaml` | Cluster overview |
-| `homelab-gitops` | `grafana-dashboard-gitops-platform.yaml` | GitOps & Platform |
-| `homelab-platform` | `grafana-dashboard-platform.yaml` | Platform XR ready status, XApi bindings, rollout timing, managed resource provisioning, pod init container stages |
-| `my-vinyl-api` | `grafana-dashboard-my-vinyl-api.yaml` | my-vinyl API metrics |
-| `sump-pump` | `grafana-dashboard-sump-pump.yaml` | Sump pump IoT metrics |
-| `node-pod-workload` | `grafana-dashboard-node-pods.yaml` | Node pod workload |
+| `argo-health-kiosk` | `grafana-dashboard-argo-health-kiosk.yaml` | ArgoCD Health Kiosk |
+| `homelab-cert-manager` | `grafana-dashboard-cert-manager.yaml` | Cert Manager |
+| `homelab-gitops` | `grafana-dashboard-gitops.yaml` | GitOps |
+| `homelab-kiosk` | `grafana-dashboard-homelab-kiosk.yaml` | Homelab — Kiosk |
+| `homelab-mbp` | `grafana-dashboard-homelab-mbp.yaml` | Homelab |
+| `homelab-platform` | `grafana-dashboard-homelab-platform.yaml` | Platform |
+| `launchpad-kiosk` | `grafana-dashboard-launchpad-kiosk.yaml` | Launchpad — Kiosk |
+| `homelab-namespace-overview` | `grafana-dashboard-namespace-overview.yaml` | Namespace Overview |
+| `orphans-kiosk` | `grafana-dashboard-orphans-kiosk.yaml` | Orphans — Kiosk |
+| `homelab-orphans` | `grafana-dashboard-orphans.yaml` | Orphaned Resources |
+| `homelab-pod-health` | `grafana-dashboard-pod-health.yaml` | Pod Health Breakdown |
+| `homelab-pods-by-node` | `grafana-dashboard-pods-by-node.yaml` | Pods by Node |
+| `service-mesh` | `grafana-dashboard-service-mesh.yaml` | Service Mesh |
+| `sump-pump-kiosk` | `grafana-dashboard-sump-pump-kiosk.yaml` | Sump Pump — Kiosk |
+| `sump-pump` | `grafana-dashboard-sump-pump.yaml` | Sump Pump |
+| `web-traffic-kiosk` | `grafana-dashboard-web-traffic-kiosk.yaml` | Web Traffic — Kiosk |
+| `web-traffic` | `grafana-dashboard-web-traffic.yaml` | Web Traffic |
 
 **Adding a new dashboard to the kiosk playlist:**
 1. Create the dashboard ConfigMap in `cluster/monitoring/` with `grafana_dashboard: "1"` label
 2. Keep height at exactly 5 grid units (`"h": 5`) so it fits the 1U display
 3. Use `"instant": true` on all stat panel targets — avoids heavy range queries that crash the Pi
 4. Apply locally to test: `kubectl apply -f cluster/monitoring/<dashboard>.yaml`
-5. Add the dashboard UID to `cluster/monitoring/grafana-playlist-kiosk.yaml` and push — playlist is provisioned from this ConfigMap, no Grafana UI edit needed
-6. No restart needed — Grafana hot-reloads provisioned playlists
+5. Add the dashboard to the kiosk playlist in the Grafana UI at `https://grafana.local.lab/playlists` (playlist `adc6g24` — UI-managed, not provisioned from Git)
 
 ### Traefik Prometheus label quirk
 Prometheus renames the `service` label from Traefik metrics to `exported_service` to avoid collision. Always use `exported_service=~"..."` in Traefik queries.
@@ -252,23 +265,29 @@ ssh pi@192.168.10.100 "sudo systemctl restart getty@tty1.service"
 
 ## Crossplane Platform
 
-Three platform types are defined under `platform/`:
+Nine platform types are defined under `platform/`:
 
-| XRD | Kind | Namespace | Notes |
-|---|---|---|---|
-| `xwordpresses.platform.local.lab` | `XWordpress` | `mattjarrett-com` | MariaDB StatefulSet + WordPress Deployment; credentials from XR UID |
-| `xspas.platform.local.lab` | `XSpa` | `mattjarrett-dev` | nginx + Angular SPA; nginx config generated via go-templating function — **app repos must NOT include an nginx.conf; composition owns it entirely** |
-| `xapis.platform.local.lab` | `XApi` | — | Generic REST API (no active instance) |
+| XRD | Kind | Notes |
+|---|---|---|
+| `xwordpresses.platform.local.lab` | `XWordpress` | MariaDB StatefulSet + WordPress Deployment; credentials from XR UID |
+| `xspas.platform.local.lab` | `XSpa` | nginx + Angular SPA; nginx config generated via go-templating function — **app repos must NOT include an nginx.conf; composition owns it entirely** |
+| `xapis.platform.local.lab` | `XApi` | Generic REST API |
+| `xcaches.platform.local.lab` | `XCache` | Cache for apps |
+| `xtopics.platform.local.lab` | `XTopic` | Pub/sub topic |
+| `xsubscriptions.platform.local.lab` | `XSubscription` | Consumer subscription to a topic |
+| `xsqls.platform.local.lab` | `XSql` | SQL database (no active instance) |
+| `xnosqls.platform.local.lab` | `XNoSql` | NoSQL database (no active instance) |
+| `xobjectstorages.platform.local.lab` | `XObjectStorage` | Object storage (no active instance) |
+
+Which namespaces use which XR types is listed in the Namespaces & Applications table above.
 
 ### GitOps flow for XR instances
-1. Commit an XR file to `platform/xrs/<type>/<name>.yaml`
-2. `xrs` ApplicationSet (`apps/argocd/xrs-appset.yaml`) detects the file and creates an ArgoCD Application
+1. Commit XR files to a top-level directory in the `homelab-workspaces` repo (e.g. `mattjarrett-com/mattjarrett-com.yaml`)
+2. `xrs` ApplicationSet (`cluster/argocd/xrs-appset.yaml`) generates one ArgoCD Application per directory, deployed into a namespace named after the directory
 3. ArgoCD applies the XR to the cluster
 4. Crossplane reconciles and creates all composed resources
 
-XR instance files live under `platform/xrs/`:
-- `platform/xrs/wordpress/mattjarrett-com.yaml`
-- `platform/xrs/spa/mattjarrett-dev.yaml`
+XR instance files live in `homelab-workspaces/<name>/` (one directory per workspace, e.g. `mattjarrett-com/`, `kentjarrett-com/`). Ephemeral `demo{1-5}` sandbox directories are written and deleted automatically by `launchpad-api`; all other workspace directories are hand-maintained.
 
 ### Deleting an XR instance (correct order — prevents data loss)
 ```bash
@@ -276,8 +295,8 @@ XR instance files live under `platform/xrs/`:
 kubectl delete xspa <name> -n <namespace>
 # or: kubectl delete xwordpress <name> -n <namespace>
 
-# 2. Remove the file from git and push — ArgoCD prunes the Application
-git rm platform/xrs/<type>/<name>.yaml && git commit -m "..." && git push
+# 2. Remove the workspace directory from the homelab-workspaces repo and push — ArgoCD prunes the Application
+git rm -r <name>/ && git commit -m "..." && git push
 ```
 DO NOT remove the file first — that orphans resources.
 
@@ -302,9 +321,9 @@ Four projects scope workloads by concern:
 | Project | Allowed source repos | Contents |
 |---|---|---|
 | `platform` | homelab git + `argoproj.github.io/argo-helm` + `charts.crossplane.io/stable` | ArgoCD, Crossplane, compositions, bootstrap |
-| `cluster` | homelab git + `nats-io.github.io/k8s/helm/charts` + `charts.jetstack.io` + `helm.linkerd.io/edge` + `spiffe.github.io/helm-charts-hardened` | Longhorn, Traefik, cert-manager, AdGuard, Cloudflare, NATS, Linkerd, SPIRE |
+| `cluster` | homelab git + `nats-io.github.io/k8s/helm/charts` + `charts.jetstack.io` + `helm.cilium.io` + `spiffe.github.io/helm-charts-hardened` | Longhorn, Traefik, cert-manager, AdGuard, Cloudflare, NATS + NACK, Cilium, SPIRE |
 | `observability` | homelab git + `prometheus-community.github.io/helm-charts` + `grafana.github.io/helm-charts` | kube-prometheus-stack, Loki, Promtail, platform-exporter |
-| `workloads` | homelab git + homelab-workspaces git | All XR instances (mattjarrett-com, mattjarrett-dev, blog); `sourceNamespaces: ["*"]` for app-in-any-namespace |
+| `workloads` | homelab git + homelab-workspaces git | All workspace apps (one Application per homelab-workspaces directory) + blog; `sourceNamespaces: ["*"]` for app-in-any-namespace |
 
 Applications from the `workloads` project can live in any namespace (`sourceNamespaces: ["*"]`).
 
@@ -313,7 +332,7 @@ Applications from the `workloads` project can live in any namespace (`sourceName
 - `ServerSideApply: true` used on most apps
 - Secrets (tunnel tokens, Grafana admin creds, etc.) are pre-created manually in the cluster — never stored in Git
 - Traefik annotations on all Ingresses: `traefik.ingress.kubernetes.io/router.entrypoints: websecure` and `traefik.ingress.kubernetes.io/router.tls: "true"`
-- cert-manager annotation on all Ingresses: `cert-manager.io/cluster-issuer: local-lab-ca-issuer` (internal) or `letsencrypt-prod` (public)
+- cert-manager annotation on all Ingresses: `cert-manager.io/cluster-issuer: local-lab-ca-issuer` (internal) or `letsencrypt-prod` (public) — XSpa and XApi expose this via the `tlsIssuer` parameter (default `local-lab-ca-issuer`); the WordPress composition hardcodes `letsencrypt-prod` since WordPress sites are always public
 - XSpa compositions use `gotemplating.fn.crossplane.io/ready: "True"` on go-templating resources to avoid false `Ready=False` on the XR
 
 ## Go App Conventions
