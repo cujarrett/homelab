@@ -707,8 +707,8 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "platform_pod_time_to_ready_seconds_instance{namespace!=\"platform-exporter\"} < 3600",
-              "legendFormat": "pod \u00b7 {{namespace}}",
+              "expr": "platform_pod_time_to_ready_seconds_instance{exported_namespace!=\"platform-exporter\"} < 3600",
+              "legendFormat": "pod \u00b7 {{exported_namespace}}",
               "refId": "B"
             },
             {
@@ -716,8 +716,8 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "label_replace(\n  (\n    platform_pod_init_container_seconds_instance{namespace!=\"platform-exporter\",init_container!~\"linkerd.*|wait-for-object-storage-.*-binding\"}\n    or\n    label_replace(\n      platform_pod_init_container_seconds_instance{namespace!=\"platform-exporter\",init_container=~\"wait-for-object-storage-.*-binding\"},\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"stage\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n) < 3600",
-              "legendFormat": "{{namespace}} \u00b7 {{stage}}",
+              "expr": "label_replace(\n  (\n    platform_pod_init_container_seconds_instance{exported_namespace!=\"platform-exporter\",init_container!~\"linkerd.*|wait-for-object-storage-.*-binding\"}\n    or\n    label_replace(\n      platform_pod_init_container_seconds_instance{exported_namespace!=\"platform-exporter\",init_container=~\"wait-for-object-storage-.*-binding\"},\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"stage\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n) < 3600",
+              "legendFormat": "{{exported_namespace}} \u00b7 {{stage}}",
               "refId": "C"
             }
           ],
@@ -1104,8 +1104,8 @@ data:
               "options": {
                 "include": {
                   "names": [
-                    "namespace",
-                    "pod",
+                    "exported_namespace",
+                    "exported_pod",
                     "stage",
                     "Value"
                   ]
@@ -1116,6 +1116,8 @@ data:
               "id": "organize",
               "options": {
                 "renameByName": {
+                  "exported_namespace": "namespace",
+                  "exported_pod": "pod",
                   "Value": "wait_s"
                 }
               }
