@@ -127,21 +127,3 @@ kubectl logs -n <name> <pod-name> -c init-object-storage   # init container logs
 | Pod stuck in `Init` | Binding secret missing or incomplete | Step 7 + step 8 init container logs |
 | Pod `CrashLoopBackOff` | App error, not a platform error | `kubectl logs` on the main container |
 | ArgoCD `SyncError: auto-sync will wipe out all resources` | Would delete all resources — add `allowEmpty=true` to syncOptions | ArgoCD app details |
-
-## Worked example
-
-Starting point:
-
-```
-NAME                   SYNCED   READY   COMPOSITION   AGE
-platform-api-starter   False            xapi          5m52s
-```
-
-`SYNCED=False` means the composition pipeline failed. Start at step 2:
-
-```bash
-kubectl get xapi platform-api-starter \
-  -o jsonpath='{.status.conditions}' | python3 -m json.tool
-```
-
-Read the `message` on the `Synced` condition — it will tell you which pipeline step failed and why. If the error mentions a managed resource (e.g. `bucket`, `user`), jump to step 4 and describe that MR. If it mentions a function (e.g. `go-templating`), check Crossplane core logs (step 6).
