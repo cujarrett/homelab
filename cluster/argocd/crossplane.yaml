@@ -12,6 +12,8 @@ spec:
       helm:
         releaseName: crossplane
         values: |
+          args:
+            - --enable-realtime-compositions
           metrics:
             enabled: true
           rbacManager: {}
