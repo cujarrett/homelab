@@ -254,6 +254,9 @@ spec:
                         - name: security-mu-plugin
                           mountPath: /var/www/html/wp-content/mu-plugins/security-hardening.php
                           subPath: security-hardening.php
+                        - name: mpm-tuning
+                          mountPath: /etc/apache2/conf-enabled/zz-mpm-tuning.conf
+                          subPath: zz-mpm-tuning.conf
                   volumes:
                     - name: wp-content
                       persistentVolumeClaim:
@@ -261,6 +264,9 @@ spec:
                     - name: security-mu-plugin
                       configMap:
                         name: {{ $name }}-security-mu-plugin
+                    - name: mpm-tuning
+                      configMap:
+                        name: {{ $name }}-mpm-tuning
             ---
             # --- WordPress Service ---
             apiVersion: v1
@@ -309,6 +315,24 @@ spec:
                             name: {{ $name }}-wordpress
                             port:
                               number: 80
+            ---
+            # --- Apache worker recycling ConfigMap ---
+            # MaxConnectionsPerChild 0 (the image default) never recycles prefork workers,
+            # so long-lived workers accumulate memory over the container's lifetime and it's
+            # never returned to the OS. Recycling after 500 requests bounds that growth.
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{ $name }}-mpm-tuning
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: mpm-tuning-configmap
+                gotemplating.fn.crossplane.io/ready: "True"
+            data:
+              zz-mpm-tuning.conf: |
+                <IfModule mpm_prefork_module>
+                    MaxConnectionsPerChild 500
+                </IfModule>
             ---
             # --- Security mu-plugin ConfigMap ---
             # Mounts a must-use plugin that:
