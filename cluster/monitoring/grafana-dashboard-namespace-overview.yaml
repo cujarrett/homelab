@@ -140,7 +140,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\"}[5m]))",
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",container!=\"\"}[5m]))",
               "instant": true,
               "legendFormat": "CPU cores",
               "refId": "A"
@@ -200,7 +200,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(container_memory_working_set_bytes{namespace=\"$namespace\"})",
+              "expr": "sum(container_memory_working_set_bytes{namespace=\"$namespace\",container!=\"\"})",
               "instant": true,
               "legendFormat": "Memory",
               "refId": "A"
@@ -726,7 +726,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\"}[5m]))",
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",container!=\"\"}[5m]))",
               "legendFormat": "CPU cores",
               "refId": "A"
             },
@@ -735,7 +735,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(container_memory_working_set_bytes{namespace=\"$namespace\"})",
+              "expr": "sum(container_memory_working_set_bytes{namespace=\"$namespace\",container!=\"\"})",
               "legendFormat": "Memory",
               "refId": "B"
             }
