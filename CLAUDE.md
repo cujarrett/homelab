@@ -275,9 +275,9 @@ Nine platform types are defined under `platform/`:
 | `xcaches.platform.local.lab` | `XCache` | Cache for apps |
 | `xtopics.platform.local.lab` | `XTopic` | Pub/sub topic |
 | `xsubscriptions.platform.local.lab` | `XSubscription` | Consumer subscription to a topic |
-| `xsqls.platform.local.lab` | `XSql` | SQL database (no active instance) |
-| `xnosqls.platform.local.lab` | `XNoSql` | NoSQL database (no active instance) |
-| `xobjectstorages.platform.local.lab` | `XObjectStorage` | Object storage (no active instance) |
+| `xsqls.platform.local.lab` | `XSql` | In-cluster Postgres Deployment; used by Launchpad guest demo sandboxes |
+| `xnosqls.platform.local.lab` | `XNoSql` | AWS DynamoDB table; used by Launchpad guest demo sandboxes — kept within AWS free tier by design |
+| `xobjectstorages.platform.local.lab` | `XObjectStorage` | AWS S3 bucket; used by Launchpad guest demo sandboxes — kept within AWS free tier by design |
 
 Which namespaces use which XR types is listed in the Namespaces & Applications table above.
 
