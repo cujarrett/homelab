@@ -364,7 +364,7 @@ Go apps in this workspace:
 | `weather-exporter` | `weather-exporter` | Weather Prometheus exporter |
 | `launchpad-api` | `launchpad-api` | BFF for Launchpad UI |
 
-To scaffold a new Go API, use the prompt: `.github/prompts/new-go-api.prompt.md`
+To scaffold a new Go API, use the `/new-go-api` skill (`.claude/commands/new-go-api.md`).
 
 ## Common Commands
 ```bash
