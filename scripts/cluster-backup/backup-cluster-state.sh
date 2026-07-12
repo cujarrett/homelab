@@ -14,6 +14,7 @@ WORK3="pi@192.168.10.103"
 
 TENANT_NAMESPACES=(
   js-pollock
+  kentjarrett-com
   launchpad
   mattjarrett-com
   mattjarrett-dev
@@ -96,6 +97,19 @@ ssh "$CTRL1" "sudo kubectl exec -n mattjarrett-com deploy/mattjarrett-com-wordpr
   && scp -q "$CTRL1:/tmp/wp-uploads.tar.gz" "$OUT/mattjarrett-com-wp-uploads.tar.gz" \
   && ssh "$CTRL1" "rm -f /tmp/wp-uploads.tar.gz" \
   && ok "mattjarrett-com-wp-uploads.tar.gz" || fail "mattjarrett-com-wp-uploads.tar.gz"
+
+echo "==> WordPress (kentjarrett-com)"
+
+# Fetch password on ctrl-1 to avoid passing credentials through SSH arguments
+ssh "$CTRL1" 'WP_DB_PASS=$(sudo kubectl get secret kentjarrett-com-mariadb -n kentjarrett-com -o jsonpath='"'"'{.data.password}'"'"' | base64 -d) && sudo kubectl exec -n kentjarrett-com sts/kentjarrett-com-mariadb -c mariadb -- mariadb-dump -u wordpress -p"$WP_DB_PASS" wordpress > /tmp/wp.sql' \
+  && scp -q "$CTRL1:/tmp/wp.sql" "$OUT/kentjarrett-com-wordpress.sql" \
+  && ssh "$CTRL1" "rm -f /tmp/wp.sql" \
+  && ok "kentjarrett-com-wordpress.sql" || fail "kentjarrett-com-wordpress.sql"
+
+ssh "$CTRL1" "sudo kubectl exec -n kentjarrett-com deploy/kentjarrett-com-wordpress -- sh -c 'cd /var/www/html/wp-content && tar czf - uploads' > /tmp/wp-uploads.tar.gz" \
+  && scp -q "$CTRL1:/tmp/wp-uploads.tar.gz" "$OUT/kentjarrett-com-wp-uploads.tar.gz" \
+  && ssh "$CTRL1" "rm -f /tmp/wp-uploads.tar.gz" \
+  && ok "kentjarrett-com-wp-uploads.tar.gz" || fail "kentjarrett-com-wp-uploads.tar.gz"
 
 # ── Node files ────────────────────────────────────────────────────────────────
 echo "==> Node files (ctrl-1)"
