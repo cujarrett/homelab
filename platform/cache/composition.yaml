@@ -232,7 +232,7 @@ spec:
                   Namespace: {{ $ns }}
             ---
             # ReplicationGroup. Rendered immediately; Crossplane retries until UserGroup propagates to AWS.
-            # Provider writes connection details to {name}-rg-conn once ElastiCache is up.
+            # Provider writes connection details to a connection secret in crossplane-system once ElastiCache is up.
             apiVersion: elasticache.aws.upbound.io/v1beta2
             kind: ReplicationGroup
             metadata:
@@ -255,8 +255,9 @@ spec:
                 userGroupIds:
                   - {{ $userGroupId }}
               writeConnectionSecretToRef:
-                name: {{ $name }}-rg-conn
-                namespace: {{ $ns }}
+                # Implementation secret — tenants only need the binding secret
+                name: {{ $ns }}-{{ $name }}-rg-conn
+                namespace: crossplane-system
             {{- if and $rgConn $cacheProfileArn }}
             ---
             # Binding Secret for ElastiCache. Written once the cluster is ready and profile ARN is known.

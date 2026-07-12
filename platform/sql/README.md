@@ -34,7 +34,7 @@ Multiple consumers' secrets coexist in the same namespace but each XApi's RBAC R
 
 **`public-cloud` auth flow:** No password is written to the binding Secret. The `aws-spiffe-helper` sidecar exchanges the pod's SVID for short-lived STS credentials. The app then calls `aws rds generate-db-auth-token` using those credentials to produce a short-lived RDS auth token, which it uses as the database password. No static password is stored anywhere accessible to the app.
 
-> **Note: master password exists but is not app-visible.** The RDS instance requires a master password at creation time. The composition generates one deterministically from the XR UID and stores it in `{name}-master-secret`. This is the RDS admin password — the app never sees it. The app authenticates via IAM DB auth only.
+> **Note: master password exists but is not app-visible.** The RDS instance requires a master password at creation time. The composition generates one deterministically from the XR UID and stores it outside the tenant namespace, where only the platform can read it. This is the RDS admin password — the app never sees it. The app authenticates via IAM DB auth only.
 
 ## Parameters
 
@@ -89,7 +89,7 @@ Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 The `public-cloud` backend runs a multi-pass chain. The RDS instance and IAM Role are created in parallel on the first pass; subsequent steps wait for their prerequisites to appear in observed state.
 
 ```
-Pass 1: RDS Instance created (iamDatabaseAuthenticationEnabled: true; master password from {name}-master-secret)
+Pass 1: RDS Instance created (iamDatabaseAuthenticationEnabled: true; master password from the platform-held master secret)
         Per consumer in consumerServiceAccounts:
           IAM Role created (trust policy StringEquals scoped to that SA's SPIFFE ID)
           RolesAnywhere Profile created (role ARN computed from deterministic naming — not deferred)
