@@ -1,0 +1,51 @@
+# Private-cloud e2e scenario: in-cluster Postgres, Redis, and NATS.
+# Applied directly by platform/test/e2e.sh — never via ArgoCD.
+apiVersion: platform.local.lab/v1alpha1
+kind: XSql
+metadata:
+  name: e2e-sql-private
+spec:
+  parameters:
+    backend: private-cloud
+    namespace: platform-e2e
+---
+apiVersion: platform.local.lab/v1alpha1
+kind: XTopic
+metadata:
+  name: e2e-topic
+spec:
+  parameters:
+    streamName: E2E-TOPIC
+    subjects:
+      - "e2e.>"
+---
+apiVersion: platform.local.lab/v1alpha1
+kind: XSubscription
+metadata:
+  name: e2e-sub
+spec:
+  parameters:
+    topicRef:
+      name: e2e-topic
+      streamName: E2E-TOPIC
+---
+apiVersion: platform.local.lab/v1alpha1
+kind: XApi
+metadata:
+  name: e2e-api-private
+spec:
+  parameters:
+    namespace: platform-e2e
+    image: ghcr.io/cujarrett/hello-world-api:latest
+    port: 8080
+    sqlRef:
+      name: e2e-sql-private
+      backend: private-cloud
+    cache:
+      enabled: true
+      backend: private-cloud
+    topicRef:
+      name: e2e-topic
+      streamName: E2E-TOPIC
+    subscriptionRef:
+      name: e2e-sub
