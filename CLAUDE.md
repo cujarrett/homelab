@@ -266,6 +266,8 @@ ssh pi@192.168.10.100 "sudo systemctl restart getty@tty1.service"
 
 ## Crossplane Platform
 
+Crossplane core runs with `--enable-realtime-compositions` (set via Helm `args` in `cluster/argocd/crossplane.yaml`) so composite reconciliation reacts immediately to composed-resource changes via watch, instead of only on the default 60s poll interval. Without it, a composed resource (e.g. an AWS-backed `Role`/`Bucket`) going `Ready` can sit for up to a minute before its dependent secret/status propagates to the XR — this was diagnosed as multi-second dead time in Launchpad guest sandbox rollouts before the flag was added.
+
 Nine platform types are defined under `platform/`:
 
 | XRD | Kind | Notes |
