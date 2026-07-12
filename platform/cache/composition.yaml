@@ -130,7 +130,15 @@ spec:
             {{- $cacheTrustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringEquals" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $consumerSA))))) | toJson }}
             {{- $userId := printf "%s-user" $name }}
             {{- $userGroupId := $name }}
-            {{- $cacheInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" "elasticache:Connect" "Resource" (list (printf "arn:aws:elasticache:%s:*:replicationgroup:%s" $region $name) (printf "arn:aws:elasticache:%s:*:user:%s" $region $userId)))) | toJson }}
+            {{- /* ElastiCache limits replication group IDs to 40 chars. Fall back to a   */}}
+            {{- /* deterministic hash when the conventional id is too long, same pattern  */}}
+            {{- /* as IAM role names over 64 chars in the XApi composition.               */}}
+            {{- $rawRgId := printf "crossplane-%s-%s" $ns $name }}
+            {{- $rgId := $rawRgId }}
+            {{- if gt (len $rawRgId) 40 }}
+            {{- $rgId = printf "xp-%s" ($rawRgId | sha256sum | trunc 37) }}
+            {{- end }}
+            {{- $cacheInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" "elasticache:Connect" "Resource" (list (printf "arn:aws:elasticache:%s:*:replicationgroup:%s" $region $rgId) (printf "arn:aws:elasticache:%s:*:user:%s" $region $userId)))) | toJson }}
             ---
             # ElastiCache IAM User. Must exist before the UserGroup and ReplicationGroup.
             apiVersion: elasticache.aws.upbound.io/v1beta1
@@ -232,9 +240,9 @@ spec:
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: replication-group
                 gotemplating.fn.crossplane.io/ready: {{ $rgReady | quote }}
-                # ElastiCache limits replication group IDs to 40 chars.
-                # "crossplane-" (11) + ns + "-" + name must stay ≤ 40.
-                crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}
+                # ElastiCache limits replication group IDs to 40 chars; $rgId
+                # falls back to xp-{sha256|trunc 37} when the raw id is longer.
+                crossplane.io/external-name: {{ $rgId }}
             spec:
               forProvider:
                 region: {{ $region }}
