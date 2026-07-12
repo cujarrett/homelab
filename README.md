@@ -34,3 +34,19 @@ A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering a
 | TP-Link GS305PP 5-Port PoE+ Switch | 1 |
 | GeeekPi DeskPi RackMate T0 Plus 10" 4U Rack | 1 |
 | GeeekPi 6.91" 1U Rack LCD (1424×280) | 1 |
+
+## What would this cost in AWS?
+
+The rough equivalent: EKS with 4 Graviton nodes, replicated block storage, a load balancer, and DNS.
+
+| | |
+|---|---|
+| Elastic Kubernetes Service control plane | ~$73/mo |
+| 4× EC2 Graviton instances (16 vCPU, 40GB) | ~$437/mo |
+| Elastic Block Store, Elastic Load Balancing, Route 53, egress | ~$60/mo |
+| **AWS total** | **~$570/mo** |
+| **This rack** | **$1,725, once** |
+
+Break-even: about 3 months.
+
+But the real return isn't the compute. It's having a cluster I'm allowed to break. Every deleted PVC, poisoned DNS record, and botched upgrade here costs nothing beyond my office bookshelf, and teaches something. The cloud isn't expensive. Ignorance was.
