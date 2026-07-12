@@ -12,7 +12,8 @@ spec:
     path: platform
     directory:
       recurse: true
-      exclude: "xrs/**"
+      # test/** holds e2e test manifests applied by platform/test/e2e.sh, never by ArgoCD
+      exclude: "test/**"
   destination:
     server: https://kubernetes.default.svc
     namespace: default

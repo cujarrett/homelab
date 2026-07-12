@@ -1,0 +1,13 @@
+# Platform tests
+
+# Full e2e: inflates every integration including real AWS (~15-25 min, a few cents)
+test-e2e:
+    ./test/e2e.sh
+
+# In-cluster integrations only (~2 min, free) — run after composition changes
+test-e2e-private:
+    ./test/e2e.sh --private-only
+
+# Full e2e but skip teardown, leaving resources up for debugging
+test-e2e-keep:
+    ./test/e2e.sh --keep

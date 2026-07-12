@@ -1,0 +1,50 @@
+# Public-cloud e2e scenario: real AWS RDS, ElastiCache, DynamoDB, and S3.
+# Applied directly by platform/test/e2e.sh — never via ArgoCD.
+# Costs a few cents per run (RDS + ElastiCache bill hourly).
+apiVersion: platform.local.lab/v1alpha1
+kind: XSql
+metadata:
+  name: e2e-sql-public
+spec:
+  parameters:
+    backend: public-cloud
+    size: xs
+    namespace: platform-e2e
+    consumerServiceAccounts:
+      - e2e-api-public
+---
+apiVersion: platform.local.lab/v1alpha1
+kind: XNoSql
+metadata:
+  name: e2e-nosql
+spec:
+  parameters:
+    namespace: platform-e2e
+---
+apiVersion: platform.local.lab/v1alpha1
+kind: XObjectStorage
+metadata:
+  name: e2e-assets
+spec:
+  parameters:
+    namespace: platform-e2e
+---
+apiVersion: platform.local.lab/v1alpha1
+kind: XApi
+metadata:
+  name: e2e-api-public
+spec:
+  parameters:
+    namespace: platform-e2e
+    image: ghcr.io/cujarrett/hello-world-api:latest
+    port: 8080
+    sqlRef:
+      name: e2e-sql-public
+      backend: public-cloud
+    cache:
+      enabled: true
+      backend: public-cloud
+    nosqlRef:
+      name: e2e-nosql
+    objectStorageRefs:
+      - name: e2e-assets
