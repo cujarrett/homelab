@@ -1,0 +1,103 @@
+# Istio service mesh — sidecar mode (platform-connections plan, phase 1 step 2).
+# Three charts, ordered by sync-wave: base (CRDs) -> istiod + cni.
+# Cilium stays the CNI; istio-cni chains onto Cilium's conflist (cni.exclusive:false set on Cilium).
+---
+# istio-base — CRDs + cluster RBAC. Must apply before istiod/cni.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio-base
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: cluster
+  source:
+    repoURL: https://istio-release.storage.googleapis.com/charts
+    chart: base
+    targetRevision: 1.30.2
+    helm:
+      releaseName: istio-base
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+# istiod — control plane, sidecar mode. Pinned to ctrl-1, next to the apiserver.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istiod
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: cluster
+  source:
+    repoURL: https://istio-release.storage.googleapis.com/charts
+    chart: istiod
+    targetRevision: 1.30.2
+    helm:
+      releaseName: istiod
+      values: |
+        # Pin the control plane to ctrl-1 — istiod sits next to the apiserver it watches.
+        nodeSelector:
+          node-role.kubernetes.io/control-plane: "true"
+        # One fixed replica — no HPA on a 4-node Pi cluster.
+        autoscaleEnabled: false
+        replicaCount: 1
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            memory: 512Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+# istio-cni — installs the CNI plugin (DaemonSet, all nodes) that wires sidecar
+# traffic redirection at pod creation instead of a NET_ADMIN init container.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio-cni
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: cluster
+  source:
+    repoURL: https://istio-release.storage.googleapis.com/charts
+    chart: cni
+    targetRevision: 1.30.2
+    helm:
+      releaseName: istio-cni
+      values: |
+        # Chain onto Cilium's existing conflist. Paths match what Cilium uses on this k3s cluster.
+        chained: true
+        cniBinDir: /opt/cni/bin
+        cniConfDir: /etc/cni/net.d
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
