@@ -53,16 +53,13 @@ spec:
           # Mutual auth DISABLED — Istio owns mTLS now.
           # Cilium is demoted to CNI plumbing; connection policy/mutual auth belongs to Istio.
           # SPIRE keeps running (Istio may use SPIFFE identity later); Cilium simply stops consuming it.
+          # NOTE: the chart's validate.yaml requires spire.enabled to match authentication.enabled —
+          # both must be false together, so the SPIRE integration block below is disabled too.
           authentication:
             enabled: false
             mutual:
               spire:
-                enabled: true
-                install:
-                  enabled: false
-                adminSocketPath: /run/spire/sockets/admin.sock
-                agentSocketPath: /run/spire/sockets/spire-agent/spire-agent.sock
-                connectionTimeout: 30s
+                enabled: false
     - repoURL: https://github.com/cujarrett/homelab.git
       targetRevision: main
       path: cluster/cilium
