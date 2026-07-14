@@ -21,6 +21,13 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
+  # istiod injects its CA into the validating webhook's caBundle at runtime; ignore that
+  # field so ArgoCD doesn't show perpetual drift or strip it on selfHeal.
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions:
+        - '.webhooks[].clientConfig.caBundle'
   syncPolicy:
     automated:
       prune: true
@@ -28,6 +35,7 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      - RespectIgnoreDifferences=true
 ---
 # istiod — control plane, sidecar mode. Pinned to ctrl-1, next to the apiserver.
 apiVersion: argoproj.io/v1alpha1
@@ -61,6 +69,12 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
+  # Same caBundle drift as istio-base (istiod patches its own validating webhook).
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions:
+        - '.webhooks[].clientConfig.caBundle'
   syncPolicy:
     automated:
       prune: true
@@ -68,6 +82,7 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      - RespectIgnoreDifferences=true
 ---
 # istio-cni — installs the CNI plugin (DaemonSet, all nodes) that wires sidecar
 # traffic redirection at pod creation instead of a NET_ADMIN init container.
