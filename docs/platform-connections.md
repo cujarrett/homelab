@@ -99,8 +99,8 @@ Everything else comes from registered connections. This baseline should eventual
    The interop spike is split across steps 1 (Cilium prep) and 2 (Istio install). No fallback stack — if either destabilizes the cluster, stop and debug; interop gates the rest of the plan.
 
 1. **Cilium prep (done).** In Cilium's Helm values: `cni.exclusive: false`, `socketLB.hostNamespaceOnly: true`, `authentication.enabled: false` and `mutual.spire.enabled: false` (Istio owns mTLS). Roll the agents to apply.
-2. **Istio install (next).** istiod + Istio CNI plugin in sidecar mode as an ArgoCD app, istiod pinned off ctrl-1. Confirm Traefik/Prometheus/Longhorn/NATS unaffected; record per-node memory before/after.
-3. Scaffold + deploy `api`, `authorized-caller`, `unauthorized-caller` in `poc-api` / `poc-caller`. Confirm everything works unmeshed (baseline traffic flows).
+2. **Istio install (done).** istiod + Istio CNI plugin (chart 1.30.2) in sidecar mode as an ArgoCD app; istiod pinned to ctrl-1. istio-cni chains onto Cilium (`plugins: [cilium-cni, istio-cni]`); fresh pods still get IP + DNS; Traefik/Prometheus/Longhorn/NATS unaffected.
+3. **Scaffold + deploy (next).** `api`, `authorized-caller`, `unauthorized-caller` in `poc-api` / `poc-caller`. Confirm everything works unmeshed (baseline traffic flows).
 4. Label `poc-*` namespaces for injection (`istio-injection: enabled`); restart deployments and confirm `istio-proxy` containers appear. Poke at Envoy: `istioctl proxy-config listeners/clusters/routes`, `istioctl proxy-status`.
 5. `PeerAuthentication: STRICT` on the `poc-*` namespaces.
 6. Namespace-wide deny `AuthorizationPolicy` + baseline allows. Verify matrix rows 3, 7, 8.
@@ -200,7 +200,7 @@ This is real future work, not a placeholder — but it's explicitly sequenced af
 
 ## Open questions
 
-1. **Istio-over-Cilium interop on k3s/ARM64** — the pivotal unknown; phase 1 steps 1–2 answer it (Cilium prep done, Istio install next). Gates the whole plan.
+1. **Resolved — Istio-over-Cilium interop on k3s/ARM64 works.** istio-cni chains onto Cilium (`cni.exclusive: false` + `socketLB.hostNamespaceOnly: true`); fresh pods still get IP + DNS, existing traffic unaffected. This was the pivotal gate.
 2. **Prometheus scraping STRICT-mTLS pods** — permissive port-level exception, scrape through the mesh, or Istio's metrics merging? Solve in phase 1 step 6; whatever works becomes part of the baseline.
 3. **Resolved — who may declare a connection into another namespace:** acceptor pattern. `XApi`/`XSpa` compositions gain `acceptedCallers`; an `XConnection`'s ALLOW only renders if the target lists the caller's identity. See "After the POC" and rollout step 6.
 4. **Resolved — cloudflared / tunnel traffic:** WordPress and Ghost are excluded from this plan entirely (requirement 4), so their external phone-homes are never surfaced or blocked. The baseline + registered connections already cover the remaining `XApi`/`XSpa` workloads.
