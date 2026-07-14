@@ -31,6 +31,16 @@ spec:
                     map:
                       delete: Delete
                       retain: Orphan
+              # forceDestroy only for dataRetention=delete — AWS refuses DeleteBucket
+              # on a non-empty bucket otherwise, which stalls sandbox teardown forever.
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.dataRetention
+                toFieldPath: spec.forProvider.forceDestroy
+                transforms:
+                  - type: map
+                    map:
+                      delete: true
+                      retain: false
               # Bucket name: platform-{namespace}-{name}. The platform- prefix is a
               # naming convention that lets IAM resource conditions scope to
               # arn:aws:s3:::platform-* without relying on bucket tags (IAM cannot
