@@ -69,7 +69,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | External Access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; token from secret `cloudflare-tunnel-token` |
 | Platform Abstraction | Crossplane | Nine XR types — see the Crossplane Platform section below |
 | CNI | Cilium | DaemonSet in `kube-system` on all 4 nodes; Helm chart from `helm.cilium.io`. Plumbing only — pod networking, WireGuard node encryption, kube-proxy replacement, Hubble. Mesh features (mutual auth, connection policy) belong to Istio; Cilium's SPIRE mutual auth is disabled. |
-| Service Mesh | Istio | **In progress, not yet deployed** — sidecar → ambient; will own workload mTLS and platform-managed connection policy. See `docs/platform-connections.md`. |
+| Service Mesh | Istio | Sidecar mesh chained onto Cilium CNI; owns workload mTLS and platform-managed connection policy. See `docs/platform-connections.md`. |
 | Workload Identity | SPIRE | `spire-server` + `spire-system` namespaces; Helm chart from `spiffe.github.io/helm-charts-hardened`. Previously backed Cilium mutual auth (now disabled); retained for potential Istio/SPIFFE use. |
 
 ## Namespaces & Applications
