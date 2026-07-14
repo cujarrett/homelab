@@ -16,6 +16,14 @@ spec:
           kubeProxyReplacement: true
           k8sServiceHost: 192.168.10.100
           k8sServicePort: 6443
+          # Istio interop (platform-connections plan, phase 1): allow Istio's CNI plugin to
+          # co-exist in the CNI config dir instead of Cilium claiming it exclusively.
+          cni:
+            exclusive: false
+          # Keep socket-level LB in the host namespace only, so pod-level socketLB does not
+          # bypass an injected Istio sidecar.
+          socketLB:
+            hostNamespaceOnly: true
           ipam:
             mode: kubernetes
           operator:
@@ -42,9 +50,11 @@ spec:
                 - port-distribution
                 - icmp
                 - httpV2
-          # Mutual auth via SPIRE — Cilium integrates with the cluster's existing SPIRE deployment.
+          # Mutual auth DISABLED — Istio owns mTLS now.
+          # Cilium is demoted to CNI plumbing; connection policy/mutual auth belongs to Istio.
+          # SPIRE keeps running (Istio may use SPIFFE identity later); Cilium simply stops consuming it.
           authentication:
-            enabled: true
+            enabled: false
             mutual:
               spire:
                 enabled: true
