@@ -16,6 +16,8 @@ An internal developer platform's job is to take decisions that are easy to get w
 4. **Scope: `XApi`/`XSpa` workload namespaces only.** Default-deny applies only to platform-managed namespaces (XR workspaces + POC namespaces). Everything else is out of scope and keeps working unchanged: system namespaces (`argocd`, `monitoring`, `cert-manager`, `kube-system`, `crossplane-system`) stay open for now — locking those down broke ArgoCD/Grafana/cert-manager during the Linkerd → Cilium migration, a separate later campaign; WordPress (`mattjarrett-com`, `kentjarrett-com`) and Ghost (`blog`) are excluded permanently, not "for now" — they're third-party code the platform doesn't control, and enumerating their outbound calls (plugin update checks, update pings) isn't worth the effort for the security value it buys.
 5. **v1 `XConnection` covers HTTP only, `XApi`→`XApi` and `XApi`→external.** An `XApi`'s existing integrations with `XCache`, `XSql`, `XNoSql`, `XObjectStorage`, `XTopic`, and `XSubscription` never go through a registered `XConnection` — they stay exactly as they work today, covered by baseline (below); nobody declares a connection to their own co-provisioned cache, bucket, topic, or subscription. `XTopic`/`XSubscription` (NATS) get baseline treatment too, but need `nats` itself to join the mesh — see "NATS, `XTopic`, `XSubscription`" below. **Off-platform SQL** (an `XApi` reaching a database outside the platform) is a real future need but a deliberately separate chapter — not solved here.
 
+**Non-goals (v1):** canary deployments, traffic shaping, and advanced mesh tuning. `XConnection` decides *whether* a connection is allowed, not *how* its traffic behaves — that's a different, later problem (see "future traffic management" in open questions).
+
 ---
 
 ## Architecture — Istio, sidecar first, then ambient
@@ -115,6 +117,8 @@ Everything else comes from registered connections. This baseline should eventual
 
 ## After the POC: platformize as `XConnection`
 
+**The workload owns its baseline; the connection owns the relationship.** Metrics, logging, tracing, DNS, ingress, and a workload's own backing stores are the workload composition's job (see "Baseline allow policy," above). `XConnection` expresses nothing but the relationship itself — "`authorized-caller` depends on `api`" — and stays mesh-agnostic: no Istio-specific concepts leak into what a dev team writes. If the mesh ever changes (e.g. off Istio), only the `XConnection` composition changes — not every existing `XConnection` instance.
+
 Wrap the winning objects in an XRD + composition (`platform/connection/`). Sketch:
 
 ```yaml
@@ -173,6 +177,21 @@ Once converted (rollout step 6), the POC lives as four XRs:
 8. Register each namespace's observed connections as XConnections, then flip that namespace to STRICT + deny — one namespace at a time, only after its observed flows (including any `nats` dependency) are all registered, watching mesh telemetry for denials. Flip `nats` itself to STRICT + deny only after every real publisher/consumer's `AuthorizationPolicy` is rendered per step 7.
 9. Grafana: panel for denied-connection count by namespace — the "missing registration" alarm (mesh telemetry; keep Hubble panels for the unmeshed layer)
 10. **Out of scope for now:** system namespaces (`argocd`, `monitoring`, `cert-manager`, `crossplane-system`, `kube-system`) — enrollment may extend there during the observation stage if harmless, but *enforcement* is a separate future campaign
+11. **Phase 3 — Temporal approval workflow** (below): only after `XConnection` exists (step 6). Today, granting a connection means a dev PRs an `XConnection` into `homelab-workspaces`; Phase 3 automates that path.
+
+---
+
+## Phase 3 — Temporal approval workflow
+
+Not v1. Requires `XConnection` to already exist (rollout step 6) — this automates *requesting* a connection, it doesn't change how one is enforced.
+
+Today, getting a connection granted means hand-writing an `XConnection` and opening a PR. Phase 3 replaces that with a request/approval flow, using tools already decided elsewhere in this stack:
+
+- **Requestor:** Launchpad — no new front-end (no Backstage). Launchpad already exists as the platform's self-service surface; this is a new capability on it, not a new service.
+- **Orchestration:** Temporal runs the workflow — request → notify the target's owner → approval → commit the `XConnection` into `homelab-workspaces` (reusing the same GitHub Contents/Git Data API pattern `launchpad-api` already uses for demo sandboxes) → wait for Crossplane/Istio to report the connection `Ready` → notify the requestor.
+- **Ownership split:** Crossplane owns desired state; Temporal owns the human workflow around *getting to* that desired state; Istio enforces the runtime policy. Temporal never talks to Istio directly — it only ever writes GitOps commits and watches XR status, same as a human would.
+
+This is real future work, not a placeholder — but it's explicitly sequenced after the POC and platformization, and doesn't block any of it.
 
 ---
 
@@ -184,3 +203,6 @@ Once converted (rollout step 6), the POC lives as four XRs:
 4. **Resolved — cloudflared / tunnel traffic:** WordPress and Ghost are excluded from this plan entirely (requirement 4), so their external phone-homes are never surfaced or blocked. The baseline + registered connections already cover the remaining `XApi`/`XSpa` workloads.
 5. **Resolved — demo sandboxes (`demo{1-5}`):** they get a real managed connection, not an exclusion. launchpad, launchpad-api, and the sandboxes must keep working once enforcement lands — a maintenance page during the cutover is acceptable, permanent breakage isn't. Sandbox mesh enrollment + baseline + `XConnection`(s) must be baked into the sandbox-creation composition so a sandbox is never born without them; sequence this before default-deny reaches sandbox namespaces. Launchpad-api's own outbound calls (K8s API, GitHub API for workspace commits, etc.) need to be enumerated and registered too once its namespace is onboarded.
 6. **Resolved — NATS, `XTopic`, and `XSubscription`:** `nats` joins the mesh like any other namespace. Registration isn't a generic `XConnection` — `XApi`'s existing `topicRef`/`subscriptionRef` fields already declare exactly what a publisher/consumer needs, so the `XApi` composition renders the matching `AuthorizationPolicy` into `nats` as a side effect of setting either ref. See the baseline section and rollout steps 4/7/8.
+7. **Escape hatches:** no break-glass path exists yet for an unregistered connection that's urgently needed (e.g. debugging an incident). Needs an answer before any namespace flips to STRICT + deny in production use, not just for the POC.
+8. **Retries/timeouts in `XConnection`?** Leaning no — non-goals already rule out traffic shaping, and this is the same category. `XConnection` decides *whether*, not *how*. Revisit only if a real need shows up.
+9. **Long-term boundary of `XConnection` / future traffic management:** out of scope for this plan by design (non-goals). If canary/traffic-shaping needs ever show up, that's a separate proposal, not a scope-creep addition here.
