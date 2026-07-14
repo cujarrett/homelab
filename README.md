@@ -18,7 +18,8 @@ A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering a
 | **Observability** | Prometheus + Grafana + Alertmanager (kube-prometheus-stack) |
 | **Ingress + TLS** | Traefik + cert-manager (local CA for `*.local.lab`, Let's Encrypt for public) |
 | **DNS** | AdGuard Home — wildcard `*.local.lab → 192.168.10.100` for all network devices |
-| **Service Mesh** | Cilium — eBPF CNI + mesh, mTLS via SPIRE, `toFQDNs` egress enforcement, Hubble observability |
+| **CNI** | Cilium — eBPF pod networking, WireGuard node encryption, kube-proxy replacement, Hubble observability |
+| **Service Mesh** | Istio — will own workload mTLS and platform-managed connection policy; see [`docs/platform-connections.md`](docs/platform-connections.md) |
 | **Tunnel** | Cloudflare Tunnel — zero-trust public ingress, no exposed firewall ports |
 | **Remote Access** | Tailscale subnet router on ctrl-1 |
 | **Platform API** | Crossplane — XRDs and Compositions expose self-service infrastructure APIs |
