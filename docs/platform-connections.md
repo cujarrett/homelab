@@ -96,22 +96,25 @@ Everything else comes from registered connections. This baseline should eventual
 
 ### Phase 1 — sidecar mode
 
-1. **Interop spike first:** set `cni.exclusive: false` and `socketLB.hostNamespaceOnly: true` in Cilium's Helm values (agent restart), then install istiod + Istio CNI plugin in sidecar mode. Confirm existing cluster traffic (Traefik, Prometheus, Longhorn, NATS) is unaffected. Measure idle memory/CPU on each node before/after. If this destabilizes the cluster, stop and debug — there is no fallback stack, so interop findings gate everything else in this plan.
-2. Scaffold + deploy `api`, `authorized-caller`, `unauthorized-caller` in `poc-api` / `poc-caller`. Confirm everything works unmeshed (baseline traffic flows).
-3. Label `poc-*` namespaces for injection (`istio-injection: enabled`); restart deployments and confirm `istio-proxy` containers appear. Poke at Envoy: `istioctl proxy-config listeners/clusters/routes`, `istioctl proxy-status`.
-4. `PeerAuthentication: STRICT` on the `poc-*` namespaces.
-5. Namespace-wide deny `AuthorizationPolicy` + baseline allows. Verify matrix rows 3, 7, 8.
-6. ALLOW policy for `authorized-caller → api` keyed on service-account principal, including an L7 rule (GET `/api/v1` only — free in sidecar mode). Verify rows 1, 2.
-7. `outboundTrafficPolicy: REGISTRY_ONLY` (scoped if possible) + `ServiceEntry` for `api.open-meteo.com`. Verify rows 4, 5, 6.
-8. Wire Istio telemetry into Prometheus/Grafana; record sidecar per-pod memory + istiod overhead.
+   The interop spike is split across steps 1 (Cilium prep) and 2 (Istio install). No fallback stack — if either destabilizes the cluster, stop and debug; interop gates the rest of the plan.
+
+1. **Cilium prep (done).** In Cilium's Helm values: `cni.exclusive: false`, `socketLB.hostNamespaceOnly: true`, `authentication.enabled: false` and `mutual.spire.enabled: false` (Istio owns mTLS). Roll the agents to apply.
+2. **Istio install (next).** istiod + Istio CNI plugin in sidecar mode as an ArgoCD app, istiod pinned off ctrl-1. Confirm Traefik/Prometheus/Longhorn/NATS unaffected; record per-node memory before/after.
+3. Scaffold + deploy `api`, `authorized-caller`, `unauthorized-caller` in `poc-api` / `poc-caller`. Confirm everything works unmeshed (baseline traffic flows).
+4. Label `poc-*` namespaces for injection (`istio-injection: enabled`); restart deployments and confirm `istio-proxy` containers appear. Poke at Envoy: `istioctl proxy-config listeners/clusters/routes`, `istioctl proxy-status`.
+5. `PeerAuthentication: STRICT` on the `poc-*` namespaces.
+6. Namespace-wide deny `AuthorizationPolicy` + baseline allows. Verify matrix rows 3, 7, 8.
+7. ALLOW policy for `authorized-caller → api` keyed on service-account principal, including an L7 rule (GET `/api/v1` only — free in sidecar mode). Verify rows 1, 2.
+8. `outboundTrafficPolicy: REGISTRY_ONLY` (scoped if possible) + `ServiceEntry` for `api.open-meteo.com`. Verify rows 4, 5, 6.
+9. Wire Istio telemetry into Prometheus/Grafana; record sidecar per-pod memory + istiod overhead.
 
 ### Phase 2 — migrate the same namespaces to ambient (migration rehearsal)
 
-9. Install the ambient data plane (ztunnel DaemonSet); confirm coexistence with sidecar-phase workloads.
-10. Migrate `poc-*` namespaces: remove the injection label, add `istio.io/dataplane-mode: ambient`, restart pods (sidecars gone). Re-run the full matrix — note which `AuthorizationPolicy` semantics changed (L4 rules should hold; the L7 rule from step 6 now needs a waypoint).
-11. Deploy a waypoint for `poc-api` to restore the L7 rule; re-verify. Note the operational delta — the per-namespace tradeoff any sidecar→ambient migration faces.
-12. Document the migration steps + gotchas. Record ambient overhead vs sidecar.
-13. Decide the platform's steady-state mode (expected: ambient, for Pi memory reasons).
+10. Install the ambient data plane (ztunnel DaemonSet); confirm coexistence with sidecar-phase workloads.
+11. Migrate `poc-*` namespaces: remove the injection label, add `istio.io/dataplane-mode: ambient`, restart pods (sidecars gone). Re-run the full matrix — note which `AuthorizationPolicy` semantics changed (L4 rules should hold; the L7 rule from step 7 now needs a waypoint).
+12. Deploy a waypoint for `poc-api` to restore the L7 rule; re-verify. Note the operational delta — the per-namespace tradeoff any sidecar→ambient migration faces.
+13. Document the migration steps + gotchas. Record ambient overhead vs sidecar.
+14. Decide the platform's steady-state mode (expected: ambient, for Pi memory reasons).
 
 ---
 
@@ -197,8 +200,8 @@ This is real future work, not a placeholder — but it's explicitly sequenced af
 
 ## Open questions
 
-1. **Istio-over-Cilium interop on k3s/ARM64** — the pivotal unknown; phase 1 step 1 answers it. Gates the whole plan.
-2. **Prometheus scraping STRICT-mTLS pods** — permissive port-level exception, scrape through the mesh, or Istio's metrics merging? Solve in phase 1 step 5; whatever works becomes part of the baseline.
+1. **Istio-over-Cilium interop on k3s/ARM64** — the pivotal unknown; phase 1 steps 1–2 answer it (Cilium prep done, Istio install next). Gates the whole plan.
+2. **Prometheus scraping STRICT-mTLS pods** — permissive port-level exception, scrape through the mesh, or Istio's metrics merging? Solve in phase 1 step 6; whatever works becomes part of the baseline.
 3. **Resolved — who may declare a connection into another namespace:** acceptor pattern. `XApi`/`XSpa` compositions gain `acceptedCallers`; an `XConnection`'s ALLOW only renders if the target lists the caller's identity. See "After the POC" and rollout step 6.
 4. **Resolved — cloudflared / tunnel traffic:** WordPress and Ghost are excluded from this plan entirely (requirement 4), so their external phone-homes are never surfaced or blocked. The baseline + registered connections already cover the remaining `XApi`/`XSpa` workloads.
 5. **Resolved — demo sandboxes (`demo{1-5}`):** they get a real managed connection, not an exclusion. launchpad, launchpad-api, and the sandboxes must keep working once enforcement lands — a maintenance page during the cutover is acceptable, permanent breakage isn't. Sandbox mesh enrollment + baseline + `XConnection`(s) must be baked into the sandbox-creation composition so a sandbox is never born without them; sequence this before default-deny reaches sandbox namespaces. Launchpad-api's own outbound calls (K8s API, GitHub API for workspace commits, etc.) need to be enumerated and registered too once its namespace is onboarded.
