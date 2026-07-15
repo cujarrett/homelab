@@ -1,0 +1,85 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xconnection
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: XConnection
+  mode: Pipeline
+  pipeline:
+    - step: render-connections
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: | # yaml
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $params := $xr.spec.parameters }}
+            {{- $from := $params.from }}
+            {{- /* SPIFFE principal of the caller — mTLS identity. Keying the allow on this
+                 means the connection only works over mutual TLS; identity, not reachability. */}}
+            {{- $principal := printf "cluster.local/ns/%s/sa/%s" $from.namespace $from.serviceAccount }}
+            {{- /* --- On-platform: one AuthorizationPolicy ALLOW per destination, in the destination namespace --- */}}
+            {{- range $i, $svc := ($params.toServices | default list) }}
+            ---
+            apiVersion: security.istio.io/v1
+            kind: AuthorizationPolicy
+            metadata:
+              name: {{ $name }}-svc-{{ $i }}
+              namespace: {{ $svc.namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: authz-{{ $i }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels:
+                  app: {{ $svc.appLabel }}
+              action: ALLOW
+              rules:
+                - from:
+                    - source:
+                        principals:
+                          - {{ $principal | quote }}
+                  {{- if $svc.httpPolicy }}
+                  to:
+                    - operation:
+                        {{- if $svc.httpPolicy.allowMethods }}
+                        methods:
+                        {{- range $svc.httpPolicy.allowMethods }}
+                          - {{ . | quote }}
+                        {{- end }}
+                        {{- end }}
+                        {{- if $svc.httpPolicy.allowPaths }}
+                        paths:
+                        {{- range $svc.httpPolicy.allowPaths }}
+                          - {{ . | quote }}
+                        {{- end }}
+                        {{- end }}
+                  {{- end }}
+            {{- end }}
+            {{- /* --- Off-platform: one ServiceEntry per external host, in the caller's namespace --- */}}
+            {{- range $i, $ext := ($params.toExternals | default list) }}
+            ---
+            apiVersion: networking.istio.io/v1
+            kind: ServiceEntry
+            metadata:
+              name: {{ $name }}-ext-{{ $i }}
+              namespace: {{ $from.namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: serviceentry-{{ $i }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              hosts:
+                - {{ $ext.fqdn }}
+              ports:
+                - number: {{ $ext.port }}
+                  name: tls
+                  protocol: TLS
+              resolution: DNS
+              location: MESH_EXTERNAL
+            {{- end }}

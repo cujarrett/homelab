@@ -27,7 +27,7 @@ spec:
         kind: GoTemplate
         source: Inline
         inline:
-          template: |
+          template: | # yaml
             {{- $xr := .observed.composite.resource }}
             {{- $name := $xr.metadata.name }}
             {{- $ns := $xr.spec.parameters.namespace }}
@@ -681,4 +681,22 @@ spec:
                             name: {{ $name }}
                             port:
                               number: 80
+            {{- end }}
+            {{- if $xr.spec.parameters.enforce }}
+            ---
+            # Enforcement (enforce: true) — default-deny this workload. Only connections granted
+            # via an XConnection reach it. Off by default, so meshing an app never denies traffic.
+            # Scoped to this app's pods via the instance label (app: xapi is shared by all XApis).
+            apiVersion: security.istio.io/v1
+            kind: AuthorizationPolicy
+            metadata:
+              name: {{ $name }}-default-deny
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: default-deny
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels:
+                  app.kubernetes.io/instance: {{ $name }}
             {{- end }}

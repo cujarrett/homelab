@@ -32,3 +32,18 @@ rules:
   - apiGroups: ["gateway.networking.k8s.io"]
     resources: ["httproutes", "httproutes/status"]
     verbs: ["*"]
+---
+# Istio mesh resources composed by XConnection and (mesh baseline) XApi/XSpa.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: crossplane:compose-mesh
+  labels:
+    rbac.crossplane.io/aggregate-to-crossplane: "true"
+rules:
+  - apiGroups: ["security.istio.io"]
+    resources: ["authorizationpolicies", "authorizationpolicies/status", "peerauthentications", "peerauthentications/status"]
+    verbs: ["*"]
+  - apiGroups: ["networking.istio.io"]
+    resources: ["serviceentries", "serviceentries/status", "sidecars", "sidecars/status"]
+    verbs: ["*"]

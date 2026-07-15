@@ -24,6 +24,7 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 | [`XObjectStorage`](object-storage/README.md) | Object store | MinIO *(planned)* | AWS S3 |
 | [`XTopic`](topic/README.md) | Durable message stream | NATS JetStream | — |
 | [`XSubscription`](subscription/README.md) | Durable consumer cursor | NATS JetStream | — |
+| [`XConnection`](connection/README.md) | Grants a workload→workload or workload→external network connection, enforced by workload identity | — | — |
 ---
 
 ## How resources connect
@@ -50,6 +51,8 @@ flowchart TD
 ```
 
 `XCache` is created and destroyed with its `XApi`. Everything else is independent — delete an `XApi` without touching its database.
+
+The refs above are **data** dependencies — what an app is wired to. [`XConnection`](connection/README.md) governs the **network** layer separately: once a workload is locked down (`enforce: true` on its `XApi`), it accepts nothing until you declare who may reach it. A `ref` provisions and binds a resource; an `XConnection` grants permission for traffic to flow — workload→workload, or workload→external host.
 
 ---
 
