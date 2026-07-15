@@ -28,393 +28,170 @@ data:
       "panels": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Fraction of flows forwarded vs (forwarded + dropped) over the last 5 minutes.",
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "decimals": 2,
-              "max": 100,
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "red", "value": 0 },
-                  { "color": "yellow", "value": 95 },
-                  { "color": "green", "value": 99 }
-                ]
-              },
-              "unit": "percent"
-            }
-          },
-          "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+          "description": "Total request rate across the mesh (destination-reported).",
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "unit": "reqps", "decimals": 1, "thresholds": { "mode": "absolute", "steps": [ { "color": "text", "value": null } ] } } },
+          "gridPos": { "h": 4, "w": 5, "x": 0, "y": 0 },
+          "id": 1,
+          "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "pluginVersion": "13.0.1+security-01",
+          "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(istio_requests_total{reporter=\"destination\"}[$__rate_interval]))", "refId": "A" } ],
+          "title": "Request Rate",
+          "type": "stat"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "description": "Percent of requests without a 5xx response.",
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "unit": "percent", "decimals": 2, "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 95 }, { "color": "green", "value": 99 } ] } } },
+          "gridPos": { "h": 4, "w": 5, "x": 5, "y": 0 },
           "id": 2,
-          "options": {
-            "colorMode": "background", "graphMode": "none", "justifyMode": "center",
-            "orientation": "auto", "percentChangeColorMode": "standard",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-            "showPercentChange": false, "textMode": "auto", "wideLayout": true
-          },
+          "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
           "pluginVersion": "13.0.1+security-01",
-          "targets": [
-            {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(rate(hubble_flows_processed_total{verdict=\"FORWARDED\"}[5m])) / sum(rate(hubble_flows_processed_total{verdict=~\"FORWARDED|DROPPED\"}[5m])) * 100",
-              "instant": true, "legendFormat": "Forward Rate", "refId": "A"
-            }
-          ],
-          "title": "Forward Rate",
+          "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(istio_requests_total{reporter=\"destination\",response_code!~\"5..\"}[$__rate_interval])) / sum(rate(istio_requests_total{reporter=\"destination\"}[$__rate_interval])) * 100", "refId": "A" } ],
+          "title": "Success Rate",
           "type": "stat"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Total network flows per second observed by Hubble across all workloads.",
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "decimals": 2,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [{ "color": "blue", "value": 0 }]
-              },
-              "unit": "reqps"
-            }
-          },
-          "gridPos": { "h": 3, "w": 4, "x": 4, "y": 0 },
+          "description": "Percent of mesh requests carried over mutual TLS. This is the platform's mTLS coverage.",
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "unit": "percent", "decimals": 1, "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 80 }, { "color": "green", "value": 100 } ] } } },
+          "gridPos": { "h": 4, "w": 5, "x": 10, "y": 0 },
           "id": 3,
-          "options": {
-            "colorMode": "value", "graphMode": "none", "justifyMode": "center",
-            "orientation": "auto", "percentChangeColorMode": "standard",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-            "showPercentChange": false, "textMode": "auto", "wideLayout": true
-          },
+          "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
           "pluginVersion": "13.0.1+security-01",
-          "targets": [
-            {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(rate(hubble_flows_processed_total[5m]))",
-              "instant": true, "legendFormat": "Flows/s", "refId": "A"
-            }
-          ],
-          "title": "Flows/s",
+          "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(istio_requests_total{reporter=\"destination\",connection_security_policy=\"mutual_tls\"}[$__rate_interval])) / sum(rate(istio_requests_total{reporter=\"destination\"}[$__rate_interval])) * 100", "refId": "A" } ],
+          "title": "mTLS Coverage",
           "type": "stat"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Policy-denied drops per second. POLICY_DENIED means a CiliumNetworkPolicy blocked the connection.",
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "decimals": 2,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "yellow", "value": 1 },
-                  { "color": "red", "value": 10 }
-                ]
-              },
-              "unit": "reqps"
-            }
-          },
-          "gridPos": { "h": 3, "w": 4, "x": 8, "y": 0 },
+          "description": "p99 request duration across the mesh.",
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "unit": "ms", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 250 }, { "color": "red", "value": 1000 } ] } } },
+          "gridPos": { "h": 4, "w": 5, "x": 15, "y": 0 },
           "id": 4,
-          "options": {
-            "colorMode": "background", "graphMode": "none", "justifyMode": "center",
-            "orientation": "auto", "percentChangeColorMode": "standard",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-            "showPercentChange": false, "textMode": "auto", "wideLayout": true
-          },
+          "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
           "pluginVersion": "13.0.1+security-01",
-          "targets": [
-            {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(rate(hubble_drop_total{reason=\"POLICY_DENIED\"}[5m])) or vector(0)",
-              "instant": true, "legendFormat": "Policy Drops/s", "refId": "A"
-            }
-          ],
-          "title": "Policy Drops/s",
+          "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.99, sum(rate(istio_request_duration_milliseconds_bucket{reporter=\"destination\"}[$__rate_interval])) by (le))", "refId": "A" } ],
+          "title": "p99 Latency",
           "type": "stat"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "All drops per second regardless of reason — includes policy denials, routing failures, and other errors.",
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "decimals": 2,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "green", "value": 0 },
-                  { "color": "yellow", "value": 10 },
-                  { "color": "red", "value": 100 }
-                ]
-              },
-              "unit": "reqps"
-            }
-          },
-          "gridPos": { "h": 3, "w": 4, "x": 12, "y": 0 },
+          "description": "Sidecars currently connected to istiod (xDS).",
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "text", "value": null } ] } } },
+          "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
           "id": 5,
-          "options": {
-            "colorMode": "background", "graphMode": "none", "justifyMode": "center",
-            "orientation": "auto", "percentChangeColorMode": "standard",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-            "showPercentChange": false, "textMode": "auto", "wideLayout": true
-          },
+          "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
           "pluginVersion": "13.0.1+security-01",
-          "targets": [
-            {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(rate(hubble_drop_total[5m])) or vector(0)",
-              "instant": true, "legendFormat": "Drops/s", "refId": "A"
-            }
-          ],
-          "title": "Total Drops/s",
+          "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(pilot_xds)", "refId": "A" } ],
+          "title": "Connected Proxies",
           "type": "stat"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "DNS queries per second observed by Hubble across all workloads.",
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [{ "color": "blue", "value": 0 }]
-              },
-              "unit": "reqps"
-            }
-          },
-          "gridPos": { "h": 3, "w": 4, "x": 16, "y": 0 },
+          "description": "Inbound request rate per destination workload.",
+          "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never", "stacking": { "mode": "none" } }, "unit": "reqps" } },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
           "id": 6,
-          "options": {
-            "colorMode": "value", "graphMode": "none", "justifyMode": "center",
-            "orientation": "auto", "percentChangeColorMode": "standard",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-            "showPercentChange": false, "textMode": "auto", "wideLayout": true
-          },
+          "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
           "pluginVersion": "13.0.1+security-01",
-          "targets": [
-            {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(rate(hubble_dns_queries_total[5m])) or vector(0)",
-              "instant": true, "legendFormat": "DNS Queries/s", "refId": "A"
-            }
-          ],
-          "title": "DNS Queries/s",
-          "type": "stat"
+          "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(istio_requests_total{reporter=\"destination\"}[$__rate_interval])) by (destination_workload)", "legendFormat": "{{destination_workload}}", "refId": "A" } ],
+          "title": "Request Rate by Workload",
+          "type": "timeseries"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "New TCP connections per second (SYN flag rate) observed by Hubble.",
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "thresholds" },
-              "decimals": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [{ "color": "blue", "value": 0 }]
-              },
-              "unit": "reqps"
-            }
-          },
-          "gridPos": { "h": 3, "w": 4, "x": 20, "y": 0 },
+          "description": "Requests by response code. 403s are RBAC/AuthorizationPolicy denials.",
+          "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 20, "showPoints": "never", "stacking": { "mode": "normal" } }, "unit": "reqps" } },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
           "id": 7,
-          "options": {
-            "colorMode": "value", "graphMode": "none", "justifyMode": "center",
-            "orientation": "auto", "percentChangeColorMode": "standard",
-            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-            "showPercentChange": false, "textMode": "auto", "wideLayout": true
-          },
+          "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
           "pluginVersion": "13.0.1+security-01",
-          "targets": [
-            {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(rate(hubble_tcp_flags_total{flag=\"SYN\"}[5m])) or vector(0)",
-              "instant": true, "legendFormat": "SYN/s", "refId": "A"
-            }
-          ],
-          "title": "TCP New Conns/s",
-          "type": "stat"
+          "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(istio_requests_total{reporter=\"destination\"}[$__rate_interval])) by (response_code)", "legendFormat": "{{response_code}}", "refId": "A" } ],
+          "title": "Response Codes",
+          "type": "timeseries"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Forwarded flows as a percentage of (forwarded + dropped) by source namespace. Requires sourceContext=namespace in Cilium metrics config.",
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "palette-classic" },
-              "custom": {
-                "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text",
-                "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "barWidthFactor": 0.6,
-                "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
-                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-                "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5,
-                "scaleDistribution": { "type": "linear" }, "showPoints": "never", "showValues": false,
-                "spanNulls": false, "stacking": { "group": "A", "mode": "none" },
-                "thresholdsStyle": { "mode": "off" }
-              },
-              "max": 100, "min": 0,
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }] },
-              "unit": "percent"
-            }
-          },
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 3 },
+          "description": "Request latency percentiles (destination-reported).",
+          "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" }, "unit": "ms" } },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+          "id": 8,
+          "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+          "pluginVersion": "13.0.1+security-01",
+          "targets": [
+            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.50, sum(rate(istio_request_duration_milliseconds_bucket{reporter=\"destination\"}[$__rate_interval])) by (le))", "legendFormat": "p50", "refId": "A" },
+            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.90, sum(rate(istio_request_duration_milliseconds_bucket{reporter=\"destination\"}[$__rate_interval])) by (le))", "legendFormat": "p90", "refId": "B" },
+            { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.99, sum(rate(istio_request_duration_milliseconds_bucket{reporter=\"destination\"}[$__rate_interval])) by (le))", "legendFormat": "p99", "refId": "C" }
+          ],
+          "title": "Latency Percentiles",
+          "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "description": "Requests split by connection security. mutual_tls = protected; none/unknown = plaintext or unmeshed peer.",
+          "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 30, "showPoints": "never", "stacking": { "mode": "normal" } }, "unit": "reqps" } },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
           "id": 9,
-          "options": {
-            "annotations": { "clustering": -1, "multiLane": false },
-            "legend": { "calcs": ["lastNotNull"], "displayMode": "table", "placement": "right", "showLegend": true },
-            "tooltip": { "hideZeros": false, "mode": "multi", "sort": "none" }
-          },
+          "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
           "pluginVersion": "13.0.1+security-01",
-          "targets": [
-            {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(rate(hubble_flows_processed_total{verdict=\"FORWARDED\"}[$__rate_interval])) by (source) / sum(rate(hubble_flows_processed_total{verdict=~\"FORWARDED|DROPPED\"}[$__rate_interval])) by (source) * 100",
-              "legendFormat": "{{source}}", "refId": "A"
-            }
-          ],
-          "title": "Forward Rate by Namespace",
+          "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(istio_requests_total{reporter=\"destination\"}[$__rate_interval])) by (connection_security_policy)", "legendFormat": "{{connection_security_policy}}", "refId": "A" } ],
+          "title": "Connection Security (mTLS vs plaintext)",
           "type": "timeseries"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Total flows per second broken down by source namespace. Requires sourceContext=namespace in Cilium metrics config.",
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "palette-classic" },
-              "custom": {
-                "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text",
-                "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "barWidthFactor": 0.6,
-                "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
-                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-                "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5,
-                "scaleDistribution": { "type": "linear" }, "showPoints": "never", "showValues": false,
-                "spanNulls": false, "stacking": { "group": "A", "mode": "none" },
-                "thresholdsStyle": { "mode": "off" }
-              },
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }] },
-              "unit": "reqps"
-            }
-          },
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 3 },
+          "description": "Who is calling whom, by SPIFFE identity. This is the platform-managed connection map: source service account -> destination service account, with the response code.",
+          "fieldConfig": { "defaults": { "custom": { "align": "auto", "filterable": true } } },
+          "gridPos": { "h": 8, "w": 14, "x": 0, "y": 20 },
           "id": 10,
-          "options": {
-            "annotations": { "clustering": -1, "multiLane": false },
-            "legend": {
-              "calcs": ["lastNotNull"], "displayMode": "table", "placement": "right",
-              "showLegend": true, "sortBy": "Last *", "sortDesc": true
-            },
-            "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
-          },
+          "options": { "showHeader": true, "sortBy": [ { "displayName": "Value", "desc": true } ] },
           "pluginVersion": "13.0.1+security-01",
-          "targets": [
-            {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum(rate(hubble_flows_processed_total[$__rate_interval])) by (source)",
-              "legendFormat": "{{source}}", "refId": "A"
-            }
-          ],
-          "title": "Flows/s by Namespace",
+          "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(istio_requests_total{reporter=\"destination\"}[$__rate_interval])) by (source_principal, destination_principal, response_code)", "format": "table", "instant": true, "refId": "A" } ],
+          "title": "Identity Flows (source SA -> destination SA)",
+          "transformations": [ { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "source_principal": "Source identity", "destination_principal": "Destination identity", "response_code": "Code", "Value": "req/s" } } } ],
+          "type": "table"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "description": "AuthorizationPolicy denials (HTTP 403). Empty until default-deny lands; then this is the missing-registration alarm.",
+          "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "bars", "fillOpacity": 60, "showPoints": "never", "stacking": { "mode": "normal" } }, "unit": "reqps" } },
+          "gridPos": { "h": 8, "w": 10, "x": 14, "y": 20 },
+          "id": 11,
+          "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+          "pluginVersion": "13.0.1+security-01",
+          "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(istio_requests_total{reporter=\"destination\",response_code=\"403\"}[$__rate_interval])) by (source_workload, destination_workload)", "legendFormat": "{{source_workload}} -> {{destination_workload}}", "refId": "A" } ],
+          "title": "Denied Requests (403)",
           "type": "timeseries"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "All Hubble flows broken down by verdict. FORWARDED is normal traffic; DROPPED indicates policy denials or routing failures.",
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "palette-classic" },
-              "custom": {
-                "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text",
-                "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "barWidthFactor": 0.6,
-                "drawStyle": "line", "fillOpacity": 20, "gradientMode": "none",
-                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-                "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5,
-                "scaleDistribution": { "type": "linear" }, "showPoints": "never", "showValues": false,
-                "spanNulls": false, "stacking": { "group": "A", "mode": "normal" },
-                "thresholdsStyle": { "mode": "off" }
-              },
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }] },
-              "unit": "reqps"
-            },
-            "overrides": [
-              {
-                "matcher": { "id": "byName", "options": "DROPPED" },
-                "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }]
-              },
-              {
-                "matcher": { "id": "byName", "options": "FORWARDED" },
-                "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }]
-              }
-            ]
-          },
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 11 },
-          "id": 20,
-          "options": {
-            "annotations": { "clustering": -1, "multiLane": false },
-            "legend": {
-              "calcs": ["lastNotNull"], "displayMode": "table", "placement": "right",
-              "showLegend": true, "sortBy": "Last *", "sortDesc": true
-            },
-            "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
-          },
+          "description": "istiod configuration pushes to sidecars, by xDS type.",
+          "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" }, "unit": "cps" } },
+          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 28 },
+          "id": 12,
+          "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
           "pluginVersion": "13.0.1+security-01",
-          "targets": [
-            {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum by (verdict) (rate(hubble_flows_processed_total[$__rate_interval]))",
-              "legendFormat": "{{verdict}}", "refId": "A"
-            }
-          ],
-          "title": "Flows by Verdict",
+          "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(pilot_xds_pushes[$__rate_interval])) by (type)", "legendFormat": "{{type}}", "refId": "A" } ],
+          "title": "istiod xDS Pushes",
           "type": "timeseries"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Drop rate broken down by reason. POLICY_DENIED means a CiliumNetworkPolicy blocked it; STALE_OR_UNROUTABLE_IP is normal background noise.",
-          "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "palette-classic" },
-              "custom": {
-                "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text",
-                "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "barWidthFactor": 0.6,
-                "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
-                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-                "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5,
-                "scaleDistribution": { "type": "linear" }, "showPoints": "never", "showValues": false,
-                "spanNulls": false, "stacking": { "group": "A", "mode": "none" },
-                "thresholdsStyle": { "mode": "off" }
-              },
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }] },
-              "unit": "reqps"
-            }
-          },
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 11 },
-          "id": 21,
-          "options": {
-            "annotations": { "clustering": -1, "multiLane": false },
-            "legend": {
-              "calcs": ["lastNotNull"], "displayMode": "table", "placement": "right",
-              "showLegend": true, "sortBy": "Last *", "sortDesc": true
-            },
-            "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
-          },
+          "description": "p99 time for istiod to push config and have proxies converge.",
+          "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" }, "unit": "s" } },
+          "gridPos": { "h": 6, "w": 12, "x": 12, "y": 28 },
+          "id": 13,
+          "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
           "pluginVersion": "13.0.1+security-01",
-          "targets": [
-            {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum by (reason) (rate(hubble_drop_total[$__rate_interval]))",
-              "legendFormat": "{{reason}}", "refId": "A"
-            }
-          ],
-          "title": "Drops by Reason",
+          "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.99, sum(rate(pilot_proxy_convergence_time_bucket[$__rate_interval])) by (le))", "legendFormat": "p99 convergence", "refId": "A" } ],
+          "title": "Proxy Convergence Time (p99)",
           "type": "timeseries"
         }
       ],
       "preload": false,
       "refresh": "30s",
       "schemaVersion": 42,
-      "tags": ["homelab", "cilium", "service-mesh"],
+      "tags": ["homelab", "istio", "service-mesh"],
       "time": { "from": "now-1h", "to": "now" },
       "timepicker": {
         "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
