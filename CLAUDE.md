@@ -357,6 +357,9 @@ All homelab Go services follow the same layout. When editing or creating a Go ap
 - **Stdlib only** — no HTTP frameworks; stdlib `net/http` + `slog`
 - **Graceful shutdown** via `signal.NotifyContext`
 - **/healthz route required** on every app — Kubernetes readiness probe hits `/healthz`
+- **CI/CD** — every repo ships `.github/workflows/ci.yml`: a separate `test` job (`go test ./...` + `go vet ./...`), then `build-and-push` (`needs: test`, `if: main`, builds ARM64 → `ghcr.io/cujarrett/<repo>`), then `deploy` (updates the image tag in `homelab-workspaces`). Test always gates build.
+- **Dependabot** — every repo ships `.github/dependabot.yml` (gomod daily, github-actions weekly). For a monorepo, one `gomod` block per module directory.
+- **Per-repo `CLAUDE.md`** — standalone repos, so each carries the git rules, pre-commit safety check, and grug philosophy (Claude working in that repo won't see this file). The `/new-go-api` skill scaffolds all of the above.
 
 Go apps in this workspace:
 | Repo | Binary | Notes |
