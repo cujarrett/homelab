@@ -1,4 +1,6 @@
 # https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+# One update config per (ecosystem, directory) — Dependabot rejects duplicates.
+# minor/patch are grouped into one PR; major updates arrive as separate PRs.
 
 version: 2
 updates:
@@ -13,23 +15,6 @@ updates:
         update-types:
           - "minor"
           - "patch"
-    ignore:
-      - dependency-name: "*"
-        update-types:
-          - "version-update:semver-major"
-
-  - package-ecosystem: "gomod"
-    directory: "/"
-    schedule:
-      interval: "daily"
-    cooldown:
-      default-days: 7
-    open-pull-requests-limit: 1
-    ignore:
-      - dependency-name: "*"
-        update-types:
-          - "version-update:semver-minor"
-          - "version-update:semver-patch"
 
   - package-ecosystem: "github-actions"
     directory: "/"
