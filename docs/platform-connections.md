@@ -100,13 +100,15 @@ Everything else comes from registered connections. This baseline should eventual
 
 1. **Cilium prep (done).** In Cilium's Helm values: `cni.exclusive: false`, `socketLB.hostNamespaceOnly: true`, `authentication.enabled: false` and `mutual.spire.enabled: false` (Istio owns mTLS). Roll the agents to apply.
 2. **Istio install (done).** istiod + Istio CNI plugin (chart 1.30.2) in sidecar mode as an ArgoCD app; istiod pinned to ctrl-1. istio-cni chains onto Cilium (`plugins: [cilium-cni, istio-cni]`); fresh pods still get IP + DNS; Traefik/Prometheus/Longhorn/NATS unaffected.
-3. **Scaffold + deploy (next).** `api`, `authorized-caller`, `unauthorized-caller` in `poc-api` / `poc-caller`. Confirm everything works unmeshed (baseline traffic flows).
-4. Label `poc-*` namespaces for injection (`istio-injection: enabled`); restart deployments and confirm `istio-proxy` containers appear. Poke at Envoy: `istioctl proxy-config listeners/clusters/routes`, `istioctl proxy-status`.
-5. `PeerAuthentication: STRICT` on the `poc-*` namespaces.
-6. Namespace-wide deny `AuthorizationPolicy` + baseline allows. Verify matrix rows 3, 7, 8.
-7. ALLOW policy for `authorized-caller → api` keyed on service-account principal, including an L7 rule (GET `/api/v1` only — free in sidecar mode). Verify rows 1, 2.
-8. `outboundTrafficPolicy: REGISTRY_ONLY` (scoped if possible) + `ServiceEntry` for `api.open-meteo.com`. Verify rows 4, 5, 6.
-9. Wire Istio telemetry into Prometheus/Grafana; record sidecar per-pod memory + istiod overhead.
+3. **Scaffold + deploy (done).** `api`, `authorized-caller`, `unauthorized-caller` in `poc-api` / `poc-caller` (plain manifests, `platform-connections-demo` repo `k8s/`). Verified unmeshed: both callers reach `api` and the external FQDN identically (no enforcement yet).
+4. **Label for injection (done).** `poc-*` namespaces labelled `istio-injection: enabled`, deployments restarted; all pods 2/2 with the `istio-proxy` native sidecar (runs as an `initContainer` with `restartPolicy: Always` on k8s 1.36 / Istio 1.30) + `istio-init` CNI-validation container. Traffic still flows both ways (meshed, not enforcing).
+5. **`PeerAuthentication: STRICT` (done)** on the `poc-*` namespaces. Verified: meshed→meshed works over mTLS (HTTP 200); unmeshed/plaintext rejected (connection reset). Identity not yet enforced — both callers still reach `api`.
+6. **Namespace-wide deny `AuthorizationPolicy` (done).** Empty-spec deny on `poc-api`. Both callers → `api` now 403 (verified at the `api` sidecar, `reporter=destination`). Prometheus (`:15020`) + kubelet probes unaffected (bypass Envoy authz). No explicit baseline allows needed for these no-Ingress apps.
+7. **ALLOW policy for `authorized-caller → api` (done).** Keyed on SPIFFE principal `cluster.local/ns/poc-caller/sa/authorized-caller` + L7 (GET `/api/v1/*`). Result: `authorized-caller → api` = 200, `unauthorized-caller → api` = 403. Identical pods, only the SA differs — proves identity-based enforcement (rows 1, 2).
+8. **`REGISTRY_ONLY` + `ServiceEntry` for `api.open-meteo.com` (done).** Scoped to `poc-caller` via a `Sidecar` resource (not global mesh). `authorized-caller → open-meteo` = 200; `caller → example.com` = 502 (blocked); in-cluster `→ api` unaffected. Rows 4, 5, 6 ✅ — **full 8-row matrix passes. Phase 1 (sidecar) complete.**
+9. **Wire Istio telemetry into Prometheus/Grafana (done — pulled forward).** `cluster/monitoring/istio-podmonitors.yaml` scrapes sidecars (`:15020`) + istiod (`:15014`); `grafana-dashboard-service-mesh.yaml` rebuilt on Istio metrics (golden signals, mTLS coverage, identity flows, 403 alarm, istiod health). Cardinality trimmed. Still todo: record sidecar per-pod memory + istiod overhead numbers.
+
+> **Decision: stay in sidecar mode for a while before Phase 2.** Finish steps 7–8, then dwell in sidecar mode to observe/learn before attempting the ambient migration. Do not start Phase 2 until deliberately chosen.
 
 ### Phase 2 — migrate the same namespaces to ambient (migration rehearsal)
 
@@ -128,27 +130,30 @@ Wrap the winning objects in an XRD + composition (`platform/connection/`). Sketc
 apiVersion: platform.local.lab/v1alpha1
 kind: XConnection
 metadata:
-  name: foo-to-bar
+  name: foo-connections
 spec:
   parameters:
     from:
       namespace: foo-ns
       serviceAccount: foo        # identity is the SA — Istio principal
-    to:
-      # exactly one of `service` or `external`
-      service:
-        namespace: bar-ns
+    toServices:                  # N on-platform destinations
+      - namespace: bar-ns
         appLabel: bar
         port: 8080
-        httpPolicy:              # optional L7 rules — requires a waypoint in ambient
-          allowPaths:
-            - path: /api/v1
-              method: GET
-      external:
-        fqdn: api.example.com
+        httpPolicy:              # optional L7 (methods/paths); needs a waypoint in ambient
+          allowMethods: ["GET"]
+          allowPaths: ["/api/v1/*"]
+      - namespace: baz-ns
+        appLabel: baz
+        port: 8080
+    toExternals:                 # N off-platform destinations
+      - fqdn: api.example.com
         port: 443
-        secretRef: my-vinyl-api-discogs-token   # optional; a Secret already kubectl-created in the same namespace, injected as an env var — no XSecret abstraction yet
+      - fqdn: api.another.com
+        port: 443
 ```
+
+One `XConnection` is one caller's full outbound set — N on-platform + N off-platform. (The `secretRef` for an external's credential is a separate concern, injected on the *workload*, not the connection.)
 
 - Internal connections: composition renders the `AuthorizationPolicy` with mTLS **always required** — no flag.
 - External connections: composition renders the `ServiceEntry`. `external` is the *only* way traffic leaves the platform from a managed namespace. `secretRef` is optional and only for the credential the external call needs (e.g. an API key) — it doesn't touch mesh enforcement.
