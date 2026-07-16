@@ -47,7 +47,7 @@ spec:
                             description: Namespace of the destination workload.
                           appLabel:
                             type: string
-                            description: Value of the destination workload's app label (selects which workloads the grant applies to).
+                            description: Name of the destination instance (its metadata.name) — selects only that instance's pods, safe even when a namespace runs several instances of the same platform type.
                           port:
                             type: integer
                             description: Destination container port.

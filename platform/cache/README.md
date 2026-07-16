@@ -21,7 +21,7 @@ Owned by `XApi` — created and deleted with it when `cache.enabled: true`. Not 
 
 ## Binding secret
 
-Secret name equals the XR name; namespace comes from the `namespace` parameter.
+Secret name equals the XCache's `metadata.name`; namespace comes from the `namespace` parameter.
 
 **For `private-cloud`:** Written automatically by the composition once the Redis Deployment is ready.
 

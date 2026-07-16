@@ -38,7 +38,7 @@ spec:
             spec:
               selector:
                 matchLabels:
-                  app: {{ $svc.appLabel }}
+                  app.kubernetes.io/instance: {{ $svc.appLabel }}
               action: ALLOW
               rules:
                 - from:

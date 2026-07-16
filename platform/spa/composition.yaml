@@ -169,6 +169,24 @@ spec:
                     }
                     {{- end }}
 
+                    {{- range $params.apiProxies | default list }}
+                    # API proxy: routes {{ .path }}* to an in-cluster service (no public exposure needed)
+                    location {{ .path }} {
+                        access_log /var/log/nginx/access.log api_proxy;
+                        proxy_pass http://{{ .upstream }}/;
+                        proxy_set_header Host $host;
+                        # Use Traefik's forwarded header — $remote_addr is Traefik's pod IP, not the client.
+                        proxy_set_header X-Real-IP $http_x_real_ip;
+                        proxy_set_header X-Forwarded-For $http_x_forwarded_for;
+                        proxy_set_header X-Forwarded-Proto $scheme;
+                        proxy_buffering off;
+                        proxy_cache off;
+                        proxy_read_timeout 3600s;
+                        proxy_set_header Connection '';
+                        chunked_transfer_encoding on;
+                    }
+                    {{- end }}
+
                     # Bare credential/log paths with no extension for the default-deny rule to catch
                     location ~* (^|/)(credentials|var/log)(/|$) {
                         return 404;

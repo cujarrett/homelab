@@ -74,6 +74,20 @@ spec:
                         upstream:
                           type: string
                           description: "FQDN of the upstream service (e.g. my-vinyl-api.my-vinyl-api.svc.cluster.local). nginx proxies /api/ → http://<upstream>/."
+                    apiProxies:
+                      type: array
+                      description: "Like apiProxy, for SPAs with multiple companion APIs. Each entry routes one path prefix to one in-cluster service; the prefix is stripped before proxying. The APIs never need their own public hostnames."
+                      items:
+                        type: object
+                        required: [path, upstream]
+                        properties:
+                          path:
+                            type: string
+                            description: "URL path prefix to route (e.g. /foo/). Must start and end with /."
+                            pattern: "^/.*/$"
+                          upstream:
+                            type: string
+                            description: "FQDN of the upstream service (e.g. foo.foo-ns.svc.cluster.local). nginx proxies <path>* → http://<upstream>/*."
                   required:
                     - image
                     - host
