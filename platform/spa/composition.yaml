@@ -304,6 +304,17 @@ spec:
                     }
                 }
             ---
+            # --- ServiceAccount ---
+            # Dedicated SA per XSpa instance — pods do not use the namespace default SA.
+            apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: serviceaccount
+                gotemplating.fn.crossplane.io/ready: "True"
+            ---
             # --- Deployment ---
             apiVersion: apps/v1
             kind: Deployment
@@ -327,6 +338,7 @@ spec:
                     app: xspa
                     instance: {{ $name }}
                 spec:
+                  serviceAccountName: {{ $name }}
                   containers:
                     - name: spa
                       image: {{ $params.image }}
