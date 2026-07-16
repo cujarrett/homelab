@@ -18,7 +18,7 @@ Pairs with [`platform/api/`](../api/): set `enforce: true` on an `XApi` to lock 
 | `from.serviceAccount` | yes | — | Service account of the caller. This is the identity all grants below are keyed to. |
 | `toServices[]` | no | `[]` | On-platform destinations (one grant per entry). |
 | `toServices[].namespace` | yes | — | Destination workload's namespace. |
-| `toServices[].appLabel` | yes | — | Value of the destination's `app` label — selects which workloads the grant applies to. |
+| `toServices[].appLabel` | yes | — | Name of the destination instance (its `metadata.name`) — selects only that instance's pods, even if its namespace runs several instances of the same platform type. |
 | `toServices[].port` | yes | — | Destination container port. |
 | `toServices[].httpPolicy.allowMethods` | no | all | HTTP methods to allow (e.g. `GET`). Omit for any method. |
 | `toServices[].httpPolicy.allowPaths` | no | all | HTTP path prefixes to allow (e.g. `/api/v1/*`). Omit for any path. |

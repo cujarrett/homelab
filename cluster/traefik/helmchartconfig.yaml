@@ -19,6 +19,17 @@ spec:
       type: ClusterIP
     deployment:
       kind: DaemonSet
+      # Sidecar-inject Traefik's own pods only (NOT the kube-system namespace — that would
+      # also catch Cilium's hostNetwork DaemonSets, which must never get a sidecar, plus
+      # CoreDNS/metrics-server for no benefit). Once meshed, Traefik auto-upgrades to real
+      # mTLS when calling other meshed backends, giving it a verifiable SPIFFE identity that
+      # can be named in an AuthorizationPolicy ALLOW — the prerequisite for enforce: true on
+      # any XApi that still has its own direct Ingress (my-vinyl-api, sump-pump-bridge).
+      # Calls to unmeshed destinations (WordPress, cloudflared) are unaffected — Istio only
+      # attempts mTLS when both sides are known-meshed, and permissive mode still accepts
+      # plaintext from unmeshed peers either way. Enrollment only; not enforcement.
+      podAnnotations:
+        sidecar.istio.io/inject: "true"
     tolerations:
       - key: "node-role.kubernetes.io/control-plane"
         operator: "Exists"
