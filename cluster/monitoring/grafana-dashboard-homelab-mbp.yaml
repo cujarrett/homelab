@@ -902,7 +902,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "avg_over_time((sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"}) / count(kube_node_info))[30d:5m]) * 100",
+              "expr": "count_over_time((sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"}) == count(kube_node_info))[30d:5m]) / 8640 * 100",
               "instant": true,
               "legendFormat": "30d Availability",
               "refId": "A"
