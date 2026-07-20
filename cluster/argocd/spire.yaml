@@ -48,9 +48,6 @@ spec:
                 default:
                   enabled: false
                 # Issue an ID to Api and Spa pods (label set by their compositions).
-                # Transitional: matches both old (xapi/xspa) and new (api/spa) pod labels
-                # during the label rename so no pod loses its SVID mid-roll. Drop xapi/xspa
-                # once every Api/Spa pod carries the new label (phase 3).
                 homelab-workloads:
                   spiffeIDTemplate: spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}
                   podSelector:
@@ -58,8 +55,6 @@ spec:
                       - key: app
                         operator: In
                         values:
-                          - xapi
-                          - xspa
                           - api
                           - spa
 
