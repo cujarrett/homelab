@@ -5,7 +5,7 @@ A layered workflow for diagnosing why an XR isn't syncing or ready. Work top-dow
 ## 1. Start at the top — check the XR
 
 ```bash
-kubectl get xapi <name>
+kubectl get api <name>
 ```
 
 | Column | What it means |
@@ -18,7 +18,7 @@ kubectl get xapi <name>
 ## 2. Read the XR conditions
 
 ```bash
-kubectl get xapi <name> -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get api <name> -o jsonpath='{.status.conditions}' | python3 -m json.tool
 ```
 
 Look for `"reason"` and `"message"` on any condition where `"status": "False"`. This is usually the most direct error message.
