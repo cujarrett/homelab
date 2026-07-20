@@ -1,13 +1,13 @@
 apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
-  name: xsubscriptions.platform.local.lab
+  name: subscriptions.platform.local.lab
 spec:
   group: platform.local.lab
   scope: Cluster
   names:
-    kind: XSubscription
-    plural: xsubscriptions
+    kind: Subscription
+    plural: subscriptions
   versions:
     - name: v1alpha1
       served: true
@@ -26,15 +26,15 @@ spec:
                   properties:
                     topicRef:
                       type: object
-                      description: Reference to an XTopic instance to consume from.
+                      description: Reference to a Topic instance to consume from.
                       required: [name]
                       properties:
                         name:
                           type: string
-                          description: metadata.name of the XTopic instance (e.g. foo-events).
+                          description: metadata.name of the Topic instance (e.g. foo-events).
                         streamName:
                           type: string
-                          description: "NATS stream name as defined in the XTopic's spec.parameters.streamName. Defaults to topicRef.name uppercased when omitted. Set explicitly when the XTopic's streamName differs from its metadata.name."
+                          description: "NATS stream name as defined in the Topic's spec.parameters.streamName. Defaults to topicRef.name uppercased when omitted. Set explicitly when the Topic's streamName differs from its metadata.name."
                     filterSubject:
                       type: string
                       description: >

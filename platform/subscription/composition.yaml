@@ -1,11 +1,11 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: xsubscription
+  name: subscription
 spec:
   compositeTypeRef:
     apiVersion: platform.local.lab/v1alpha1
-    kind: XSubscription
+    kind: Subscription
   mode: Pipeline
   pipeline:
     - step: render-subscription
@@ -22,11 +22,11 @@ spec:
             {{- $params := $xr.spec.parameters }}
             {{- /* Derive stream name from topicRef.name: foo-events → FOO-EVENTS */}}
             {{- /* Use explicit streamName if provided; fall back to uppercased topicRef.name.
-                 This handles XTopics whose streamName differs from their metadata.name. */}}
+                 This handles Topics whose streamName differs from their metadata.name. */}}
             {{- $stream := ($params.topicRef.streamName | default ($params.topicRef.name | upper)) }}
             # --- Consumer ---
             # Durable pull consumer — NATS remembers this cursor's position across
-            # pod restarts and redeployments. The XApi that reads this subscription
+            # pod restarts and redeployments. The Api that reads this subscription
             # binds to $name as its consumer name and pulls messages explicitly.
             #
             # ackPolicy: explicit → app must ack each message; redelivered after ackWait

@@ -1,27 +1,27 @@
-# XCache
+# Cache
 
 Crossplane platform primitive that provisions a Redis-compatible cache cluster and exposes connection details as a [servicebinding.io](https://servicebinding.io)-compliant Secret.
 
-Owned by `XApi` — created and deleted with it when `cache.enabled: true`. Not intended for standalone use.
+Owned by `Api` — created and deleted with it when `cache.enabled: true`. Not intended for standalone use.
 
 ## What it provisions
 - `backend: private-cloud` — **in-cluster Redis** + binding Secret; no cloud resources
 - `backend: public-cloud` — **AWS ElastiCache** (IAM auth) + IAM Role + RolesAnywhere Profile + binding Secret; no static credentials
 
-> **Known limitation: `public-cloud` is not currently reachable from this cluster.** ElastiCache clusters are always VPC-internal — there is no public-access option at all, for any AWS account. There is no network path (VPN, peering, or otherwise) between this homelab cluster and the VPC the ReplicationGroup lands in, so pods cannot connect — verified: connection attempts fail with a raw TCP `i/o timeout`. Everything up to that point works correctly: the ReplicationGroup provisions, IAM Role + RolesAnywhere Profile are created, and the sidecar successfully exchanges the pod's SVID for real STS credentials. The gap is purely network reachability, not identity or credentials. No current workload uses `public-cloud` for XCache. Unlike XSql, there's no "make it internet-reachable" option here at all — the only way to close this gap is bridging into the VPC (e.g. a Tailscale subnet router running inside it, the same pattern already used for the homelab's own LAN) — worth doing only when a real workload needs it.
+> **Known limitation: `public-cloud` is not currently reachable from this cluster.** ElastiCache clusters are always VPC-internal — there is no public-access option at all, for any AWS account. There is no network path (VPN, peering, or otherwise) between this homelab cluster and the VPC the ReplicationGroup lands in, so pods cannot connect — verified: connection attempts fail with a raw TCP `i/o timeout`. Everything up to that point works correctly: the ReplicationGroup provisions, IAM Role + RolesAnywhere Profile are created, and the sidecar successfully exchanges the pod's SVID for real STS credentials. The gap is purely network reachability, not identity or credentials. No current workload uses `public-cloud` for Cache. Unlike Sql, there's no "make it internet-reachable" option here at all — the only way to close this gap is bridging into the VPC (e.g. a Tailscale subnet router running inside it, the same pattern already used for the homelab's own LAN) — worth doing only when a real workload needs it.
 
 ## Parameters
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `namespace` | yes | — | Namespace to write the binding Secret into. Passed automatically by `XApi`. |
+| `namespace` | yes | — | Namespace to write the binding Secret into. Passed automatically by `Api`. |
 | `backend` | no | `private-cloud` | `private-cloud` uses in-cluster Redis; `public-cloud` uses AWS ElastiCache with IAM auth. |
 | `size` | no | `sm` | T-shirt size for the cache cluster (public-cloud only): `xs=cache.t4g.micro`, `sm=cache.t4g.small`, `md=cache.t4g.medium`, `lg=cache.t4g.medium`. |
-| `consumerServiceAccount` | set by XApi | — | Name of the XApi service account. Used to scope the IAM trust policy to the pod's exact SPIFFE ID. Set automatically by the XApi composition — not a tenant concern. |
+| `consumerServiceAccount` | set by Api | — | Name of the Api service account. Used to scope the IAM trust policy to the pod's exact SPIFFE ID. Set automatically by the Api composition — not a tenant concern. |
 
 ## Binding secret
 
-Secret name equals the XCache's `metadata.name`; namespace comes from the `namespace` parameter.
+Secret name equals the Cache's `metadata.name`; namespace comes from the `namespace` parameter.
 
 **For `private-cloud`:** Written automatically by the composition once the Redis Deployment is ready.
 
@@ -40,7 +40,7 @@ Secret name equals the XCache's `metadata.name`; namespace comes from the `names
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
-kind: XCache
+kind: Cache
 metadata:
   name: foo-cache
 spec:
@@ -51,7 +51,7 @@ spec:
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
-kind: XCache
+kind: Cache
 metadata:
   name: foo-cache
 spec:
@@ -73,7 +73,7 @@ Pass 2: ReplicationGroup created (deferred until UserGroup is ready — AWS requ
 Pass 3: Binding Secret written (deferred until ReplicationGroup is ready and profile ARN is known)
 ```
 
-The ElastiCache cluster uses IAM authentication with TLS required. The IAM Role's inline policy grants only `elasticache:Connect` scoped to this specific ReplicationGroup and User ARN — no other cluster is reachable. The trust policy is locked to the XApi pod's exact SPIFFE ID:
+The ElastiCache cluster uses IAM authentication with TLS required. The IAM Role's inline policy grants only `elasticache:Connect` scoped to this specific ReplicationGroup and User ARN — no other cluster is reachable. The trust policy is locked to the Api pod's exact SPIFFE ID:
 
 ```json
 "aws:PrincipalTag/x509SAN/URI": "spiffe://homelab.local/ns/{namespace}/sa/{service-account}"
@@ -85,7 +85,7 @@ The `aws-spiffe-helper` sidecar exchanges the pod's SVID for short-lived STS cre
 
 ```bash
 # XR status (XRs are cluster-scoped — no -n flag)
-kubectl get xcache foo-cache
+kubectl get cache foo-cache
 
 # Binding secret — confirm all keys are present
 kubectl get secret foo-cache -n foo \
@@ -95,5 +95,5 @@ kubectl get secret foo-cache -n foo \
 kubectl get replicationgroup -o jsonpath='{.items[*].status.atProvider | {engine, status, primaryEndpoint}}'
 
 # Detailed conditions — shows exactly WHY something is not ready
-kubectl get xcache foo-cache -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get cache foo-cache -o jsonpath='{.status.conditions}' | python3 -m json.tool
 ```

@@ -47,7 +47,7 @@ spec:
                 # By default the chart IDs every pod; we only want platform pods.
                 default:
                   enabled: false
-                # Issue an ID to XApi and XSpa pods (label set by their compositions).
+                # Issue an ID to Api and Spa pods (label set by their compositions).
                 homelab-workloads:
                   spiffeIDTemplate: spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}
                   podSelector:

@@ -1,0 +1,316 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xsql
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: XSql
+  mode: Pipeline
+  pipeline:
+    - step: load-environment-configs
+      functionRef:
+        name: function-environment-configs
+      input:
+        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+        kind: Input
+        spec:
+          environmentConfigs:
+            - type: Reference
+              ref:
+                name: aws-platform-config
+    - step: render-database
+      # environment: cluster → in-cluster Postgres; cloud → AWS RDS Postgres
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: | # yaml
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $uid := $xr.metadata.uid }}
+            {{- $env := $xr.spec.parameters.backend | default "private-cloud" }}
+            {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
+            {{- $awsAccountId := index $envCtx "awsAccountId" | default "*" }}
+            {{- $dataRetention := $xr.spec.parameters.dataRetention | default "delete" }}
+            {{- /* storageClassName is frozen on first creation: once bound, a PVC's storageClassName
+                 is immutable. Read back the observed value so reconciles are always no-ops. */}}
+            {{- $storageClass := "longhorn-retain" }}
+            {{- if (index (.observed.resources | default dict) "postgres-pvc") }}
+            {{-   $storageClass = (index .observed.resources "postgres-pvc").resource.spec.storageClassName }}
+            {{- else if eq $dataRetention "delete" }}
+            {{-   $storageClass = "longhorn-delete" }}
+            {{- end }}
+            {{- $ns := $xr.spec.parameters.namespace }}
+            {{- $consumerServiceAccounts := $xr.spec.parameters.consumerServiceAccounts | default list }}
+            {{- $region := "us-east-1" }}
+            {{- $size := $xr.spec.parameters.size | default "sm" }}
+            {{- $instanceClassMap := dict "xs" "db.t4g.micro" "sm" "db.t4g.small" "md" "db.t4g.medium" "lg" "db.t4g.large" }}
+            {{- $instanceClass := get $instanceClassMap $size | default "db.t4g.micro" }}
+            {{- $rdsReady := "False" }}
+            {{- $rdsConn := dict }}
+            {{- with index (.observed.resources | default dict) "rds-instance" }}
+              {{- $rdsConn = .connectionDetails | default dict }}
+              {{- range (.resource.status.conditions | default list) }}
+                {{- if and (eq .type "Ready") (eq .status "True") }}
+                  {{- $rdsReady = "True" }}
+                {{- end }}
+              {{- end }}
+            {{- end }}
+            {{- if eq $env "private-cloud" }}
+            ---
+            apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: {{ $name }}-postgres
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: postgres-pvc
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              accessModes: [ReadWriteOnce]
+              storageClassName: {{ $storageClass }}
+              resources:
+                requests:
+                  storage: 5Gi
+            ---
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: {{ $name }}-postgres
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: postgres-deployment
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              replicas: 1
+              strategy:
+                type: Recreate
+              selector:
+                matchLabels:
+                  app: {{ $name }}-postgres
+              template:
+                metadata:
+                  labels:
+                    app: {{ $name }}-postgres
+                spec:
+                  containers:
+                    - name: postgres
+                      image: postgres:16-alpine
+                      ports:
+                        - containerPort: 5432
+                      env:
+                        - name: POSTGRES_DB
+                          value: {{ $name }}
+                        - name: POSTGRES_USER
+                          valueFrom:
+                            secretKeyRef:
+                              name: {{ $name }}-pg-credentials
+                              key: username
+                        - name: POSTGRES_PASSWORD
+                          valueFrom:
+                            secretKeyRef:
+                              name: {{ $name }}-pg-credentials
+                              key: password
+                        # Longhorn volumes have a lost+found dir at the root mount point.
+                        # PGDATA must point to a subdirectory so initdb doesn't refuse.
+                        - name: PGDATA
+                          value: /var/lib/postgresql/data/pgdata
+                      readinessProbe:
+                        exec:
+                          command: ["pg_isready", "-U", "app", "-d", "{{ $name }}"]
+                        initialDelaySeconds: 5
+                        periodSeconds: 10
+                      volumeMounts:
+                        - name: data
+                          mountPath: /var/lib/postgresql/data
+                  volumes:
+                    - name: data
+                      persistentVolumeClaim:
+                        claimName: {{ $name }}-postgres
+            ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: {{ $name }}-postgres
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: postgres-service
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                app: {{ $name }}-postgres
+              ports:
+                - port: 5432
+                  targetPort: 5432
+            ---
+            # Same secret shape as cloud so XApi mounts it identically in both environments
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: database-secret
+                gotemplating.fn.crossplane.io/ready: "True"
+            type: servicebinding.io/postgresql
+            stringData:
+              type: postgresql
+              provider: in-cluster
+              host: {{ $name }}-postgres.{{ $ns }}.svc.cluster.local
+              port: "5432"
+              database: {{ $name }}
+              username: app
+              password: "{{ printf "%s-db" $uid | sha256sum | trunc 32 }}"
+            ---
+            # Seed credentials used by both the Deployment env vars and the binding Secret
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $name }}-pg-credentials
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: postgres-credentials
+                gotemplating.fn.crossplane.io/ready: "True"
+            stringData:
+              username: app
+              password: "{{ printf "%s-db" $uid | sha256sum | trunc 32 }}"
+            {{- else }}
+            ---
+            # Secret containing the master password. Must exist before Instance creation.
+            # Deterministic password from XR UID ensures consistent behavior across restarts.
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              # Implementation secret — kept out of the tenant namespace so only the
+              # platform can read the RDS master password. Name is namespace-qualified
+              # to avoid collisions between same-named XSqls in different namespaces.
+              name: {{ $ns }}-{{ $name }}-master-secret
+              namespace: crossplane-system
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: master-password-secret
+                gotemplating.fn.crossplane.io/ready: "True"
+            type: Opaque
+            stringData:
+              password: "{{ printf "%s-master" $uid | sha256sum | trunc 32 }}"
+            ---
+            # Provider writes endpoint/username/password to a connection secret in crossplane-system once RDS is up
+            apiVersion: rds.aws.upbound.io/v1beta3
+            kind: Instance
+            metadata:
+              name: {{ $name }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: rds-instance
+                gotemplating.fn.crossplane.io/ready: {{ $rdsReady | quote }}
+            spec:
+              forProvider:
+                region: {{ $region }}
+                dbName: {{ $name | replace "-" "_" }}
+                engine: postgres
+                engineVersion: "16"
+                instanceClass: {{ $instanceClass }}
+                allocatedStorage: 20
+                # WARNING: skipFinalSnapshot=true means deleting this XR drops the RDS instance
+                # with no snapshot. Intentional for homelab cost management — data is unrecoverable.
+                skipFinalSnapshot: true
+                publiclyAccessible: false
+                username: app
+                passwordSecretRef:
+                  name: {{ $ns }}-{{ $name }}-master-secret
+                  key: password
+                  namespace: crossplane-system
+                # IAM DB Auth: the sidecar exchanges the SVID for STS credentials, then the app
+                # calls rds generate-db-auth-token using those credentials as its password.
+                iamDatabaseAuthenticationEnabled: true
+              writeConnectionSecretToRef:
+                # Implementation secret — tenants only need the binding secret
+                name: {{ $ns }}-{{ $name }}-rds-conn
+                namespace: crossplane-system
+            {{- $sqlInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" "rds-db:connect" "Resource" (printf "arn:aws:rds-db:%s:%s:dbuser/*/app" $region $awsAccountId))) | toJson }}
+            {{- range $consumerServiceAccounts }}
+            {{- $consumer := . }}
+            {{- $sqlRoleKey := printf "sql-role-%s" $consumer }}
+            {{- $sqlProfileKey := printf "sql-profile-%s" $consumer }}
+            {{- $sqlProfileObs := index ($.observed.resources | default dict) $sqlProfileKey | default dict }}
+            {{- $sqlProfileArn := "" }}
+            {{- if $sqlProfileObs.resource }}{{- $sqlProfileArn = $sqlProfileObs.resource.status.atProvider.arn | default "" }}{{- end }}
+            {{- $sqlPredictedRoleArn := printf "arn:aws:iam::%s:role/crossplane/crossplane-%s-%s-%s-sql" $awsAccountId $ns $name $consumer }}
+            {{- $sqlTrustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringEquals" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $consumer))))) | toJson }}
+            ---
+            # IAM Role for RDS IAM DB Auth. Trust scoped to consumer {{ $consumer }}.
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              name: {{ $name }}-{{ $consumer }}-sql
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: {{ $sqlRoleKey }}
+                gotemplating.fn.crossplane.io/ready: "True"
+                crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}-{{ $consumer }}-sql
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                path: /crossplane/
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+                  Consumer: {{ $consumer }}
+                assumeRolePolicy: {{ $sqlTrustPolicy | quote }}
+                inlinePolicy:
+                  - name: platform-sql-{{ $ns }}-{{ $name }}-{{ $consumer }}
+                    policy: {{ $sqlInlinePolicy | quote }}
+            {{- $sqlProfileExternalName := "00000000-0000-0000-0000-000000000000" }}
+            {{- if $sqlProfileObs.resource }}
+              {{- $sqlObservedExternalName := index ($sqlProfileObs.resource.metadata.annotations | default dict) "crossplane.io/external-name" | default "" }}
+              {{- if $sqlObservedExternalName }}{{- $sqlProfileExternalName = $sqlObservedExternalName }}{{- end }}
+            {{- end }}
+            ---
+            # RolesAnywhere Profile for consumer {{ $consumer }}.
+            apiVersion: rolesanywhere.aws.upbound.io/v1beta1
+            kind: Profile
+            metadata:
+              name: {{ $name }}-{{ $consumer }}-sql
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: {{ $sqlProfileKey }}
+                gotemplating.fn.crossplane.io/ready: "True"
+                crossplane.io/external-name: {{ $sqlProfileExternalName }}
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                name: crossplane-{{ $ns }}-{{ $name }}-{{ $consumer }}-sql
+                enabled: true
+                durationSeconds: 3600
+                roleArns:
+                  - {{ $sqlPredictedRoleArn }}
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+                  Consumer: {{ $consumer }}
+            {{- if and $rdsConn $sqlProfileArn }}
+            ---
+            # Binding Secret for consumer {{ $consumer }}. Written once RDS is ready and profile ARN is known.
+            # No password — the app uses role-arn/profile-arn via the sidecar to generate
+            # a short-lived RDS auth token with: aws rds generate-db-auth-token.
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $consumer }}-sql
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: database-secret-{{ $consumer }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            type: servicebinding.io/postgresql
+            stringData:
+              type: postgresql
+              provider: aws
+              host: {{ index $rdsConn "host" | default "" | b64dec }}
+              port: {{ index $rdsConn "port" | default "" | b64dec | quote }}
+              database: {{ $name | replace "-" "_" }}
+              username: {{ index $rdsConn "username" | default "" | b64dec }}
+              role-arn: {{ $sqlPredictedRoleArn }}
+              profile-arn: {{ $sqlProfileArn }}
+            {{- end }}
+            {{- end }}{{- /* end range consumerServiceAccounts */}}
+            {{- end }}

@@ -2,7 +2,7 @@
 # Applied directly by platform/test/e2e.sh — never via ArgoCD.
 # Costs a few cents per run (RDS + ElastiCache bill hourly).
 apiVersion: platform.local.lab/v1alpha1
-kind: XSql
+kind: Sql
 metadata:
   name: e2e-sql-public
 spec:
@@ -14,7 +14,7 @@ spec:
       - e2e-api-public
 ---
 apiVersion: platform.local.lab/v1alpha1
-kind: XNoSql
+kind: NoSql
 metadata:
   name: e2e-nosql
 spec:
@@ -22,7 +22,7 @@ spec:
     namespace: platform-e2e
 ---
 apiVersion: platform.local.lab/v1alpha1
-kind: XObjectStorage
+kind: ObjectStorage
 metadata:
   name: e2e-assets
 spec:
@@ -30,7 +30,7 @@ spec:
     namespace: platform-e2e
 ---
 apiVersion: platform.local.lab/v1alpha1
-kind: XApi
+kind: Api
 metadata:
   name: e2e-api-public
 spec:

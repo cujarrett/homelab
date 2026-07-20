@@ -4,10 +4,10 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 
 ## Philosophy
 
-- **Declare resources, not steps.** An `XApi` with a `sqlRef` is a statement of intent. The composition figures out IAM roles, init containers, volume mounts, credential rotation — none of that is the app's problem.
+- **Declare resources, not steps.** An `Api` with a `sqlRef` is a statement of intent. The composition figures out IAM roles, init containers, volume mounts, credential rotation — none of that is the app's problem.
 - **Credentials reach the pod as files, not env vars.** The [servicebinding.io](https://servicebinding.io) convention makes bindings portable and predictable. The app reads `/bindings/sql/host`. It doesn't care whether that's in-cluster Postgres or RDS.
 - **Choose your backend, keep your app the same.** Some resources offer both in-cluster and cloud-managed variants: Postgres or RDS, Redis or ElastiCache. The `sqlRef` works for both. The app reads `/bindings/sql/host`. It doesn't care where the database lives.
-- **Data resources outlive APIs.** `XSql`, `XNoSql`, `XObjectStorage` have lifecycles independent of any one `XApi`. Create them once, reference them by name.
+- **Data resources outlive APIs.** `Sql`, `NoSql`, `ObjectStorage` have lifecycles independent of any one `Api`. Create them once, reference them by name.
 - **No static credentials for AWS.** Every AWS binding uses workload identity: a short-lived X.509 certificate exchanged for temporary STS credentials via IAM Roles Anywhere. No access keys in Secrets or config files.
 
 ---
@@ -16,15 +16,15 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 
 | XR | What it provisions | `private-cloud` | `public-cloud` |
 |---|---|---|---|
-| [`XApi`](api/README.md) | Deployment · Service · Ingress · TLS | — | — |
-| [`XSpa`](spa/README.md) | Static frontend via nginx | — | — |
-| [`XSql`](sql/README.md) | Relational database | Postgres on Longhorn | AWS RDS Postgres |
-| [`XCache`](cache/README.md) | Cache cluster (owned by XApi) | Redis | AWS ElastiCache |
-| [`XNoSql`](nosql/README.md) | Key-value / document store | ExtendDB *(planned)* | AWS DynamoDB |
-| [`XObjectStorage`](object-storage/README.md) | Object store | MinIO *(planned)* | AWS S3 |
-| [`XTopic`](topic/README.md) | Durable message stream | NATS JetStream | — |
-| [`XSubscription`](subscription/README.md) | Durable consumer cursor | NATS JetStream | — |
-| [`XConnection`](connection/README.md) | Grants a workload→workload or workload→external network connection, enforced by workload identity | — | — |
+| [`Api`](api/README.md) | Deployment · Service · Ingress · TLS | — | — |
+| [`Spa`](spa/README.md) | Static frontend via nginx | — | — |
+| [`Sql`](sql/README.md) | Relational database | Postgres on Longhorn | AWS RDS Postgres |
+| [`Cache`](cache/README.md) | Cache cluster (owned by Api) | Redis | AWS ElastiCache |
+| [`NoSql`](nosql/README.md) | Key-value / document store | ExtendDB *(planned)* | AWS DynamoDB |
+| [`ObjectStorage`](object-storage/README.md) | Object store | MinIO *(planned)* | AWS S3 |
+| [`Topic`](topic/README.md) | Durable message stream | NATS JetStream | — |
+| [`Subscription`](subscription/README.md) | Durable consumer cursor | NATS JetStream | — |
+| [`Connection`](connection/README.md) | Grants a workload→workload or workload→external network connection, enforced by workload identity | — | — |
 ---
 
 ## How resources connect
@@ -32,27 +32,27 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 40, 'rankSpacing': 60}}}%%
 flowchart TD
-    xapi["XApi\nDeployment + Service + Ingress"]
-    xspa["XSpa\nnginx frontend"]
-    xcache["XCache\nowned by XApi"]
-    xsql["XSql\nstandalone lifecycle"]
-    xnosql["XNoSql\nstandalone lifecycle"]
-    xos["XObjectStorage\nstandalone lifecycle"]
-    xtopic["XTopic\nNATS stream"]
-    xsub["XSubscription\nconsumer cursor"]
+    api["Api\nDeployment + Service + Ingress"]
+    spa["Spa\nnginx frontend"]
+    cache["Cache\nowned by Api"]
+    sql["Sql\nstandalone lifecycle"]
+    nosql["NoSql\nstandalone lifecycle"]
+    xos["ObjectStorage\nstandalone lifecycle"]
+    topic["Topic\nNATS stream"]
+    xsub["Subscription\nconsumer cursor"]
 
-    xapi -->|"cache.enabled"| xcache
-    xapi -->|"sqlRef"| xsql
-    xapi -->|"nosqlRef"| xnosql
-    xapi -->|"objectStorageRefs"| xos
-    xapi -->|"topicRef"| xtopic
-    xapi -->|"subscriptionRef"| xsub
-    xspa -.->|"companion API"| xapi
+    api -->|"cache.enabled"| cache
+    api -->|"sqlRef"| sql
+    api -->|"nosqlRef"| nosql
+    api -->|"objectStorageRefs"| xos
+    api -->|"topicRef"| topic
+    api -->|"subscriptionRef"| xsub
+    spa -.->|"companion API"| api
 ```
 
-`XCache` is created and destroyed with its `XApi`. Everything else is independent — delete an `XApi` without touching its database.
+`Cache` is created and destroyed with its `Api`. Everything else is independent — delete an `Api` without touching its database.
 
-The refs above are **data** dependencies — what an app is wired to. [`XConnection`](connection/README.md) governs the **network** layer separately: once a workload is locked down (`enforce: true` on its `XApi`), it accepts nothing until you declare who may reach it. A `ref` provisions and binds a resource; an `XConnection` grants permission for traffic to flow — workload→workload, or workload→external host.
+The refs above are **data** dependencies — what an app is wired to. [`Connection`](connection/README.md) governs the **network** layer separately: once a workload is locked down (`enforce: true` on its `Api`), it accepts nothing until you declare who may reach it. A `ref` provisions and binds a resource; an `Connection` grants permission for traffic to flow — workload→workload, or workload→external host.
 
 ---
 
@@ -80,22 +80,22 @@ For AWS-backed resources (those with `role-arn`/`profile-arn`), the binding Secr
 
 An init container blocks the app from starting until each binding's Secret is fully synced to the volume. Once it exits, every file is there — no retry logic needed in the app.
 
-Reference an existing resource from an `XApi` by name:
+Reference an existing resource from an `Api` by name:
 
 ```yaml
 spec:
   parameters:
     sqlRef:
-      name: foo-db          # existing XSql
+      name: foo-db          # existing Sql
     objectStorageRefs:
-      - name: foo-assets    # existing XObjectStorage
+      - name: foo-assets    # existing ObjectStorage
 ```
 
 ---
 
 ## AWS credential binding
 
-AWS-backed offerings (`XObjectStorage`, `XNoSql`, `XSql` with `backend: public-cloud`, `XCache` with `backend: public-cloud`) use workload identity instead of static keys. The binding Secret contains ARNs and resource metadata — no access key, no secret.
+AWS-backed offerings (`ObjectStorage`, `NoSql`, `Sql` with `backend: public-cloud`, `Cache` with `backend: public-cloud`) use workload identity instead of static keys. The binding Secret contains ARNs and resource metadata — no access key, no secret.
 
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 45, 'rankSpacing': 60}}}%%
@@ -134,7 +134,7 @@ For the full design: [`docs/workload-identity.md`](../docs/workload-identity.md)
 
 ## Environments and feature branches
 
-**The namespace is the environment boundary.** Every AWS resource name embeds both namespace and XR name — `crossplane-{ns}-{name}-*` for IAM roles, `platform-{ns}-{name}` for S3 buckets. Within a namespace, XApi names must be unique (standard Kubernetes). Across namespaces, names are independent — `foo-api` in `ns-alice` and `foo-api` in `ns-bob` produce completely separate IAM roles, secrets, and buckets.
+**The namespace is the environment boundary.** Every AWS resource name embeds both namespace and XR name — `crossplane-{ns}-{name}-*` for IAM roles, `platform-{ns}-{name}` for S3 buckets. Within a namespace, Api names must be unique (standard Kubernetes). Across namespaces, names are independent — `foo-api` in `ns-alice` and `foo-api` in `ns-bob` produce completely separate IAM roles, secrets, and buckets.
 
 ### Feature branch pattern
 
@@ -143,16 +143,16 @@ Each engineer or branch gets its own namespace.
 ```
 namespace: foo-alice          namespace: foo-bob
 ────────────────────          ─────────────────────
-XSql    foo-db                XSql    foo-db
-XNoSql  foo-events            XNoSql  foo-events
-XApi    foo-api               XApi    foo-api
+Sql    foo-db                Sql    foo-db
+NoSql  foo-events            NoSql  foo-events
+Api    foo-api               Api    foo-api
 ```
 
 IAM roles: `crossplane-foo-alice-foo-api-nosql` vs `crossplane-foo-bob-foo-api-nosql`. S3 buckets: `platform-foo-alice-foo-assets` vs `platform-foo-bob-foo-assets`.
 
 ### Test / QA / Prod tiers
 
-Use `private-cloud` backends for feature branches and test to avoid AWS cost. Promote to `public-cloud` at QA and above. The `XApi` binding is identical — only `backend:` changes in the resource YAML.
+Use `private-cloud` backends for feature branches and test to avoid AWS cost. Promote to `public-cloud` at QA and above. The `Api` binding is identical — only `backend:` changes in the resource YAML.
 
 | Tier | Namespace pattern | Backend | Notes |
 |---|---|---|---|
@@ -161,8 +161,8 @@ Use `private-cloud` backends for feature branches and test to avoid AWS cost. Pr
 | QA | `{app}-qa` | `public-cloud` | Real AWS; shared QA dataset |
 | Prod | `{app}-prod` | `public-cloud` | Real AWS; production data |
 
-### XSql and shared databases
+### Sql and shared databases
 
-`XSql` creates the underlying RDS instance. Multiple XApis can share one RDS instance by listing themselves in `consumerServiceAccounts` — each gets its own IAM role and binding secret scoped to its SA, identical to how XNoSql and XObjectStorage work.
+`Sql` creates the underlying RDS instance. Multiple Apis can share one RDS instance by listing themselves in `consumerServiceAccounts` — each gets its own IAM role and binding secret scoped to its SA, identical to how NoSql and ObjectStorage work.
 
-For feature branches and test, use `backend: private-cloud`. Each branch gets its own in-cluster Postgres at near-zero cost and full isolation. Reserve `public-cloud` XSql for QA and prod.
+For feature branches and test, use `backend: private-cloud`. Each branch gets its own in-cluster Postgres at near-zero cost and full isolation. Reserve `public-cloud` Sql for QA and prod.
