@@ -14,7 +14,7 @@ The goal: every pod gets its own short-lived AWS identity, scoped to exactly the
 
 Three systems work together.
 
-**[SPIRE](https://spiffe.io/docs/latest/spire-about/spire-concepts/)** is the certificate authority. It's configured to issue certificates only to Api and Spa pods (identified by `app: xapi` or `app: spa` labels set by their compositions — see [`cluster/argocd/spire.yaml`](../cluster/argocd/spire.yaml) `identities.clusterSPIFFEIDs.homelab-workloads`). For these registered pods, SPIRE checks with the kubelet to verify they're actually running, then issues a short-lived X.509 certificate whose URI SAN is the pod's SPIFFE ID — `spiffe://homelab.local/ns/{namespace}/sa/{service-account}`. That URI is the identity.
+**[SPIRE](https://spiffe.io/docs/latest/spire-about/spire-concepts/)** is the certificate authority. It's configured to issue certificates only to Api and Spa pods (identified by `app: api` or `app: spa` labels set by their compositions — see [`cluster/argocd/spire.yaml`](../cluster/argocd/spire.yaml) `identities.clusterSPIFFEIDs.homelab-workloads`). For these registered pods, SPIRE checks with the kubelet to verify they're actually running, then issues a short-lived X.509 certificate whose URI SAN is the pod's SPIFFE ID — `spiffe://homelab.local/ns/{namespace}/sa/{service-account}`. That URI is the identity.
 
 **[IAM Roles Anywhere](https://aws.amazon.com/iam/roles-anywhere/)** is AWS's bridge between certificate-based identity and IAM. You register a trust anchor (the SPIRE CA cert). AWS validates the cert chain and reads the URI SAN as a principal tag. IAM trust policies can then condition on that tag — locking a role to one exact pod identity.
 
