@@ -1,14 +1,14 @@
-# XConnection
+# Connection
 
-Crossplane composition that grants and enforces the network connections a workload is allowed to make — to other platform workloads, and to external hosts. On a locked-down workload nothing gets through unless it's declared here; an XConnection is a caller's outbound allowlist.
+Crossplane composition that grants and enforces the network connections a workload is allowed to make — to other platform workloads, and to external hosts. On a locked-down workload nothing gets through unless it's declared here; a Connection is a caller's outbound allowlist.
 
 ## What it provisions
 - **On-platform grants** (`toServices`) — for each entry, permission for the caller to reach that destination workload, over mutual TLS. Optionally narrowed to specific HTTP methods/paths.
 - **Off-platform registrations** (`toExternals`) — for each entry, an external host registered as an allowed destination. When a namespace is under egress lockdown, this is the only way a workload reaches outside the platform.
 
-One XConnection is a single caller's full connection set: N on-platform destinations and N off-platform destinations. The grant is keyed on the caller's **service account** — its cryptographic workload identity — not on labels or IP, and only works over authenticated (mutually-TLS'd) traffic.
+One Connection is a single caller's full connection set: N on-platform destinations and N off-platform destinations. The grant is keyed on the caller's **service account** — its cryptographic workload identity — not on labels or IP, and only works over authenticated (mutually-TLS'd) traffic.
 
-Pairs with [`platform/api/`](../api/): set `enforce: true` on an `XApi` to lock it to default-deny, then declare who each locked-down workload may call with an `XConnection`.
+Pairs with [`platform/api/`](../api/): set `enforce: true` on an `Api` to lock it to default-deny, then declare who each locked-down workload may call with an `Connection`.
 
 ## Parameters
 
@@ -34,7 +34,7 @@ Declare at least one of `toServices` or `toExternals`.
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
-kind: XConnection
+kind: Connection
 metadata:
   name: foo-connections
 spec:
@@ -65,8 +65,8 @@ Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 
 ```bash
 # List connections and their readiness
-kubectl get xconnections
+kubectl get connections
 
 # Describe a specific connection (see every rendered grant)
-kubectl describe xconnection foo-connections
+kubectl describe connection foo-connections
 ```

@@ -13,9 +13,9 @@ ever recreated, apply all policies below.
 
 | Policy ARN | Purpose |
 |---|---|
-| `arn:aws:iam::aws:policy/AmazonS3FullAccess` | S3 bucket create/delete for `XObjectStorage` |
-| `arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess` | DynamoDB table create/delete for `XNoSql` |
-| `arn:aws:iam::aws:policy/AmazonElastiCacheFullAccess` | ElastiCache cluster create/delete for `XCache (cloud)` |
+| `arn:aws:iam::aws:policy/AmazonS3FullAccess` | S3 bucket create/delete for `ObjectStorage` |
+| `arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess` | DynamoDB table create/delete for `NoSql` |
+| `arn:aws:iam::aws:policy/AmazonElastiCacheFullAccess` | ElastiCache cluster create/delete for `Cache (cloud)` |
 
 ---
 

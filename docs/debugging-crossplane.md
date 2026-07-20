@@ -37,11 +37,11 @@ Example output for a composition pipeline error:
 
 ## 3. Check the sub-XRs
 
-XApi composes an `XObjectStorage` sub-XR. Check it directly:
+Api composes an `ObjectStorage` sub-XR. Check it directly:
 
 ```bash
-kubectl get xobjectstorage <name>-object-storage
-kubectl get xobjectstorage <name>-object-storage \
+kubectl get objectstorage <name>-object-storage
+kubectl get objectstorage <name>-object-storage \
   -o jsonpath='{.status.conditions}' | python3 -m json.tool
 ```
 

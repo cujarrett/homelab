@@ -86,14 +86,14 @@ SSH access: `ssh pi@192.168.10.10x`
 | `cert-manager` | cert-manager | TLS issuers |
 | `crossplane-system` | Crossplane | Platform compositions, XRDs, providers |
 | `nats` | NATS + NACK | JetStream cluster (3 replicas), NACK controller for Stream/Consumer CRDs |
-| `mattjarrett-com` | WordPress (XWordpress) | `mattjarrett.com` via Cloudflare Tunnel; 7Gi wp-content, 1Gi MariaDB |
-| `kentjarrett-com` | WordPress (XWordpress) | `kentjarrett.com` via Cloudflare Tunnel; 10Gi wp-content, 2Gi MariaDB |
-| `mattjarrett-dev` | Angular SPA (XSpa) | `mattjarrett.dev` via Cloudflare Tunnel |
+| `mattjarrett-com` | WordPress (Wordpress) | `mattjarrett.com` via Cloudflare Tunnel; 7Gi wp-content, 1Gi MariaDB |
+| `kentjarrett-com` | WordPress (Wordpress) | `kentjarrett.com` via Cloudflare Tunnel; 10Gi wp-content, 2Gi MariaDB |
+| `mattjarrett-dev` | Angular SPA (Spa) | `mattjarrett.dev` via Cloudflare Tunnel |
 | `blog` | Ghost (Deployment) | `blog.mattjarrett.dev` via Cloudflare Tunnel; 2Gi content PVC |
-| `my-vinyl` | XSpa + XApi + XCache | `myvinyl.mattjarrett.dev` via Cloudflare Tunnel |
-| `js-pollock` | XSpa | `jspollock.mattjarrett.dev` via Cloudflare Tunnel |
-| `sump-pump` | XApi ×2 + XTopic + XSubscription | IoT sump pump bridge + consumer + weather-exporter |
-| `launchpad` | XApi | `launchpad.mattjarrett.dev` via Cloudflare Tunnel; BFF for Launchpad UI, provisions ephemeral demo sandboxes |
+| `my-vinyl` | Spa + Api + Cache | `myvinyl.mattjarrett.dev` via Cloudflare Tunnel |
+| `js-pollock` | Spa | `jspollock.mattjarrett.dev` via Cloudflare Tunnel |
+| `sump-pump` | Api ×2 + Topic + Subscription | IoT sump pump bridge + consumer + weather-exporter |
+| `launchpad` | Api | `launchpad.mattjarrett.dev` via Cloudflare Tunnel; BFF for Launchpad UI, provisions ephemeral demo sandboxes |
 | `demo-certs` | cert-manager `Certificate` objects only (no workloads) | 10 long-lived `letsencrypt-prod` certs for the 5 fixed demo sandbox slots (`demo{1-5}.mattjarrett.dev` + `demo{1-5}-api.mattjarrett.dev`); `launchpad-api` copies the resulting secrets into each sandbox namespace at creation time so cert-manager skips issuance there and Let's Encrypt's 5-certs-per-exact-hostname-per-168h limit is never hit |
 | `platform-exporter` | platform-exporter | Custom Prometheus exporter for platform metrics; scraped via `platform-exporter-servicemonitor` |
 | `spire-server`, `spire-system` | SPIRE | Workload identity (SPIFFE); agent DaemonSet on all nodes |
@@ -273,16 +273,16 @@ Ten platform types are defined under `platform/`:
 
 | XRD | Kind | Notes |
 |---|---|---|
-| `xwordpresses.platform.local.lab` | `XWordpress` | MariaDB StatefulSet + WordPress Deployment; credentials from XR UID |
-| `xspas.platform.local.lab` | `XSpa` | nginx + Angular SPA; nginx config generated via go-templating function — **app repos must NOT include an nginx.conf; composition owns it entirely** |
-| `xapis.platform.local.lab` | `XApi` | Generic REST API |
-| `xcaches.platform.local.lab` | `XCache` | Cache for apps |
-| `xtopics.platform.local.lab` | `XTopic` | Pub/sub topic |
-| `xsubscriptions.platform.local.lab` | `XSubscription` | Consumer subscription to a topic |
-| `xsqls.platform.local.lab` | `XSql` | In-cluster Postgres Deployment; used by Launchpad guest demo sandboxes |
-| `xnosqls.platform.local.lab` | `XNoSql` | AWS DynamoDB table; used by Launchpad guest demo sandboxes — kept within AWS free tier by design |
-| `xobjectstorages.platform.local.lab` | `XObjectStorage` | AWS S3 bucket; used by Launchpad guest demo sandboxes — kept within AWS free tier by design |
-| `xconnections.platform.local.lab` | `XConnection` | Grants + enforces a workload→workload or workload→external network connection (mesh AuthorizationPolicy / ServiceEntry); keyed on caller service-account identity |
+| `wordpresses.platform.local.lab` | `Wordpress` | MariaDB StatefulSet + WordPress Deployment; credentials from XR UID |
+| `spas.platform.local.lab` | `Spa` | nginx + Angular SPA; nginx config generated via go-templating function — **app repos must NOT include an nginx.conf; composition owns it entirely** |
+| `apis.platform.local.lab` | `Api` | Generic REST API |
+| `caches.platform.local.lab` | `Cache` | Cache for apps |
+| `topics.platform.local.lab` | `Topic` | Pub/sub topic |
+| `subscriptions.platform.local.lab` | `Subscription` | Consumer subscription to a topic |
+| `sqls.platform.local.lab` | `Sql` | In-cluster Postgres Deployment; used by Launchpad guest demo sandboxes |
+| `nosqls.platform.local.lab` | `NoSql` | AWS DynamoDB table; used by Launchpad guest demo sandboxes — kept within AWS free tier by design |
+| `objectstorages.platform.local.lab` | `ObjectStorage` | AWS S3 bucket; used by Launchpad guest demo sandboxes — kept within AWS free tier by design |
+| `connections.platform.local.lab` | `Connection` | Grants + enforces a workload→workload or workload→external network connection (mesh AuthorizationPolicy / ServiceEntry); keyed on caller service-account identity |
 
 Which namespaces use which XR types is listed in the Namespaces & Applications table above.
 
@@ -297,8 +297,8 @@ XR instance files live in `homelab-workspaces/<name>/` (one directory per worksp
 ### Deleting an XR instance (correct order — prevents data loss)
 ```bash
 # 1. Delete the XR — Crossplane cascade-deletes all composed resources
-kubectl delete xspa <name> -n <namespace>
-# or: kubectl delete xwordpress <name> -n <namespace>
+kubectl delete spa <name> -n <namespace>
+# or: kubectl delete wordpress <name> -n <namespace>
 
 # 2. Remove the workspace directory from the homelab-workspaces repo and push — ArgoCD prunes the Application
 git rm -r <name>/ && git commit -m "..." && git push
@@ -337,8 +337,8 @@ Applications from the `workloads` project can live in any namespace (`sourceName
 - `ServerSideApply: true` used on most apps
 - Secrets (tunnel tokens, Grafana admin creds, etc.) are pre-created manually in the cluster — never stored in Git
 - Traefik annotations on all Ingresses: `traefik.ingress.kubernetes.io/router.entrypoints: websecure` and `traefik.ingress.kubernetes.io/router.tls: "true"`
-- cert-manager annotation on all Ingresses: `cert-manager.io/cluster-issuer: local-lab-ca-issuer` (internal) or `letsencrypt-prod` (public) — XSpa and XApi expose this via the `tlsIssuer` parameter (default `local-lab-ca-issuer`); the WordPress composition hardcodes `letsencrypt-prod` since WordPress sites are always public
-- XSpa compositions use `gotemplating.fn.crossplane.io/ready: "True"` on go-templating resources to avoid false `Ready=False` on the XR
+- cert-manager annotation on all Ingresses: `cert-manager.io/cluster-issuer: local-lab-ca-issuer` (internal) or `letsencrypt-prod` (public) — Spa and Api expose this via the `tlsIssuer` parameter (default `local-lab-ca-issuer`); the WordPress composition hardcodes `letsencrypt-prod` since WordPress sites are always public
+- Spa compositions use `gotemplating.fn.crossplane.io/ready: "True"` on go-templating resources to avoid false `Ready=False` on the XR
 
 ## Go App Conventions
 

@@ -1,11 +1,11 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: spa-composition
+  name: spa
 spec:
   compositeTypeRef:
     apiVersion: platform.local.lab/v1alpha1
-    kind: XSpa
+    kind: Spa
   mode: Pipeline
   pipeline:
     - step: render-all-resources
@@ -67,7 +67,7 @@ spec:
                     # TLM-Audit-Scanner: bulk credential/config scanner
                     # nmap, nikto, sqlmap, nessus, qualys, burp, zaproxy: common security scanners
                     # pathscan: automated path-probing scanner seen sweeping credential/config paths
-                    # l9scan: LeakIX internet-wide scanner (leakix.net) — swept all XSpa instances for
+                    # l9scan: LeakIX internet-wide scanner (leakix.net) — swept all Spa instances for
                     # credential/config files in one pass; largest source of catch-all 200s seen in logs
                     # YUTAA-SCANNER-DEFUNCT: self-identifying canary/recon scanner
                     # Go-http-client: default Go UA — seen exclusively hitting FrontPage/SVN artifact and
@@ -278,13 +278,13 @@ spec:
                         return 404;
                     }
 
-                    # Default-deny: assumes no XSpa app's client-side router defines a route with a
+                    # Default-deny: assumes no Spa app's client-side router defines a route with a
                     # dot in a path segment, so any request whose last segment looks like a filename
                     # (has a `.ext` suffix) or starts with a dotfile is a probe, not real navigation.
                     # This replaces enumerating every new credential/config filename scanners try — one
                     # rule instead of one commit per signature. The specific extension/asset blocks
                     # above still take priority since nginx picks the first matching regex location in
-                    # file order. When onboarding a new XSpa instance, confirm its router doesn't use
+                    # file order. When onboarding a new Spa instance, confirm its router doesn't use
                     # dotted route segments before relying on this default.
                     location ~ /\.well-known/acme-challenge/ {
                         try_files $uri $uri/ /index.html;
@@ -305,7 +305,7 @@ spec:
                 }
             ---
             # --- ServiceAccount ---
-            # Dedicated SA per XSpa instance — pods do not use the namespace default SA.
+            # Dedicated SA per Spa instance — pods do not use the namespace default SA.
             apiVersion: v1
             kind: ServiceAccount
             metadata:

@@ -139,12 +139,12 @@ section of [`CLAUDE.md`](../CLAUDE.md) for the API workflow.
 
 | Hostname | Namespace | Stack |
 |---|---|---|
-| `mattjarrett.com` | `mattjarrett-com` | WordPress (`XWordpress`) |
-| `mattjarrett.dev` | `mattjarrett-dev` | Angular SPA (`XSpa`) |
+| `mattjarrett.com` | `mattjarrett-com` | WordPress (`Wordpress`) |
+| `mattjarrett.dev` | `mattjarrett-dev` | Angular SPA (`Spa`) |
 | `blog.mattjarrett.dev` | `blog` | Ghost (raw Deployment) |
-| `myvinyl.mattjarrett.dev` | `my-vinyl` | `XSpa` + `XApi` + `XCache` |
-| `jspollock.mattjarrett.dev` | `js-pollock` | `XSpa` |
-| `launchpad.mattjarrett.dev` | `launchpad` | `XSpa` + `XApi` (API cluster-internal, reached via nginx `/api/` proxy) |
+| `myvinyl.mattjarrett.dev` | `my-vinyl` | `Spa` + `Api` + `Cache` |
+| `jspollock.mattjarrett.dev` | `js-pollock` | `Spa` |
+| `launchpad.mattjarrett.dev` | `launchpad` | `Spa` + `Api` (API cluster-internal, reached via nginx `/api/` proxy) |
 
 Guest sandbox slots (`demo1`–`demo5` and `demo1-api`–`demo5-api` under `mattjarrett.dev`)
 are pre-registered in the tunnel and reuse long-lived certs from the `demo-certs` namespace.

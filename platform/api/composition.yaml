@@ -1,11 +1,11 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: xapi
+  name: api
 spec:
   compositeTypeRef:
     apiVersion: platform.local.lab/v1alpha1
-    kind: XApi
+    kind: Api
   mode: Pipeline
   pipeline:
     - step: load-environment-configs
@@ -32,7 +32,7 @@ spec:
             {{- $name := $xr.metadata.name }}
             {{- $ns := $xr.spec.parameters.namespace }}
             {{- $cacheBackend := ($xr.spec.parameters.cache | default dict).backend | default "private-cloud" }}
-            {{- /* Refs point to standalone resources created outside this XApi. */ -}}
+            {{- /* Refs point to standalone resources created outside this Api. */ -}}
             {{- /* The binding Secret already exists in $ns — just mount it.    */ -}}
             {{- $objectStorageRefs := $xr.spec.parameters.objectStorageRefs | default list }}
             {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
@@ -111,7 +111,7 @@ spec:
                   targetPort: {{ $metricsPort }}
             ---
             # --- ServiceAccount ---
-            # Dedicated SA per XApi instance — pods do not use the namespace default SA.
+            # Dedicated SA per Api instance — pods do not use the namespace default SA.
             apiVersion: v1
             kind: ServiceAccount
             metadata:
@@ -296,7 +296,7 @@ spec:
                         {{- end }}
                       {{- end }}
                       {{- if $topicRefName }}
-                        # XTopic wiring: injected automatically from topicRef.
+                        # Topic wiring: injected automatically from topicRef.
                         # App reads NATS_URL + NATS_STREAM to publish events.
                         - name: NATS_URL
                           value: "nats://nats.nats.svc.cluster.local:4222"
@@ -304,7 +304,7 @@ spec:
                           value: {{ $topicStreamName | quote }}
                       {{- end }}
                       {{- if $subscriptionRefName }}
-                        # XSubscription wiring: injected automatically from subscriptionRef.
+                        # Subscription wiring: injected automatically from subscriptionRef.
                         # App reads NATS_CONSUMER to bind to the durable cursor.
                         {{- if not $topicRefName }}
                         - name: NATS_URL
@@ -423,7 +423,7 @@ spec:
                     {{- end }}
                   {{- end }}
             {{- /* --- AWS IAM resources: one Role + Profile + binding Secret per objectStorageRef. --- */}}
-            {{- /* Role and Profile lifecycle is tied to this XApi (deleted with it).                   */}}
+            {{- /* Role and Profile lifecycle is tied to this Api (deleted with it).                   */}}
             {{- /* Bucket name is computed from convention: platform-{ns}-{refName}.                    */}}
             {{- /* $hasAwsCloudBindings covers all AWS cloud resource types:                            */}}
             {{- /*   objectStorageRefs (any entries), nosqlRef (always DynamoDB),                       */}}
@@ -448,7 +448,7 @@ spec:
             {{- $trustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringEquals" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $name))))) | toJson }}
             {{- $inlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "s3:GetObject" "s3:PutObject" "s3:DeleteObject" "s3:ListBucket") "Resource" (list (printf "arn:aws:s3:::%s" $bucketName) (printf "arn:aws:s3:::%s/*" $bucketName)))) | toJson }}
             ---
-            # IAM Role for objectStorageRef {{ $refName }}. Trust scoped to this XApi's service account.
+            # IAM Role for objectStorageRef {{ $refName }}. Trust scoped to this Api's service account.
             apiVersion: iam.aws.upbound.io/v1beta1
             kind: Role
             metadata:
@@ -537,7 +537,7 @@ spec:
             {{- $nosqlTrustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringEquals" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $name))))) | toJson }}
             {{- $nosqlInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "dynamodb:GetItem" "dynamodb:PutItem" "dynamodb:UpdateItem" "dynamodb:DeleteItem" "dynamodb:Query" "dynamodb:Scan" "dynamodb:BatchGetItem" "dynamodb:BatchWriteItem") "Resource" (list (printf "arn:aws:dynamodb:us-east-1:*:table/%s" $tableName) (printf "arn:aws:dynamodb:us-east-1:*:table/%s/index/*" $tableName)))) | toJson }}
             ---
-            # IAM Role for nosqlRef {{ $nosqlRefName }}. Trust scoped to this XApi's service account.
+            # IAM Role for nosqlRef {{ $nosqlRefName }}. Trust scoped to this Api's service account.
             apiVersion: iam.aws.upbound.io/v1beta1
             kind: Role
             metadata:
@@ -611,7 +611,7 @@ spec:
             {{- if $cacheEnabled }}
             ---
             apiVersion: platform.local.lab/v1alpha1
-            kind: XCache
+            kind: Cache
             metadata:
               name: {{ $name }}-cache
               annotations:
@@ -685,8 +685,8 @@ spec:
             {{- if $xr.spec.parameters.enforce }}
             ---
             # Enforcement (enforce: true) — default-deny this workload. Only connections granted
-            # via an XConnection reach it. Off by default, so meshing an app never denies traffic.
-            # Scoped to this app's pods via the instance label (app: xapi is shared by all XApis).
+            # via a Connection reach it. Off by default, so meshing an app never denies traffic.
+            # Scoped to this app's pods via the instance label (app: xapi is shared by all Apis).
             # /metrics is always allowed with no source restriction: Prometheus is unmeshed, so it
             # can never satisfy a principal-based rule — without this, enforce: true silently breaks
             # scraping for every instance that sets it.

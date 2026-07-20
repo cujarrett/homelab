@@ -1,11 +1,11 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: xwordpress-composition
+  name: wordpress
 spec:
   compositeTypeRef:
     apiVersion: platform.local.lab/v1alpha1
-    kind: XWordpress
+    kind: Wordpress
   mode: Pipeline
   pipeline:
     - step: render-all-resources
@@ -454,7 +454,7 @@ spec:
                   X-Frame-Options: "SAMEORIGIN"
                   Referrer-Policy: "strict-origin-when-cross-origin"
                   # "0" disables the legacy XSS auditor — removed from modern browsers,
-                  # and enabling it created XS-Leak side channels in older ones. Matches XSpa.
+                  # and enabling it created XS-Leak side channels in older ones. Matches Spa.
                   X-XSS-Protection: "0"
                   Strict-Transport-Security: "max-age=31536000; includeSubDomains"
                   Permissions-Policy: "camera=(), microphone=(), geolocation=(), payment=()"

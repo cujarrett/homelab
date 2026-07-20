@@ -1,13 +1,13 @@
 apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
-  name: xconnections.platform.local.lab
+  name: connections.platform.local.lab
 spec:
   group: platform.local.lab
   scope: Cluster
   names:
-    kind: XConnection
-    plural: xconnections
+    kind: Connection
+    plural: connections
   versions:
     - name: v1alpha1
       served: true

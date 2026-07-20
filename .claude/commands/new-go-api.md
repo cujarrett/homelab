@@ -30,7 +30,7 @@ Create a new directory `./<app-name>/` containing the following files. In every 
 | `./<app-name>/justfile` | [.claude/assets/new-go-api/justfile](.claude/assets/new-go-api/justfile) |
 | `./<app-name>/.github/workflows/ci.yml` | [.claude/assets/new-go-api/ci.yml](.claude/assets/new-go-api/ci.yml) |
 | `./<app-name>/.github/dependabot.yml` | [.claude/assets/new-go-api/dependabot.yml](.claude/assets/new-go-api/dependabot.yml) |
-| `homelab-workspaces/<workspace>/<app-name>.yaml` | [.claude/assets/new-go-api/xapi.yaml](.claude/assets/new-go-api/xapi.yaml) |
+| `homelab-workspaces/<workspace>/<app-name>.yaml` | [.claude/assets/new-go-api/api.yaml](.claude/assets/new-go-api/api.yaml) |
 
 Also create:
 
@@ -62,7 +62,7 @@ One sentence description of what the app does.
 
 ## Deployment
 
-Runs on the homelab cluster via the `XApi` Crossplane composition. Image: `ghcr.io/cujarrett/<app-name>`. ARM64.
+Runs on the homelab cluster via the `Api` Crossplane composition. Image: `ghcr.io/cujarrett/<app-name>`. ARM64.
 ```
 
 **`./<app-name>/go.mod`**
@@ -126,4 +126,4 @@ Remind the user to:
 1. `cd <app-name> && go mod tidy`
 2. Create the GitHub repo and push
 3. Add `HOMELAB_PAT` secret to the new repo (Settings → Secrets → Actions)
-4. Run `argocd app sync xrs --grpc-web` after the first image is pushed and ArgoCD detects the XApi
+4. Run `argocd app sync xrs --grpc-web` after the first image is pushed and ArgoCD detects the Api

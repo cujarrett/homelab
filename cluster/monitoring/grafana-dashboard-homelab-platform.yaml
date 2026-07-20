@@ -380,7 +380,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "histogram_quantile(0.5, sum(platform_xr_time_to_ready_seconds_bucket{kind!~\"XTopic|XSubscription\"}) by (le, kind, backend))",
+              "expr": "histogram_quantile(0.5, sum(platform_xr_time_to_ready_seconds_bucket{kind!~\"X?Topic|X?Subscription\"}) by (le, kind, backend))",
               "legendFormat": "{{kind}} / {{backend}}",
               "refId": "A"
             }
@@ -698,7 +698,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "platform_xr_time_to_ready_seconds_instance{kind!~\"XTopic|XSubscription\"} < 3600",
+              "expr": "platform_xr_time_to_ready_seconds_instance{kind!~\"X?Topic|X?Subscription\"} < 3600",
               "legendFormat": "{{kind}} \u00b7 {{name}}",
               "refId": "A"
             },
@@ -1141,7 +1141,7 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Active bindings between XApi instances and their platform dependencies (sql, nosql, topic, subscription, object-storage).",
+          "description": "Active bindings between Api instances and their platform dependencies (sql, nosql, topic, subscription, object-storage).",
           "fieldConfig": {
             "defaults": {
               "custom": {
@@ -1256,7 +1256,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "XApi Bindings",
+          "title": "Api Bindings",
           "transformations": [
             {
               "id": "filterFieldsByName",
