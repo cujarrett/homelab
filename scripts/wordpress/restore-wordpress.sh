@@ -130,8 +130,12 @@ echo "==> Copying wp-content archive to WordPress pod..."
 kubectl cp "$WP_CONTENT_TAR" "$NAMESPACE/$WP_POD:/tmp/wp-content.tar.gz"
 
 echo "==> Extracting wp-content..."
+# Exclude mu-plugins: on this platform it's a read-only ConfigMap mount rendered by the
+# composition, not user data. A backup taken from a live cluster pod captures that mounted
+# file, but the restore target mounts it read-only too, so tar can't overwrite it and aborts.
+# Skipping it is correct — the platform re-provides mu-plugins; it's never part of the backup.
 kubectl exec -n "$NAMESPACE" "$WP_POD" -- bash -c \
-  "tar xzf /tmp/wp-content.tar.gz -C /var/www/html/ 2>&1 | grep -v 'Ignoring unknown extended header'; rc=\${PIPESTATUS[0]}; rm -f /tmp/wp-content.tar.gz; exit \$rc"
+  "tar --exclude='wp-content/mu-plugins/*' -xzf /tmp/wp-content.tar.gz -C /var/www/html/ 2>&1 | grep -v 'Ignoring unknown extended header'; rc=\${PIPESTATUS[0]}; rm -f /tmp/wp-content.tar.gz; exit \$rc"
 
 # Fix ownership so Apache can serve files.
 # --mount skips read-only bind mounts (e.g. mu-plugins ConfigMap volumes).
