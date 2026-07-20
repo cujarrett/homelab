@@ -398,7 +398,7 @@ kubectl delete api e2e-api-private --ignore-not-found >/dev/null 2>&1
 kubectl delete api e2e-api-public --ignore-not-found >/dev/null 2>&1
 wait_gone api e2e-api-private 300 || record teardown "api/e2e-api-private deleted" FAIL "still present after 300s"
 wait_gone api e2e-api-public 900 || record teardown "api/e2e-api-public deleted" FAIL "still present after 900s"
-# The owned XCaches outlive their Api briefly — the ElastiCache replication
+# The owned Caches outlive their Api briefly — the ElastiCache replication
 # group takes ~5-10 min to delete in AWS and the Cache XR waits for it.
 wait_gone cache e2e-api-private-cache 300 || record teardown "cache/e2e-api-private-cache deleted" FAIL "still present after 300s"
 wait_gone cache e2e-api-public-cache 900 || record teardown "cache/e2e-api-public-cache deleted" FAIL "still present after 900s"
