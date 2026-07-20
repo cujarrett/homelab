@@ -184,11 +184,11 @@ var s3Client = buildS3Client(os.ReadFile("/bindings/object-storage/username"))
 
 The composition is the only layer that knows what backs a binding. The consumer app sees identical binding files regardless of whether the Secret came from ElastiCache or an in-cluster Redis pod.
 
-The `XApi` XRD example has an `environment` field (`test` or `prod`, default `test`). The composition forks on it:
+The `Api` XRD example has an `environment` field (`test` or `prod`, default `test`). The composition forks on it:
 
 ```go
 {{- if and $cacheEnabled (eq $xr.spec.environment "prod") }}
-# renders XCache sub-XR → provisions ElastiCache → writes connection Secret to app namespace
+# renders Cache sub-XR → provisions ElastiCache → writes connection Secret to app namespace
 {{- end }}
 {{- if and $cacheEnabled (eq $xr.spec.environment "test") }}
 # renders in-cluster Redis Deployment + Service + a plain Secret with identical keys
@@ -212,7 +212,7 @@ stringData:
 
 The init container (`until [ -f /bindings/cache/type ]`) works identically for both paths — the test Secret appears immediately (no cloud wait), so the init container exits fast.
 
-The XApi consumer sets `cache.enabled: true` and `environment: test`. The app reads the same `/bindings/cache/` files. No compromise to the binding contract.
+The Api consumer sets `cache.enabled: true` and `environment: test`. The app reads the same `/bindings/cache/` files. No compromise to the binding contract.
 
 ## Manual Wiring vs. the ServiceBinding Operator
 

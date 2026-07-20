@@ -1,13 +1,13 @@
 apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
-  name: xtopics.platform.local.lab
+  name: topics.platform.local.lab
 spec:
   group: platform.local.lab
   scope: Cluster
   names:
-    kind: XTopic
-    plural: xtopics
+    kind: Topic
+    plural: topics
   versions:
     - name: v1alpha1
       served: true

@@ -1,0 +1,59 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: xwordpresses.platform.local.lab
+spec:
+  scope: Namespaced
+  group: platform.local.lab
+  names:
+    kind: XWordpress
+    plural: xwordpresses
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  properties:
+                    host:
+                      type: string
+                      description: "Ingress hostname (e.g. mattjarrett.com). Required."
+                    storageSize:
+                      type: string
+                      default: "10Gi"
+                      description: "Size of the wp-content PersistentVolumeClaim."
+                    dbStorageSize:
+                      type: string
+                      default: "5Gi"
+                      description: "Size of the MariaDB data PersistentVolumeClaim."
+                    replicas:
+                      type: integer
+                      default: 1
+                      minimum: 1
+                      description: "Number of WordPress replicas. Stateless uploads are on the shared PVC — do not scale above 1 without a shared filesystem."
+                    size:
+                      type: string
+                      default: "sm"
+                      enum:
+                        - sm
+                        - md
+                        - lg
+                      description: "Resource sizing tier for WordPress and MariaDB containers. sm: light traffic. md: typical personal site. lg: high traffic or media-heavy."
+                    dataRetention:
+                      type: string
+                      default: "retain"
+                      enum:
+                        - retain
+                        - delete
+                      description: "PVC reclaim behavior when the XR is deleted. retain=longhorn-retain (PVCs survive XR deletion, data recoverable); delete=longhorn-delete (PVCs wiped on XR deletion, data is unrecoverable)."
+                  required:
+                    - host
+              required:
+                - parameters

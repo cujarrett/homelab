@@ -1,0 +1,710 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xapi
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: XApi
+  mode: Pipeline
+  pipeline:
+    - step: load-environment-configs
+      functionRef:
+        name: function-environment-configs
+      input:
+        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+        kind: Input
+        spec:
+          environmentConfigs:
+            - type: Reference
+              ref:
+                name: aws-platform-config
+    - step: render-all-resources
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: | # yaml
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $ns := $xr.spec.parameters.namespace }}
+            {{- $cacheBackend := ($xr.spec.parameters.cache | default dict).backend | default "private-cloud" }}
+            {{- /* Refs point to standalone resources created outside this XApi. */ -}}
+            {{- /* The binding Secret already exists in $ns — just mount it.    */ -}}
+            {{- $objectStorageRefs := $xr.spec.parameters.objectStorageRefs | default list }}
+            {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
+            {{- $trustAnchorArn := index $envCtx "trustAnchorArn" | default "" }}
+            {{- $awsAccountId := index $envCtx "awsAccountId" | default "" }}
+            {{- $sqlRefName := "" }}
+            {{- if $xr.spec.parameters.sqlRef }}{{- $sqlRefName = $xr.spec.parameters.sqlRef.name }}{{- end }}
+            {{- $nosqlRefName := "" }}
+            {{- if $xr.spec.parameters.nosqlRef }}{{- $nosqlRefName = $xr.spec.parameters.nosqlRef.name }}{{- end }}
+            {{- $sqlBackend := "private-cloud" }}
+            {{- if $xr.spec.parameters.sqlRef }}{{- $sqlBackend = $xr.spec.parameters.sqlRef.backend | default "private-cloud" }}{{- end }}
+            {{- $cacheEnabled := and $xr.spec.parameters.cache $xr.spec.parameters.cache.enabled }}
+            {{- $host := $xr.spec.parameters.host | default "" }}
+            {{- $tlsIssuer := $xr.spec.parameters.tlsIssuer | default "local-lab-ca-issuer" }}
+            {{- $tlsSecret := $xr.spec.parameters.tlsSecret | default "" }}
+            {{- $metricsPort := $xr.spec.parameters.metricsPort | default 9090 }}
+            {{- $scrapeInterval := $xr.spec.parameters.scrapeInterval | default "60s" }}
+            {{- $replicas := $xr.spec.parameters.replicas | default 1 }}
+            {{- $healthCheckPath := $xr.spec.parameters.readinessCheckPath | default "/healthz" }}
+            {{- $sizeResourceMap := dict "xs" (dict "cpuReq" "25m" "cpuLim" "100m" "memReq" "32Mi" "memLim" "64Mi") "sm" (dict "cpuReq" "50m" "cpuLim" "200m" "memReq" "64Mi" "memLim" "128Mi") "md" (dict "cpuReq" "100m" "cpuLim" "500m" "memReq" "128Mi" "memLim" "256Mi") "lg" (dict "cpuReq" "250m" "cpuLim" "1000m" "memReq" "256Mi" "memLim" "512Mi") }}
+            {{- $sizeKey := $xr.spec.parameters.size | default "sm" }}
+            {{- $sizeResources := get $sizeResourceMap $sizeKey | default (get $sizeResourceMap "sm") }}
+            {{- $secretRefName := "" }}
+            {{- if $xr.spec.parameters.secretRef }}{{- $secretRefName = $xr.spec.parameters.secretRef.name }}{{- end }}
+            {{- $topicRefName := "" }}
+            {{- $topicStreamName := "" }}
+            {{- if $xr.spec.parameters.topicRef }}
+            {{- $topicRefName = $xr.spec.parameters.topicRef.name }}
+            {{- $topicStreamName = ($xr.spec.parameters.topicRef.streamName | default ($xr.spec.parameters.topicRef.name | upper)) }}
+            {{- end }}
+            {{- $subscriptionRefName := "" }}
+            {{- if $xr.spec.parameters.subscriptionRef }}{{- $subscriptionRefName = $xr.spec.parameters.subscriptionRef.name }}{{- end }}
+            {{- /* AWS workload identity: build binding lists for sidecar + app container injection. */ -}}
+            {{- /* volumeName:mountPath:profile triples (used for volume mounts in sidecar)      */ -}}
+            {{- $awsBindings := list }}
+            {{- /* mountPath:profile pairs (used for AWS_BINDINGS env var in sidecar)            */ -}}
+            {{- $sidecarBindingParts := list }}
+            {{- range $i, $ref := $objectStorageRefs }}
+              {{- $osMountName := "object-storage" }}{{- if gt $i 0 }}{{- $osMountName = printf "object-storage-%d" $i }}{{- end }}
+              {{- $awsBindings = append $awsBindings (printf "object-storage-%s-binding:/bindings/%s:%s" $ref.name $osMountName $osMountName) }}
+              {{- $sidecarBindingParts = append $sidecarBindingParts (printf "/bindings/%s:%s" $osMountName $osMountName) }}
+            {{- end }}
+            {{- if $nosqlRefName }}
+              {{- $awsBindings = append $awsBindings "nosql-binding:/bindings/nosql:nosql" }}
+              {{- $sidecarBindingParts = append $sidecarBindingParts "/bindings/nosql:nosql" }}
+            {{- end }}
+            {{- if and $sqlRefName (eq $sqlBackend "public-cloud") }}
+              {{- $awsBindings = append $awsBindings "sql-binding:/bindings/sql:sql" }}
+              {{- $sidecarBindingParts = append $sidecarBindingParts "/bindings/sql:sql" }}
+            {{- end }}
+            {{- if and $cacheEnabled (eq $cacheBackend "public-cloud") }}
+              {{- $awsBindings = append $awsBindings (printf "cache-binding:/bindings/cache:cache") }}
+              {{- $sidecarBindingParts = append $sidecarBindingParts "/bindings/cache:cache" }}
+            {{- end }}
+            # --- Service ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              labels:
+                app: xapi
+                app.kubernetes.io/instance: {{ $name }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: service
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                app.kubernetes.io/instance: {{ $name }}
+              ports:
+                - name: http
+                  port: 80
+                  targetPort: {{ $xr.spec.parameters.port | default 8080 }}
+                - name: metrics
+                  port: {{ $metricsPort }}
+                  targetPort: {{ $metricsPort }}
+            ---
+            # --- ServiceAccount ---
+            # Dedicated SA per XApi instance — pods do not use the namespace default SA.
+            apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: serviceaccount
+                gotemplating.fn.crossplane.io/ready: "True"
+            {{- $boundSecrets := list }}
+            {{- range $objectStorageRefs }}{{- $boundSecrets = append $boundSecrets (printf "%s-%s" $name .name) }}{{- end }}
+            {{- if $sqlRefName }}
+              {{- if eq $sqlBackend "public-cloud" }}
+                {{- $boundSecrets = append $boundSecrets (printf "%s-sql" $name) }}
+              {{- else }}
+                {{- $boundSecrets = append $boundSecrets $sqlRefName }}
+              {{- end }}
+            {{- end }}
+            {{- if $nosqlRefName }}{{- $boundSecrets = append $boundSecrets (printf "%s-nosql" $name) }}{{- end }}
+            {{- if $cacheEnabled }}{{- $boundSecrets = append $boundSecrets (printf "%s-cache" $name) }}{{- end }}
+            {{- if $secretRefName }}{{- $boundSecrets = append $boundSecrets $secretRefName }}{{- end }}
+            {{- if $boundSecrets }}
+            ---
+            # --- Role ---
+            # Grants get only on the exact Secrets this instance mounts or injects.
+            # Prevents a compromised container from reading other Secrets in the namespace.
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: Role
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: role
+                gotemplating.fn.crossplane.io/ready: "True"
+            rules:
+              - apiGroups: [""]
+                resources: ["secrets"]
+                verbs: ["get"]
+                resourceNames:
+                  {{- range $boundSecrets }}
+                  - {{ . | quote }}
+                  {{- end }}
+            ---
+            # --- RoleBinding ---
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: RoleBinding
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: rolebinding
+                gotemplating.fn.crossplane.io/ready: "True"
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: Role
+              name: {{ $name }}
+            subjects:
+              - kind: ServiceAccount
+                name: {{ $name }}
+                namespace: {{ $ns }}
+            {{- end }}
+            ---
+            # --- Deployment ---
+            # Init containers poll for each binding's "type" file — last key written,
+            # confirming all binding keys are available before the app starts.
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              labels:
+                app: xapi
+                app.kubernetes.io/instance: {{ $name }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: deployment
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              replicas: {{ $replicas }}
+              selector:
+                matchLabels:
+                  app.kubernetes.io/instance: {{ $name }}
+              template:
+                metadata:
+                  labels:
+                    app: xapi
+                    app.kubernetes.io/instance: {{ $name }}
+                spec:
+                  serviceAccountName: {{ $name }}
+                  {{- if or (gt (len $objectStorageRefs) 0) $sqlRefName $nosqlRefName $cacheEnabled }}
+                  initContainers:
+                    {{- range $i, $ref := $objectStorageRefs }}
+                    {{- $osMountName := "object-storage" }}{{- if gt $i 0 }}{{- $osMountName = printf "object-storage-%d" $i }}{{- end }}
+                    - name: wait-for-object-storage-{{ $ref.name }}-binding
+                      image: busybox:1.36
+                      command:
+                        - sh
+                        - -c
+                        - "until [ -f /bindings/{{ $osMountName }}/type ]; do echo waiting for {{ $ref.name }} binding; sleep 5; done"
+                      volumeMounts:
+                        - name: object-storage-{{ $ref.name }}-binding
+                          mountPath: /bindings/{{ $osMountName }}
+                          readOnly: true
+                    {{- end }}
+                    {{- if $sqlRefName }}
+                    - name: wait-for-sql-binding
+                      image: busybox:1.36
+                      command:
+                        - sh
+                        - -c
+                        - "until [ -f /bindings/sql/type ]; do echo waiting for sql binding; sleep 5; done"
+                      volumeMounts:
+                        - name: sql-binding
+                          mountPath: /bindings/sql
+                          readOnly: true
+                    {{- end }}
+                    {{- if $nosqlRefName }}
+                    - name: wait-for-nosql-binding
+                      image: busybox:1.36
+                      command:
+                        - sh
+                        - -c
+                        - "until [ -f /bindings/nosql/type ]; do echo waiting for nosql binding; sleep 5; done"
+                      volumeMounts:
+                        - name: nosql-binding
+                          mountPath: /bindings/nosql
+                          readOnly: true
+                    {{- end }}
+                    {{- if $cacheEnabled }}
+                    - name: wait-for-cache-binding
+                      image: busybox:1.36
+                      command:
+                        - sh
+                        - -c
+                        - "until [ -f /bindings/cache/type ]; do echo waiting for cache binding; sleep 5; done"
+                      volumeMounts:
+                        - name: cache-binding
+                          mountPath: /bindings/cache
+                          readOnly: true
+                    {{- end }}
+                  {{- end }}
+                  containers:
+                    - name: api
+                      image: {{ $xr.spec.parameters.image }}
+                      imagePullPolicy: Always
+                      ports:
+                        - containerPort: {{ $xr.spec.parameters.port | default 8080 }}
+                      resources:
+                        requests:
+                          cpu: {{ get $sizeResources "cpuReq" }}
+                          memory: {{ get $sizeResources "memReq" }}
+                        limits:
+                          cpu: {{ get $sizeResources "cpuLim" }}
+                          memory: {{ get $sizeResources "memLim" }}
+                      readinessProbe:
+                        httpGet:
+                          path: {{ $healthCheckPath }}
+                          port: {{ $xr.spec.parameters.port | default 8080 }}
+                        initialDelaySeconds: 5
+                        periodSeconds: 10
+                      env:
+                        # servicebinding.io convention: $SERVICE_BINDING_ROOT/<binding>/<key>
+                        - name: SERVICE_BINDING_ROOT
+                          value: /bindings
+                      {{- if gt (len $awsBindings) 0 }}
+                        - name: AWS_SHARED_CREDENTIALS_FILE
+                          value: /aws-credentials/credentials
+                        {{- range $i, $ref := $objectStorageRefs }}
+                        {{- $osMountNameEnv := "object-storage" }}{{- if gt $i 0 }}{{- $osMountNameEnv = printf "object-storage-%d" $i }}{{- end }}
+                        - name: AWS_PROFILE_{{ $ref.name | upper | replace "-" "_" }}
+                          value: {{ $osMountNameEnv }}
+                        {{- end }}
+                        {{- if $nosqlRefName }}
+                        - name: AWS_PROFILE_NOSQL
+                          value: nosql
+                        {{- end }}
+                        {{- if and $sqlRefName (eq $sqlBackend "public-cloud") }}
+                        - name: AWS_PROFILE_SQL
+                          value: sql
+                        {{- end }}
+                        {{- if and $cacheEnabled (eq $cacheBackend "public-cloud") }}
+                        - name: AWS_PROFILE_CACHE
+                          value: cache
+                        {{- end }}
+                      {{- end }}
+                      {{- if $topicRefName }}
+                        # XTopic wiring: injected automatically from topicRef.
+                        # App reads NATS_URL + NATS_STREAM to publish events.
+                        - name: NATS_URL
+                          value: "nats://nats.nats.svc.cluster.local:4222"
+                        - name: NATS_STREAM
+                          value: {{ $topicStreamName | quote }}
+                      {{- end }}
+                      {{- if $subscriptionRefName }}
+                        # XSubscription wiring: injected automatically from subscriptionRef.
+                        # App reads NATS_CONSUMER to bind to the durable cursor.
+                        {{- if not $topicRefName }}
+                        - name: NATS_URL
+                          value: "nats://nats.nats.svc.cluster.local:4222"
+                        {{- end }}
+                        - name: NATS_CONSUMER
+                          value: {{ $subscriptionRefName | quote }}
+                      {{- end }}
+                      {{- if $secretRefName }}
+                      envFrom:
+                        - secretRef:
+                            name: {{ $secretRefName }}
+                      {{- end }}
+                      {{- if or (gt (len $objectStorageRefs) 0) $sqlRefName $nosqlRefName $cacheEnabled (gt (len $awsBindings) 0) }}
+                      volumeMounts:
+                        {{- if gt (len $awsBindings) 0 }}
+                        - name: aws-credentials
+                          mountPath: /aws-credentials
+                          readOnly: true
+                        {{- end }}
+                        {{- range $i, $ref := $objectStorageRefs }}
+                        {{- $osMountName := "object-storage" }}{{- if gt $i 0 }}{{- $osMountName = printf "object-storage-%d" $i }}{{- end }}
+                        - name: object-storage-{{ $ref.name }}-binding
+                          mountPath: /bindings/{{ $osMountName }}
+                          readOnly: true
+                        {{- end }}
+                        {{- if $sqlRefName }}
+                        - name: sql-binding
+                          mountPath: /bindings/sql
+                          readOnly: true
+                        {{- end }}
+                        {{- if $nosqlRefName }}
+                        - name: nosql-binding
+                          mountPath: /bindings/nosql
+                          readOnly: true
+                        {{- end }}
+                        {{- if $cacheEnabled }}
+                        - name: cache-binding
+                          mountPath: /bindings/cache
+                          readOnly: true
+                        {{- end }}
+                      {{- end }}
+                    {{- if gt (len $awsBindings) 0 }}
+                    - name: aws-credentials-sidecar
+                      image: ghcr.io/cujarrett/aws-spiffe-helper:main
+                      imagePullPolicy: Always
+                      env:
+                        - name: AWS_BINDINGS
+                          value: {{ join "," $sidecarBindingParts | quote }}
+                        - name: CREDS_FILE
+                          value: /aws-credentials/credentials
+                        # Platform-level value — injected directly so it never appears in user-visible binding Secrets.
+                        - name: TRUST_ANCHOR_ARN
+                          value: {{ $trustAnchorArn | quote }}
+                      volumeMounts:
+                        - name: spiffe-bundle
+                          mountPath: /var/run/secrets/spiffe.io
+                          readOnly: true
+                        - name: aws-credentials
+                          mountPath: /aws-credentials
+                        {{- range $i, $ref := $objectStorageRefs }}
+                        {{- $osMountName := "object-storage" }}{{- if gt $i 0 }}{{- $osMountName = printf "object-storage-%d" $i }}{{- end }}
+                        - name: object-storage-{{ $ref.name }}-binding
+                          mountPath: /bindings/{{ $osMountName }}
+                          readOnly: true
+                        {{- end }}
+                        {{- if $nosqlRefName }}
+                        - name: nosql-binding
+                          mountPath: /bindings/nosql
+                          readOnly: true
+                        {{- end }}
+                        {{- if and $sqlRefName (eq $sqlBackend "public-cloud") }}
+                        - name: sql-binding
+                          mountPath: /bindings/sql
+                          readOnly: true
+                        {{- end }}
+                        {{- if and $cacheEnabled (eq $cacheBackend "public-cloud") }}
+                        - name: cache-binding
+                          mountPath: /bindings/cache
+                          readOnly: true
+                        {{- end }}
+                    {{- end }}
+                  {{- if or (gt (len $objectStorageRefs) 0) $sqlRefName $nosqlRefName $cacheEnabled (gt (len $awsBindings) 0) }}
+                  volumes:
+                    {{- if gt (len $awsBindings) 0 }}
+                    - name: spiffe-bundle
+                      csi:
+                        driver: csi.spiffe.io
+                        readOnly: true
+                    - name: aws-credentials
+                      emptyDir: {}
+                    {{- end }}
+                    {{- range $objectStorageRefs }}
+                    - name: object-storage-{{ .name }}-binding
+                      secret:
+                        secretName: {{ $name }}-{{ .name }}
+                        optional: true
+                    {{- end }}
+                    {{- if $sqlRefName }}
+                    - name: sql-binding
+                      secret:
+                        secretName: {{ if eq $sqlBackend "public-cloud" }}{{ $name }}-sql{{ else }}{{ $sqlRefName }}{{ end }}
+                        optional: true
+                    {{- end }}
+                    {{- if $nosqlRefName }}
+                    - name: nosql-binding
+                      secret:
+                        secretName: {{ $name }}-nosql
+                        optional: true
+                    {{- end }}
+                    {{- if $cacheEnabled }}
+                    - name: cache-binding
+                      secret:
+                        secretName: {{ $name }}-cache
+                        optional: true
+                    {{- end }}
+                  {{- end }}
+            {{- /* --- AWS IAM resources: one Role + Profile + binding Secret per objectStorageRef. --- */}}
+            {{- /* Role and Profile lifecycle is tied to this XApi (deleted with it).                   */}}
+            {{- /* Bucket name is computed from convention: platform-{ns}-{refName}.                    */}}
+            {{- /* $hasAwsCloudBindings covers all AWS cloud resource types:                            */}}
+            {{- /*   objectStorageRefs (any entries), nosqlRef (always DynamoDB),                       */}}
+            {{- /*   cache backend=cloud (ElastiCache). Add sqlRef cloud variant when XRD supports.     */}}
+            {{- $hasAwsCloudBindings := or (gt (len $objectStorageRefs) 0) (ne $nosqlRefName "") (and $cacheEnabled (eq $cacheBackend "public-cloud")) (and (ne $sqlRefName "") (eq $sqlBackend "public-cloud")) }}
+            {{- if $hasAwsCloudBindings }}
+            {{- range $i, $ref := $objectStorageRefs }}
+            {{- $refName := $ref.name }}
+            {{- $roleKey := printf "role-object-storage-%s" $refName }}
+            {{- $profileKey := printf "profile-object-storage-%s" $refName }}
+            {{- $profileObs := index ($.observed.resources | default dict) $profileKey | default dict }}
+            {{- $profileArn := "" }}
+            {{- if $profileObs.resource }}{{- $profileArn = $profileObs.resource.status.atProvider.arn | default "" }}{{- end }}
+            {{- $bucketName := printf "platform-%s-%s" $ns $refName }}
+            {{- /* IAM role names are capped at 64 chars. Hash the name when it would exceed that. */}}
+            {{- $rawRoleExternalName := printf "crossplane-%s-%s-%s" $ns $name $refName }}
+            {{- $roleExternalName := $rawRoleExternalName }}
+            {{- if gt (len $rawRoleExternalName) 64 }}
+            {{- $roleExternalName = printf "xp-%s" ($rawRoleExternalName | sha256sum | trunc 61) }}
+            {{- end }}
+            {{- $predictedRoleArn := printf "arn:aws:iam::%s:role/crossplane/%s" $awsAccountId $roleExternalName }}
+            {{- $trustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringEquals" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $name))))) | toJson }}
+            {{- $inlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "s3:GetObject" "s3:PutObject" "s3:DeleteObject" "s3:ListBucket") "Resource" (list (printf "arn:aws:s3:::%s" $bucketName) (printf "arn:aws:s3:::%s/*" $bucketName)))) | toJson }}
+            ---
+            # IAM Role for objectStorageRef {{ $refName }}. Trust scoped to this XApi's service account.
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              name: {{ $name }}-objstorage-{{ $refName }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: {{ $roleKey }}
+                gotemplating.fn.crossplane.io/ready: "True"
+                crossplane.io/external-name: {{ $roleExternalName }}
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                path: /crossplane/
+                maxSessionDuration: 3600
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+                  ObjectStorageRef: {{ $refName }}
+                assumeRolePolicy: {{ $trustPolicy | quote }}
+                inlinePolicy:
+                  - name: platform-object-storage-{{ $ns }}-{{ $refName }}
+                    policy: {{ $inlinePolicy | quote }}
+
+            {{- /* Profile external-name workaround: provider uses spec.forProvider.name (string) as  */}}
+            {{- /* profileId in GetProfile — a bug that returns 400 instead of 404.                   */}}
+            {{- /* Fix: set external-name to a nil UUID on first create (valid UUID format → 404).     */}}
+            {{- /* On subsequent reconciles, read the real UUID from observed state and use that,     */}}
+            {{- /* so the function pipeline never overwrites what the provider wrote.                  */}}
+            {{- $profileExternalName := "00000000-0000-0000-0000-000000000000" }}
+            {{- if $profileObs.resource }}
+              {{- $observedExternalName := index ($profileObs.resource.metadata.annotations | default dict) "crossplane.io/external-name" | default "" }}
+              {{- if $observedExternalName }}{{- $profileExternalName = $observedExternalName }}{{- end }}
+            {{- end }}
+            ---
+            # RolesAnywhere Profile for {{ $refName }}.
+            apiVersion: rolesanywhere.aws.upbound.io/v1beta1
+            kind: Profile
+            metadata:
+              name: {{ $name }}-objstorage-{{ $refName }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: {{ $profileKey }}
+                gotemplating.fn.crossplane.io/ready: "True"
+                crossplane.io/external-name: {{ $profileExternalName }}
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                name: crossplane-{{ $ns }}-{{ $name }}-{{ $refName }}
+                enabled: true
+                durationSeconds: 3600
+                roleArns:
+                  - {{ $predictedRoleArn }}
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+                  ObjectStorageRef: {{ $refName }}
+
+            {{- if $profileArn }}
+            ---
+            # Binding Secret for {{ $refName }}. Written once profile ARN is known.
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $name }}-{{ $refName }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: binding-secret-object-storage-{{ $refName }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            type: servicebinding.io/s3
+            stringData:
+              type: s3
+              provider: aws
+              bucket: {{ $bucketName }}
+              region: us-east-1
+              role-arn: {{ $predictedRoleArn }}
+              profile-arn: {{ $profileArn }}
+
+            {{- end }}
+            {{- end }}
+            {{- if $nosqlRefName }}
+            {{- $nosqlRoleKey := "role-nosql" }}
+            {{- $nosqlProfileKey := "profile-nosql" }}
+            {{- $nosqlProfileObs := index ($.observed.resources | default dict) $nosqlProfileKey | default dict }}
+            {{- $nosqlProfileArn := "" }}
+            {{- if $nosqlProfileObs.resource }}{{- $nosqlProfileArn = $nosqlProfileObs.resource.status.atProvider.arn | default "" }}{{- end }}
+            {{- $tableName := $nosqlRefName }}
+            {{- $nosqlPredictedRoleArn := printf "arn:aws:iam::%s:role/crossplane/crossplane-%s-%s-nosql" $awsAccountId $ns $name }}
+            {{- $nosqlTrustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringEquals" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $name))))) | toJson }}
+            {{- $nosqlInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "dynamodb:GetItem" "dynamodb:PutItem" "dynamodb:UpdateItem" "dynamodb:DeleteItem" "dynamodb:Query" "dynamodb:Scan" "dynamodb:BatchGetItem" "dynamodb:BatchWriteItem") "Resource" (list (printf "arn:aws:dynamodb:us-east-1:*:table/%s" $tableName) (printf "arn:aws:dynamodb:us-east-1:*:table/%s/index/*" $tableName)))) | toJson }}
+            ---
+            # IAM Role for nosqlRef {{ $nosqlRefName }}. Trust scoped to this XApi's service account.
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              name: {{ $name }}-nosql
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: {{ $nosqlRoleKey }}
+                gotemplating.fn.crossplane.io/ready: "True"
+                crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}-nosql
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                path: /crossplane/
+                maxSessionDuration: 3600
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+                  NoSqlRef: {{ $nosqlRefName }}
+                assumeRolePolicy: {{ $nosqlTrustPolicy | quote }}
+                inlinePolicy:
+                  - name: platform-nosql-{{ $ns }}-{{ $nosqlRefName }}
+                    policy: {{ $nosqlInlinePolicy | quote }}
+            {{- $nosqlProfileExternalName := "00000000-0000-0000-0000-000000000000" }}
+            {{- if $nosqlProfileObs.resource }}
+              {{- $nosqlObservedExternalName := index ($nosqlProfileObs.resource.metadata.annotations | default dict) "crossplane.io/external-name" | default "" }}
+              {{- if $nosqlObservedExternalName }}{{- $nosqlProfileExternalName = $nosqlObservedExternalName }}{{- end }}
+            {{- end }}
+            ---
+            # RolesAnywhere Profile for nosqlRef {{ $nosqlRefName }}.
+            apiVersion: rolesanywhere.aws.upbound.io/v1beta1
+            kind: Profile
+            metadata:
+              name: {{ $name }}-nosql
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: {{ $nosqlProfileKey }}
+                gotemplating.fn.crossplane.io/ready: "True"
+                crossplane.io/external-name: {{ $nosqlProfileExternalName }}
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                name: crossplane-{{ $ns }}-{{ $name }}-nosql
+                enabled: true
+                durationSeconds: 3600
+                roleArns:
+                  - {{ $nosqlPredictedRoleArn }}
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+                  NoSqlRef: {{ $nosqlRefName }}
+            {{- if $nosqlProfileArn }}
+            ---
+            # Binding Secret for nosqlRef {{ $nosqlRefName }}. Written once profile ARN is known.
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $name }}-nosql
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: binding-secret-nosql
+                gotemplating.fn.crossplane.io/ready: "True"
+            type: servicebinding.io/dynamodb
+            stringData:
+              type: dynamodb
+              provider: aws
+              table-name: {{ $tableName }}
+              region: us-east-1
+              role-arn: {{ $nosqlPredictedRoleArn }}
+              profile-arn: {{ $nosqlProfileArn }}
+            {{- end }}
+            {{- end }}{{- /* end nosqlRefName */}}
+            {{- end }}{{- /* end hasAwsCloudBindings */}}
+            {{- if $cacheEnabled }}
+            ---
+            apiVersion: platform.local.lab/v1alpha1
+            kind: XCache
+            metadata:
+              name: {{ $name }}-cache
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: cache
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              parameters:
+                backend: {{ $cacheBackend }}
+                namespace: {{ $ns }}
+                consumerServiceAccount: {{ $name }}
+            {{- end }}
+            ---
+            # release: monitoring matches the Prometheus operator's serviceMonitorSelector
+            apiVersion: monitoring.coreos.com/v1
+            kind: ServiceMonitor
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              labels:
+                release: monitoring
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: servicemonitor
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels:
+                  app.kubernetes.io/instance: {{ $name }}
+              endpoints:
+                - port: metrics
+                  path: /metrics
+                  interval: {{ $scrapeInterval }}
+                  metricRelabelings:
+                    - sourceLabels: [__name__]
+                      regex: "go_.*|process_.*|promhttp_.*"
+                      action: drop
+            {{- if $host }}
+            ---
+            # tlsIssuer: local-lab-ca-issuer for .local.lab; letsencrypt-prod for public hosts
+            # tlsSecret: skip issuance and reference a pre-existing secret (e.g. demo slot certs)
+            apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                traefik.ingress.kubernetes.io/router.entrypoints: websecure
+                traefik.ingress.kubernetes.io/router.tls: "true"
+                {{- if not $tlsSecret }}
+                cert-manager.io/cluster-issuer: {{ $tlsIssuer }}
+                {{- end }}
+                gotemplating.fn.crossplane.io/composition-resource-name: ingress
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              ingressClassName: traefik
+              tls:
+                - hosts:
+                    - {{ $host }}
+                  secretName: {{ if $tlsSecret }}{{ $tlsSecret }}{{ else }}{{ $name }}-tls{{ end }}
+              rules:
+                - host: {{ $host }}
+                  http:
+                    paths:
+                      - path: /
+                        pathType: Prefix
+                        backend:
+                          service:
+                            name: {{ $name }}
+                            port:
+                              number: 80
+            {{- end }}
+            {{- if $xr.spec.parameters.enforce }}
+            ---
+            # Enforcement (enforce: true) — default-deny this workload. Only connections granted
+            # via an XConnection reach it. Off by default, so meshing an app never denies traffic.
+            # Scoped to this app's pods via the instance label (app: xapi is shared by all XApis).
+            # /metrics is always allowed with no source restriction: Prometheus is unmeshed, so it
+            # can never satisfy a principal-based rule — without this, enforce: true silently breaks
+            # scraping for every instance that sets it.
+            apiVersion: security.istio.io/v1
+            kind: AuthorizationPolicy
+            metadata:
+              name: {{ $name }}-default-deny
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: default-deny
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels:
+                  app.kubernetes.io/instance: {{ $name }}
+              rules:
+                - to:
+                    - operation:
+                        paths: ["/metrics"]
+                        methods: ["GET"]
+            {{- end }}

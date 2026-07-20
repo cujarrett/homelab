@@ -1,24 +1,24 @@
-# XSql
+# Sql
 
 Crossplane platform primitive that provisions a Postgres relational database and exposes connection details as a [servicebinding.io](https://servicebinding.io)-compliant Secret.
 
-Standalone resource with a lifecycle independent of any one API. Bind to an `XApi` via `sqlRef.name`.
+Standalone resource with a lifecycle independent of any one API. Bind to an `Api` via `sqlRef.name`.
 
 ## What it provisions
 - `backend: private-cloud` — **in-cluster Postgres** (Deployment + PVC on Longhorn) + binding Secret; no cloud resources
 - `backend: public-cloud` — **AWS RDS Postgres** + IAM Role + RolesAnywhere Profile + binding Secret; IAM DB auth; no password in the binding Secret
 
-> **Known limitation: `public-cloud` is not currently reachable from this cluster.** The RDS instance is created with `publiclyAccessible: false` and no explicit `dbSubnetGroupName`/security group, so it lands in the AWS account's default VPC. There is no network path (VPN, peering, or otherwise) between this homelab cluster and that VPC, so pods cannot open a connection to it — verified: the RDS hostname resolves only to a private VPC IP, and a raw TCP connection times out. Everything up to that point works correctly: the instance provisions, IAM Role + RolesAnywhere Profile are created, and the sidecar successfully exchanges the pod's SVID for real STS credentials. The gap is purely network reachability, not identity or credentials. No current workload uses `public-cloud` for XSql — closing this would mean either making the instance internet-reachable and security-group-restricted (fixes only XSql; XCache's ElastiCache has no public-access option at all), or bridging into the VPC (e.g. a Tailscale subnet router running inside it, the same pattern already used for the homelab's own LAN) — worth doing only when a real workload needs it.
+> **Known limitation: `public-cloud` is not currently reachable from this cluster.** The RDS instance is created with `publiclyAccessible: false` and no explicit `dbSubnetGroupName`/security group, so it lands in the AWS account's default VPC. There is no network path (VPN, peering, or otherwise) between this homelab cluster and that VPC, so pods cannot open a connection to it — verified: the RDS hostname resolves only to a private VPC IP, and a raw TCP connection times out. Everything up to that point works correctly: the instance provisions, IAM Role + RolesAnywhere Profile are created, and the sidecar successfully exchanges the pod's SVID for real STS credentials. The gap is purely network reachability, not identity or credentials. No current workload uses `public-cloud` for Sql — closing this would mean either making the instance internet-reachable and security-group-restricted (fixes only Sql; Cache's ElastiCache has no public-access option at all), or bridging into the VPC (e.g. a Tailscale subnet router running inside it, the same pattern already used for the homelab's own LAN) — worth doing only when a real workload needs it.
 
 ## Binding secret
 
 Secret name:
 - `public-cloud` → one secret per consumer: `{consumer}-sql` (e.g. `foo-api-sql`, `bar-api-sql`)
-- `private-cloud` → `{xsql-name}`
+- `private-cloud` → `{sql-name}`
 
 Namespace comes from the `namespace` parameter. Mounted at `/bindings/sql/` inside the container.
 
-Multiple consumers' secrets coexist in the same namespace but each XApi's RBAC Role grants `get` only on its own named secrets — `foo-api`'s ServiceAccount cannot read `bar-api-sql`.
+Multiple consumers' secrets coexist in the same namespace but each Api's RBAC Role grants `get` only on its own named secrets — `foo-api`'s ServiceAccount cannot read `bar-api-sql`.
 
 | Key | Value | Backend |
 |---|---|---|
@@ -26,7 +26,7 @@ Multiple consumers' secrets coexist in the same namespace but each XApi's RBAC R
 | `provider` | `in-cluster` or `aws` | all |
 | `host` | Database endpoint hostname | all |
 | `port` | `5432` | all |
-| `database` | Database name — the XSql name as-is (`private-cloud`) or with dashes replaced by underscores (`public-cloud`) | all |
+| `database` | Database name — the Sql name as-is (`private-cloud`) or with dashes replaced by underscores (`public-cloud`) | all |
 | `username` | Database user (`app`) | all |
 | `password` | Database password | `private-cloud` only |
 | `role-arn` | IAM role ARN | `public-cloud` only |
@@ -44,13 +44,13 @@ Multiple consumers' secrets coexist in the same namespace but each XApi's RBAC R
 | `backend` | no | `private-cloud` | `public-cloud` provisions AWS RDS Postgres; `private-cloud` provisions in-cluster Postgres. |
 | `size` | no | `sm` | T-shirt size for the RDS instance (public-cloud only): `xs=db.t4g.micro`, `sm=db.t4g.small`, `md=db.t4g.medium`, `lg=db.t4g.large` |
 | `dataRetention` | no | `delete` | Longhorn PVC reclaim (private-cloud only): `retain` (PVC survives XR deletion, data recoverable) or `delete` (PVC wiped on deletion, data unrecoverable). |
-| `consumerServiceAccounts` | public-cloud | — | List of XApi names that will bind this database. Each entry gets its own IAM role and binding secret scoped to that SA's exact SPIFFE ID. Each entry must match an XApi `metadata.name`. |
+| `consumerServiceAccounts` | public-cloud | — | List of Api names that will bind this database. Each entry gets its own IAM role and binding secret scoped to that SA's exact SPIFFE ID. Each entry must match an Api `metadata.name`. |
 
 ## Example
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
-kind: XSql
+kind: Sql
 metadata:
   name: foo-db
 spec:
@@ -61,7 +61,7 @@ spec:
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
-kind: XSql
+kind: Sql
 metadata:
   name: foo-db
 spec:
@@ -73,7 +73,7 @@ spec:
       - foo-api   # each entry gets its own IAM role and binding secret
 ```
 
-Then reference from an `XApi`:
+Then reference from an `Api`:
 
 ```yaml
 spec:
@@ -96,9 +96,9 @@ Pass 1: RDS Instance created (iamDatabaseAuthenticationEnabled: true; master pas
 Pass 2: Per consumer: Binding Secret written (deferred until RDS is ready and profile ARN is known)
 ```
 
-**Trust policy scope.** Each consumer gets its own IAM role with a `StringEquals` trust policy scoped to `spiffe://homelab.local/ns/{namespace}/sa/{consumer}`. Multiple XApis can share one RDS instance — each declares itself in `consumerServiceAccounts` and gets an independent role and binding secret.
+**Trust policy scope.** Each consumer gets its own IAM role with a `StringEquals` trust policy scoped to `spiffe://homelab.local/ns/{namespace}/sa/{consumer}`. Multiple Apis can share one RDS instance — each declares itself in `consumerServiceAccounts` and gets an independent role and binding secret.
 
-Because XSql is standalone, consumer names must be declared upfront. Each consumer must match an XApi `metadata.name` in the same namespace.
+Because Sql is standalone, consumer names must be declared upfront. Each consumer must match an Api `metadata.name` in the same namespace.
 
 The inline policy grants only `rds-db:connect` scoped to the `app` database user on any RDS instance in the account:
 
@@ -115,16 +115,16 @@ For the full workload identity design: [`docs/workload-identity.md`](../../../do
 
 ```bash
 # XR status — SYNCED=composition ran, READY=all children healthy
-kubectl get xsqls foo-db
+kubectl get sqls foo-db
 
 # Detailed conditions — shows exactly WHY something is not ready
-kubectl get xsql foo-db -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get sql foo-db -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
 # Binding secrets — one per consumer, named {consumer}-sql
 kubectl get secret foo-api-sql -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 
-# Connect to in-cluster Postgres directly (database name = XSql name)
+# Connect to in-cluster Postgres directly (database name = Sql name)
 kubectl exec -it -n foo deploy/foo-db-postgres -- psql -U app -d foo-db
 
 # RDS instance status (public-cloud backend)

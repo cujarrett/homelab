@@ -2,7 +2,7 @@
 #
 # Platform end-to-end test.
 #
-# Inflates an XApi with every platform integration — private-cloud (in-cluster
+# Inflates an Api with every platform integration — private-cloud (in-cluster
 # Postgres, Redis, NATS) and public-cloud (AWS RDS, ElastiCache, DynamoDB, S3)
 # — verifies each one actually works from inside the pod, tears everything
 # down, and verifies the teardown left nothing behind in the cluster or AWS.
@@ -129,18 +129,18 @@ for i in d.get("integrations", []):
 '
 }
 
-# check_probes <xapi> <local_port> <expected names, comma-separated>
+# check_probes <api> <local_port> <expected names, comma-separated>
 # Retries until every expected integration reports ok, or the deadline passes.
 # The port-forward is restarted if it dies (kubectl drops it on transient
 # connection errors); its stderr is kept for the failure report.
 check_probes() {
-  local xapi=$1 port=$2 expected=$3 deadline=$(( $(date +%s) + 360 )) statuses=""
+  local api=$1 port=$2 expected=$3 deadline=$(( $(date +%s) + 360 )) statuses=""
   local pf_log pf_pid=""
   pf_log=$(mktemp)
 
   while (( $(date +%s) < deadline )); do
     if [[ -z "$pf_pid" ]] || ! kill -0 "$pf_pid" 2>/dev/null; then
-      kubectl port-forward -n "$NS" "svc/$xapi" "$port:80" --address 127.0.0.1 >>"$pf_log" 2>&1 &
+      kubectl port-forward -n "$NS" "svc/$api" "$port:80" --address 127.0.0.1 >>"$pf_log" 2>&1 &
       pf_pid=$!
       sleep 3
     fi
@@ -157,7 +157,7 @@ check_probes() {
   done
   kill "$pf_pid" 2>/dev/null
   if [[ -z "$statuses" ]]; then
-    echo "  --- port-forward log for $xapi:"
+    echo "  --- port-forward log for $api:"
     tail -5 "$pf_log"
   fi
   rm -f "$pf_log"
@@ -169,11 +169,11 @@ check_probes() {
     status=$(cut -d'|' -f2 <<< "$line")
     detail=$(cut -d'|' -f3 <<< "$line")
     if [[ "$status" == "ok" && "$detail" == *"VPC-internal"* ]]; then
-      record data-plane "$xapi: $n" "PASS (identity-only)" "$detail"
+      record data-plane "$api: $n" "PASS (identity-only)" "$detail"
     elif [[ "$status" == "ok" ]]; then
-      record data-plane "$xapi: $n" PASS "$detail"
+      record data-plane "$api: $n" PASS "$detail"
     else
-      record data-plane "$xapi: $n" FAIL "status=${status:-missing} $detail"
+      record data-plane "$api: $n" FAIL "status=${status:-missing} $detail"
     fi
   done
 }
@@ -266,7 +266,7 @@ $PRIVATE_ONLY || kubectl apply -f "$SCRIPT_DIR/manifests/public.yaml" >/dev/null
 INFLATE_OK=true
 # Quick resources first; the long AWS ones provision concurrently in the
 # background, so later waits mostly return immediately.
-for spec in "xtopic:e2e-topic:180" "xsubscription:e2e-sub:180" "xsql:e2e-sql-private:300"; do
+for spec in "topic:e2e-topic:180" "subscription:e2e-sub:180" "sql:e2e-sql-private:300"; do
   IFS=':' read -r kind name timeout <<< "$spec"
   if wait_ready "$kind" "$name" "$timeout"; then
     record inflate "$kind/$name Ready" PASS ""
@@ -276,7 +276,7 @@ for spec in "xtopic:e2e-topic:180" "xsubscription:e2e-sub:180" "xsql:e2e-sql-pri
 done
 
 if ! $PRIVATE_ONLY; then
-  for spec in "xnosql:e2e-nosql:180" "xobjectstorage:e2e-assets:180" "xsql:e2e-sql-public:960"; do
+  for spec in "nosql:e2e-nosql:180" "objectstorage:e2e-assets:180" "sql:e2e-sql-public:960"; do
     IFS=':' read -r kind name timeout <<< "$spec"
     if wait_ready "$kind" "$name" "$timeout"; then
       record inflate "$kind/$name Ready" PASS ""
@@ -286,11 +286,11 @@ if ! $PRIVATE_ONLY; then
   done
 fi
 
-# XApis last — their readiness gates on bindings (and the owned XCache).
-if wait_ready xapi e2e-api-private 600; then
-  record inflate "xapi/e2e-api-private Ready" PASS ""
+# Apis last — their readiness gates on bindings (and the owned Cache).
+if wait_ready api e2e-api-private 600; then
+  record inflate "api/e2e-api-private Ready" PASS ""
 else
-  record inflate "xapi/e2e-api-private Ready" FAIL "timeout 600s"; INFLATE_OK=false
+  record inflate "api/e2e-api-private Ready" FAIL "timeout 600s"; INFLATE_OK=false
 fi
 if kubectl wait deployment e2e-api-private -n "$NS" --for=condition=Available --timeout=300s >/dev/null 2>&1; then
   record inflate "private pod Available" PASS ""
@@ -299,13 +299,13 @@ else
 fi
 
 if ! $PRIVATE_ONLY; then
-  if wait_ready xapi e2e-api-public 960; then
-    record inflate "xapi/e2e-api-public Ready" PASS ""
+  if wait_ready api e2e-api-public 960; then
+    record inflate "api/e2e-api-public Ready" PASS ""
   else
-    record inflate "xapi/e2e-api-public Ready" FAIL "timeout 960s"; INFLATE_OK=false
+    record inflate "api/e2e-api-public Ready" FAIL "timeout 960s"; INFLATE_OK=false
   fi
   # The cache binding secret is written only after the ElastiCache replication
-  # group is ready (~12 min) — the XApi XR reports Ready before that, and the
+  # group is ready (~12 min) — the Api XR reports Ready before that, and the
   # pod stays Pending until this secret exists to mount.
   if wait_secret e2e-api-public-cache 960; then
     record inflate "cache binding secret written" PASS ""
@@ -360,12 +360,12 @@ if $INFLATE_OK; then
       fi
     done
 
-    # RBAC isolation: each XApi's Role must not name the other's secrets.
+    # RBAC isolation: each Api's Role must not name the other's secrets.
     PRIV_ROLE=$(kubectl get role e2e-api-private -n "$NS" -o json 2>/dev/null)
     if grep -q 'e2e-api-public' <<< "$PRIV_ROLE"; then
-      record contract "RBAC scoped per XApi" FAIL "private Role can read public secrets"
+      record contract "RBAC scoped per Api" FAIL "private Role can read public secrets"
     else
-      record contract "RBAC scoped per XApi" PASS ""
+      record contract "RBAC scoped per Api" PASS ""
     fi
   fi
 
@@ -393,20 +393,20 @@ if $KEEP; then
 fi
 
 echo "== Phase 4: teardown (RDS/ElastiCache deletion takes several minutes)"
-# XApis first — deleting them cascades the owned XCache (and ElastiCache).
-kubectl delete xapi e2e-api-private --ignore-not-found >/dev/null 2>&1
-kubectl delete xapi e2e-api-public --ignore-not-found >/dev/null 2>&1
-wait_gone xapi e2e-api-private 300 || record teardown "xapi/e2e-api-private deleted" FAIL "still present after 300s"
-wait_gone xapi e2e-api-public 900 || record teardown "xapi/e2e-api-public deleted" FAIL "still present after 900s"
-# The owned XCaches outlive their XApi briefly — the ElastiCache replication
-# group takes ~5-10 min to delete in AWS and the XCache XR waits for it.
-wait_gone xcache e2e-api-private-cache 300 || record teardown "xcache/e2e-api-private-cache deleted" FAIL "still present after 300s"
-wait_gone xcache e2e-api-public-cache 900 || record teardown "xcache/e2e-api-public-cache deleted" FAIL "still present after 900s"
+# Apis first — deleting them cascades the owned Cache (and ElastiCache).
+kubectl delete api e2e-api-private --ignore-not-found >/dev/null 2>&1
+kubectl delete api e2e-api-public --ignore-not-found >/dev/null 2>&1
+wait_gone api e2e-api-private 300 || record teardown "api/e2e-api-private deleted" FAIL "still present after 300s"
+wait_gone api e2e-api-public 900 || record teardown "api/e2e-api-public deleted" FAIL "still present after 900s"
+# The owned XCaches outlive their Api briefly — the ElastiCache replication
+# group takes ~5-10 min to delete in AWS and the Cache XR waits for it.
+wait_gone cache e2e-api-private-cache 300 || record teardown "cache/e2e-api-private-cache deleted" FAIL "still present after 300s"
+wait_gone cache e2e-api-public-cache 900 || record teardown "cache/e2e-api-public-cache deleted" FAIL "still present after 900s"
 
 kubectl delete -f "$SCRIPT_DIR/manifests/private.yaml" --ignore-not-found >/dev/null 2>&1
 $PRIVATE_ONLY || kubectl delete -f "$SCRIPT_DIR/manifests/public.yaml" --ignore-not-found >/dev/null 2>&1
 
-for spec in "xtopic:e2e-topic:120" "xsubscription:e2e-sub:120" "xsql:e2e-sql-private:300"; do
+for spec in "topic:e2e-topic:120" "subscription:e2e-sub:120" "sql:e2e-sql-private:300"; do
   IFS=':' read -r kind name timeout <<< "$spec"
   if wait_gone "$kind" "$name" "$timeout"; then
     record teardown "$kind/$name deleted" PASS ""
@@ -415,7 +415,7 @@ for spec in "xtopic:e2e-topic:120" "xsubscription:e2e-sub:120" "xsql:e2e-sql-pri
   fi
 done
 if ! $PRIVATE_ONLY; then
-  for spec in "xnosql:e2e-nosql:180" "xobjectstorage:e2e-assets:180" "xsql:e2e-sql-public:900"; do
+  for spec in "nosql:e2e-nosql:180" "objectstorage:e2e-assets:180" "sql:e2e-sql-public:900"; do
     IFS=':' read -r kind name timeout <<< "$spec"
     if wait_gone "$kind" "$name" "$timeout"; then
       record teardown "$kind/$name deleted" PASS ""

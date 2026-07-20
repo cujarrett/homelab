@@ -1,4 +1,4 @@
-# XSpa
+# Spa
 
 Crossplane composition that hosts an Angular (or any static) SPA on nginx.
 
@@ -27,13 +27,13 @@ The namespace is owned by the tenant — created by `namespace.yaml` in the tena
 | `apiProxy.enabled` | no | `false` | Proxy `/api/` to an in-cluster service (keeps the API off the public internet). |
 | `apiProxy.upstream` | no | — | FQDN of the upstream service (e.g. `my-api.my-tenant.svc.cluster.local`). nginx proxies `/api/` → `http://<upstream>/`. |
 
-The health check endpoint is always `/healthz` — not configurable. Mesh injection follows the namespace annotation; there is no per-instance mesh parameter on XSpa.
+The health check endpoint is always `/healthz` — not configurable. Mesh injection follows the namespace annotation; there is no per-instance mesh parameter on Spa.
 
 ## Example
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
-kind: XSpa
+kind: Spa
 metadata:
   name: foo
 spec:
@@ -68,10 +68,10 @@ EXPOSE 80
 
 ```bash
 # XR status — SYNCED=composition ran, READY=all children healthy
-kubectl get xspa foo
+kubectl get spa foo
 
 # Detailed conditions
-kubectl get xspa foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get spa foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
 # Pod status
 kubectl get pods -n foo

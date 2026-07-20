@@ -1,6 +1,6 @@
 # Platform E2E Test
 
-One command that proves the platform still works end to end after big composition changes. It inflates an XApi with **every** integration — both backends where they exist — verifies each one actually works from inside the pod, tears everything down, and verifies nothing was left behind in the cluster or AWS.
+One command that proves the platform still works end to end after big composition changes. It inflates an Api with **every** integration — both backends where they exist — verifies each one actually works from inside the pod, tears everything down, and verifies nothing was left behind in the cluster or AWS.
 
 ```bash
 just test-e2e           # full run (~11-15 min, a few cents of AWS)
@@ -23,18 +23,18 @@ Everything goes into the ephemeral `platform-e2e` namespace, applied directly wi
 
 | Manifest | XRs |
 |---|---|
-| `manifests/private.yaml` | `XSql e2e-sql-private` (in-cluster Postgres), `XTopic e2e-topic`, `XSubscription e2e-sub`, `XApi e2e-api-private` (sql + cache + topic + subscription, all private-cloud) |
-| `manifests/public.yaml` | `XSql e2e-sql-public` (RDS, xs), `XNoSql e2e-nosql` (DynamoDB), `XObjectStorage e2e-assets` (S3), `XApi e2e-api-public` (sql + cache + nosql + object storage, all public-cloud) |
+| `manifests/private.yaml` | `Sql e2e-sql-private` (in-cluster Postgres), `Topic e2e-topic`, `Subscription e2e-sub`, `Api e2e-api-private` (sql + cache + topic + subscription, all private-cloud) |
+| `manifests/public.yaml` | `Sql e2e-sql-public` (RDS, xs), `NoSql e2e-nosql` (DynamoDB), `ObjectStorage e2e-assets` (S3), `Api e2e-api-public` (sql + cache + nosql + object storage, all public-cloud) |
 
-The XApi image is `ghcr.io/cujarrett/hello-world-api:latest` — the Launchpad demo app, whose probes do real round-trips against every binding and report per-integration JSON at `GET /`.
+The Api image is `ghcr.io/cujarrett/hello-world-api:latest` — the Launchpad demo app, whose probes do real round-trips against every binding and report per-integration JSON at `GET /`.
 
 ## Phases
 
 1. **Preflight** — cluster reachable, Crossplane/NATS/SPIRE running, AWS CLI credentialed, `platform-e2e` namespace free, and the previous run's ElastiCache replication group finished deleting (AWS deletes it asynchronously for ~5-10 min after a run ends; back-to-back runs wait here instead of stalling mid-inflate).
 2. **Inflate** — apply the manifests, wait for every XR to reach `Ready=True`, then wait for the cache binding secret (written only after the ElastiCache replication group is ready, ~12 min) and for both pods to be Available.
-3. **Contract checks** — binding secrets have exactly the documented keys (public sql has `role-arn` and no `password`, private has `password` and no ARNs), the AWS sidecar exists only on the public XApi, NATS env vars exist only on the private one, RBAC roles are scoped per XApi.
-4. **Data plane** — port-forward to each XApi and poll the probe's `GET /` until every integration reports `ok`: Postgres insert/count, Redis INCR, NATS publish + durable-consumer fetch, DynamoDB put/get/delete, S3 put/get/delete.
-5. **Teardown** — delete XApis first (cascades the owned XCache), then the standalone XRs, and wait for every object to disappear.
+3. **Contract checks** — binding secrets have exactly the documented keys (public sql has `role-arn` and no `password`, private has `password` and no ARNs), the AWS sidecar exists only on the public Api, NATS env vars exist only on the private one, RBAC roles are scoped per Api.
+4. **Data plane** — port-forward to each Api and poll the probe's `GET /` until every integration reports `ok`: Postgres insert/count, Redis INCR, NATS publish + durable-consumer fetch, DynamoDB put/get/delete, S3 put/get/delete.
+5. **Teardown** — delete Apis first (cascades the owned Cache), then the standalone XRs, and wait for every object to disappear.
 6. **Verify teardown** — namespace empty and terminated, NATS stream/consumer gone, and via AWS CLI: RDS instance, DynamoDB table, S3 bucket, IAM roles, and RolesAnywhere profiles all gone. The ElastiCache replication group reports `PASS (deleting)` if AWS is still finishing its async deletion. Any orphan is a FAIL naming the orphan.
 
 ## The identity-only exception

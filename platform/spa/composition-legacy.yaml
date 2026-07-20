@@ -1,0 +1,447 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: spa-composition
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: XSpa
+  mode: Pipeline
+  pipeline:
+    - step: render-all-resources
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: | # yaml
+            {{- $name := .observed.composite.resource.metadata.name }}
+            {{- $params := .observed.composite.resource.spec.parameters }}
+            {{- $namespace := $params.namespace }}
+            {{- $apiProxyEnabled := and $params.apiProxy $params.apiProxy.enabled }}
+            {{- $sizeResourceMap := dict "xs" (dict "cpuReq" "25m" "cpuLim" "100m" "memReq" "32Mi" "memLim" "64Mi") "sm" (dict "cpuReq" "50m" "cpuLim" "200m" "memReq" "64Mi" "memLim" "128Mi") "md" (dict "cpuReq" "100m" "cpuLim" "500m" "memReq" "128Mi" "memLim" "256Mi") "lg" (dict "cpuReq" "250m" "cpuLim" "1000m" "memReq" "256Mi" "memLim" "512Mi") }}
+            {{- $sizeKey := $params.size | default "sm" }}
+            {{- $sizeRes := get $sizeResourceMap $sizeKey | default (get $sizeResourceMap "sm") }}
+            # --- nginx ConfigMap ---
+            # Generated from XR params so the SPA image stays generic across instances.
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{ $name }}-nginx-config
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: nginx-config
+                gotemplating.fn.crossplane.io/ready: "True"
+            data:
+              default.conf: |
+                {{- if $apiProxyEnabled }}
+                # Redact sensitive query-string params before they hit the access log.
+                # Proxied API calls (e.g. SSE watch endpoints) sometimes carry bearer
+                # tokens or auth tickets as ?token=/?ticket=... because EventSource
+                # can't set custom headers — without this, the value is logged in
+                # full and retained in logs.
+                map $args $safe_args {
+                    default                                                                       $args;
+                    "~*(^|&)(token|access_token|ticket|api[_-]?key|secret|password|authorization)=" "redacted";
+                }
+                map $safe_args $safe_uri {
+                    ""      $uri;
+                    default "$uri?$safe_args";
+                }
+                log_format api_proxy '$remote_addr - $remote_user [$time_local] '
+                                      '"$request_method $safe_uri $server_protocol" '
+                                      '$status $body_bytes_sent "$http_referer" "$http_user_agent"';
+                {{- end }}
+                server {
+                    listen 80;
+                    server_tokens off;
+
+                    root /usr/share/nginx/html;
+                    index index.html;
+
+                    # Block known vulnerability scanners — return 403 and close cheaply.
+                    # curl: raw curl without browser UA (legitimate tools usually identify themselves)
+                    # python-requests: generic scraper/scanner (no legit browser sends this UA raw)
+                    # TLM-Audit-Scanner: bulk credential/config scanner
+                    # nmap, nikto, sqlmap, nessus, qualys, burp, zaproxy: common security scanners
+                    # pathscan: automated path-probing scanner seen sweeping credential/config paths
+                    # l9scan: LeakIX internet-wide scanner (leakix.net) — swept all XSpa instances for
+                    # credential/config files in one pass; largest source of catch-all 200s seen in logs
+                    # YUTAA-SCANNER-DEFUNCT: self-identifying canary/recon scanner
+                    # Go-http-client: default Go UA — seen exclusively hitting FrontPage/SVN artifact and
+                    # canary-token probes (.svn, _vti_pvt, zzcanary-*) in the same sweep as l9scan
+                    if ($http_user_agent ~* "^curl/|python-requests/|TLM-Audit-Scanner|nmap|nikto|sqlmap|nessus|qualys|burp|zaproxy|masscan|wpscan|nuclei|pathscan|l9scan|YUTAA-SCANNER-DEFUNCT|^Go-http-client/") {
+                        return 403;
+                    }
+
+                    # WordPress user-enumeration probe via query string on any path (?rest_route=/wp/v2/users/)
+                    # Not path-based, so it slips past every location block above and hits the SPA catch-all.
+                    if ($args ~* "^rest_route=") {
+                        return 404;
+                    }
+
+                    location /healthz {
+                        access_log off;
+                        return 200 'ok';
+                        add_header Content-Type text/plain always;
+                        add_header Access-Control-Allow-Origin '*' always;
+                    }
+
+                    # no-cache: browser always refetches the entry point
+                    # All security headers repeated — nginx drops server-level add_header
+                    # directives for any location that defines its own add_header.
+                    location = /index.html {
+                        add_header Cache-Control                "no-cache"                                  always;
+                        add_header Content-Security-Policy      "{{ $params.contentSecurityPolicy }}"       always;
+                        add_header X-Content-Type-Options       "nosniff"                                   always;
+                        add_header X-Frame-Options              "SAMEORIGIN"                                always;
+                        add_header X-XSS-Protection             "0"                                         always;
+                        add_header Referrer-Policy              "strict-origin-when-cross-origin"           always;
+                        add_header Permissions-Policy           "camera=(), microphone=(), geolocation=()"  always;
+                        # Angular production builds use media="print" onload="this.media='all'" on
+                        # stylesheet links as a render-performance trick. The onload attribute is an
+                        # inline event handler blocked by strict script-src CSP. Strip it at serve
+                        # time so the link becomes a plain <link rel="stylesheet"> — no unsafe-inline needed.
+                        sub_filter " media=\"print\" onload=\"this.media='all'\"" "";
+                        sub_filter_once off;
+                    }
+
+                    # immutable: hashed filenames change on each build
+                    location ~* \.(js|css|woff2|woff)$ {
+                        add_header Cache-Control                "public, max-age=31536000, immutable"       always;
+                        add_header Content-Security-Policy      "{{ $params.contentSecurityPolicy }}"       always;
+                        add_header X-Content-Type-Options       "nosniff"                                   always;
+                        add_header X-Frame-Options              "SAMEORIGIN"                                always;
+                        add_header X-XSS-Protection             "0"                                         always;
+                        add_header Referrer-Policy              "strict-origin-when-cross-origin"           always;
+                        add_header Permissions-Policy           "camera=(), microphone=(), geolocation=()"  always;
+                    }
+
+                    # no-cache: images are not content-hashed so must always revalidate
+                    location ~* \.(png|jpg|jpeg|gif|ico|svg)$ {
+                        add_header Cache-Control                "no-cache"                                  always;
+                        add_header Content-Security-Policy      "{{ $params.contentSecurityPolicy }}"       always;
+                        add_header X-Content-Type-Options       "nosniff"                                   always;
+                        add_header X-Frame-Options              "SAMEORIGIN"                                always;
+                        add_header X-XSS-Protection             "0"                                         always;
+                        add_header Referrer-Policy              "strict-origin-when-cross-origin"           always;
+                        add_header Permissions-Policy           "camera=(), microphone=(), geolocation=()"  always;
+                    }
+
+                    # Real static files the Angular CLI copies verbatim from each app's public/ dir
+                    # (robots.txt, PWA manifest) — without these, the default-deny rule below would
+                    # 404 them before the catch-all's try_files ever checks whether they exist on disk.
+                    # robots.txt is fetched by convention by crawlers regardless of HTML references;
+                    # site.webmanifest is explicitly linked via <link rel="manifest"> in several apps.
+                    location = /robots.txt {
+                        add_header Cache-Control "no-cache" always;
+                    }
+
+                    location ~* \.webmanifest$ {
+                        add_header Cache-Control "no-cache" always;
+                    }
+
+
+                    # CI/CD and container files with no extension for the default-deny rule to catch
+                    location ~* (^|/)(Jenkinsfile|Dockerfile)$ {
+                        return 404;
+                    }
+
+                    {{- if $apiProxyEnabled }}
+                    # API proxy: routes /api/ to in-cluster service (no public exposure needed)
+                    location /api/ {
+                        access_log /var/log/nginx/access.log api_proxy;
+                        proxy_pass http://{{ $params.apiProxy.upstream }}/;
+                        proxy_set_header Host $host;
+                        # Use Traefik's forwarded header — $remote_addr is Traefik's pod IP, not the client.
+                        proxy_set_header X-Real-IP $http_x_real_ip;
+                        proxy_set_header X-Forwarded-For $http_x_forwarded_for;
+                        proxy_set_header X-Forwarded-Proto $scheme;
+                        # SSE / long-poll support: disable buffering so streamed responses
+                        # reach the client immediately (e.g. /api/status/watch).
+                        proxy_buffering off;
+                        proxy_cache off;
+                        proxy_read_timeout 3600s;
+                        proxy_set_header Connection '';
+                        chunked_transfer_encoding on;
+                    }
+                    {{- end }}
+
+                    {{- range $params.apiProxies | default list }}
+                    # API proxy: routes {{ .path }}* to an in-cluster service (no public exposure needed)
+                    location {{ .path }} {
+                        access_log /var/log/nginx/access.log api_proxy;
+                        proxy_pass http://{{ .upstream }}/;
+                        proxy_set_header Host $host;
+                        # Use Traefik's forwarded header — $remote_addr is Traefik's pod IP, not the client.
+                        proxy_set_header X-Real-IP $http_x_real_ip;
+                        proxy_set_header X-Forwarded-For $http_x_forwarded_for;
+                        proxy_set_header X-Forwarded-Proto $scheme;
+                        proxy_buffering off;
+                        proxy_cache off;
+                        proxy_read_timeout 3600s;
+                        proxy_set_header Connection '';
+                        chunked_transfer_encoding on;
+                    }
+                    {{- end }}
+
+                    # Bare credential/log paths with no extension for the default-deny rule to catch
+                    location ~* (^|/)(credentials|var/log)(/|$) {
+                        return 404;
+                    }
+
+                    # Endpoint/framework probes (Spring Boot, Symfony, Magento, etc.)
+                    # Note: _profiler intentionally has no ^ anchor — matches nested paths like /symfony/public/_profiler/
+                    # ";" is included as a terminator alongside "/" — matrix-parameter paths like
+                    # /actuator;/env; otherwise slip past the "/" anchor and hit the SPA catch-all.
+                    location ~* "(^/actuator(/|;|$)|^/jolokia(/|;|$)|^/swagger(/|;|$)|^/openapi(/|;|$)|^/v2/_catalog(/|;|$)|^/v3/api-docs(/|;|$)|^/console(/|;|$)|^/telescope(/|;|$)|^/server-status$|/_profiler(/|;|$)|^/_environment(/|;|$)|^/rest/(V[0-9]+|default)(/|;|$))" {
+                        return 404;
+                    }
+
+                    # SSH key files accessed outside .ssh/ directories (e.g. /devops/id_dsa, /pki/id_ecdsa)
+                    # id_rsa etc. have no extension when the optional .pub suffix is absent
+                    location ~* /(id_rsa|id_dsa|id_ecdsa|id_ed25519)(\.pub)?$ {
+                        return 404;
+                    }
+
+                    # WordPress/CMS directory probes — return 404 instead of 200 via SPA catch-all
+                    # Prevents scanners from treating 200 as "WordPress is here, keep probing"
+                    location ~* ^/(wp-admin|wp-includes|wp-content|wp-login|wp-cron|wordpress|wp|backup|old|new|web|cms|sito|site|admin)(/|$) {
+                        return 404;
+                    }
+
+                    # PHP info/debug probes without extension (complements the *.php block)
+                    location ~* ^/(phpinfo|php-info|pinfo|server-info|server-status)(/|$) {
+                        return 404;
+                    }
+
+                    # Bare /env, /api/env, and env.* file variants seen in scanner traffic
+                    # (subsumes the narrower ^/env(/|\.) and exact `= /env` forms)
+                    location ~* ^/(api/)?env(/|\.|$) {
+                      return 404;
+                    }
+
+                    # Frontend toolchain probe variants
+                    location ~* ^/@vite/env(/|$) {
+                      return 404;
+                    }
+
+                    # Common typo scanner probe for /actuator/env
+                    location ~* ^/actutor/env(/|$) {
+                      return 404;
+                    }
+
+                    # WordPress REST API probes
+                    location ~* ^/wp-json(/|$) {
+                        return 404;
+                    }
+
+                    # RSS/Atom feed probes — not served by SPAs, return 404 instead of 200 via catch-all
+                    location ~* ^/feed(/|$) {
+                        return 404;
+                    }
+
+                    # cPanel SSO / OpenID probes
+                    location ~* ^/openid_connect(/|$) {
+                        return 404;
+                    }
+
+                    # Generic setup/install/discovery path probes — return 404 instead of 200 via catch-all
+                    location ~* ^/(setup|install|installer|installation|wizard|admin/setup|api/user|api/v[0-9]+/user|_internal)(/|$) {
+                        return 404;
+                    }
+
+                    # Laravel Ignition debug/RCE endpoints
+                    location ~* ^/_ignition(/|$) {
+                        return 404;
+                    }
+
+                    # /_env, /__env env-dump path variants
+                    location ~* ^/__?env(/|$) {
+                        return 404;
+                    }
+
+                    # /manage/env and similar env management paths
+                    location ~* ^/manage/env(/|$) {
+                        return 404;
+                    }
+
+                    # Symfony config package paths — /config/packages/, /app/config/
+                    location ~* ^/(app/)?config/(packages|routes|services|security)(/|$) {
+                        return 404;
+                    }
+
+                    # MCP/SSE endpoint probes — SPAs don't serve these; prevent catch-all 200
+                    location ~* ^/(sse|mcp)(/|$) {
+                        return 404;
+                    }
+
+                    # Default-deny: assumes no XSpa app's client-side router defines a route with a
+                    # dot in a path segment, so any request whose last segment looks like a filename
+                    # (has a `.ext` suffix) or starts with a dotfile is a probe, not real navigation.
+                    # This replaces enumerating every new credential/config filename scanners try — one
+                    # rule instead of one commit per signature. The specific extension/asset blocks
+                    # above still take priority since nginx picks the first matching regex location in
+                    # file order. When onboarding a new XSpa instance, confirm its router doesn't use
+                    # dotted route segments before relying on this default.
+                    location ~ /\.well-known/acme-challenge/ {
+                        try_files $uri $uri/ /index.html;
+                    }
+
+                    location ~ /\. {
+                        return 404;
+                    }
+
+                    location ~* \.[^./]+$ {
+                        return 404;
+                    }
+
+                    # SPA catch-all: client-side router handles unmatched paths
+                    location / {
+                        try_files $uri $uri/ /index.html;
+                    }
+                }
+            ---
+            # --- ServiceAccount ---
+            # Dedicated SA per XSpa instance — pods do not use the namespace default SA.
+            apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: serviceaccount
+                gotemplating.fn.crossplane.io/ready: "True"
+            ---
+            # --- Deployment ---
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $namespace }}
+              labels:
+                app: xspa
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: deployment
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              replicas: {{ $params.replicas | default 1 }}
+              selector:
+                matchLabels:
+                  app: xspa
+                  instance: {{ $name }}
+              template:
+                metadata:
+                  labels:
+                    app: xspa
+                    instance: {{ $name }}
+                spec:
+                  serviceAccountName: {{ $name }}
+                  containers:
+                    - name: spa
+                      image: {{ $params.image }}
+                      imagePullPolicy: Always
+                      ports:
+                        - containerPort: 80
+                      resources:
+                        requests:
+                          cpu: {{ get $sizeRes "cpuReq" }}
+                          memory: {{ get $sizeRes "memReq" }}
+                        limits:
+                          cpu: {{ get $sizeRes "cpuLim" }}
+                          memory: {{ get $sizeRes "memLim" }}
+                      readinessProbe:
+                        httpGet:
+                          path: /healthz
+                          port: 80
+                        initialDelaySeconds: 5
+                        periodSeconds: 10
+                      volumeMounts:
+                        - name: nginx-config
+                          mountPath: /etc/nginx/conf.d/default.conf
+                          subPath: default.conf
+                          readOnly: true
+                  volumes:
+                    - name: nginx-config
+                      configMap:
+                        name: {{ $name }}-nginx-config
+            ---
+            # --- Service ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $namespace }}
+              labels:
+                app: xspa
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: service
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                app: xspa
+                instance: {{ $name }}
+              ports:
+                - port: 80
+                  targetPort: 80
+            ---
+            # --- Rate limit Middleware ---
+            # Caps requests per client to 60/min with a burst of 20.
+            # Blocks credential-scanning bots (~8 req/s) while being transparent
+            # to real users (a full SPA page load is ~10-20 requests over 10-30s).
+            # Keyed on CF-Connecting-IP: public traffic all arrives from the two
+            # cloudflared pod IPs, so the default remote-address key would put every
+            # visitor in one shared bucket. Requests without the header (direct
+            # homelab-network access) share a single bucket.
+            apiVersion: traefik.io/v1alpha1
+            kind: Middleware
+            metadata:
+              name: {{ $name }}-ratelimit
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: ratelimit-middleware
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              rateLimit:
+                average: 60
+                burst: 20
+                period: 1m
+                sourceCriterion:
+                  requestHeaderName: CF-Connecting-IP
+            ---
+            # --- Ingress ---
+            # tlsIssuer: local-lab-ca-issuer for .local.lab; letsencrypt-prod for public hosts
+            # tlsSecret: skip issuance and reference a pre-existing secret (e.g. demo slot certs)
+            apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: ingress
+                gotemplating.fn.crossplane.io/ready: "True"
+                traefik.ingress.kubernetes.io/router.entrypoints: websecure
+                traefik.ingress.kubernetes.io/router.tls: "true"
+                traefik.ingress.kubernetes.io/router.middlewares: "{{ $namespace }}-{{ $name }}-ratelimit@kubernetescrd"
+                {{- if not $params.tlsSecret }}
+                cert-manager.io/cluster-issuer: {{ $params.tlsIssuer | default "local-lab-ca-issuer" }}
+                {{- end }}
+            spec:
+              ingressClassName: traefik
+              tls:
+                - hosts:
+                    - {{ $params.host }}
+                  secretName: {{ if $params.tlsSecret }}{{ $params.tlsSecret }}{{ else }}{{ $name }}-tls{{ end }}
+              rules:
+                - host: {{ $params.host }}
+                  http:
+                    paths:
+                      - path: /
+                        pathType: Prefix
+                        backend:
+                          service:
+                            name: {{ $name }}
+                            port:
+                              number: 80

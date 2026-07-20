@@ -1,0 +1,50 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xsubscription
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: XSubscription
+  mode: Pipeline
+  pipeline:
+    - step: render-subscription
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: | # yaml
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $params := $xr.spec.parameters }}
+            {{- /* Derive stream name from topicRef.name: foo-events → FOO-EVENTS */}}
+            {{- /* Use explicit streamName if provided; fall back to uppercased topicRef.name.
+                 This handles XTopics whose streamName differs from their metadata.name. */}}
+            {{- $stream := ($params.topicRef.streamName | default ($params.topicRef.name | upper)) }}
+            # --- Consumer ---
+            # Durable pull consumer — NATS remembers this cursor's position across
+            # pod restarts and redeployments. The XApi that reads this subscription
+            # binds to $name as its consumer name and pulls messages explicitly.
+            #
+            # ackPolicy: explicit → app must ack each message; redelivered after ackWait
+            # deliverPolicy: all  → replay from stream start on first connect
+            apiVersion: jetstream.nats.io/v1beta2
+            kind: Consumer
+            metadata:
+              name: {{ $name }}
+              namespace: nats
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: consumer
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              streamName: {{ $stream }}
+              durableName: {{ $name }}
+              filterSubject: {{ $params.filterSubject | default ">" | quote }}
+              deliverPolicy: {{ $params.deliverPolicy | default "all" }}
+              ackPolicy: {{ $params.ackPolicy | default "explicit" }}
+              ackWait: "30s"
+              maxAckPending: -1
+

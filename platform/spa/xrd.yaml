@@ -1,13 +1,13 @@
 apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
-  name: xspas.platform.local.lab
+  name: spas.platform.local.lab
 spec:
   group: platform.local.lab
   scope: Cluster
   names:
-    kind: XSpa
-    plural: xspas
+    kind: Spa
+    plural: spas
   versions:
     - name: v1alpha1
       served: true
@@ -66,7 +66,7 @@ spec:
                       description: "Namespace to deploy into. Must already exist (created by the tenant's namespace.yaml)."
                     apiProxy:
                       type: object
-                      description: "Use when this SPA has a companion XApi. Nginx routes /api/* requests to it in-cluster — the API never needs its own public hostname or Cloudflare Tunnel entry. Only the SPA is internet-facing; the API stays cluster-internal."
+                      description: "Use when this SPA has a companion Api. Nginx routes /api/* requests to it in-cluster — the API never needs its own public hostname or Cloudflare Tunnel entry. Only the SPA is internet-facing; the API stays cluster-internal."
                       properties:
                         enabled:
                           type: boolean

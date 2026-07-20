@@ -1,13 +1,13 @@
 apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
-  name: xapis.platform.local.lab
+  name: apis.platform.local.lab
 spec:
   group: platform.local.lab
   scope: Cluster
   names:
-    kind: XApi
-    plural: xapis
+    kind: Api
+    plural: apis
   versions:
     - name: v1alpha1
       served: true
@@ -24,38 +24,38 @@ spec:
                   properties:
                     objectStorageRefs:
                       type: array
-                      description: "References to XObjectStorage instances to bind. Each ref creates an IAM role and binding Secret. The first ref mounts at /bindings/object-storage/, subsequent refs at /bindings/object-storage-1/, /bindings/object-storage-2/, and so on."
+                      description: "References to ObjectStorage instances to bind. Each ref creates an IAM role and binding Secret. The first ref mounts at /bindings/object-storage/, subsequent refs at /bindings/object-storage-1/, /bindings/object-storage-2/, and so on."
                       items:
                         type: object
                         required: [name]
                         properties:
                           name:
                             type: string
-                            description: "metadata.name of the XObjectStorage instance."
+                            description: "metadata.name of the ObjectStorage instance."
                     sqlRef:
                       type: object
-                      description: "Reference to an existing XSql instance to bind. The platform mounts its Secret at /bindings/sql/."
+                      description: "Reference to an existing Sql instance to bind. The platform mounts its Secret at /bindings/sql/."
                       required: [name]
                       properties:
                         name:
                           type: string
-                          description: "metadata.name of the XSql instance."
+                          description: "metadata.name of the Sql instance."
                         backend:
                           type: string
                           default: private-cloud
                           enum: [private-cloud, public-cloud]
-                          description: "Must match the XSql instance's spec.parameters.backend. When public-cloud, the sidecar exchanges the SVID for STS credentials so the app can generate an RDS auth token."
+                          description: "Must match the Sql instance's spec.parameters.backend. When public-cloud, the sidecar exchanges the SVID for STS credentials so the app can generate an RDS auth token."
                     nosqlRef:
                       type: object
-                      description: "Reference to an existing XNoSql instance to bind. The platform mounts its Secret at /bindings/nosql/."
+                      description: "Reference to an existing NoSql instance to bind. The platform mounts its Secret at /bindings/nosql/."
                       required: [name]
                       properties:
                         name:
                           type: string
-                          description: "metadata.name of the XNoSql instance."
+                          description: "metadata.name of the NoSql instance."
                     cache:
                       type: object
-                      description: "Cache options. Lifecycle tied to this XApi. If omitted, no cache is created."
+                      description: "Cache options. Lifecycle tied to this Api. If omitted, no cache is created."
                       properties:
                         enabled:
                           type: boolean
@@ -110,26 +110,26 @@ spec:
                           description: "Name of the Secret."
                     topicRef:
                       type: object
-                      description: "Optional reference to an XTopic instance this API publishes to. When set, the platform wires the connection automatically."
+                      description: "Optional reference to a Topic instance this API publishes to. When set, the platform wires the connection automatically."
                       required: [name]
                       properties:
                         name:
                           type: string
-                          description: "metadata.name of the XTopic instance (e.g. foo-events)."
+                          description: "metadata.name of the Topic instance (e.g. foo-events)."
                         streamName:
                           type: string
-                          description: "NATS stream name as defined in the XTopic's spec.parameters.streamName. Defaults to topicRef.name uppercased when omitted. Set explicitly when the XTopic's streamName differs from its metadata.name."
+                          description: "NATS stream name as defined in the Topic's spec.parameters.streamName. Defaults to topicRef.name uppercased when omitted. Set explicitly when the Topic's streamName differs from its metadata.name."
                     namespace:
                       type: string
                       description: "Namespace to deploy into. Must already exist (created by the tenant's namespace.yaml)."
                     subscriptionRef:
                       type: object
-                      description: "Optional reference to an XSubscription instance this API consumes from. When set, the platform wires the consumer binding automatically."
+                      description: "Optional reference to a Subscription instance this API consumes from. When set, the platform wires the consumer binding automatically."
                       required: [name]
                       properties:
                         name:
                           type: string
-                          description: "metadata.name of the XSubscription instance (e.g. nms-metrics-consumer)."
+                          description: "metadata.name of the Subscription instance (e.g. nms-metrics-consumer)."
                     replicas:
                       type: integer
                       default: 1
@@ -147,7 +147,7 @@ spec:
                     enforce:
                       type: boolean
                       default: false
-                      description: "When true, this app is locked to default-deny: only connections explicitly granted (via XConnection) reach it. When false (default), the app runs meshed but permissive — nothing is denied. Only set true once every inbound flow to this app is registered."
+                      description: "When true, this app is locked to default-deny: only connections explicitly granted (via Connection) reach it. When false (default), the app runs meshed but permissive — nothing is denied. Only set true once every inbound flow to this app is registered."
                   required: [image, namespace]
               required:
                 - parameters

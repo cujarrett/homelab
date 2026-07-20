@@ -1,8 +1,8 @@
-# XSubscription
+# Subscription
 
-Provisions a durable message cursor on an XTopic. Tracks delivery position across restarts so no messages are missed or replayed.
+Provisions a durable message cursor on a Topic. Tracks delivery position across restarts so no messages are missed or replayed.
 
-This is infrastructure only — it does not deploy any compute. Use an XApi instance with `subscriptionRef` to deploy the workload that reads from this cursor.
+This is infrastructure only — it does not deploy any compute. Use an Api instance with `subscriptionRef` to deploy the workload that reads from this cursor.
 
 ## What it provisions
 
@@ -12,8 +12,8 @@ This is infrastructure only — it does not deploy any compute. Use an XApi inst
 
 | Field | Required | Default | Description |
 |---|---|---|---|
-| `topicRef.name` | yes | — | `metadata.name` of the XTopic to consume from. |
-| `topicRef.streamName` | no | — | NATS stream name from the XTopic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the XTopic's streamName differs from its metadata.name. |
+| `topicRef.name` | yes | — | `metadata.name` of the Topic to consume from. |
+| `topicRef.streamName` | no | — | NATS stream name from the Topic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the Topic's streamName differs from its metadata.name. |
 | `filterSubject` | no | `>` | Subject filter. `*` = one token, `>` = one or more. e.g. `foo.event.snapshot` |
 | `deliverPolicy` | no | `all` | `all` = replay from start. `new` = only new messages. `last` = most recent only. `lastPerSubject` = most recent per subject. |
 | `ackPolicy` | no | `explicit` | `explicit` = app must ack per message (at-least-once). `all` = cumulative ack. `none` = fire-and-forget. |
@@ -24,7 +24,7 @@ Ack wait timeout is hardcoded at 30 seconds — unacked messages are redelivered
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
-kind: XSubscription
+kind: Subscription
 metadata:
   name: foo-consumer
 spec:
@@ -34,11 +34,11 @@ spec:
     filterSubject: "foo.event.>"
 ```
 
-Paired with an XApi instance to deploy the workload:
+Paired with an Api instance to deploy the workload:
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
-kind: XApi
+kind: Api
 metadata:
   name: foo-consumer
 spec:
@@ -53,8 +53,8 @@ spec:
 
 ```bash
 # Check readiness
-kubectl get xsubscription foo-consumer
+kubectl get subscription foo-consumer
 
-# Check pod (deployed by the paired XApi)
+# Check pod (deployed by the paired Api)
 kubectl get pods -n foo
 ```

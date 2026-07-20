@@ -1,11 +1,11 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: xsql
+  name: sql
 spec:
   compositeTypeRef:
     apiVersion: platform.local.lab/v1alpha1
-    kind: XSql
+    kind: Sql
   mode: Pipeline
   pipeline:
     - step: load-environment-configs
@@ -147,7 +147,7 @@ spec:
                 - port: 5432
                   targetPort: 5432
             ---
-            # Same secret shape as cloud so XApi mounts it identically in both environments
+            # Same secret shape as cloud so Api mounts it identically in both environments
             apiVersion: v1
             kind: Secret
             metadata:
@@ -187,7 +187,7 @@ spec:
             metadata:
               # Implementation secret — kept out of the tenant namespace so only the
               # platform can read the RDS master password. Name is namespace-qualified
-              # to avoid collisions between same-named XSqls in different namespaces.
+              # to avoid collisions between same-named Sqls in different namespaces.
               name: {{ $ns }}-{{ $name }}-master-secret
               namespace: crossplane-system
               annotations:

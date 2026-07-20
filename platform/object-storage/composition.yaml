@@ -1,11 +1,11 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: xobjectstorage
+  name: object-storage
 spec:
   compositeTypeRef:
     apiVersion: platform.local.lab/v1alpha1
-    kind: XObjectStorage
+    kind: ObjectStorage
   mode: Pipeline
   pipeline:
     - step: render-aws-resources

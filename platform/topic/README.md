@@ -1,11 +1,11 @@
-# XTopic
+# Topic
 
 Crossplane composition that provisions a durable, persistent message stream.
 
 ## What it provisions
 - **Message stream** — a named, durable channel that captures published events. Supports wildcards so a single stream can receive events from multiple subjects (e.g. `foo.events.>` captures `foo.events.created`, `foo.events.updated`, etc.).
 
-The `XSubscription` type (see [`platform/subscription/`](../subscription/)) deploys consumer applications that subscribe to streams created by this XRD.
+The `Subscription` type (see [`platform/subscription/`](../subscription/)) deploys consumer applications that subscribe to streams created by this XRD.
 
 ## Parameters
 
@@ -22,7 +22,7 @@ Replicas and max bytes are not configurable — the composition hardcodes 3 repl
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
-kind: XTopic
+kind: Topic
 metadata:
   name: foo-topic
 spec:
@@ -38,7 +38,7 @@ Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 
 ## Kafka / AWS equivalent concepts
 
-| XTopic parameter | NATS term | Kafka comparable | AWS comparable |
+| Topic parameter | NATS term | Kafka comparable | AWS comparable |
 |---|---|---|---|
 | `streamName` | Stream | Topic | Kinesis stream name |
 | `subjects` | Subjects (with wildcards) | Topic partitions filter | Kinesis shard filter |
@@ -51,8 +51,8 @@ Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 
 ```bash
 # Check XR status and readiness
-kubectl get xtopics
+kubectl get topics
 
 # Describe a specific topic XR
-kubectl describe xtopic foo-topic
+kubectl describe topic foo-topic
 ```
