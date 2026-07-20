@@ -3,12 +3,14 @@
   "extends": ["config:recommended"],
   "assignees": ["cujarrett"],
   "reviewers": ["cujarrett"],
-  "enabledManagers": ["argocd", "crossplane", "kubernetes", "regex"],
+  "enabledManagers": ["argocd", "crossplane", "kubernetes","custom.regex"],
   "minimumReleaseAge": "7 days",
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["platform/api/composition\\.yaml"],
+      "managerFilePatterns": [
+        "/platform/api/composition\\.yaml/"
+      ],
       "matchStrings": [
         "image: ghcr\\.io/cujarrett/aws-spiffe-helper:(?<currentValue>[^\\s@]+)(@(?<currentDigest>sha256:[0-9a-f]+))?"
       ],
@@ -24,15 +26,19 @@
     }
   ],
   "argocd": {
-    "fileMatch": [
-      "cluster/argocd/.+\\.yaml$",
-      "cluster/monitoring/.+\\.yaml$"
+    "managerFilePatterns": [
+      "/cluster/argocd/.+\\.yaml$/",
+      "/cluster/monitoring/.+\\.yaml$/"
     ]
   },
   "crossplane": {
-    "fileMatch": ["cluster/crossplane/.+\\.yaml$"]
+    "managerFilePatterns": [
+      "/cluster/crossplane/.+\\.yaml$/"
+    ]
   },
   "kubernetes": {
-    "fileMatch": ["cluster/.+/.+\\.yaml$"]
+    "managerFilePatterns": [
+      "/cluster/.+/.+\\.yaml$/"
+    ]
   }
 }
