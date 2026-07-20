@@ -10,9 +10,7 @@ metadata:
   name: platform-exporter
 rules:
   - apiGroups: ["platform.local.lab"]
-    # Old x-prefixed plurals kept alongside the new ones during the kind rename migration —
-    # drop the x* entries once the legacy XRDs are removed.
-    resources: ["apis", "spas", "sqls", "nosqls", "objectstorages", "caches", "topics", "subscriptions", "xapis", "xspas", "xsqls", "xnosqls", "xobjectstorages", "xcaches", "xtopics", "xsubscriptions"]
+    resources: ["apis", "spas", "sqls", "nosqls", "objectstorages", "caches", "topics", "subscriptions"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["dynamodb.aws.upbound.io"]
     resources: ["tables"]
