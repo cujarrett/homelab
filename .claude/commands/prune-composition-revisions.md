@@ -5,7 +5,7 @@ description: Delete stale Crossplane composition revisions, keeping the latest 3
 Delete all but the latest 3 CompositionRevisions for each composition in the cluster:
 
 ```bash
-for comp in spa-composition wordpressplatform-composition xapi xcache xobjectstorage xsubscription xtopic; do
+for comp in api spa wordpress cache sql nosql object-storage topic subscription connection; do
   count=$(kubectl get compositionrevision -l crossplane.io/composition-name=$comp --no-headers 2>/dev/null | wc -l | tr -d ' ')
   delete=$((count - 3))
   if [ "$delete" -gt 0 ]; then
