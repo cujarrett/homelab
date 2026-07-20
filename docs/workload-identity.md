@@ -14,7 +14,7 @@ The goal: every pod gets its own short-lived AWS identity, scoped to exactly the
 
 Three systems work together.
 
-**[SPIRE](https://spiffe.io/docs/latest/spire-about/spire-concepts/)** is the certificate authority. It's configured to issue certificates only to XApi and XSpa pods (identified by `app: xapi` or `app: xspa` labels set by their compositions — see [`cluster/argocd/spire.yaml`](../cluster/argocd/spire.yaml) `identities.clusterSPIFFEIDs.homelab-workloads`). For these registered pods, SPIRE checks with the kubelet to verify they're actually running, then issues a short-lived X.509 certificate whose URI SAN is the pod's SPIFFE ID — `spiffe://homelab.local/ns/{namespace}/sa/{service-account}`. That URI is the identity.
+**[SPIRE](https://spiffe.io/docs/latest/spire-about/spire-concepts/)** is the certificate authority. It's configured to issue certificates only to Api and Spa pods (identified by `app: xapi` or `app: spa` labels set by their compositions — see [`cluster/argocd/spire.yaml`](../cluster/argocd/spire.yaml) `identities.clusterSPIFFEIDs.homelab-workloads`). For these registered pods, SPIRE checks with the kubelet to verify they're actually running, then issues a short-lived X.509 certificate whose URI SAN is the pod's SPIFFE ID — `spiffe://homelab.local/ns/{namespace}/sa/{service-account}`. That URI is the identity.
 
 **[IAM Roles Anywhere](https://aws.amazon.com/iam/roles-anywhere/)** is AWS's bridge between certificate-based identity and IAM. You register a trust anchor (the SPIRE CA cert). AWS validates the cert chain and reads the URI SAN as a principal tag. IAM trust policies can then condition on that tag — locking a role to one exact pod identity.
 
@@ -44,7 +44,7 @@ Crossplane runs a two-pass chain per binding. No imperative scripting; Crossplan
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 40, 'rankSpacing': 60}}}%%
 flowchart LR
-    xr["XApi XR\napplied"]
+    xr["Api XR\napplied"]
     role["IAM Role\npass 1\ntrust: spiffe://…/ns/foo/sa/foo-api\ninline policy: this bucket only"]
     profile["RolesAnywhere Profile\npass 1 — alongside role\nrole ARN predicted from naming convention"]
     secret["Binding Secret\npass 2 — after profile ARN known\nrole-arn · profile-arn · resource metadata\nno credentials"]
@@ -60,7 +60,7 @@ flowchart LR
 
 **Pass 2: Binding Secret.** Once the profile ARN is visible in observed state, Crossplane writes a Kubernetes Secret containing the role ARN, profile ARN, and resource metadata (bucket name, table name, etc). The pod's init container waits for this Secret to sync to its volume, then the app starts.
 
-**Per-binding chain.** This two-pass sequence repeats for every binding. An XApi with three object storage refs, two nosql refs, and one cache binding gets six separate chains running in parallel — one for each resource. If one binding stalls (e.g., AWS API throttle), the others keep going.
+**Per-binding chain.** This two-pass sequence repeats for every binding. An Api with three object storage refs, two nosql refs, and one cache binding gets six separate chains running in parallel — one for each resource. If one binding stalls (e.g., AWS API throttle), the others keep going.
 
 ### IAM Role
 
@@ -75,17 +75,17 @@ Only a certificate with that exact URI SAN — signed by the cluster's SPIRE CA 
 > **Choice: one role per binding, not a shared role**
 > A shared role means any workload can reach any resource. Per-binding roles mean the object-storage role cannot touch DynamoDB. A compromised pod's blast radius is one resource.
 
-> **Choice: XApi creates the role, not XObjectStorage or XNoSql**
-> The trust policy needs the XApi's service account name and namespace. XObjectStorage and XNoSql don't know who will consume them — any XApi can reference them. XApi creates the role, locks it to itself, writes the ARN into the binding Secret.
+> **Choice: Api creates the role, not ObjectStorage or NoSql**
+> The trust policy needs the Api's service account name and namespace. ObjectStorage and NoSql don't know who will consume them — any Api can reference them. Api creates the role, locks it to itself, writes the ARN into the binding Secret.
 >
-> **Exception: XSql creates its own IAM roles.** Unlike XObjectStorage and XNoSql, the XSql binding Secret must include RDS connection details (host, port, username) that are only known after RDS provisioning completes. XApi has no way to read another XR's status, so XSql manages its own IAM. Consuming XApis declare themselves in `consumerServiceAccounts` — each gets its own IAM role and binding Secret scoped to its SA's exact SPIFFE ID.
+> **Exception: Sql creates its own IAM roles.** Unlike ObjectStorage and NoSql, the Sql binding Secret must include RDS connection details (host, port, username) that are only known after RDS provisioning completes. Api has no way to read another XR's status, so Sql manages its own IAM. Consuming Apis declare themselves in `consumerServiceAccounts` — each gets its own IAM role and binding Secret scoped to its SA's exact SPIFFE ID.
 
 ### RolesAnywhere Profile
 
 A RolesAnywhere Profile is AWS's configuration object that links an IAM role to a trust anchor (your SPIRE CA) and sets the credential session duration. It's the bridge that tells AWS "when you see a certificate signed by this CA with this SPIFFE ID, you can exchange it for this role's credentials, valid for 1 hour." Each binding gets its own profile. The profile is created in the same reconcile pass as the IAM role — the role ARN is computed deterministically from the naming convention rather than read from observed state, so both resources are created together.
 
 > **Choice: one profile per binding, not a shared platform profile**
-> A shared profile's `roleArns` list is an exact-match allowlist with no wildcards. Every new binding would need to add its role ARN to the shared profile — a coordination point that doesn't compose. Per-binding profiles let each XApi manage its own identity independently.
+> A shared profile's `roleArns` list is an exact-match allowlist with no wildcards. Every new binding would need to add its role ARN to the shared profile — a coordination point that doesn't compose. Per-binding profiles let each Api manage its own identity independently.
 
 <details>
 <summary>Crossplane Provider Workaround: The nil UUID Pattern</summary>
@@ -114,7 +114,7 @@ region:       us-east-1
 > An ARN without a valid SVID is useless. If this Secret is accidentally logged or read by another pod, nothing is compromised. The SVID is what proves identity; AWS issues credentials at runtime in exchange for it.
 
 > **Note: `trust-anchor-arn` is not in the Secret**
-> The trust anchor ARN embeds the AWS account ID and identifies the SPIRE CA cert registered in AWS. It's injected into the sidecar at runtime from a Crossplane EnvironmentConfig (configured at the platform level in the `aws-platform-config` EnvironmentConfig, loaded by the XApi composition). It never appears in git or in a binding Secret visible to tenants—only the platform operator knows it.
+> The trust anchor ARN embeds the AWS account ID and identifies the SPIRE CA cert registered in AWS. It's injected into the sidecar at runtime from a Crossplane EnvironmentConfig (configured at the platform level in the `aws-platform-config` EnvironmentConfig, loaded by the Api composition). It never appears in git or in a binding Secret visible to tenants—only the platform operator knows it.
 
 > **Note: `platform-` bucket prefix**
 > IAM cannot read S3 bucket tags at auth time — conditions must use ARNs. The `platform-{namespace}-{name}` naming convention lets inline policies scope to the exact bucket ARN without wildcards.
@@ -192,6 +192,6 @@ These decisions are sticky: the SPIRE trust domain bakes itself into every SVID 
 | Decision | Why it's sticky |
 |---|---|
 | SPIRE trust domain (`homelab.local`) | Baked into every SVID and every IAM trust policy condition. Changing it requires re-registering the trust anchor in AWS and updating every role trust policy. |
-| One credential sidecar per XApi, multiple bindings per sidecar | The sidecar manages all AWS resource bindings for a single XApi (object storage, nosql, cache, sql). Each binding gets its own IAM role scoped to this XApi's SPIFFE ID. A cross-XApi shared sidecar would require merging IAM permissions across workloads, breaking least-privilege. |
+| One credential sidecar per Api, multiple bindings per sidecar | The sidecar manages all AWS resource bindings for a single Api (object storage, nosql, cache, sql). Each binding gets its own IAM role scoped to this Api's SPIFFE ID. A cross-Api shared sidecar would require merging IAM permissions across workloads, breaking least-privilege. |
 
 ---

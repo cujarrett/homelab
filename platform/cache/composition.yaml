@@ -1,11 +1,11 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: xcache
+  name: cache
 spec:
   compositeTypeRef:
     apiVersion: platform.local.lab/v1alpha1
-    kind: XCache
+    kind: Cache
   mode: Pipeline
   pipeline:
     - step: load-environment-configs
@@ -108,7 +108,7 @@ spec:
                 - port: 6379
                   targetPort: 6379
             ---
-            # Same secret shape as cloud so XApi mounts it identically in both environments
+            # Same secret shape as cloud so Api mounts it identically in both environments
             apiVersion: v1
             kind: Secret
             metadata:
@@ -125,14 +125,14 @@ spec:
               port: "6379"
             {{- else }}
             {{- $consumerSA := $xr.spec.parameters.consumerServiceAccount }}
-            {{- /* Trust policy scoped to the exact XApi SA via StringEquals on the SPIFFE URI.   */}}
-            {{- /* consumerServiceAccount is passed by the XApi composition when creating XCache.  */}}
+            {{- /* Trust policy scoped to the exact Api SA via StringEquals on the SPIFFE URI.   */}}
+            {{- /* consumerServiceAccount is passed by the Api composition when creating Cache.  */}}
             {{- $cacheTrustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringEquals" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $consumerSA))))) | toJson }}
             {{- $userId := printf "%s-user" $name }}
             {{- $userGroupId := $name }}
             {{- /* ElastiCache limits replication group IDs to 40 chars. Fall back to a   */}}
             {{- /* deterministic hash when the conventional id is too long, same pattern  */}}
-            {{- /* as IAM role names over 64 chars in the XApi composition.               */}}
+            {{- /* as IAM role names over 64 chars in the Api composition.               */}}
             {{- $rawRgId := printf "crossplane-%s-%s" $ns $name }}
             {{- $rgId := $rawRgId }}
             {{- if gt (len $rawRgId) 40 }}
@@ -183,7 +183,7 @@ spec:
                   App: {{ $name }}
                   Namespace: {{ $ns }}
             ---
-            # IAM Role for ElastiCache IAM auth. Trust scoped to the exact XApi service account.
+            # IAM Role for ElastiCache IAM auth. Trust scoped to the exact Api service account.
             apiVersion: iam.aws.upbound.io/v1beta1
             kind: Role
             metadata:

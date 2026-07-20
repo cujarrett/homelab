@@ -1,10 +1,10 @@
 ---
-description: Review XSpa and XWordpress pod logs for security issues — credential leaks, scanner 200s, brute-force attempts, and hardening gaps.
+description: Review Spa and Wordpress pod logs for security issues — credential leaks, scanner 200s, brute-force attempts, and hardening gaps.
 ---
 
-Review the last 7 days of logs across all XSpa and XWordpress pods for security issues.
+Review the last 7 days of logs across all Spa and Wordpress pods for security issues.
 
-## XSpa pods
+## Spa pods
 
 Pull nginx (`-c spa`) logs for each namespace:
 - `js-pollock`
@@ -22,12 +22,12 @@ For each, check:
 
 4. **New probe patterns not covered by existing blocks** — compare against the blocked paths in [platform/spa/composition.yaml](../../platform/spa/composition.yaml). If a probe returns 200 via the SPA catch-all (`try_files`), a new nginx `location` block is needed.
 
-5. **Stale running config** — before concluding a probe path is a hardening gap, check whether it's already blocked in the current composition source but just not live yet. Compare live config (`kubectl exec deploy/<name> -n <namespace> -c spa -- nginx -T`) against [platform/spa/composition.yaml](../../platform/spa/composition.yaml). If the block already exists in source but is missing live, this is a stale-pod issue, not a missing-rule issue — the fix is a rollout restart, not a new `location` block. There's no ConfigMap-hash annotation on the XSpa Deployment template, so nginx.conf changes never trigger an automatic rollout; any pod that hasn't restarted since the fixing commit landed will keep leaking. Give the exact restart command:
+5. **Stale running config** — before concluding a probe path is a hardening gap, check whether it's already blocked in the current composition source but just not live yet. Compare live config (`kubectl exec deploy/<name> -n <namespace> -c spa -- nginx -T`) against [platform/spa/composition.yaml](../../platform/spa/composition.yaml). If the block already exists in source but is missing live, this is a stale-pod issue, not a missing-rule issue — the fix is a rollout restart, not a new `location` block. There's no ConfigMap-hash annotation on the Spa Deployment template, so nginx.conf changes never trigger an automatic rollout; any pod that hasn't restarted since the fixing commit landed will keep leaking. Give the exact restart command:
 ```bash
 kubectl rollout restart deployment/<name> -n <namespace>
 ```
 
-## XWordpress pods
+## Wordpress pods
 
 Pull logs for the wordpress container in each namespace:
 - `mattjarrett-com`

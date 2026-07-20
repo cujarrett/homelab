@@ -1,4 +1,4 @@
-# XApi
+# Api
 
 Crossplane composition that deploys an API server (Go, Node, GraphQL, etc.) with optional bindings to platform data resources.
 
@@ -9,9 +9,9 @@ Crossplane composition that deploys an API server (Go, Node, GraphQL, etc.) with
 - **Role + RoleBinding** — least-privilege RBAC: `get` only on the exact Secrets this instance mounts
 - **ServiceMonitor** — Prometheus scrape target on the metrics port
 - **Ingress** *(optional)* — Traefik `websecure` with TLS; only created when `host` is set. cert-manager issues a certificate via `tlsIssuer` unless `tlsSecret` points to a pre-existing Secret, in which case issuance is skipped.
-- **XCache** *(optional)* — short-lived cache cluster owned by this XApi; created and deleted alongside it
+- **Cache** *(optional)* — short-lived cache cluster owned by this Api; created and deleted alongside it
 
-`XObjectStorage`, `XSql`, and `XNoSql` are created independently and bound via refs. They outlive any one XApi. For `XObjectStorage` and `XNoSql`, this composition creates the IAM Role, RolesAnywhere Profile, and binding Secret when the ref is declared — their binding secrets only contain names, region, and ARNs, which XApi can compute. For `XSql`, those are created by the XSql composition itself, because its binding secret contains RDS connection details (host, port, username) that are only known after RDS provisioning. The tenant lists consuming XApi names in `consumerServiceAccounts` on the XSql — each gets its own IAM role and binding secret scoped to its SA.
+`ObjectStorage`, `Sql`, and `NoSql` are created independently and bound via refs. They outlive any one Api. For `ObjectStorage` and `NoSql`, this composition creates the IAM Role, RolesAnywhere Profile, and binding Secret when the ref is declared — their binding secrets only contain names, region, and ARNs, which Api can compute. For `Sql`, those are created by the Sql composition itself, because its binding secret contains RDS connection details (host, port, username) that are only known after RDS provisioning. The tenant lists consuming Api names in `consumerServiceAccounts` on the Sql — each gets its own IAM role and binding secret scoped to its SA.
 
 The namespace is owned by the tenant — created by `namespace.yaml` in the tenant directory, not by this composition.
 
@@ -31,22 +31,22 @@ The namespace is owned by the tenant — created by `namespace.yaml` in the tena
 | `tlsIssuer` | no | `local-lab-ca-issuer` | cert-manager ClusterIssuer. `local-lab-ca-issuer` for internal `.local.lab` hostnames; `letsencrypt-prod` for public internet hosts. Ignored when `tlsSecret` is set. |
 | `tlsSecret` | no | — | Name of a pre-existing TLS Secret in the app namespace. When set, the Ingress references it directly and cert-manager issuance is skipped. Used by sandbox slots to reuse long-lived demo certs. |
 | `readinessCheckPath` | no | `/healthz` | HTTP path the readiness probe hits. Set to `/readyz` for apps that gate readiness on external dependencies. |
-| `cache.enabled` | no | `false` | Provision a cache cluster owned by this XApi. |
+| `cache.enabled` | no | `false` | Provision a cache cluster owned by this Api. |
 | `cache.backend` | no | `private-cloud` | `private-cloud`=in-cluster Redis, `public-cloud`=AWS ElastiCache. |
-| `objectStorageRefs` | no | — | Array of references to existing `XObjectStorage` instances. Each creates an IAM Role, RolesAnywhere Profile, and binding Secret. |
-| `sqlRef.name` | no | — | Name of an existing `XSql` instance to bind. |
-| `sqlRef.backend` | no | `private-cloud` | Must match the `XSql` instance's backend. When `public-cloud`, the sidecar exchanges the SVID for STS credentials for RDS IAM DB auth. |
-| `nosqlRef.name` | no | — | Name of an existing `XNoSql` instance to bind. Creates an IAM Role, RolesAnywhere Profile, and binding Secret. |
+| `objectStorageRefs` | no | — | Array of references to existing `ObjectStorage` instances. Each creates an IAM Role, RolesAnywhere Profile, and binding Secret. |
+| `sqlRef.name` | no | — | Name of an existing `Sql` instance to bind. |
+| `sqlRef.backend` | no | `private-cloud` | Must match the `Sql` instance's backend. When `public-cloud`, the sidecar exchanges the SVID for STS credentials for RDS IAM DB auth. |
+| `nosqlRef.name` | no | — | Name of an existing `NoSql` instance to bind. Creates an IAM Role, RolesAnywhere Profile, and binding Secret. |
 | `secretRef.name` | no | — | Name of a pre-existing Secret to inject into the container via `envFrom`. |
-| `topicRef.name` | no | — | Name of an `XTopic` this API publishes to. Injects `NATS_URL` and `NATS_STREAM` env vars. |
-| `topicRef.streamName` | no | — | NATS stream name from the XTopic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the XTopic's streamName differs from its metadata.name. |
-| `subscriptionRef.name` | no | — | Name of an `XSubscription` this API consumes from. Injects `NATS_URL` and `NATS_CONSUMER` env vars. |
+| `topicRef.name` | no | — | Name of an `Topic` this API publishes to. Injects `NATS_URL` and `NATS_STREAM` env vars. |
+| `topicRef.streamName` | no | — | NATS stream name from the Topic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the Topic's streamName differs from its metadata.name. |
+| `subscriptionRef.name` | no | — | Name of an `Subscription` this API consumes from. Injects `NATS_URL` and `NATS_CONSUMER` env vars. |
 
 ## Example
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
-kind: XApi
+kind: Api
 metadata:
   name: foo
 spec:
@@ -102,7 +102,7 @@ s3Client := s3.NewFromConfig(cfg)
 | `provider` | `in-cluster` or `aws` | all |
 | `host` | Postgres hostname | all |
 | `port` | `5432` | all |
-| `database` | Database name — the XSql name as-is (`private-cloud`) or with dashes replaced by underscores (`public-cloud`) | all |
+| `database` | Database name — the Sql name as-is (`private-cloud`) or with dashes replaced by underscores (`public-cloud`) | all |
 | `username` | Database user (`app`) | all |
 | `password` | Database password | `private-cloud` only |
 | `role-arn` | IAM role ARN | `public-cloud` only |
@@ -159,16 +159,16 @@ For the full workload identity design: [`docs/workload-identity.md`](../../../do
 
 ```bash
 # XR status — SYNCED=composition ran, READY=all children healthy
-kubectl get xapi foo
+kubectl get api foo
 
 # Detailed conditions — shows exactly WHY something is not ready
-kubectl get xapi foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get api foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
 # Pod status — init containers block startup until each binding Secret is ready
 kubectl get pods -n foo
 
 # Binding secret — confirm all keys are present
-# Object storage secrets are named <xapi-name>-<ref-name>; nosql is <xapi-name>-nosql
+# Object storage secrets are named <api-name>-<ref-name>; nosql is <api-name>-nosql
 kubectl get secret foo-foo-assets -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 

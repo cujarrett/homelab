@@ -1,8 +1,8 @@
 ---
-description: Render all XApi workspaces against the current composition to catch template errors and breaking changes before pushing. Requires Docker running locally.
+description: Render all Api workspaces against the current composition to catch template errors and breaking changes before pushing. Requires Docker running locally.
 ---
 
-Run `crossplane render` for every XApi workspace against the current composition. Report any failures clearly.
+Run `crossplane render` for every Api workspace against the current composition. Report any failures clearly.
 
 **Prerequisite:** Docker must be running. The render command pulls and runs `function-go-templating` as a container.
 

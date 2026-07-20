@@ -1,13 +1,13 @@
 apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
-  name: xsqls.platform.local.lab
+  name: sqls.platform.local.lab
 spec:
   group: platform.local.lab
   scope: Cluster
   names:
-    kind: XSql
-    plural: xsqls
+    kind: Sql
+    plural: sqls
   versions:
     - name: v1alpha1
       served: true
@@ -46,4 +46,4 @@ spec:
                       type: array
                       items:
                         type: string
-                      description: "Service account names of the XApis that will bind this database (public-cloud only). Each entry gets its own IAM role and binding secret scoped to that SA's exact SPIFFE ID. Each entry must match an XApi name."
+                      description: "Service account names of the Apis that will bind this database (public-cloud only). Each entry gets its own IAM role and binding secret scoped to that SA's exact SPIFFE ID. Each entry must match an Api name."
