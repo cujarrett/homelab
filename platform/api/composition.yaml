@@ -94,7 +94,7 @@ spec:
               name: {{ $name }}
               namespace: {{ $ns }}
               labels:
-                app: xapi
+                app: api
                 app.kubernetes.io/instance: {{ $name }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: service
@@ -182,7 +182,7 @@ spec:
               name: {{ $name }}
               namespace: {{ $ns }}
               labels:
-                app: xapi
+                app: api
                 app.kubernetes.io/instance: {{ $name }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: deployment
@@ -195,7 +195,7 @@ spec:
               template:
                 metadata:
                   labels:
-                    app: xapi
+                    app: api
                     app.kubernetes.io/instance: {{ $name }}
                 spec:
                   serviceAccountName: {{ $name }}
@@ -686,7 +686,7 @@ spec:
             ---
             # Enforcement (enforce: true) — default-deny this workload. Only connections granted
             # via a Connection reach it. Off by default, so meshing an app never denies traffic.
-            # Scoped to this app's pods via the instance label (app: xapi is shared by all Apis).
+            # Scoped to this app's pods via the instance label (app: api is shared by all Apis).
             # /metrics is always allowed with no source restriction: Prometheus is unmeshed, so it
             # can never satisfy a principal-based rule — without this, enforce: true silently breaks
             # scraping for every instance that sets it.

@@ -322,7 +322,7 @@ spec:
               name: {{ $name }}
               namespace: {{ $namespace }}
               labels:
-                app: xspa
+                app: spa
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: deployment
                 gotemplating.fn.crossplane.io/ready: "True"
@@ -330,12 +330,12 @@ spec:
               replicas: {{ $params.replicas | default 1 }}
               selector:
                 matchLabels:
-                  app: xspa
+                  app: spa
                   instance: {{ $name }}
               template:
                 metadata:
                   labels:
-                    app: xspa
+                    app: spa
                     instance: {{ $name }}
                 spec:
                   serviceAccountName: {{ $name }}
@@ -375,13 +375,13 @@ spec:
               name: {{ $name }}
               namespace: {{ $namespace }}
               labels:
-                app: xspa
+                app: spa
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: service
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               selector:
-                app: xspa
+                app: spa
                 instance: {{ $name }}
               ports:
                 - port: 80
