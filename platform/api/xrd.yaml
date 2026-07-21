@@ -144,10 +144,6 @@ spec:
                       default: sm
                       enum: [xs, sm, md, lg]
                       description: "Compute tier for the container. Choose based on expected traffic — Extra Small suits low-traffic or background services; Large suits high-throughput workloads."
-                    enforce:
-                      type: boolean
-                      default: false
-                      description: "When true, this app is locked to default-deny: only connections explicitly granted (via Connection) reach it. When false (default), the app runs meshed but permissive — nothing is denied. Only set true once every inbound flow to this app is registered."
                   required: [image, namespace]
               required:
                 - parameters

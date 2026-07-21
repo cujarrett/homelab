@@ -69,7 +69,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | External Access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; token from secret `cloudflare-tunnel-token` |
 | Platform Abstraction | Crossplane | Nine XR types — see the Crossplane Platform section below |
 | CNI | Cilium | DaemonSet in `kube-system` on all 4 nodes; Helm chart from `helm.cilium.io`. Plumbing only — pod networking, WireGuard node encryption, kube-proxy replacement, Hubble. Mesh features (mutual auth, connection policy) belong to Istio; Cilium's SPIRE mutual auth is disabled. |
-| Service Mesh | Istio | Sidecar mesh chained onto Cilium CNI; owns workload mTLS and platform-managed connection policy. See `docs/platform-connections.md`. |
+| Service Mesh | Istio | Sidecar mesh chained onto Cilium CNI; provides workload mTLS. Permissive mode — nothing is denied. Platform-managed connection policy is designed but not built; see `docs/platform-connections.md`. |
 | Workload Identity | SPIRE | `spire-server` + `spire-system` namespaces; Helm chart from `spiffe.github.io/helm-charts-hardened`. Previously backed Cilium mutual auth (now disabled); retained for potential Istio/SPIFFE use. |
 
 ## Namespaces & Applications
@@ -269,7 +269,7 @@ ssh pi@192.168.10.100 "sudo systemctl restart getty@tty1.service"
 
 Crossplane core runs with `--enable-realtime-compositions` (set via Helm `args` in `cluster/argocd/crossplane.yaml`) so composite reconciliation reacts immediately to composed-resource changes via watch, instead of only on the default 60s poll interval. Without it, a composed resource (e.g. an AWS-backed `Role`/`Bucket`) going `Ready` can sit for up to a minute before its dependent secret/status propagates to the XR — this was diagnosed as multi-second dead time in Launchpad guest sandbox rollouts before the flag was added.
 
-Ten platform types are defined under `platform/`:
+Nine platform types are defined under `platform/`:
 
 | XRD | Kind | Notes |
 |---|---|---|
@@ -282,7 +282,6 @@ Ten platform types are defined under `platform/`:
 | `sqls.platform.local.lab` | `Sql` | In-cluster Postgres Deployment; used by Launchpad guest demo sandboxes |
 | `nosqls.platform.local.lab` | `NoSql` | AWS DynamoDB table; used by Launchpad guest demo sandboxes — kept within AWS free tier by design |
 | `objectstorages.platform.local.lab` | `ObjectStorage` | AWS S3 bucket; used by Launchpad guest demo sandboxes — kept within AWS free tier by design |
-| `connections.platform.local.lab` | `Connection` | Grants + enforces a workload→workload or workload→external network connection (mesh AuthorizationPolicy / ServiceEntry); keyed on caller service-account identity |
 
 Which namespaces use which XR types is listed in the Namespaces & Applications table above.
 

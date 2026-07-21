@@ -24,7 +24,6 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 | [`ObjectStorage`](object-storage/README.md) | Object store | MinIO *(planned)* | AWS S3 |
 | [`Topic`](topic/README.md) | Durable message stream | NATS JetStream | — |
 | [`Subscription`](subscription/README.md) | Durable consumer cursor | NATS JetStream | — |
-| [`Connection`](connection/README.md) | Grants a workload→workload or workload→external network connection, enforced by workload identity | — | — |
 ---
 
 ## How resources connect
@@ -51,8 +50,6 @@ flowchart TD
 ```
 
 `Cache` is created and destroyed with its `Api`. Everything else is independent — delete an `Api` without touching its database.
-
-The refs above are **data** dependencies — what an app is wired to. [`Connection`](connection/README.md) governs the **network** layer separately: once a workload is locked down (`enforce: true` on its `Api`), it accepts nothing until you declare who may reach it. A `ref` provisions and binds a resource; an `Connection` grants permission for traffic to flow — workload→workload, or workload→external host.
 
 ---
 
