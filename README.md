@@ -38,7 +38,8 @@ A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering a
 
 ## What would this cost in AWS?
 
-The rough equivalent: EKS with 4 Graviton nodes, replicated block storage, a load balancer, and DNS.
+The rough equivalent: EKS with 4 Graviton nodes matching the rack's 16 vCPU and 40GB Memory, replicated block
+storage, a load balancer, and DNS.
 
 | | |
 |---|---|
