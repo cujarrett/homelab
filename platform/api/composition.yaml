@@ -682,29 +682,3 @@ spec:
                             port:
                               number: 80
             {{- end }}
-            {{- if $xr.spec.parameters.enforce }}
-            ---
-            # Enforcement (enforce: true) — default-deny this workload. Only connections granted
-            # via a Connection reach it. Off by default, so meshing an app never denies traffic.
-            # Scoped to this app's pods via the instance label (app: api is shared by all Apis).
-            # /metrics is always allowed with no source restriction: Prometheus is unmeshed, so it
-            # can never satisfy a principal-based rule — without this, enforce: true silently breaks
-            # scraping for every instance that sets it.
-            apiVersion: security.istio.io/v1
-            kind: AuthorizationPolicy
-            metadata:
-              name: {{ $name }}-default-deny
-              namespace: {{ $ns }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: default-deny
-                gotemplating.fn.crossplane.io/ready: "True"
-            spec:
-              selector:
-                matchLabels:
-                  app.kubernetes.io/instance: {{ $name }}
-              rules:
-                - to:
-                    - operation:
-                        paths: ["/metrics"]
-                        methods: ["GET"]
-            {{- end }}
