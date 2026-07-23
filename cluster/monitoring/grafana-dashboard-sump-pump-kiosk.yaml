@@ -3,6 +3,8 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboard-sump-pump-kiosk
   namespace: monitoring
+  annotations:
+    grafana_folder: Kiosk
   labels:
     grafana_dashboard: "1"
 data:
