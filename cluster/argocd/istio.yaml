@@ -15,7 +15,7 @@ spec:
   source:
     repoURL: https://istio-release.storage.googleapis.com/charts
     chart: base
-    targetRevision: 1.30.2
+    targetRevision: 1.30.3
     helm:
       releaseName: istio-base
   destination:
@@ -52,7 +52,7 @@ spec:
   source:
     repoURL: https://istio-release.storage.googleapis.com/charts
     chart: istiod
-    targetRevision: 1.30.2
+    targetRevision: 1.30.3
     helm:
       releaseName: istiod
       values: |
@@ -101,7 +101,7 @@ spec:
   source:
     repoURL: https://istio-release.storage.googleapis.com/charts
     chart: cni
-    targetRevision: 1.30.2
+    targetRevision: 1.30.3
     helm:
       releaseName: istio-cni
       values: |
