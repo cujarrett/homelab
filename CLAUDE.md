@@ -34,6 +34,21 @@ Before telling the user to commit, always run `/pre-commit-review`. It checks fo
 - **DRY is not a law.** A little copy-paste beats a complex abstraction built for two cases.
 - **No FOLD** (Fear Of Looking Dumb). If something is too complex, say so. That's a signal to simplify, not a personal failing.
 
+## Documentation
+
+Applies to every `.md` file in this repo — same grug philosophy, applied to prose.
+
+- **Grug first, then depth.** Every section opens with one or two plain sentences before any table, diagram, or YAML. If a reader stops after the first line, they should still have the idea.
+- **Concise > long.** One representation per idea. Never a diagram that repeats the prose, or a table that repeats the diagram.
+- **One numbering scheme per doc.** If steps or phases are numbered, nothing else is. Chapters are flat `#` headings with plain titles — never "Part 3".
+- **Flat hierarchy.** No wrapper heading whose only content is other headings. If a chapter holds ten things, those ten things are the chapters.
+- **Every chapter does one job.** A chapter titled "where we are today" must not contain timeless explanation. Move it.
+- **No meta-content.** Never document what changed from an earlier draft, critique a previous plan, or narrate the doc's own history. Same principle as the code-comment rule: state current rationale only.
+- **No time-bound content.** No "tonight", "this session", "first night", no timeboxes. Say "Phases 0, 1 and 6 touch no cluster" — not "do this at 10pm". Docs outlive the session that wrote them.
+- **Index at the top** for any doc with more than three chapters: one "start here" line, then a table of every chapter. Verify every anchor resolves before finishing.
+- **Link to real paths**, don't just code-format them — `[Api](../platform/api/)`, not `` `Api` ``.
+- **Cross-doc links use the human title and a `./` relative path** — `[Platform Auth](./platform-auth.md)`, never a bare or backticked filename. A reader should see what the doc *is*, not what it's called on disk. Deep links keep the title too: `[Platform Auth → Approval flow](./platform-auth.md#approval-flow-where-the-decision-actually-lives)`.
+
 ## Overview
 A 4-node k3s Kubernetes homelab managed entirely via GitOps with ArgoCD.
 All workloads are defined as manifests in this repo under `cluster/`, `platform/`, `homelab-workspaces/`, and `scripts/`.
@@ -69,7 +84,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | External Access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; token from secret `cloudflare-tunnel-token` |
 | Platform Abstraction | Crossplane | Nine XR types — see the Crossplane Platform section below |
 | CNI | Cilium | DaemonSet in `kube-system` on all 4 nodes; Helm chart from `helm.cilium.io`. Plumbing only — pod networking, WireGuard node encryption, kube-proxy replacement, Hubble. Mesh features (mutual auth, connection policy) belong to Istio; Cilium's SPIRE mutual auth is disabled. |
-| Service Mesh | Istio | Sidecar mesh chained onto Cilium CNI; provides workload mTLS. Permissive mode — nothing is denied. Platform-managed connection policy is designed but not built; see `docs/platform-connections.md`. |
+| Service Mesh | Istio | Sidecar mesh chained onto Cilium CNI; provides workload mTLS. Permissive mode — nothing is denied. Platform-managed connection policy is designed but not built; see [Platform Connections](./docs/platform-connections.md). |
 | Workload Identity | SPIRE | `spire-server` + `spire-system` namespaces; Helm chart from `spiffe.github.io/helm-charts-hardened`. Previously backed Cilium mutual auth (now disabled); retained for potential Istio/SPIFFE use. |
 
 ## Namespaces & Applications
