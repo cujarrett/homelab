@@ -1,0 +1,151 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-pod-leaderboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  pod-leaderboard.json: |-
+    {
+      "title": "Pod Uptime Leaderboard",
+      "uid": "homelab-pod-leaderboard",
+      "editable": true,
+      "graphTooltip": 1,
+      "time": { "from": "now-6h", "to": "now" },
+      "timepicker": {},
+      "refresh": "5m",
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "id": 1,
+          "type": "text",
+          "title": "",
+          "gridPos": { "x": 0, "y": 0, "w": 24, "h": 3 },
+          "options": {
+            "mode": "markdown",
+            "content": "### 🕹️ POD SURVIVAL — HIGH SCORES\nCurrent champs are pods still alive today, ranked by uptime. Hall of Fame tracks pods that have since died, ranked by how long they lived — but Prometheus only retains **30 days** of history, so this is a 30-day high-score board, not a true all-time record since cluster inception."
+          }
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "🥇 Reigning Champ",
+          "description": "The single oldest pod currently running in the cluster.",
+          "gridPos": { "x": 0, "y": 3, "w": 12, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "value_and_name",
+            "justifyMode": "center"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s", "decimals": 1,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] }
+            }
+          },
+          "targets": [
+            {
+              "expr": "topk(1, time() - kube_pod_created{namespace!~\"kube-system|kube-node-lease|kube-public|longhorn-system|cert-manager|cilium-secrets|crossplane-system|istio-system|monitoring|spire-server|spire-system|argocd|cloudflare|platform-exporter\"})",
+              "legendFormat": "{{namespace}} / {{pod}}",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "☠️ All-Time GOAT (last 30d)",
+          "description": "The longest-lived pod that has since died, within the 30-day Prometheus retention window.",
+          "gridPos": { "x": 12, "y": 3, "w": 12, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "value_and_name",
+            "justifyMode": "center"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s", "decimals": 1,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "purple", "value": null } ] }
+            }
+          },
+          "targets": [
+            {
+              "expr": "topk(1, (max by (namespace, pod) (timestamp(last_over_time(kube_pod_info{namespace!~\"kube-system|kube-node-lease|kube-public|longhorn-system|cert-manager|cilium-secrets|crossplane-system|istio-system|monitoring|spire-server|spire-system|argocd|cloudflare|platform-exporter\"}[30d]))) - max by (namespace, pod) (last_over_time(kube_pod_created{namespace!~\"kube-system|kube-node-lease|kube-public|longhorn-system|cert-manager|cilium-secrets|crossplane-system|istio-system|monitoring|spire-server|spire-system|argocd|cloudflare|platform-exporter\"}[30d]))) unless on(namespace, pod) kube_pod_info{namespace!~\"kube-system|kube-node-lease|kube-public|longhorn-system|cert-manager|cilium-secrets|crossplane-system|istio-system|monitoring|spire-server|spire-system|argocd|cloudflare|platform-exporter\"})",
+              "legendFormat": "{{namespace}} / {{pod}}",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "table",
+          "title": "🏆 Current Champs — Oldest Running Pods",
+          "description": "Currently running pods, ranked by uptime (time() - kube_pod_created).",
+          "gridPos": { "x": 0, "y": 7, "w": 24, "h": 12 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "sortBy": [{ "displayName": "Age", "desc": true }], "footer": { "show": false } },
+          "fieldConfig": {
+            "defaults": { "custom": { "align": "left" }, "unit": "s", "decimals": 1 },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "Value" }, "properties": [ { "id": "displayName", "value": "Age" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-GrYlRd" } } ] },
+              { "matcher": { "id": "byName", "options": "Time" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "__name__" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "job" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "instance" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "endpoint" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "service" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "container" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "uid" }, "properties": [ { "id": "custom.hidden", "value": true } ] }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "topk(20, time() - kube_pod_created{namespace!~\"kube-system|kube-node-lease|kube-public|longhorn-system|cert-manager|cilium-secrets|crossplane-system|istio-system|monitoring|spire-server|spire-system|argocd|cloudflare|platform-exporter\"})",
+              "instant": true, "legendFormat": "", "format": "table", "refId": "A"
+            }
+          ],
+          "transformations": [
+            { "id": "filterFieldsByName", "options": { "include": { "names": ["namespace", "pod", "Value"] } } }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "table",
+          "title": "☠️ Hall of Fame — Longest-Lived, Now Departed (last 30d)",
+          "description": "Pods no longer running that lived the longest, within the 30-day Prometheus retention window. Lifespan = last time the pod was seen alive minus its creation time.",
+          "gridPos": { "x": 0, "y": 19, "w": 24, "h": 12 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "sortBy": [{ "displayName": "Lifespan", "desc": true }], "footer": { "show": false } },
+          "fieldConfig": {
+            "defaults": { "custom": { "align": "left" }, "unit": "s", "decimals": 1 },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "Value" }, "properties": [ { "id": "displayName", "value": "Lifespan" }, { "id": "custom.displayMode", "value": "color-background" }, { "id": "color", "value": { "mode": "continuous-purples" } } ] },
+              { "matcher": { "id": "byName", "options": "Time" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "__name__" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "job" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "instance" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "endpoint" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "service" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "container" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+              { "matcher": { "id": "byName", "options": "uid" }, "properties": [ { "id": "custom.hidden", "value": true } ] }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "topk(20, (max by (namespace, pod) (timestamp(last_over_time(kube_pod_info{namespace!~\"kube-system|kube-node-lease|kube-public|longhorn-system|cert-manager|cilium-secrets|crossplane-system|istio-system|monitoring|spire-server|spire-system|argocd|cloudflare|platform-exporter\"}[30d]))) - max by (namespace, pod) (last_over_time(kube_pod_created{namespace!~\"kube-system|kube-node-lease|kube-public|longhorn-system|cert-manager|cilium-secrets|crossplane-system|istio-system|monitoring|spire-server|spire-system|argocd|cloudflare|platform-exporter\"}[30d]))) unless on(namespace, pod) kube_pod_info{namespace!~\"kube-system|kube-node-lease|kube-public|longhorn-system|cert-manager|cilium-secrets|crossplane-system|istio-system|monitoring|spire-server|spire-system|argocd|cloudflare|platform-exporter\"})",
+              "instant": true, "legendFormat": "", "format": "table", "refId": "A"
+            }
+          ],
+          "transformations": [
+            { "id": "filterFieldsByName", "options": { "include": { "names": ["namespace", "pod", "Value"] } } }
+          ]
+        }
+      ]
+    }
