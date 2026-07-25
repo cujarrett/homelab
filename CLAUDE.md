@@ -78,7 +78,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `argocd` | ArgoCD | Ingress at `argocd.local.lab` |
 | `monitoring` | kube-prometheus-stack | Prometheus (365d retention, 35Gi), Grafana (2Gi), Alertmanager (2Gi) |
 | `monitoring` | prometheus-sump-pump | Dedicated long-term Prometheus for sump pump + weather data (18250d retention, 2Gi PVC, `local-path`, pinned to `work-1`); Grafana datasource UID `sump-pump-archive` |
-| `monitoring` | Loki | SingleBinary mode, filesystem storage, 2Gi PVC, 30d retention |
+| `monitoring` | Loki | SingleBinary mode, filesystem storage, 5Gi PVC, 30d retention |
 | `monitoring` | Promtail | DaemonSet log shipper → Loki at `http://loki.monitoring.svc.cluster.local:3100` |
 | `longhorn-system` | Longhorn | Ingress at `longhorn.local.lab` |
 | `adguard` | AdGuard Home | DNS ad-blocking/resolver |
@@ -170,9 +170,18 @@ kubectl delete certificaterequest -n <namespace> --all
 - **Prometheus (main)**: `monitoring-kube-prometheus-prometheus`, port 9090, 365d retention, 35Gi PVC
 - **Prometheus (sump-pump)**: `prometheus-sump-pump`, port 9090, 18250d retention, 2Gi PVC (`local-path`, pinned to `work-1`); scrapes sump-pump-bridge, sump-pump-consumer, weather-exporter; Grafana datasource UID `sump-pump-archive`; **PVC mounts at `prometheus-db/` subdirectory** — migration jobs must write blocks there, not to the PVC root
 - **Grafana**: admin secret `grafana-admin-secret`, anonymous viewer access enabled, Loki datasource configured, dashboards loaded via sidecar from all namespaces; the kiosk playlist is managed in the Grafana UI (not provisioned from Git)
-- **Loki**: StatefulSet `loki`, SingleBinary, filesystem, 2Gi PVC (`storage-loki-0`), 30d retention, compactor enabled
+- **Loki**: StatefulSet `loki`, SingleBinary, filesystem, 5Gi PVC (`storage-loki-0`), 30d retention, compactor enabled. `argocd` is ~80% of all log volume — check it first if the PVC fills.
 - **Promtail**: DaemonSet, ships logs to Loki
 - **Alertmanager**: 2Gi PVC
+
+### Resizing a StatefulSet PVC
+`volumeClaimTemplates` are immutable — bumping `size:` in Git does nothing to an existing StatefulSet, and ArgoCD retries the sync until it gives up with `updates to statefulset spec ... are forbidden`. The PVC stays at its old size while the repo claims otherwise. Expand the PVC first, then recreate the StatefulSet so its template matches:
+```bash
+kubectl patch pvc <pvc> -n <namespace> -p '{"spec":{"resources":{"requests":{"storage":"<new-size>"}}}}'
+kubectl delete sts <name> -n <namespace> --cascade=orphan   # keeps the pod and PVC alive
+argocd app sync <app> --grpc-web                            # recreates the STS; it adopts the running pod
+```
+Skipping the recreate leaves the app permanently OutOfSync, and any future pod recreate comes back at the old size.
 
 ### Grafana Dashboards
 Dashboards are ConfigMaps with label `grafana_dashboard: "1"` in any namespace. Apply locally to test before committing:
