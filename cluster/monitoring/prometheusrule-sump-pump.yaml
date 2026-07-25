@@ -1,0 +1,113 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: sump-pump
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: sump-pump
+      interval: 5m
+      rules:
+        # Normal: ~30 runs/hour, ~390 run-seconds/hour. Warning sits above p99.
+        # Critical is above the ~90 runs/hour seen in past storms, so a downpour
+        # warns rather than pages. max() because bridge and consumer both export
+        # these, and restarts start fresh series.
+        - alert: SumpPumpRunningALot
+          expr: |
+            max(increase(sump_pump_runs_total[1h])) > 40
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Sump pump is running a lot — {{ $value | printf \"%.0f\" }} cycles this hour"
+            description: >-
+              Water is coming in faster than usual, which is what rain looks
+              like. The resolved notification marks the return to normal.
+
+        - alert: SumpPumpRunningVeryHard
+          expr: |
+            max(increase(sump_pump_runs_total[1h])) > 75
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Sump pump is running very hard — {{ $value | printf \"%.0f\" }} cycles this hour"
+            description: >-
+              Past the rate a heavy storm normally drives. If the weather does not
+              explain it, the pit is refilling between cycles — check the check
+              valve for backflow.
+
+        # sump_pump_running is 0 or 1, so its hourly average is the fraction of the
+        # hour spent running — times 60 reads straight off as minutes per hour.
+        # Normal is ~7. Runtime needs both tiers: runs can stretch out at a normal
+        # cycle count, which no rate threshold sees.
+        - alert: SumpPumpRunningLongHours
+          expr: |
+            max(avg_over_time(sump_pump_running[1h])) * 60 > 10
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Sump pump ran {{ $value | printf \"%.0f\" }} minutes this hour, normal is ~7"
+            description: >-
+              Total runtime is up. Alongside a high cycle count that is just weather;
+              on its own it means each run is moving less water than it should.
+
+        - alert: SumpPumpRunningNearlyConstantly
+          expr: |
+            max(avg_over_time(sump_pump_running[1h])) * 60 > 15
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Sump pump ran {{ $value | printf \"%.0f\" }} minutes of the last hour"
+            description: >-
+              At this duty cycle there is little idle time to cool between runs.
+              Sustained, that is how the motor burns out. Suspect a stuck float, or
+              a discharge line blocked or frozen.
+
+        # Idle is normal — 20 of 104 six-hour windows were near zero. Rain is what
+        # makes idle suspicious.
+        - alert: SumpPumpIdleDespiteRain
+          expr: |
+            max(max_over_time(weather_precipitation_mm[6h])) > 2
+            and
+            max(increase(sump_pump_runs_total[6h])) < 5
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Rain in the last 6h but the sump pump barely ran"
+            description: >-
+              Measurable rain with almost no pump activity points at a dead pump, a
+              stuck float, or a sensor that has frozen at a fixed reading. This is
+              the failure that a runtime or rate alert cannot see.
+
+        # Dry-weather backstop for a sensor stuck at zero. One 48h window in the
+        # archive was this quiet, so expect roughly monthly.
+        - alert: SumpPumpIdleTooLong
+          expr: |
+            max(increase(sump_pump_runs_total[24h])) < 10
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Sump pump has run fewer than 10 times in 24 hours"
+            description: >-
+              Normal even in dry weather, but only just — this was true for a single
+              24 window across the whole archive. Worth confirming the pit is
+              actually dry rather than the sensor being stuck.
+
+        - alert: SumpPumpNotReporting
+          expr: |
+            absent(sump_pump_running)
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "No sump pump readings for 15 minutes"
+            description: >-
+              Every other sump pump alert reads healthy when the feed is simply
+              dead, so absence needs its own alert.
