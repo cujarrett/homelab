@@ -34,78 +34,20 @@ spec:
                     - matchExpressions:
                         - key: node-role.kubernetes.io/control-plane
                           operator: DoesNotExist
-            # Mounts at /etc/alertmanager/secrets/alertmanager-discord/webhook-url.
-            # Pre-created in the cluster by hand, never in Git — the webhook URL is
-            # the only credential guarding the channel, so anyone holding it can post
-            # as the bot. Rotation is deleting the webhook in Discord and remaking it.
-            secrets:
-              - alertmanager-discord
+            # OnNamespace (the default) would bolt a `namespace = monitoring` matcher
+            # onto the AlertmanagerConfig route, so it would only ever catch alerts
+            # from this one namespace. None lets that route match cluster-wide.
+            alertmanagerConfigMatcherStrategy:
+              type: None
+            alertmanagerConfigSelector:
+              matchLabels:
+                alertmanager: discord
             storage:
               volumeClaimTemplate:
                 spec:
                   resources:
                     requests:
                       storage: 2Gi
-          # Setting this replaces the chart's default config wholesale, so the stock
-          # inhibit rules are restated below rather than inherited.
-          config:
-            global:
-              resolve_timeout: 5m
-            route:
-              group_by:
-                - namespace
-              group_wait: 30s
-              group_interval: 5m
-              repeat_interval: 12h
-              # Everything goes to Discord except the two cases below, which are
-              # noise by construction rather than by threshold. First match wins,
-              # so both silenced routes have to precede the catch-all.
-              receiver: discord
-              routes:
-                # Watchdog fires permanently by design — it exists so an external
-                # dead-man's-switch can notice when it stops arriving. Delivered
-                # here it would just be a 12h heartbeat carrying no cluster state.
-                - receiver: "null"
-                  matchers:
-                    - alertname = "Watchdog"
-                # k3s runs controller-manager, scheduler and kube-proxy inside the
-                # single server binary, so nothing listens on the ports these alerts
-                # probe and all three fire permanently. Routing them anywhere else
-                # means a false page every repeat_interval, forever.
-                - receiver: "null"
-                  matchers:
-                    - alertname =~ "KubeControllerManagerDown|KubeProxyDown|KubeSchedulerDown"
-            inhibit_rules:
-              - source_matchers:
-                  - severity = critical
-                target_matchers:
-                  - severity =~ warning|info
-                equal:
-                  - namespace
-                  - alertname
-              - source_matchers:
-                  - severity = warning
-                target_matchers:
-                  - severity = info
-                equal:
-                  - namespace
-                  - alertname
-              - source_matchers:
-                  - alertname = InfoInhibitor
-                target_matchers:
-                  - severity = info
-                equal:
-                  - namespace
-              - target_matchers:
-                  - alertname = InfoInhibitor
-            receivers:
-              - name: "null"
-              - name: discord
-                discord_configs:
-                  # title/message are deliberately left at their built-in defaults.
-                  # The chart runs this config through Helm's tpl, so any Go template
-                  # braces here would be evaluated at render time and break the sync.
-                  - webhook_url_file: /etc/alertmanager/secrets/alertmanager-discord/webhook-url
         grafana:
           affinity:
             nodeAffinity:

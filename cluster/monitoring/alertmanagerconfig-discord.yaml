@@ -1,0 +1,50 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: discord
+  namespace: monitoring
+  labels:
+    # Matched by alertmanagerConfigSelector in the kube-prometheus-stack values.
+    alertmanager: discord
+spec:
+  # The operator merges this in as a child route of the chart's top-level route,
+  # which keeps its default receiver and inhibit rules intact. Delivery has to be
+  # expressed here rather than as inline Helm values: the operator re-parses the
+  # inline config with its own Go structs, and its discordConfig type has no
+  # webhook_url_file field, so it silently rejects the config and keeps serving
+  # the previous one. apiURL as a secret ref is the path the operator understands,
+  # and it keeps the webhook URL out of Git either way.
+  route:
+    receiver: discord
+    groupBy:
+      - namespace
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 12h
+    routes:
+      # Watchdog fires permanently by design — it exists so an external
+      # dead-man's-switch can notice when it stops arriving. Delivered here it
+      # would just be a 12h heartbeat carrying no cluster state.
+      - receiver: "null"
+        matchers:
+          - name: alertname
+            value: Watchdog
+      # k3s runs controller-manager, scheduler and kube-proxy inside the single
+      # server binary, so nothing listens on the ports these alerts probe and all
+      # three fire permanently. Routing them anywhere else means a false page
+      # every repeatInterval, forever.
+      - receiver: "null"
+        matchers:
+          - name: alertname
+            value: KubeControllerManagerDown|KubeProxyDown|KubeSchedulerDown
+            matchType: =~
+  receivers:
+    - name: discord
+      discordConfigs:
+        # Pre-created in the cluster by hand, never in Git — this URL is the only
+        # credential guarding the channel, so anyone holding it can post as the
+        # bot. Rotation is deleting the webhook in Discord and making a new one.
+        - apiURL:
+            name: alertmanager-discord
+            key: webhook-url
+    - name: "null"
