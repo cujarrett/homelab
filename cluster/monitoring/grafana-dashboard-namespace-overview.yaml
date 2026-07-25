@@ -1229,7 +1229,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(kube_pod_container_resource_limits{namespace=\"$namespace\",resource=\"memory\"}) by (pod)",
+              "expr": "sum(kube_pod_container_resource_limits{namespace=\"$namespace\",resource=\"memory\"}) by (pod) + on(pod) group_left() (sum(kube_pod_init_container_resource_limits{namespace=\"$namespace\",resource=\"memory\",container=\"istio-proxy\"}) by (pod) or on(pod) sum(kube_pod_container_resource_limits{namespace=\"$namespace\",resource=\"memory\"}) by (pod) * 0)",
               "format": "table",
               "instant": true,
               "legendFormat": "",
@@ -1240,7 +1240,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(container_memory_working_set_bytes{namespace=\"$namespace\",container!=\"\"}) by (pod) / sum(kube_pod_container_resource_limits{namespace=\"$namespace\",resource=\"memory\"}) by (pod)",
+              "expr": "sum(container_memory_working_set_bytes{namespace=\"$namespace\",container!=\"\"}) by (pod) / (sum(kube_pod_container_resource_limits{namespace=\"$namespace\",resource=\"memory\"}) by (pod) + on(pod) group_left() (sum(kube_pod_init_container_resource_limits{namespace=\"$namespace\",resource=\"memory\",container=\"istio-proxy\"}) by (pod) or on(pod) sum(kube_pod_container_resource_limits{namespace=\"$namespace\",resource=\"memory\"}) by (pod) * 0))",
               "format": "table",
               "instant": true,
               "legendFormat": "",

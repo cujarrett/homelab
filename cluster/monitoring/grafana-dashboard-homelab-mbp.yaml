@@ -1937,7 +1937,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"}) / sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\"})) * 100",
+              "expr": "(sum by(pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"}) / (sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\"}) + on(pod) group_left() (sum by(pod) (kube_pod_init_container_resource_limits{resource=\"memory\",container=\"istio-proxy\"}) or on(pod) sum by(pod) (kube_pod_container_resource_limits{resource=\"memory\"}) * 0))) * 100",
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
