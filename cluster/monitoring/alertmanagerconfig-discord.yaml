@@ -7,13 +7,9 @@ metadata:
     # Matched by alertmanagerConfigSelector in the kube-prometheus-stack values.
     alertmanager: discord
 spec:
-  # The operator merges this in as a child route of the chart's top-level route,
-  # which keeps its default receiver and inhibit rules intact. Delivery has to be
-  # expressed here rather than as inline Helm values: the operator re-parses the
-  # inline config with its own Go structs, and its discordConfig type has no
-  # webhook_url_file field, so it silently rejects the config and keeps serving
-  # the previous one. apiURL as a secret ref is the path the operator understands,
-  # and it keeps the webhook URL out of Git either way.
+  # Delivery lives here, not in inline Helm values: the operator re-parses those
+  # with its own structs, which have no webhook_url_file, and silently keeps the
+  # old config. apiURL as a secret ref is the path it understands.
   route:
     receiver: discord
     groupBy:
@@ -22,17 +18,14 @@ spec:
     groupInterval: 5m
     repeatInterval: 12h
     routes:
-      # Watchdog fires permanently by design — it exists so an external
-      # dead-man's-switch can notice when it stops arriving. Delivered here it
-      # would just be a 12h heartbeat carrying no cluster state.
+      # Fires permanently by design, for an external dead-man's-switch to watch.
+      # Here it is just a 12h heartbeat carrying no cluster state.
       - receiver: "null"
         matchers:
           - name: alertname
             value: Watchdog
-      # k3s runs controller-manager, scheduler and kube-proxy inside the single
-      # server binary, so nothing listens on the ports these alerts probe and all
-      # three fire permanently. Routing them anywhere else means a false page
-      # every repeatInterval, forever.
+      # k3s embeds these in one binary, so nothing listens on the probed ports
+      # and all three fire forever.
       - receiver: "null"
         matchers:
           - name: alertname
@@ -41,13 +34,11 @@ spec:
   receivers:
     - name: discord
       discordConfigs:
-        # Pre-created in the cluster by hand, never in Git — this URL is the only
-        # credential guarding the channel, so anyone holding it can post as the
-        # bot. Rotation is deleting the webhook in Discord and making a new one.
+        # Hand-created in the cluster, never in Git. Rotate by deleting the
+        # webhook in Discord and remaking it.
         - apiURL:
             name: alertmanager-discord
             key: webhook-url
-          # Message formatting deliberately lives in alertmanager.templateFiles
-          # rather than here: operator v0.92.1 drops title/message from this CRD
-          # when it generates the Alertmanager config, without logging anything.
+          # Formatting lives in alertmanager.templateFiles — operator v0.92.1
+          # silently drops title/message from this CRD.
     - name: "null"

@@ -26,19 +26,10 @@ spec:
           admissionWebhooks:
             patch: {}
         alertmanager:
-          # Overrides Alertmanager's built-in Discord templates by redefining them
-          # under their own names — the receiver still calls discord.default.*, and
-          # the later definition wins. Setting title/message on the receiver would
-          # be the obvious route, but prometheus-operator v0.92.1 accepts both
-          # fields on the AlertmanagerConfig CRD and then silently drops them when
-          # it generates the config, so they never reach Alertmanager. Unlike
-          # alertmanager.config, templateFiles is not passed through Helm's tpl,
-          # so Go template syntax is safe here.
-          #
-          # The stock template prints every label, a runbook URL and a URL-encoded
-          # PromQL query per alert, which buries the summary. Severity is rendered
-          # per alert rather than per message because a group keyed on namespace
-          # can hold a critical and a warning together.
+          # Redefines the built-in discord.default.* templates — later definition
+          # wins. Lives here because operator v0.92.1 drops title/message from the
+          # AlertmanagerConfig CRD, and templateFiles skips Helm's tpl so Go
+          # syntax survives. Severity is per alert: a namespace group can mix.
           templateFiles:
             discord.tmpl: |
               {{ define "discord.default.title" }}{{ if eq .Status "firing" }}🔴 FIRING{{ else }}✅ RESOLVED{{ end }}{{ if .GroupLabels.namespace }} · {{ .GroupLabels.namespace }}{{ end }} ({{ .Alerts | len }}){{ end }}

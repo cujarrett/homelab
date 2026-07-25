@@ -33,6 +33,7 @@ Before telling the user to commit, always run `/pre-commit-review`. It checks fo
 - **Boring, obvious code wins.** Intermediate variables with good names beat clever one-liners. Easier to debug.
 - **DRY is not a law.** A little copy-paste beats a complex abstraction built for two cases.
 - **No FOLD** (Fear Of Looking Dumb). If something is too complex, say so. That's a signal to simplify, not a personal failing.
+- **Comments are grug too.** Two or three lines, not a paragraph. Say why the value is what it is, or what bites you if you change it — never restate what the code does. Cut the percentile tables, the alternatives you rejected, and the history of how you got there.
 
 ## Documentation
 
