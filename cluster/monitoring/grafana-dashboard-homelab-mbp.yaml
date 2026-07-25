@@ -1508,7 +1508,7 @@ data:
                   "viz": false
                 },
                 "insertNulls": false,
-                "lineInterpolation": "smooth",
+                "lineInterpolation": "linear",
                 "lineWidth": 2,
                 "pointSize": 5,
                 "scaleDistribution": {
@@ -1576,7 +1576,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{instance=~\"192.168.10.100:.*\", mode=\"idle\"}[5m]))) * 100",
+              "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{instance=~\"192.168.10.100:.*\", mode=\"idle\"}[1m]))) * 100",
               "legendFormat": "ctrl-1",
               "refId": "A"
             },
@@ -1585,7 +1585,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{instance=~\"192.168.10.101:.*\", mode=\"idle\"}[5m]))) * 100",
+              "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{instance=~\"192.168.10.101:.*\", mode=\"idle\"}[1m]))) * 100",
               "legendFormat": "work-1",
               "refId": "B"
             },
@@ -1594,7 +1594,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{instance=~\"192.168.10.102:.*\", mode=\"idle\"}[5m]))) * 100",
+              "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{instance=~\"192.168.10.102:.*\", mode=\"idle\"}[1m]))) * 100",
               "legendFormat": "work-2",
               "refId": "C"
             },
@@ -1603,7 +1603,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{instance=~\"192.168.10.103:.*\", mode=\"idle\"}[5m]))) * 100",
+              "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{instance=~\"192.168.10.103:.*\", mode=\"idle\"}[1m]))) * 100",
               "legendFormat": "work-3",
               "refId": "D"
             }
@@ -3329,7 +3329,7 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
+            "w": 3,
             "x": 0,
             "y": 34
           },
@@ -3391,8 +3391,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 6,
+            "w": 3,
+            "x": 3,
             "y": 34
           },
           "id": 106,
@@ -3453,8 +3453,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 12,
+            "w": 3,
+            "x": 6,
             "y": 34
           },
           "id": 107,
@@ -3515,8 +3515,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 18,
+            "w": 3,
+            "x": 9,
             "y": 34
           },
           "id": 108,
@@ -3561,66 +3561,6 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "continuous-viridis"
-              },
-              "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "bytes"
-            }
-          },
-          "gridPos": {
-            "h": 9,
-            "w": 24,
-            "x": 0,
-            "y": 37
-          },
-          "id": 323,
-          "options": {
-            "colorByField": "Value",
-            "groupByField": "",
-            "labelFields": [],
-            "sizeField": "Value",
-            "textField": "pod",
-            "tiling": "treemapSquarify"
-          },
-          "pluginVersion": "2.1.1",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "editorMode": "code",
-              "expr": "sort_desc(sum by (pod, node) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"}))",
-              "format": "table",
-              "instant": true,
-              "legendFormat": "{{pod}}",
-              "refId": "A"
-            }
-          ],
-          "title": "Memory by Pod \u00b7 All Nodes",
-          "type": "marcusolsson-treemap-panel"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
                 "mode": "thresholds"
               },
               "noValue": "No outage in window",
@@ -3639,8 +3579,8 @@ data:
           "gridPos": {
             "h": 3,
             "w": 6,
-            "x": 0,
-            "y": 46
+            "x": 12,
+            "y": 34
           },
           "id": 350,
           "options": {
@@ -3703,8 +3643,8 @@ data:
           "gridPos": {
             "h": 3,
             "w": 6,
-            "x": 6,
-            "y": 46
+            "x": 18,
+            "y": 34
           },
           "id": 351,
           "options": {
@@ -3740,6 +3680,66 @@ data:
           ],
           "title": "Time Since Last Internet Outage",
           "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "continuous-viridis"
+              },
+              "decimals": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "bytes"
+            }
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 24,
+            "x": 0,
+            "y": 37
+          },
+          "id": 323,
+          "options": {
+            "colorByField": "Value",
+            "groupByField": "",
+            "labelFields": [],
+            "sizeField": "Value",
+            "textField": "pod",
+            "tiling": "treemapSquarify"
+          },
+          "pluginVersion": "2.1.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "sort_desc(sum by (pod, node) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"}))",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Memory by Pod \u00b7 All Nodes",
+          "type": "marcusolsson-treemap-panel"
         }
       ],
       "preload": false,
