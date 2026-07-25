@@ -119,7 +119,7 @@ data:
           "id": 5,
           "type": "table",
           "title": "☠️ Hall of Fame — Longest-Lived, Now Departed",
-          "description": "Pods no longer running that lived the longest, sourced from the permanent pod-history archive Prometheus (federated hourly from the main Prometheus's homelab:pod_lifespan_dead_seconds recording rule). Lifespan = last time the pod was seen alive minus its creation time.",
+          "description": "Pods no longer running that lived the longest, sourced from the permanent pod-history archive Prometheus (federated from the main Prometheus's homelab:pod_lifespan_dead_seconds recording rule). Lifespan = last time the pod was seen alive minus its creation time.",
           "gridPos": { "x": 0, "y": 19, "w": 24, "h": 12 },
           "datasource": { "type": "prometheus", "uid": "pod-history-archive" },
           "options": { "sortBy": [{ "displayName": "Lifespan", "desc": true }], "footer": { "show": false } },

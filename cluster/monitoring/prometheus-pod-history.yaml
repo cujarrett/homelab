@@ -11,10 +11,16 @@ metadata:
   namespace: monitoring
 stringData:
   federate.yaml: |
+    # 2m, not 1h: Prometheus's default instant-query lookback is 5m, so a series
+    # scraped less often than that reads as absent between scrapes. A slow interval
+    # also leaves the dashboard blank for up to a full interval after any pod
+    # recreation, since the first scrape is offset by a hash of the target labels.
+    # Cost is negligible — a dead pod's lifespan is constant, and repeated identical
+    # samples compress to about a bit each.
     - job_name: federate-pod-lifespan
       honor_labels: true
       metrics_path: /federate
-      scrape_interval: 1h
+      scrape_interval: 2m
       params:
         "match[]":
           - '{__name__="homelab:pod_lifespan_dead_seconds"}'
@@ -29,8 +35,7 @@ metadata:
 spec:
   serviceAccountName: prometheus-pod-history
   retention: 18250d
-  scrapeInterval: 1h
-  evaluationInterval: 1h
+  scrapeInterval: 2m
   # Only federation via additionalScrapeConfigs below — don't pick up any
   # ServiceMonitors, PodMonitors, or PrometheusRules cluster-wide.
   serviceMonitorSelector:
