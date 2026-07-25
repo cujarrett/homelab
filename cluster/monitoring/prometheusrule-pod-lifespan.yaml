@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: pod-lifespan
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: pod-lifespan
+      interval: 1h
+      rules:
+        - record: homelab:pod_lifespan_dead_seconds
+          expr: |
+            (
+              max by (namespace, pod) (timestamp(last_over_time(kube_pod_info{namespace=~"adguard|blog|default|js-pollock|kentjarrett-com|launchpad|mattjarrett-com|mattjarrett-dev|my-vinyl|nats|sump-pump", pod!~"cm-acme-http-solver-.*"}[30d])))
+              -
+              max by (namespace, pod) (last_over_time(kube_pod_created{namespace=~"adguard|blog|default|js-pollock|kentjarrett-com|launchpad|mattjarrett-com|mattjarrett-dev|my-vinyl|nats|sump-pump", pod!~"cm-acme-http-solver-.*"}[30d]))
+            )
+            unless on(namespace, pod) kube_pod_info{namespace=~"adguard|blog|default|js-pollock|kentjarrett-com|launchpad|mattjarrett-com|mattjarrett-dev|my-vinyl|nats|sump-pump", pod!~"cm-acme-http-solver-.*"}
+            unless on(namespace, pod) last_over_time(kube_pod_owner{owner_kind="Job"}[30d])

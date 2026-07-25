@@ -76,8 +76,9 @@ SSH access: `ssh pi@192.168.10.10x`
 | Namespace | App | Notes |
 |---|---|---|
 | `argocd` | ArgoCD | Ingress at `argocd.local.lab` |
-| `monitoring` | kube-prometheus-stack | Prometheus (365d retention, 35Gi), Grafana (2Gi), Alertmanager (2Gi) |
-| `monitoring` | prometheus-sump-pump | Dedicated long-term Prometheus for sump pump + weather data (18250d retention, 2Gi PVC, `local-path`, pinned to `work-1`); Grafana datasource UID `sump-pump-archive` |
+| `monitoring` | kube-prometheus-stack | Prometheus (30d retention, 35Gi), Grafana (2Gi), Alertmanager (2Gi) |
+| `monitoring` | prometheus-sump-pump | Dedicated long-term Prometheus for sump pump + weather data (18250d retention, 2Gi PVC, `longhorn-retain`, no node pinning); Grafana datasource UID `sump-pump-archive` |
+| `monitoring` | prometheus-pod-history | Dedicated long-term Prometheus (18250d retention, 2Gi PVC, `longhorn-retain`) that federates the pod-lifespan recording rule from the main Prometheus so dead-pod records outlive its 30d retention; Grafana datasource UID `pod-history-archive` |
 | `monitoring` | Loki | SingleBinary mode, filesystem storage, 5Gi PVC, 30d retention |
 | `monitoring` | Promtail | DaemonSet log shipper → Loki at `http://loki.monitoring.svc.cluster.local:3100` |
 | `longhorn-system` | Longhorn | Ingress at `longhorn.local.lab` |
@@ -167,8 +168,9 @@ kubectl delete certificaterequest -n <namespace> --all
 **API token permissions needed:** Cloudflare Zero Trust → Argo Tunnel (Legacy) → Edit
 
 ## Monitoring Stack Details
-- **Prometheus (main)**: `monitoring-kube-prometheus-prometheus`, port 9090, 365d retention, 35Gi PVC
-- **Prometheus (sump-pump)**: `prometheus-sump-pump`, port 9090, 18250d retention, 2Gi PVC (`local-path`, pinned to `work-1`); scrapes sump-pump-bridge, sump-pump-consumer, weather-exporter; Grafana datasource UID `sump-pump-archive`; **PVC mounts at `prometheus-db/` subdirectory** — migration jobs must write blocks there, not to the PVC root
+- **Prometheus (main)**: `monitoring-kube-prometheus-prometheus`, port 9090, 30d retention, 35Gi PVC
+- **Prometheus (sump-pump)**: `prometheus-sump-pump`, port 9090, 18250d retention, 2Gi PVC (`longhorn-retain`, no node pinning); scrapes sump-pump-bridge, sump-pump-consumer, weather-exporter; Grafana datasource UID `sump-pump-archive`; **PVC mounts at `prometheus-db/` subdirectory** — migration jobs must write blocks there, not to the PVC root
+- **Prometheus (pod-history)**: `prometheus-pod-history`, port 9090, 18250d retention, 2Gi PVC (`longhorn-retain`); scrapes nothing directly — federates the `homelab:pod_lifespan_dead_seconds` recording rule (defined in `cluster/monitoring/prometheusrule-pod-lifespan.yaml`, evaluated hourly on the main Prometheus) via `additionalScrapeConfigs`, so dead-pod lifespan records outlive the main Prometheus's 30d retention; Grafana datasource UID `pod-history-archive`; feeds the Hall of Fame panel on the Pod Uptime Leaderboard dashboard; scoped to real app namespaces only (`adguard|blog|default|js-pollock|kentjarrett-com|launchpad|mattjarrett-com|mattjarrett-dev|my-vinyl|nats|sump-pump`) and excludes Job-owned and `cm-acme-http-solver-*` pods to keep it free of CronJob/ACME-challenge noise
 - **Grafana**: admin secret `grafana-admin-secret`, anonymous viewer access enabled, Loki datasource configured, dashboards loaded via sidecar from all namespaces; the kiosk playlist is managed in the Grafana UI (not provisioned from Git)
 - **Loki**: StatefulSet `loki`, SingleBinary, filesystem, 5Gi PVC (`storage-loki-0`), 30d retention, compactor enabled. `argocd` is ~80% of all log volume — check it first if the PVC fills.
 - **Promtail**: DaemonSet, ships logs to Loki

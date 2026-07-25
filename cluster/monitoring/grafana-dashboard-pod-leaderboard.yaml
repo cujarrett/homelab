@@ -24,7 +24,7 @@ data:
           "gridPos": { "x": 0, "y": 0, "w": 24, "h": 3 },
           "options": {
             "mode": "markdown",
-            "content": "### 🕹️ POD SURVIVAL — HIGH SCORES\nCurrent champs are pods still alive today, ranked by uptime. Hall of Fame tracks pods that have since died, ranked by how long they lived — but Prometheus only retains **30 days** of history, so this is a 30-day high-score board, not a true all-time record since cluster inception."
+            "content": "### 🕹️ POD SURVIVAL — HIGH SCORES\nCurrent champs are pods still alive today, ranked by uptime. Hall of Fame tracks pods that have since died, ranked by how long they lived — archived permanently by a dedicated long-retention Prometheus. Ephemeral demo sandbox pods are excluded from both boards. A pod that died more than 30 days before this dashboard was created can't be recovered — history starts from when the archive went live."
           }
         },
         {
@@ -49,7 +49,7 @@ data:
           },
           "targets": [
             {
-              "expr": "topk(1, time() - kube_pod_created{namespace!~\"kube-system|kube-node-lease|kube-public|longhorn-system|cert-manager|cilium-secrets|crossplane-system|istio-system|monitoring|spire-server|spire-system|argocd|cloudflare|platform-exporter\"})",
+              "expr": "topk(1, time() - kube_pod_created{namespace=~\"adguard|blog|default|js-pollock|kentjarrett-com|launchpad|mattjarrett-com|mattjarrett-dev|my-vinyl|nats|sump-pump\", pod!~\"cm-acme-http-solver-.*\"})",
               "legendFormat": "{{namespace}} / {{pod}}",
               "instant": true
             }
@@ -58,10 +58,10 @@ data:
         {
           "id": 3,
           "type": "stat",
-          "title": "☠️ All-Time GOAT (last 30d)",
-          "description": "The longest-lived pod that has since died, within the 30-day Prometheus retention window.",
+          "title": "☠️ All-Time GOAT",
+          "description": "The longest-lived pod ever recorded in the permanent archive.",
           "gridPos": { "x": 12, "y": 3, "w": 12, "h": 4 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": { "type": "prometheus", "uid": "pod-history-archive" },
           "options": {
             "reduceOptions": { "calcs": ["lastNotNull"] },
             "colorMode": "background",
@@ -77,7 +77,7 @@ data:
           },
           "targets": [
             {
-              "expr": "topk(1, (max by (namespace, pod) (timestamp(last_over_time(kube_pod_info{namespace!~\"kube-system|kube-node-lease|kube-public|longhorn-system|cert-manager|cilium-secrets|crossplane-system|istio-system|monitoring|spire-server|spire-system|argocd|cloudflare|platform-exporter\"}[30d]))) - max by (namespace, pod) (last_over_time(kube_pod_created{namespace!~\"kube-system|kube-node-lease|kube-public|longhorn-system|cert-manager|cilium-secrets|crossplane-system|istio-system|monitoring|spire-server|spire-system|argocd|cloudflare|platform-exporter\"}[30d]))) unless on(namespace, pod) kube_pod_info{namespace!~\"kube-system|kube-node-lease|kube-public|longhorn-system|cert-manager|cilium-secrets|crossplane-system|istio-system|monitoring|spire-server|spire-system|argocd|cloudflare|platform-exporter\"})",
+              "expr": "topk(1, max by (namespace, pod) (max_over_time(homelab:pod_lifespan_dead_seconds[10y])))",
               "legendFormat": "{{namespace}} / {{pod}}",
               "instant": true
             }
@@ -107,7 +107,7 @@ data:
           },
           "targets": [
             {
-              "expr": "topk(20, time() - kube_pod_created{namespace!~\"kube-system|kube-node-lease|kube-public|longhorn-system|cert-manager|cilium-secrets|crossplane-system|istio-system|monitoring|spire-server|spire-system|argocd|cloudflare|platform-exporter\"})",
+              "expr": "topk(20, time() - kube_pod_created{namespace=~\"adguard|blog|default|js-pollock|kentjarrett-com|launchpad|mattjarrett-com|mattjarrett-dev|my-vinyl|nats|sump-pump\", pod!~\"cm-acme-http-solver-.*\"})",
               "instant": true, "legendFormat": "", "format": "table", "refId": "A"
             }
           ],
@@ -118,10 +118,10 @@ data:
         {
           "id": 5,
           "type": "table",
-          "title": "☠️ Hall of Fame — Longest-Lived, Now Departed (last 30d)",
-          "description": "Pods no longer running that lived the longest, within the 30-day Prometheus retention window. Lifespan = last time the pod was seen alive minus its creation time.",
+          "title": "☠️ Hall of Fame — Longest-Lived, Now Departed",
+          "description": "Pods no longer running that lived the longest, sourced from the permanent pod-history archive Prometheus (federated hourly from the main Prometheus's homelab:pod_lifespan_dead_seconds recording rule). Lifespan = last time the pod was seen alive minus its creation time.",
           "gridPos": { "x": 0, "y": 19, "w": 24, "h": 12 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": { "type": "prometheus", "uid": "pod-history-archive" },
           "options": { "sortBy": [{ "displayName": "Lifespan", "desc": true }], "footer": { "show": false } },
           "fieldConfig": {
             "defaults": { "custom": { "align": "left" }, "unit": "s", "decimals": 1 },
@@ -139,7 +139,7 @@ data:
           },
           "targets": [
             {
-              "expr": "topk(20, (max by (namespace, pod) (timestamp(last_over_time(kube_pod_info{namespace!~\"kube-system|kube-node-lease|kube-public|longhorn-system|cert-manager|cilium-secrets|crossplane-system|istio-system|monitoring|spire-server|spire-system|argocd|cloudflare|platform-exporter\"}[30d]))) - max by (namespace, pod) (last_over_time(kube_pod_created{namespace!~\"kube-system|kube-node-lease|kube-public|longhorn-system|cert-manager|cilium-secrets|crossplane-system|istio-system|monitoring|spire-server|spire-system|argocd|cloudflare|platform-exporter\"}[30d]))) unless on(namespace, pod) kube_pod_info{namespace!~\"kube-system|kube-node-lease|kube-public|longhorn-system|cert-manager|cilium-secrets|crossplane-system|istio-system|monitoring|spire-server|spire-system|argocd|cloudflare|platform-exporter\"})",
+              "expr": "topk(20, max by (namespace, pod) (max_over_time(homelab:pod_lifespan_dead_seconds[10y])))",
               "instant": true, "legendFormat": "", "format": "table", "refId": "A"
             }
           ],

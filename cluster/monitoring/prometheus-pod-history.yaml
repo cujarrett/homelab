@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-pod-history
+  namespace: monitoring
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: prometheus-pod-history-federate
+  namespace: monitoring
+stringData:
+  federate.yaml: |
+    - job_name: federate-pod-lifespan
+      honor_labels: true
+      metrics_path: /federate
+      scrape_interval: 1h
+      params:
+        "match[]":
+          - '{__name__="homelab:pod_lifespan_dead_seconds"}'
+      static_configs:
+        - targets: ["monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"]
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: pod-history
+  namespace: monitoring
+spec:
+  serviceAccountName: prometheus-pod-history
+  retention: 18250d
+  scrapeInterval: 1h
+  evaluationInterval: 1h
+  # Only federation via additionalScrapeConfigs below — don't pick up any
+  # ServiceMonitors, PodMonitors, or PrometheusRules cluster-wide.
+  serviceMonitorSelector:
+    matchLabels:
+      prometheus: pod-history-unused
+  serviceMonitorNamespaceSelector:
+    matchLabels:
+      prometheus: pod-history-unused
+  podMonitorSelector:
+    matchLabels:
+      prometheus: pod-history-unused
+  ruleSelector:
+    matchLabels:
+      prometheus: pod-history-unused
+  additionalScrapeConfigs:
+    name: prometheus-pod-history-federate
+    key: federate.yaml
+  securityContext:
+    fsGroup: 2000
+    runAsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+  resources:
+    requests:
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+  storage:
+    volumeClaimTemplate:
+      spec:
+        storageClassName: longhorn-retain
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-pod-history
+  namespace: monitoring
+spec:
+  selector:
+    app.kubernetes.io/name: prometheus
+    prometheus: pod-history
+  ports:
+    - name: web
+      port: 9090
+      targetPort: 9090
