@@ -491,250 +491,6 @@ data:
             "type": "prometheus",
             "uid": "sump-pump-archive"
           },
-          "description": "All-time over the sump pump archive, not the dashboard time range.",
-          "fieldConfig": {
-            "defaults": {
-              "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "short"
-            }
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 6,
-            "x": 0,
-            "y": 3
-          },
-          "id": 40,
-          "options": {
-            "colorMode": "none",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.1.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "sump-pump-archive"
-              },
-              "expr": "max_over_time(max(increase(sump_pump_runs_total[1h]))[365d:1h])",
-              "instant": true,
-              "legendFormat": "Record High Runs / Hour",
-              "refId": "A"
-            }
-          ],
-          "title": "Record High Runs / Hour",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "sump-pump-archive"
-          },
-          "description": "All-time over the sump pump archive, not the dashboard time range.",
-          "fieldConfig": {
-            "defaults": {
-              "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "short"
-            }
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 6,
-            "x": 6,
-            "y": 3
-          },
-          "id": 41,
-          "options": {
-            "colorMode": "none",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.1.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "sump-pump-archive"
-              },
-              "expr": "min_over_time((max(increase(sump_pump_runs_total[1h])) > 0)[365d:1h])",
-              "instant": true,
-              "legendFormat": "Lowest Active Runs / Hour",
-              "refId": "A"
-            }
-          ],
-          "title": "Lowest Active Runs / Hour",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "sump-pump-archive"
-          },
-          "description": "All-time over the sump pump archive, not the dashboard time range.",
-          "fieldConfig": {
-            "defaults": {
-              "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "dtdurations"
-            }
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 6,
-            "x": 12,
-            "y": 3
-          },
-          "id": 42,
-          "options": {
-            "colorMode": "none",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.1.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "sump-pump-archive"
-              },
-              "expr": "max_over_time((max(avg_over_time(sump_pump_running[1h])) * 3600)[365d:1h])",
-              "instant": true,
-              "legendFormat": "Record High Duration / Hour",
-              "refId": "A"
-            }
-          ],
-          "title": "Record High Duration / Hour",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "sump-pump-archive"
-          },
-          "description": "All-time over the sump pump archive, not the dashboard time range.",
-          "fieldConfig": {
-            "defaults": {
-              "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "dtdurations"
-            }
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 6,
-            "x": 18,
-            "y": 3
-          },
-          "id": 43,
-          "options": {
-            "colorMode": "none",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.1.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "sump-pump-archive"
-              },
-              "expr": "min_over_time(((max(avg_over_time(sump_pump_running[1h])) * 3600) > 0)[365d:1h])",
-              "instant": true,
-              "legendFormat": "Lowest Active Duration / Hour",
-              "refId": "A"
-            }
-          ],
-          "title": "Lowest Active Duration / Hour",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "sump-pump-archive"
-          },
           "description": "Runs per hour, run duration, rainfall, and temperature over time.",
           "fieldConfig": {
             "defaults": {
@@ -971,7 +727,7 @@ data:
             "h": 14,
             "w": 24,
             "x": 0,
-            "y": 6
+            "y": 3
           },
           "id": 21,
           "options": {
@@ -1171,10 +927,10 @@ data:
             ]
           },
           "gridPos": {
-            "h": 14,
+            "h": 10,
             "w": 24,
             "x": 0,
-            "y": 20
+            "y": 17
           },
           "id": 25,
           "options": {
@@ -1265,7 +1021,7 @@ data:
             "h": 10,
             "w": 24,
             "x": 0,
-            "y": 34
+            "y": 27
           },
           "id": 30,
           "options": {
