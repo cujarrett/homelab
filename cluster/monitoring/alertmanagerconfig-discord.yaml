@@ -47,4 +47,7 @@ spec:
         - apiURL:
             name: alertmanager-discord
             key: webhook-url
+          # Message formatting deliberately lives in alertmanager.templateFiles
+          # rather than here: operator v0.92.1 drops title/message from this CRD
+          # when it generates the Alertmanager config, without logging anything.
     - name: "null"
