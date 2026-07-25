@@ -202,6 +202,7 @@ kubectl apply -f cluster/monitoring/<dashboard>.yaml
 | `orphans-kiosk` | `grafana-dashboard-orphans-kiosk.yaml` | Orphans — Kiosk |
 | `homelab-orphans` | `grafana-dashboard-orphans.yaml` | Orphaned Resources |
 | `homelab-pod-health` | `grafana-dashboard-pod-health.yaml` | Pod Health Breakdown |
+| `homelab-pod-leaderboard` | `grafana-dashboard-pod-leaderboard.yaml` | Pod Uptime Leaderboard |
 | `homelab-pods-by-node` | `grafana-dashboard-pods-by-node.yaml` | Pods by Node |
 | `service-mesh` | `grafana-dashboard-service-mesh.yaml` | Service Mesh |
 | `sump-pump-kiosk` | `grafana-dashboard-sump-pump-kiosk.yaml` | Sump Pump — Kiosk |
