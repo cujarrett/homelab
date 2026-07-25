@@ -8,7 +8,11 @@ metadata:
 spec:
   groups:
     - name: pod-lifespan
-      interval: 1h
+      # 2m, not 1h: the archive federates this metric, and /federate only serves
+      # samples inside Prometheus's 5m staleness window. Evaluating less often than
+      # that makes the series read as absent, so federation silently scrapes zero
+      # samples. Cheap to run — the query measures ~0.2s.
+      interval: 2m
       rules:
         - record: homelab:pod_lifespan_dead_seconds
           expr: |
