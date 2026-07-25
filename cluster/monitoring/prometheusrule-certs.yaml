@@ -1,0 +1,57 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: certs
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: certs
+      interval: 5m
+      rules:
+        # cert-manager renews at 30 days remaining, so anything still under 21 has
+        # already missed a renewal window — these thresholds fire on failure, not on
+        # normal cert age. Public hosts renew over HTTP-01 through the Cloudflare
+        # tunnel, which means a tunnel misconfiguration shows up here first.
+        # exported_namespace, not namespace: the latter is cert-manager's own
+        # namespace, since the metric is scraped from the controller pod.
+        - alert: CertificateExpiringSoon
+          expr: |
+            (certmanager_certificate_expiration_timestamp_seconds - time()) / 86400 < 21
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} expires in {{ $value | printf \"%.0f\" }} days"
+            description: >-
+              Renewal should have happened at 30 days remaining and did not.
+              Check with `kubectl describe certificate {{ $labels.name }} -n {{ $labels.exported_namespace }}`
+              and look at the CertificateRequest it owns.
+
+        - alert: CertificateExpiringCritical
+          expr: |
+            (certmanager_certificate_expiration_timestamp_seconds - time()) / 86400 < 7
+          for: 1h
+          labels:
+            severity: critical
+          annotations:
+            summary: "Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} expires in {{ $value | printf \"%.0f\" }} days"
+            description: >-
+              If this is local-lab-ca, every .local.lab host loses TLS together
+              when it lapses — ArgoCD, Grafana, Prometheus and Longhorn at once.
+
+        # Catches a cert wedged before expiry becomes the symptom, e.g. an HTTP-01
+        # challenge that cannot complete because the hostname is missing from the
+        # tunnel config.
+        - alert: CertificateNotReady
+          expr: |
+            certmanager_certificate_ready_status{condition="True"} == 0
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} has not been ready for 1h"
+            description: >-
+              A new public hostname must exist in the Cloudflare tunnel config before
+              its cert can be issued, otherwise the HTTP-01 self-check fails.
