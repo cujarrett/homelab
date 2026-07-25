@@ -902,7 +902,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "count_over_time((sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"}) == count(kube_node_info))[30d:5m]) / sum(count_over_time(up{job=\"kube-state-metrics\"}[30d:5m])) * 100",
+              "expr": "avg_over_time(((sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"}) == bool count(kube_node_info)) * min(probe_success{probe_group=\"internet\"}))[30d:30s]) * 100",
               "instant": true,
               "legendFormat": "30d Availability",
               "refId": "A"
@@ -3623,32 +3623,17 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "mappings": [
-                {
-                  "options": {
-                    "0": {
-                      "text": "DOWN"
-                    },
-                    "1": {
-                      "text": "UP"
-                    }
-                  },
-                  "type": "value"
-                }
-              ],
+              "noValue": "No outage in window",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "red",
-                    "value": 0
-                  },
-                  {
                     "color": "green",
-                    "value": 1
+                    "value": 0
                   }
                 ]
-              }
+              },
+              "unit": "dtdurations"
             }
           },
           "gridPos": {
@@ -3683,13 +3668,13 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "min(probe_success{probe_group=\"internet\"})",
+              "expr": "time() - max_over_time(timestamp(sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"}) != count(kube_node_info))[30d:30s])",
               "instant": true,
-              "legendFormat": "Internet",
+              "legendFormat": "Time Since Last Power Outage",
               "refId": "A"
             }
           ],
-          "title": "Internet Uplink",
+          "title": "Time Since Last Power Outage",
           "type": "stat"
         },
         {
@@ -3702,37 +3687,17 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 3,
-              "mappings": [
-                {
-                  "options": {
-                    "100": {
-                      "text": "100%"
-                    }
-                  },
-                  "type": "value"
-                }
-              ],
-              "max": 100,
-              "min": 0,
+              "noValue": "No outage in window",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "red",
-                    "value": 0
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 99
-                  },
-                  {
                     "color": "green",
-                    "value": 99.9
+                    "value": 0
                   }
                 ]
               },
-              "unit": "percent"
+              "unit": "dtdurations"
             }
           },
           "gridPos": {
@@ -3767,13 +3732,13 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "avg_over_time(min(probe_success{probe_group=\"internet\"})[30d:30s]) * 100",
+              "expr": "time() - max_over_time(timestamp(min(probe_success{probe_group=\"internet\"}) == 0)[30d:30s])",
               "instant": true,
-              "legendFormat": "30d Internet Availability",
+              "legendFormat": "Time Since Last Internet Outage",
               "refId": "A"
             }
           ],
-          "title": "30 Day Internet Availability",
+          "title": "Time Since Last Internet Outage",
           "type": "stat"
         }
       ],
