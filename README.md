@@ -32,7 +32,7 @@ A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering a
 | Raspberry Pi 5 8GB (Workers) | 3 |
 | GeeekPi P31 M.2 NVMe PoE+ HAT (Pi 5) | 4 |
 | 256GB M.2 2230 NVMe SSD | 4 |
-| TP-Link GS305PP 5-Port PoE+ Switch | 1 |
+| Netgear GS305PP 5-Port PoE+ Switch | 1 |
 | GeeekPi DeskPi RackMate T0 Plus 10" 4U Rack | 1 |
 | GeeekPi 6.91" 1U Rack LCD (1424×280) | 1 |
 
