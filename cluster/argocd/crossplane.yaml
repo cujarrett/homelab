@@ -17,6 +17,14 @@ spec:
           metrics:
             enabled: true
           rbacManager: {}
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  preference:
+                    matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: DoesNotExist
     - repoURL: https://github.com/cujarrett/homelab.git
       targetRevision: main
       path: cluster/crossplane

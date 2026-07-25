@@ -23,6 +23,14 @@ spec:
           resources:
             limits:
               memory: 2.5Gi
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  preference:
+                    matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: DoesNotExist
         repoServer:
           resources:
             limits:
