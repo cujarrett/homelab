@@ -10,12 +10,8 @@ spec:
     - name: certs
       interval: 5m
       rules:
-        # cert-manager renews at 30 days remaining, so anything still under 21 has
-        # already missed a renewal window — these thresholds fire on failure, not on
-        # normal cert age. Public hosts renew over HTTP-01 through the Cloudflare
-        # tunnel, which means a tunnel misconfiguration shows up here first.
-        # exported_namespace, not namespace: the latter is cert-manager's own
-        # namespace, since the metric is scraped from the controller pod.
+        # cert-manager renews at 30 days left, so under 21 means renewal failed.
+        # exported_namespace, not namespace — the metric comes from the controller pod.
         - alert: CertificateExpiringSoon
           expr: |
             (certmanager_certificate_expiration_timestamp_seconds - time()) / 86400 < 21
@@ -41,9 +37,8 @@ spec:
               If this is local-lab-ca, every .local.lab host loses TLS together
               when it lapses — ArgoCD, Grafana, Prometheus and Longhorn at once.
 
-        # Catches a cert wedged before expiry becomes the symptom, e.g. an HTTP-01
-        # challenge that cannot complete because the hostname is missing from the
-        # tunnel config.
+        # Catches a wedged cert before expiry does — usually HTTP-01 failing because
+        # the hostname is missing from the tunnel config.
         - alert: CertificateNotReady
           expr: |
             certmanager_certificate_ready_status{condition="True"} == 0

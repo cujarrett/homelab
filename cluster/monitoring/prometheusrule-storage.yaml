@@ -10,13 +10,9 @@ spec:
     - name: storage
       interval: 5m
       rules:
-        # actual_size counts every layer a replica holds on disk — volume-head plus
-        # any snapshots. volume-head alone can never exceed capacity, so a ratio
-        # above 1 means snapshot layers are carrying the excess. Longhorn marks
-        # system-generated snapshots for cleanup after a replica rebuild, but the
-        # purge that reclaims the space can stall silently, leaving the layer on
-        # every replica. 1.1 for 6h clears both the current 0.88 steady state and
-        # the short-lived spike a legitimate rebuild produces.
+        # volume-head alone cannot exceed capacity, so a ratio above 1 is unpurged
+        # snapshot layers — Longhorn marks them removed then stalls silently.
+        # 1.1 for 6h clears the 0.88 steady state and rebuild spikes.
         - alert: LonghornVolumeSnapshotBloat
           expr: |
             longhorn_volume_actual_size_bytes / longhorn_volume_capacity_bytes > 1.1
@@ -33,9 +29,7 @@ spec:
               snapshot shows removed=true it never got purged, and the reclaim is
               a snapshotPurge action against the volume on the longhorn-manager API.
 
-        # The bloat alert above only sees a volume against its own capacity, which
-        # says nothing about the node underneath it. This is the backstop: whatever
-        # the cause, it fires before a node is close enough to full to matter.
+        # Backstop — the bloat alert says nothing about the node underneath.
         - alert: NodeDiskFillingUp
           expr: |
             100 - (
