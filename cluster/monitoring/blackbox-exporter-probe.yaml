@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: internet-uplink
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  jobName: blackbox-internet
+  interval: 30s
+  module: http_2xx
+  prober:
+    url: blackbox-exporter.monitoring.svc.cluster.local:9115
+  targets:
+    staticConfig:
+      static:
+        - https://cloudflare.com/cdn-cgi/trace
+        - https://www.google.com/generate_204
+      labels:
+        probe_group: internet
