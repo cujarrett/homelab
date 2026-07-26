@@ -20,6 +20,33 @@ Every decision below follows from these. When a question comes up, answer it fro
 | 6 | **Apps never see Istio** | No Istio kinds, no SPIFFE strings, no Envoy in any workspace file |
 | 7 | **The mesh is governance, not containment** | A compromised pod can step around the sidecar. Say so plainly rather than overselling |
 
+## Status
+
+Built and running on the `platform-connections-demo` canary.
+
+| | Built | Verified on cluster |
+|---|---|---|
+| `connectionPosture`, `provides`, `consumes` on `Api` / `Spa` | ✅ | ✅ CRD carries all three |
+| `PeerAuthentication` STRICT per workload | ✅ | ✅ three rendered |
+| `AuthorizationPolicy` per `provides` interface | ✅ | ✅ three rendered |
+| `Sidecar` + `REGISTRY_ONLY` | ✅ | ✅ three rendered |
+| `ServiceEntry` per `consumes` host | ✅ | ✅ one, on the only workload that declares one |
+| Every other workspace unaffected at `off` | ✅ | ✅ nine render byte-identical |
+
+**Flows proven against live pods:**
+
+| Flow | Result | Gate |
+|---|---|---|
+| declared caller → API | ✅ 200 | `AuthorizationPolicy` |
+| undeclared caller → API | ✅ 403 | `AuthorizationPolicy` |
+| declared host off-platform | ✅ 200 | `ServiceEntry` |
+| unregistered host off-platform | ✅ blocked | `REGISTRY_ONLY` |
+| undeclared workload → a *neighbour's* registered host | ✅ blocked | `Sidecar` egress scope |
+
+That last row failed the first time it ran: a `ServiceEntry` is registered namespace-wide, and an egress wildcard of `./*` matches the whole namespace registry — so one workload could reach an off-platform host another had declared. The wildcard is scoped to `./*.svc.cluster.local` with declared hosts listed explicitly, which keeps cluster services free while making every external destination per-workload. Two workloads running an identical image, differing only in what they declare, now get different answers on every call.
+
+**Not started:** every workspace other than the canary is still `off`. `sump-pump` is deferred until NATS is handled, since its cross-namespace traffic would be blocked. `launchpad` needs its namespace meshed first. WordPress is out of scope, and `blog` is a plain Deployment the platform doesn't render.
+
 ## Complexity Jusfriction
 
 **Grug:** two extra fields per app, once. In return: nobody can call your service without your team saying yes, and you can prove it. Each cost below is paid once, at the right layer, not per request — no ticket queue, no manual firewall change, no service-mesh expert on call for the common case.
