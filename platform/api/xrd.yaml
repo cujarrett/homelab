@@ -193,11 +193,9 @@ spec:
                             description: "Off-platform hostname (e.g. api.discogs.com). Anything not listed is blocked at this workload's own sidecar."
                           port:
                             type: integer
-                            default: 443
-                            description: "Port for host. Defaults to 443."
+                            description: "Port for host. Defaults to 443 when omitted."
                           protocol:
                             type: string
-                            default: TLS
                             enum: [TLS, HTTP]
                             description: "Wire protocol for host. TLS for any https:// destination — the app terminates its own TLS. HTTP only for plaintext destinations."
                           app:
