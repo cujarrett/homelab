@@ -766,9 +766,12 @@ spec:
                   {{- end }}
                 {{- end }}
             ---
-            # REGISTRY_ONLY: this workload may only reach things Istio knows about — its own
-            # namespace, the control plane, and each ServiceEntry rendered from consumes.
-            # Anything else is refused at this pod's own sidecar.
+            # REGISTRY_ONLY: this workload may only reach things Istio knows about — cluster
+            # services in its own namespace, the control plane, and the hosts it declared.
+            # Anything else is refused at this pod's own sidecar. The wildcard is scoped to
+            # svc.cluster.local on purpose — a bare ./* also matches every ServiceEntry in
+            # the namespace, which would let one workload reach a host its neighbour
+            # registered.
             apiVersion: networking.istio.io/v1
             kind: Sidecar
             metadata:
@@ -784,9 +787,12 @@ spec:
                 mode: REGISTRY_ONLY
               egress:
                 - hosts:
-                    - "./*"
+                    - "./*.svc.cluster.local"
                     - "istio-system/*"
                     {{- range $c := $consumes }}
+                    {{- if $c.host }}
+                    - "./{{ $c.host }}"
+                    {{- end }}
                     {{- if and $c.app $c.namespace }}
                     - "{{ $c.namespace }}/{{ $c.app }}.{{ $c.namespace }}.svc.cluster.local"
                     {{- end }}
