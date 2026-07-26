@@ -449,7 +449,7 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               selector:
-                matchLabels: { app.kubernetes.io/instance: {{ $name }} }
+                matchLabels: { instance: {{ $name }} }
               mtls:
                 mode: STRICT
               portLevelMtls:
@@ -466,7 +466,7 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               selector:
-                matchLabels: { app.kubernetes.io/instance: {{ $name }} }
+                matchLabels: { instance: {{ $name }} }
               action: ALLOW
               rules:
                 - to:
@@ -487,7 +487,7 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               workloadSelector:
-                labels: { app.kubernetes.io/instance: {{ $name }} }
+                labels: { instance: {{ $name }} }
               outboundTrafficPolicy:
                 mode: REGISTRY_ONLY
               egress:
