@@ -1,33 +1,35 @@
 ---
-description: Render all Api workspaces against the current composition to catch template errors and breaking changes before pushing. Requires Docker running locally.
+description: Render every workspace XR against the current compositions and check the output is sane. Catches template errors, bad XRD schemas, and unintended changes to other apps before pushing. Requires Docker running locally.
 ---
 
-Run `crossplane render` for every Api workspace against the current composition. Report any failures clearly.
+# Render check
 
-**Prerequisite:** Docker must be running. The render command pulls and runs `function-go-templating` as a container.
+Run the script from the repo root:
 
 ```bash
-crossplane render \
-  ../homelab-workspaces/my-vinyl/my-vinyl-api.yaml \
-  platform/api/composition.yaml \
-  local-only/render-functions.yaml
-
-crossplane render \
-  ../homelab-workspaces/sump-pump/sump-pump-bridge.yaml \
-  platform/api/composition.yaml \
-  local-only/render-functions.yaml
-
-crossplane render \
-  ../homelab-workspaces/sump-pump/sump-pump-consumer.yaml \
-  platform/api/composition.yaml \
-  local-only/render-functions.yaml
-
-crossplane render \
-  ../homelab-workspaces/sump-pump/weather-exporter.yaml \
-  platform/api/composition.yaml \
-  local-only/render-functions.yaml
+./scripts/render-check.sh
 ```
 
-For each render:
-- If it exits 0, summarise any Deployment changes vs what is currently running (diff the volumeMounts, initContainers, env blocks)
-- If it exits non-zero, show the error and explain what in the composition caused it
+**Prerequisite:** Docker must be running — `crossplane render` pulls `function-go-templating` as a container.
+
+## What it checks
+
+Four gates. Each exists because that class of bug reached the cluster at least once.
+
+| Gate | Catches |
+|---|---|
+| **schema** | An XRD whose enum holds a YAML boolean (`off`, `on`, `yes`, `no` unquoted), or a `default` outside its own enum. Kubernetes rejects the generated CRD, Crossplane leaves it at the old generation, and nothing logs why. A server-side dry-run does **not** catch this — the XRD is valid, only CRD generation fails. |
+| **render** | `crossplane render` exits non-zero. |
+| **parse** | Output is valid YAML and no block sequence collapsed into a single string. `crossplane render` exits 0 even when whitespace trimming (`{{- … -}}`) flattens a list, so exit code alone proves nothing. |
+| **blast radius** | A composition edit changing an app you did not intend to touch. `Api` and `Spa` are shared by every workspace, so one edit reaches all of them. |
+
+**What it does not check:** whether your *workspace* edits took effect. The comparison renders the current XR against `HEAD`'s composition, and workspaces live in a separate repo this script cannot read history for — so it answers "did my composition change break anyone else", not "did my XR change do what I meant". Verify workspace edits by reading the rendered output.
+
+## Reading the output
+
+- `ok … (composition change does not affect it)` — this is what every workspace you did not intend to touch must say.
+- `ok … (CHANGED vs HEAD — review below)` — your composition edit reaches this app. Read the diff and confirm you meant it.
+- `ok … (new)` — not present at `HEAD`, so there is nothing to compare against.
+- `FAIL` — fix before pushing.
+
+Workspaces are discovered from `../homelab-workspaces/*/*.yaml` by their `kind`, so new apps and new XR types are picked up automatically — nothing to keep in sync here.
