@@ -45,7 +45,11 @@ Built and running on the `platform-connections-demo` canary.
 
 That last row failed the first time it ran: a `ServiceEntry` is registered namespace-wide, and an egress wildcard of `./*` matches the whole namespace registry — so one workload could reach an off-platform host another had declared. The wildcard is scoped to `./*.svc.cluster.local` with declared hosts listed explicitly, which keeps cluster services free while making every external destination per-workload. Two workloads running an identical image, differing only in what they declare, now get different answers on every call.
 
-**Not started:** every workspace other than the canary is still `off`. `sump-pump` is deferred until NATS is handled, since its cross-namespace traffic would be blocked. `launchpad` needs its namespace meshed first. WordPress is out of scope, and `blog` is a plain Deployment the platform doesn't render.
+**Enforcing:** `platform-connections-demo`, `my-vinyl` (SPA + API + cache), `js-pollock`, `mattjarrett-dev`. All three public sites serve normally, `my-vinyl-api` reaches Discogs and nothing else, and a workload in one namespace has no route to another it never declared.
+
+**Not started:** `sump-pump` is deferred until NATS is handled, since its cross-namespace traffic would be blocked. `launchpad` needs its namespace meshed first. WordPress is out of scope, and `blog` is a plain Deployment the platform doesn't render.
+
+**Watch out — the two compositions label pods differently.** `Api` sets `app.kubernetes.io/instance`, `Spa` sets `instance`. Selectors copied between them match nothing and fail silently: the policy renders, ArgoCD reports Synced, and enforcement never happens. Converging both on one label would remove the trap.
 
 ## Complexity Jusfriction
 
