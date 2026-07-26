@@ -81,7 +81,7 @@ spec:
                     connectionPosture:
                       type: string
                       default: "off"
-                      enum: [off, enforce]
+                      enum: ["off", "enforce"]
                       description: "Connection policy for this workload. off renders nothing. enforce blocks calls out unless the destination is same-namespace, already named in apiProxies, or declared in consumes."
                     consumes:
                       type: array

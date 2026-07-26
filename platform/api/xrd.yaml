@@ -147,7 +147,7 @@ spec:
                     connectionPosture:
                       type: string
                       default: "off"
-                      enum: [off, enforce]
+                      enum: ["off", "enforce"]
                       description: "Connection policy for this workload. off renders nothing. enforce means calls in are denied unless this API declared the caller in provides, and calls out are blocked unless the destination is same-namespace or declared in consumes."
                     provides:
                       type: array
