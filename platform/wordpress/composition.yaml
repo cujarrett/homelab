@@ -353,7 +353,7 @@ spec:
                 </IfModule>
             ---
             # --- Security mu-plugin ConfigMap ---
-            # Mounts a must-use plugin that:
+            # Mounts a must-use plugin that does four things
             #   1. Disables XML-RPC (blocks brute-force via xmlrpc.php)
             #   2. Removes /wp/v2/users + /wp/v2/users/me from the REST API (prevents username enumeration)
             #   3. Disables Application Passwords (blocks REST API basic-auth credential stuffing)
