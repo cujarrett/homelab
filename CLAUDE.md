@@ -2,8 +2,11 @@
 
 ## Rules
 
-- **Never run `git commit`, `git push`, or any git command that writes to or modifies repository history or remotes.** If a task requires committing or pushing, stop and tell the user to run the git command manually.
+- **Never run `git add`, `git commit`, `git push`, or any git command that writes to or modifies the index, repository history, or remotes.** Output the commands for the user to run — staging is part of their review, and running it for them removes the checkpoint.
 - **Whenever a task requires a commit, always give a suggested commit message** — never leave the user to write it themselves.
+- **Give `git add` and the commit as two separate steps, listing every file explicitly** — never `git add .`, `git add -A`, or a bare directory. Group related files onto one `git add` line. One `git add` + one commit message per repository, each under its own heading when more than one repo changed.
+- **Never output a `git push` command.** The user pushes as a deliberate human step.
+- **Never include a `:` in YAML comment** Editors highlight the trailing colon as a key and mis-colour the rest of the block. Use an em dash, or reword — `# depends on tlsIssuer — letsencrypt-prod means...`, not `# depends on tlsIssuer:`. Mid-line colons (`# curl: raw curl without browser UA`) are fine.
 - **Always use `k` instead of `kubectl` in commands shown to the user in chat. Use kubectl in all doc files.**
 - **Never wrap `kubectl`/`k` commands in `ssh pi@...` — the user's local machine has Tailscale and kubeconfig configured. Run `kubectl` commands directly in the terminal.**
 - **When debugging, always list every command used** — show the command, what it does, and why — so the user can learn the debugging workflow. Do this inline as you debug, not as a summary at the end.
