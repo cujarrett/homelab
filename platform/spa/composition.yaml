@@ -20,7 +20,7 @@ spec:
             {{- $name := .observed.composite.resource.metadata.name }}
             {{- $params := .observed.composite.resource.spec.parameters }}
             {{- $namespace := $params.namespace }}
-            {{- $apiProxyEnabled := and $params.apiProxy $params.apiProxy.enabled }}
+            {{- $apiProxies := $params.apiProxies | default list }}
             {{- $sizeResourceMap := dict "xs" (dict "cpuReq" "25m" "cpuLim" "100m" "memReq" "32Mi" "memLim" "64Mi") "sm" (dict "cpuReq" "50m" "cpuLim" "200m" "memReq" "64Mi" "memLim" "128Mi") "md" (dict "cpuReq" "100m" "cpuLim" "500m" "memReq" "128Mi" "memLim" "256Mi") "lg" (dict "cpuReq" "250m" "cpuLim" "1000m" "memReq" "256Mi" "memLim" "512Mi") }}
             {{- $sizeKey := $params.size | default "sm" }}
             {{- $sizeRes := get $sizeResourceMap $sizeKey | default (get $sizeResourceMap "sm") }}
@@ -36,7 +36,7 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
             data:
               default.conf: |
-                {{- if $apiProxyEnabled }}
+                {{- if gt (len $apiProxies) 0 }}
                 # Redact sensitive query-string params before they hit the access log.
                 # Proxied API calls (e.g. SSE watch endpoints) sometimes carry bearer
                 # tokens or auth tickets as ?token=/?ticket=... because EventSource
@@ -149,27 +149,7 @@ spec:
                         return 404;
                     }
 
-                    {{- if $apiProxyEnabled }}
-                    # API proxy: routes /api/ to in-cluster service (no public exposure needed)
-                    location /api/ {
-                        access_log /var/log/nginx/access.log api_proxy;
-                        proxy_pass http://{{ $params.apiProxy.upstream }}/;
-                        proxy_set_header Host $host;
-                        # Use Traefik's forwarded header — $remote_addr is Traefik's pod IP, not the client.
-                        proxy_set_header X-Real-IP $http_x_real_ip;
-                        proxy_set_header X-Forwarded-For $http_x_forwarded_for;
-                        proxy_set_header X-Forwarded-Proto $scheme;
-                        # SSE / long-poll support: disable buffering so streamed responses
-                        # reach the client immediately (e.g. /api/status/watch).
-                        proxy_buffering off;
-                        proxy_cache off;
-                        proxy_read_timeout 3600s;
-                        proxy_set_header Connection '';
-                        chunked_transfer_encoding on;
-                    }
-                    {{- end }}
-
-                    {{- range $params.apiProxies | default list }}
+                    {{- range $apiProxies }}
                     # API proxy: routes {{ .path }}* to an in-cluster service (no public exposure needed)
                     location {{ .path }} {
                         access_log /var/log/nginx/access.log api_proxy;
@@ -179,6 +159,8 @@ spec:
                         proxy_set_header X-Real-IP $http_x_real_ip;
                         proxy_set_header X-Forwarded-For $http_x_forwarded_for;
                         proxy_set_header X-Forwarded-Proto $scheme;
+                        # SSE / long-poll support: disable buffering so streamed responses
+                        # reach the client immediately (e.g. /api/status/watch).
                         proxy_buffering off;
                         proxy_cache off;
                         proxy_read_timeout 3600s;
@@ -445,3 +427,100 @@ spec:
                             name: {{ $name }}
                             port:
                               number: 80
+            {{- /* ---------- Connections ---------- */ -}}
+            {{- /* apiProxies already states this SPA's dependencies, so they become     */ -}}
+            {{- /* egress entries here rather than being declared a second time.         */ -}}
+            {{- /* No provides field — nothing calls a SPA workload-to-workload.         */ -}}
+            {{- $posture := $params.connectionPosture | default "off" }}
+            {{- $consumes := $params.consumes | default list }}
+            {{- if eq $posture "enforce" }}
+            ---
+            # Every Spa has an Ingress, and Traefik is unmeshed, so port 80 cannot be
+            # restricted by identity. How far that reaches depends on tlsIssuer —
+            # letsencrypt-prod means the internet, local-lab-ca-issuer means the
+            # homelab network. Either way it is wider than the mesh can narrow.
+            apiVersion: security.istio.io/v1
+            kind: PeerAuthentication
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-peerauth
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels: { app.kubernetes.io/instance: {{ $name }} }
+              mtls:
+                mode: STRICT
+              portLevelMtls:
+                "80":
+                  mode: PERMISSIVE
+            ---
+            apiVersion: security.istio.io/v1
+            kind: AuthorizationPolicy
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-authz
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels: { app.kubernetes.io/instance: {{ $name }} }
+              action: ALLOW
+              rules:
+                - to:
+                    - operation: { ports: ["80"] }
+            ---
+            # REGISTRY_ONLY: this SPA may only reach its own namespace, the control plane,
+            # whatever apiProxies already names, and each ServiceEntry from consumes.
+            apiVersion: networking.istio.io/v1
+            kind: Sidecar
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-sidecar
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              workloadSelector:
+                labels: { app.kubernetes.io/instance: {{ $name }} }
+              outboundTrafficPolicy:
+                mode: REGISTRY_ONLY
+              egress:
+                - hosts:
+                    - "./*"
+                    - "istio-system/*"
+                    {{- range $apiProxies }}
+                    - "*/{{ .upstream }}"
+                    {{- end }}
+                    {{- range $c := $consumes }}
+                    {{- if and $c.app $c.namespace }}
+                    - "{{ $c.namespace }}/{{ $c.app }}.{{ $c.namespace }}.svc.cluster.local"
+                    {{- end }}
+                    {{- end }}
+            {{- range $c := $consumes }}
+            {{- if $c.host }}
+            ---
+            # consumes: {{ $c.host }} — registering it is what makes it reachable.
+            apiVersion: networking.istio.io/v1
+            kind: ServiceEntry
+            metadata:
+              name: {{ $name }}-{{ $c.host | replace "." "-" }}
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-se-{{ $c.host | replace "." "-" }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              hosts:
+                - {{ $c.host | quote }}
+              location: MESH_EXTERNAL
+              resolution: DNS
+              exportTo: ["."]
+              ports:
+                - number: {{ $c.port | default 443 }}
+                  name: {{ $c.protocol | default "TLS" | lower }}
+                  protocol: {{ $c.protocol | default "TLS" }}
+            {{- end }}
+            {{- end }}
+            {{- end }}

@@ -64,19 +64,9 @@ spec:
                     namespace:
                       type: string
                       description: "Namespace to deploy into. Must already exist (created by the tenant's namespace.yaml)."
-                    apiProxy:
-                      type: object
-                      description: "Use when this SPA has a companion Api. Nginx routes /api/* requests to it in-cluster — the API never needs its own public hostname or Cloudflare Tunnel entry. Only the SPA is internet-facing; the API stays cluster-internal."
-                      properties:
-                        enabled:
-                          type: boolean
-                          default: false
-                        upstream:
-                          type: string
-                          description: "FQDN of the upstream service (e.g. my-vinyl-api.my-vinyl-api.svc.cluster.local). nginx proxies /api/ → http://<upstream>/."
                     apiProxies:
                       type: array
-                      description: "Like apiProxy, for SPAs with multiple companion APIs. Each entry routes one path prefix to one in-cluster service; the prefix is stripped before proxying. The APIs never need their own public hostnames."
+                      description: "Use when this SPA has companion Apis. Each entry routes one path prefix to one in-cluster service; the prefix is stripped before proxying. The Apis need no hostname or Cloudflare Tunnel entry of their own — only the SPA is exposed, and how far depends on its tlsIssuer."
                       items:
                         type: object
                         required: [path, upstream]
@@ -88,6 +78,35 @@ spec:
                           upstream:
                             type: string
                             description: "FQDN of the upstream service (e.g. foo.foo-ns.svc.cluster.local). nginx proxies <path>* → http://<upstream>/*."
+                    connectionPosture:
+                      type: string
+                      default: "off"
+                      enum: [off, enforce]
+                      description: "Connection policy for this workload. off renders nothing. enforce blocks calls out unless the destination is same-namespace, already named in apiProxies, or declared in consumes."
+                    consumes:
+                      type: array
+                      description: "Destinations this SPA calls that no other field already states. Same-namespace destinations and anything already named in apiProxies are allowed automatically — do not list them. Set either host (off-platform) or app+namespace (another namespace on the platform)."
+                      items:
+                        type: object
+                        properties:
+                          host:
+                            type: string
+                            description: "Off-platform hostname (e.g. api.discogs.com). Anything not listed is blocked at this workload's own sidecar."
+                          port:
+                            type: integer
+                            default: 443
+                            description: "Port for host. Defaults to 443."
+                          protocol:
+                            type: string
+                            default: TLS
+                            enum: [TLS, HTTP]
+                            description: "Wire protocol for host. TLS for any https:// destination — the app terminates its own TLS. HTTP only for plaintext destinations."
+                          app:
+                            type: string
+                            description: "metadata.name of an Api in another namespace this calls. Use with namespace."
+                          namespace:
+                            type: string
+                            description: "Namespace of app. Required when app is set."
                   required:
                     - image
                     - host

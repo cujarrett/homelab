@@ -682,3 +682,139 @@ spec:
                             port:
                               number: 80
             {{- end }}
+            {{- /* ---------- Connections ---------- */ -}}
+            {{- /* Deny by default, allow by declaration. AuthorizationPolicy is the     */ -}}
+            {{- /* control on the way in, Sidecar the control on the way out. Both are   */ -}}
+            {{- /* rendered onto this workload, from this workload's own declarations.   */ -}}
+            {{- $posture := $xr.spec.parameters.connectionPosture | default "off" }}
+            {{- $appPort := $xr.spec.parameters.port | default 8080 }}
+            {{- $provides := $xr.spec.parameters.provides | default list }}
+            {{- $consumes := $xr.spec.parameters.consumes | default list }}
+            {{- if eq $posture "enforce" }}
+            ---
+            # Callers must prove a real mesh identity. Two exceptions, both for unmeshed
+            # infrastructure that has no identity to present, Prometheus scraping metrics,
+            # and Traefik forwarding public ingress (only when this Api has a host).
+            apiVersion: security.istio.io/v1
+            kind: PeerAuthentication
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-peerauth
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels: { app.kubernetes.io/instance: {{ $name }} }
+              mtls:
+                mode: STRICT
+              portLevelMtls:
+                "{{ $metricsPort }}":
+                  mode: PERMISSIVE
+                {{- if $host }}
+                "{{ $appPort }}":
+                  mode: PERMISSIVE
+                {{- end }}
+            ---
+            # The first ALLOW policy selecting this workload makes it default-deny, so every
+            # rule this workload needs lives in THIS object. Edict - one rule, not two
+            # policies — separate ALLOW policies OR together and would widen access. A
+            # future user-identity check becomes a `when:` clause on the rule it belongs to.
+            apiVersion: security.istio.io/v1
+            kind: AuthorizationPolicy
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-authz
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels: { app.kubernetes.io/instance: {{ $name }} }
+              action: ALLOW
+              rules:
+                # Prometheus is unmeshed — it presents no identity to match on.
+                - to:
+                    - operation: { ports: ["{{ $metricsPort }}"] }
+                {{- if $host }}
+                # This Api has an Ingress, and Traefik is unmeshed, so this port cannot
+                # be restricted by identity. How far that reaches depends on tlsIssuer —
+                # letsencrypt-prod means the internet, local-lab-ca-issuer means the
+                # homelab network. Drop the host, or mesh Traefik, to close it.
+                - to:
+                    - operation: { ports: ["{{ $appPort }}"] }
+                {{- end }}
+                {{- range $iface := $provides }}
+                # provides: {{ $iface.name }}
+                - from:
+                    - source:
+                        principals:
+                          {{- range $iface.allowedCallers }}
+                          - "cluster.local/ns/{{ .namespace }}/sa/{{ .app }}"
+                          {{- end }}
+                  {{- $m := $iface.methods | default list }}
+                  {{- $p := $iface.paths | default list }}
+                  {{- if or (gt (len $m) 0) (gt (len $p) 0) }}
+                  to:
+                    - operation:
+                        {{- if gt (len $m) 0 }}
+                        methods: [{{ range $i, $v := $m }}{{ if $i }}, {{ end }}{{ $v | quote }}{{ end }}]
+                        {{- end }}
+                        {{- if gt (len $p) 0 }}
+                        paths: [{{ range $i, $v := $p }}{{ if $i }}, {{ end }}{{ $v | quote }}{{ end }}]
+                        {{- end }}
+                  {{- end }}
+                {{- end }}
+            ---
+            # REGISTRY_ONLY: this workload may only reach things Istio knows about — its own
+            # namespace, the control plane, and each ServiceEntry rendered from consumes.
+            # Anything else is refused at this pod's own sidecar.
+            apiVersion: networking.istio.io/v1
+            kind: Sidecar
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-sidecar
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              workloadSelector:
+                labels: { app.kubernetes.io/instance: {{ $name }} }
+              outboundTrafficPolicy:
+                mode: REGISTRY_ONLY
+              egress:
+                - hosts:
+                    - "./*"
+                    - "istio-system/*"
+                    {{- range $c := $consumes }}
+                    {{- if and $c.app $c.namespace }}
+                    - "{{ $c.namespace }}/{{ $c.app }}.{{ $c.namespace }}.svc.cluster.local"
+                    {{- end }}
+                    {{- end }}
+            {{- range $c := $consumes }}
+            {{- if $c.host }}
+            ---
+            # consumes {{ $c.host }} — registering it is what makes it reachable.
+            # protocol TLS passes the app's own encrypted stream straight through; HTTP
+            # would make Envoy try to terminate it.
+            apiVersion: networking.istio.io/v1
+            kind: ServiceEntry
+            metadata:
+              name: {{ $name }}-{{ $c.host | replace "." "-" }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-se-{{ $c.host | replace "." "-" }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              hosts:
+                - {{ $c.host | quote }}
+              location: MESH_EXTERNAL
+              resolution: DNS
+              exportTo: ["."]
+              ports:
+                - number: {{ $c.port | default 443 }}
+                  name: {{ $c.protocol | default "TLS" | lower }}
+                  protocol: {{ $c.protocol | default "TLS" }}
+            {{- end }}
+            {{- end }}
+            {{- end }}

@@ -144,6 +144,68 @@ spec:
                       default: sm
                       enum: [xs, sm, md, lg]
                       description: "Compute tier for the container. Choose based on expected traffic — Extra Small suits low-traffic or background services; Large suits high-throughput workloads."
+                    connectionPosture:
+                      type: string
+                      default: "off"
+                      enum: [off, enforce]
+                      description: "Connection policy for this workload. off renders nothing. enforce means calls in are denied unless this API declared the caller in provides, and calls out are blocked unless the destination is same-namespace or declared in consumes."
+                    provides:
+                      type: array
+                      description: "Named interfaces this API exposes to other workloads. Anything not listed here cannot call this API once connectionPosture is enforce."
+                      items:
+                        type: object
+                        required: [name, allowedCallers]
+                        properties:
+                          name:
+                            type: string
+                            description: "Interface name (e.g. collection). Groups a set of routes under one grant."
+                          methods:
+                            type: array
+                            description: "HTTP methods this interface allows. Omit for all methods — the coarsest, lowest-upkeep default. Narrow only if this API genuinely has more than one trust boundary."
+                            items:
+                              type: string
+                          paths:
+                            type: array
+                            description: "URL path globs this interface allows (e.g. /api/v1/collection/*). Omit for all paths — see methods."
+                            items:
+                              type: string
+                          allowedCallers:
+                            type: array
+                            description: "Workloads granted this interface. Everything else is denied."
+                            items:
+                              type: object
+                              required: [namespace, app]
+                              properties:
+                                namespace:
+                                  type: string
+                                  description: "Namespace the calling workload runs in."
+                                app:
+                                  type: string
+                                  description: "The calling Api/Spa's metadata.name — also its ServiceAccount name."
+                    consumes:
+                      type: array
+                      description: "Destinations this workload calls that no other field already states. Same-namespace destinations and anything this XR creates itself (e.g. its own cache) are allowed automatically — do not list them. Set either host (off-platform) or app+namespace (another namespace on the platform)."
+                      items:
+                        type: object
+                        properties:
+                          host:
+                            type: string
+                            description: "Off-platform hostname (e.g. api.discogs.com). Anything not listed is blocked at this workload's own sidecar."
+                          port:
+                            type: integer
+                            default: 443
+                            description: "Port for host. Defaults to 443."
+                          protocol:
+                            type: string
+                            default: TLS
+                            enum: [TLS, HTTP]
+                            description: "Wire protocol for host. TLS for any https:// destination — the app terminates its own TLS. HTTP only for plaintext destinations."
+                          app:
+                            type: string
+                            description: "metadata.name of an Api in another namespace this calls. Use with namespace."
+                          namespace:
+                            type: string
+                            description: "Namespace of app. Required when app is set."
                   required: [image, namespace]
               required:
                 - parameters
