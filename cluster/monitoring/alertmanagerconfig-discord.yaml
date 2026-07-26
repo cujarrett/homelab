@@ -31,6 +31,16 @@ spec:
           - name: alertname
             value: KubeControllerManagerDown|KubeProxyDown|KubeSchedulerDown
             matchType: =~
+      # Ephemeral Launchpad sandboxes — teardown deletes the workload before
+      # the ServiceMonitor is pruned, so Prometheus scrapes a dead target and
+      # TargetDown fires briefly. Expected noise, not a real outage.
+      - receiver: "null"
+        matchers:
+          - name: alertname
+            value: TargetDown
+          - name: namespace
+            value: demo[1-5]|guest-.*
+            matchType: =~
   receivers:
     - name: discord
       discordConfigs:
