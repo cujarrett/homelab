@@ -5,6 +5,7 @@
 - **Never run `git add`, `git commit`, `git push`, or any git command that writes to or modifies the index, repository history, or remotes.** Output the commands for the user to run — staging is part of their review, and running it for them removes the checkpoint.
 - **Whenever a task requires a commit, always give a suggested commit message** — never leave the user to write it themselves.
 - **Give `git add` and the commit as two separate steps, listing every file explicitly** — never `git add .`, `git add -A`, or a bare directory. Group related files onto one `git add` line. One `git add` + one commit message per repository, each under its own heading when more than one repo changed.
+- **Always precede `git add` with the `cd` to that repo's absolute path**, so the commands can be pasted from anywhere without landing in the wrong repo.
 - **Never output a `git push` command.** The user pushes as a deliberate human step.
 - **Never include a `:` in YAML comment** Editors highlight the trailing colon as a key and mis-colour the rest of the block. Use an em dash, or reword — `# depends on tlsIssuer — letsencrypt-prod means...`, not `# depends on tlsIssuer:`. Mid-line colons (`# curl: raw curl without browser UA`) are fine.
 - **Always use `k` instead of `kubectl` in commands shown to the user in chat. Use kubectl in all doc files.**
