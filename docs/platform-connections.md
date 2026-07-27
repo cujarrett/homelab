@@ -1,66 +1,56 @@
-# Platform-Managed Connections — Design & Build Plan
+# Service Mesh — Design & Build Plan
 
-> **The one idea (grug):** today any pod can call anything. Goal: **a call works only if both sides declared it.**
+> **The one idea (grug):** Kubernetes runs the workloads. Service Mesh decides which calls get through.
 
-**Scope: workloads talking to workloads.** Which service may call which service. Not who the human is — that's [Platform Auth](./platform-auth.md), and it is *not* a prerequisite for anything here. A namespace can reach full enforcement with zero auth work.
+Istio sits a proxy beside every pod. Nothing reaches a workload without passing that proxy first, and nothing leaves without passing its own. This doc covers what those proxies are configured to do, and how that configuration is generated.
 
-Baked into [Platform](../platform/)'s [`API`](../platform/api/) and [`SPA`](../platform/spa/) compositions, which render every policy object behind the scenes. App teams never write an Istio resource, never see the word Envoy, and never learn what SPIFFE is. They declare the connection on their app's own definition, the same place they already configure everything else about it.
+Where the configuration lands depends on where the destination is — a policy can only attach to a pod that exists.
 
-## Edicts
-
-Every decision below follows from these. When a question comes up, answer it from here first.
-
-| # | Edict | Why |
+| Destination | Configured on the caller's proxy | Configured on the callee's proxy |
 |---|---|---|
-| 1 | **Deny by default, allow by declaration** | Nothing is reachable because of where it happens to sit |
-| 2 | **Each app declares its own pod's behavior** | The caller declares what it calls; the callee declares who may call it. Two sides, one fact each — not one fact stored twice |
-| 3 | **Derive what's already declared** | If an existing field already states the dependency, the platform reads it. Never ask twice |
-| 4 | **Fail loud, never silent-permissive** | A missing declaration is a refused connection or a 403 — never a quiet allow |
-| 5 | **One rule, not two policies** | Conditions that must all hold live in the same rule. Separate ALLOW policies widen access — this is what keeps user authorization addable later |
+| same namespace | nothing | which identities it accepts |
+| another namespace | which destinations it may reach | which identities it accepts |
+| off-platform | which hosts it may reach | nothing — there is no pod out there |
+
+**Scope: workloads talking to workloads.** Which service reaches which service. Not who the human is — that's [Platform Auth](./platform-auth.md), and it is *not* a prerequisite for anything here.
+
+[Platform](../platform/)'s [`API`](../platform/api/) and [`SPA`](../platform/spa/) compositions generate every Istio object. Nothing written in a workspace names an Istio kind, mentions Envoy, or contains a SPIFFE string — the fields sit on the app's own definition, beside everything else it already configures.
+
+## Design principles
+
+How the pieces below were chosen, and what to reason from when a new question comes up.
+
+| # | Principle | Why |
+|---|---|---|
+| 1 | **Nothing is reachable by position** | Sitting in the same cluster, or the same namespace, grants nothing on its own |
+| 2 | **Each pod's proxy is configured from its own app's definition** | Inbound rules come from the app being called, outbound from the app calling. One fact each, not one fact stored twice |
+| 3 | **Read what already exists** | Where a field already states a dependency, the composition uses it rather than asking for it again |
+| 4 | **Fail loud, never silent-permissive** | A missing entry surfaces as a refused connection or a 403 — never a quiet allow |
+| 5 | **One rule, not two policies** | Istio ORs separate ALLOW policies together, which widens access. Conditions that must all hold belong in the same rule — this is what keeps user authorization addable later |
 | 6 | **Apps never see Istio** | No Istio kinds, no SPIFFE strings, no Envoy in any workspace file |
 | 7 | **The mesh is governance, not containment** | A compromised pod can step around the sidecar. Say so plainly rather than overselling |
 
 ## Status
 
-Built and running on the `platform-connections-demo` canary.
+**Enforcing:** `platform-connections-demo`, `my-vinyl` (SPA + API + cache), `js-pollock`, `mattjarrett-dev`.
 
-| | Built | Verified on cluster |
-|---|---|---|
-| `connectionPosture`, `provides`, `consumes` on `Api` / `Spa` | ✅ | ✅ CRD carries all three |
-| `PeerAuthentication` STRICT per workload | ✅ | ✅ three rendered |
-| `AuthorizationPolicy` per `provides` interface | ✅ | ✅ three rendered |
-| `Sidecar` + `REGISTRY_ONLY` | ✅ | ✅ three rendered |
-| `ServiceEntry` per `consumes` host | ✅ | ✅ one, on the only workload that declares one |
-| Every other workspace unaffected at `off` | ✅ | ✅ nine render byte-identical |
+**Not yet:** `sump-pump` — its cross-namespace NATS traffic would be blocked, so it waits on that decision. `launchpad` — namespace not meshed, and `launchpad-api` holds long-lived apiserver watch streams a proxy would sever. WordPress is out of scope; `blog` is a plain Deployment the platform does not render.
 
-**Flows proven against live pods:**
+**A trap worth knowing:** `Api` labels pods `app.kubernetes.io/instance`, `Spa` labels them `instance`. A selector copied between the two matches nothing and fails silently — the policy renders, ArgoCD reports Synced, and enforcement never happens. Converging both on one label would remove it.
 
-| Flow | Result | Gate |
-|---|---|---|
-| declared caller → API | ✅ 200 | `AuthorizationPolicy` |
-| undeclared caller → API | ✅ 403 | `AuthorizationPolicy` |
-| declared host off-platform | ✅ 200 | `ServiceEntry` |
-| unregistered host off-platform | ✅ blocked | `REGISTRY_ONLY` |
-| undeclared workload → a *neighbour's* registered host | ✅ blocked | `Sidecar` egress scope |
+## What it costs
 
-That last row failed the first time it ran: a `ServiceEntry` is registered namespace-wide, and an egress wildcard of `./*` matches the whole namespace registry — so one workload could reach an off-platform host another had declared. The wildcard is scoped to `./*.svc.cluster.local` with declared hosts listed explicitly, which keeps cluster services free while making every external destination per-workload. Two workloads running an identical image, differing only in what they declare, now get different answers on every call.
+**Grug:** a couple of fields on an app, once. In return the proxy refuses anything not listed, and the refusal is legible.
 
-**Enforcing:** `platform-connections-demo`, `my-vinyl` (SPA + API + cache), `js-pollock`, `mattjarrett-dev`. All three public sites serve normally, `my-vinyl-api` reaches Discogs and nothing else, and a workload in one namespace has no route to another it never declared.
+| Cost | Shape |
+|---|---|
+| Two fields on an app's definition | once per app, then it sits there |
+| Istio objects to generate and keep correct — in a composition every app shares | paid once on the platform side, and every change re-checked against every workspace |
+| A third thing that can be wrong when something breaks: a 403, an mTLS reset, or blocked egress, rather than only "can it reach the IP" | ongoing, and the same shape every time |
 
-**Not started:** `sump-pump` is deferred until NATS is handled, since its cross-namespace traffic would be blocked. `launchpad` needs its namespace meshed first. WordPress is out of scope, and `blog` is a plain Deployment the platform doesn't render.
+The last row is the real one. Before this, a failed call had one explanation; now it has several, and telling them apart is a skill you have to build. That is the honest price of moving reachability out of the network and into policy.
 
-**Watch out — the two compositions label pods differently.** `Api` sets `app.kubernetes.io/instance`, `Spa` sets `instance`. Selectors copied between them match nothing and fail silently: the policy renders, ArgoCD reports Synced, and enforcement never happens. Converging both on one label would remove the trap.
-
-## Complexity Jusfriction
-
-**Grug:** two extra fields per app, once. In return: nobody can call your service without your team saying yes, and you can prove it. Each cost below is paid once, at the right layer, not per request — no ticket queue, no manual firewall change, no service-mesh expert on call for the common case.
-
-| Who pays | Cost | How often | In return |
-|---|---|---|---|
-| Downstream app | blocked until the upstream app approves — a cross-team wait, not a self-review | once per new cross-team edge | a downstream app is a name in git, not a mystery IP in an incident log |
-| Upstream app | reviews and approves the request | once per new cross-team edge | ownership enforced by the platform, not hoping teams read a README |
-| SRE / on-call | a third failure layer to diagnose — RBAC 403, mTLS reset, or blocked egress — instead of just "can it reach the IP" | ongoing, same shape every incident | the [Phase 7](#phase-7--first-real-namespace-my-vinyl-the-migration-pattern) runbook exists because this is predictable |
-| Platform team | builds and maintains the plumbing: four rendered Istio objects, schema validation, an Entra app-role check, a separation-of-duties check, commit stamping, a required CI check | built once, runs automatically after | app teams never see any of it and pay nothing extra |
+**On scale.** In an organisation this shape carries a second cost — a grant is a cross-team wait, and someone has to own approving it. Here there is one operator and two files, so that cost does not exist yet. Worth naming so the design is not mistaken for solving a coordination problem it has never actually faced.
 
 ## Index
 
@@ -186,11 +176,11 @@ Gate 1 (`Sidecar` egress) sits in front of every outbound call, on-cluster or of
 
 A connection is live **only when both exist** — neither team can create an edge alone, or be surprised by one.
 
-That is the enterprise requirement — upstream consent *and* downstream intent, with a git trail on each — and it falls out of two independently-rendered Istio objects. No approval engine or state machine is required to get it.
+Both ends are configured independently and both must agree before traffic flows — which falls out of two separately-rendered Istio objects rather than anything coordinating them. No approval engine, no state machine, no controller holding the pair together.
 
 **Off-platform and shared in-cluster stores are the same shape.** Neither has an upstream sidecar to gate — off-platform because there's no pod on the public internet, NATS (this cluster's `nats` namespace) because it runs no policy — so the platform plays the upstream side in both: a central `ExternalService` catalog entry (owner, data classification, approval) is the consent, and the app's `consumes` entry is the intent. One side is always the platform team; NATS needs no special field, it's a `consumes` entry like anything else.
 
-## What the app team writes
+## What you set on an app
 
 The entire developer-facing surface, both directions:
 
@@ -371,7 +361,7 @@ Still permissive mTLS at this posture — none of this is enforced yet.
 **Layer:** 3 (L7 workload authz).
 
 **Do:**
-1. Add `provides: [{name, methods?, paths?, allowedDownstream[]}]` and `owningRole` to the `Api` XRD — `methods`/`paths` are optional, defaulting to full access when omitted. `owningRole` is inert until [Phase 9](#phase-9--self-service-access-requests-via-launchpad-the-ux-layer) — it's schema now, used later.
+1. Add `provides: [{name, methods?, paths?, allowedCallers[]}]` and `owningRole` to the `Api` XRD — `methods`/`paths` are optional, defaulting to full access when omitted. `owningRole` is inert until [Phase 9](#phase-9--self-service-access-requests-via-launchpad-the-ux-layer) — it's schema now, used later.
 2. Composition renders one `AuthorizationPolicy` rule per interface, principals built as `cluster.local/ns/<ns>/sa/<sa>`. When `methods`/`paths` are unset, the rule's `to` block is omitted entirely — Istio treats a rule with only `from` as matching every operation, so the grant covers the whole API.
 3. At posture `observe`, render with `istio.io/dry-run: "true"`. At `enforce`, render the same policy without it.
 
@@ -542,7 +532,7 @@ A required GitHub status check on `homelab-workspaces` that fails a change when:
 
 **Grug:** everything above works with hand-committed YAML. This phase only changes *who types it*.
 
-An access request is one change touching **two files with two different owners** — the downstream app's `consumes` and the upstream app's `provides[].allowedDownstream`. That pair *is* the request.
+An access request is one change touching **two files with two different owners** — the downstream app's `consumes` and the upstream app's `provides[].allowedCallers`. That pair *is* the request.
 
 ```
 downstream app requests in Launchpad → launchpad-api checks Entra: does the approver
