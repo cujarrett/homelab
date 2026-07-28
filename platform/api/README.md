@@ -10,6 +10,7 @@ Crossplane composition that deploys an API server (Go, Node, GraphQL, etc.) with
 - **ServiceMonitor** — Prometheus scrape target on the metrics port
 - **Ingress** *(optional)* — Traefik `websecure` with TLS; only created when `host` is set. cert-manager issues a certificate via `tlsIssuer` unless `tlsSecret` points to a pre-existing Secret, in which case issuance is skipped.
 - **Cache** *(optional)* — short-lived cache cluster owned by this Api; created and deleted alongside it
+- **Connection policy** *(optional)* — only when `connectionPosture` is `enforce`. Refuses any call this API makes to a destination it has not declared, and any inbound call whose workload identity is not named in `provides`. Metrics scraping and, when `host` is set, ingress traffic stay reachable — neither carries a workload identity to match on. See [Platform Engineering: Connections](../../docs/platform-engineering-connections.md).
 
 `ObjectStorage`, `Sql`, and `NoSql` are created independently and bound via refs. They outlive any one Api. For `ObjectStorage` and `NoSql`, this composition creates the IAM Role, RolesAnywhere Profile, and binding Secret when the ref is declared — their binding secrets only contain names, region, and ARNs, which Api can compute. For `Sql`, those are created by the Sql composition itself, because its binding secret contains RDS connection details (host, port, username) that are only known after RDS provisioning. The tenant lists consuming Api names in `consumerServiceAccounts` on the Sql — each gets its own IAM role and binding secret scoped to its SA.
 
@@ -41,6 +42,11 @@ The namespace is owned by the tenant — created by `namespace.yaml` in the tena
 | `topicRef.name` | no | — | Name of an `Topic` this API publishes to. Injects `NATS_URL` and `NATS_STREAM` env vars. |
 | `topicRef.streamName` | no | — | NATS stream name from the Topic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the Topic's streamName differs from its metadata.name. |
 | `subscriptionRef.name` | no | — | Name of an `Subscription` this API consumes from. Injects `NATS_URL` and `NATS_CONSUMER` env vars. |
+| `connectionPosture` | no | `off` | `off` = this API may call anything it can reach, and anything may call it. `enforce` = only declared calls work — everything else is refused. |
+| `provides` | no | — | Interfaces this API exposes, and which apps may call each one. Required to accept any call once `connectionPosture` is `enforce`. Each entry requires `name` and `allowedCallers`; each caller requires `namespace` and `app`. |
+| `provides[].methods` | no | — | HTTP methods this interface accepts. Omit to accept all. |
+| `provides[].paths` | no | — | Path prefixes this interface covers. Omit to cover the whole API. |
+| `consumes` | no | — | Destinations this API calls that nothing else already states: off-platform hostnames, and apps in another namespace. Only read when `connectionPosture` is `enforce`. Entries take `host`, and optionally `port`, `protocol`, `app`, `namespace`. |
 
 ## Example
 
@@ -65,6 +71,13 @@ spec:
     cache:
       enabled: true
       backend: private-cloud   # private-cloud=in-cluster Redis, public-cloud=AWS ElastiCache
+    connectionPosture: enforce
+    provides:
+      - name: bar
+        allowedCallers:
+          - { namespace: foo, app: baz }
+    consumes:
+      - { host: api.example.com }
 ```
 
 Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
