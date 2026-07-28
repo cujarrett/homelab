@@ -121,13 +121,23 @@ SSH access: `ssh pi@192.168.10.10x`
 | `spire-server`, `spire-system` | SPIRE | Workload identity (SPIFFE); agent DaemonSet on all nodes |
 
 ## Internal Hostnames (`.local.lab`)
-All use `local-lab-ca-issuer` (self-signed CA), TLS via Traefik `websecure` entrypoint.
-DNS served by AdGuard Home: `*.local.lab → 192.168.10.100` (wildcard rewrite).
-UniFi DHCP DNS: primary `192.168.10.100`, fallback `1.1.1.1`.
+
+All use `local-lab-ca-issuer` (self-signed CA), TLS via Traefik `websecure` entrypoint. AdGuard Home holds the wildcard rewrite `*.local.lab → 192.168.10.100`.
+
 - `argocd.local.lab`
 - `grafana.local.lab`
 - `prometheus.local.lab`
 - `longhorn.local.lab`
+
+### How clients actually resolve
+
+**Clients on VLAN 10 query the UDR7 at `192.168.10.1`, not AdGuard directly** — confirm with `scutil --dns` on a Mac. Three consequences:
+
+- AdGuard filters and logs nothing for those clients. `*.local.lab` still reaches them, but only because Tailscale split-DNS points `local.lab` at AdGuard separately.
+- A second resolver is consulted only when the first fails to answer. A *wrong* answer — including a cached `NXDOMAIN` — is still an answer, so listing AdGuard second would never help.
+- The UDR7 negative-caches for the full SOA TTL (30 minutes on Cloudflare zones) and cannot be flushed without enabling **Settings → System → Advanced → Device SSH Authentication**. It outlasts AdGuard and CoreDNS, which recover on their own. A new public hostname that anything looked up before its DNS record existed stays unreachable from the LAN until that expires.
+
+To restore filtering without making AdGuard a hard dependency for every device, point the UDR7's own upstream resolver at AdGuard rather than changing what DHCP hands out.
 
 ## Public Hostnames
 - `mattjarrett.com` — WordPress, routed via Cloudflare Tunnel
