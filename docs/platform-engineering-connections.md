@@ -1,4 +1,4 @@
-# Service Mesh — Design & Build Plan
+# Platform Engineering: Connections
 
 > **The one idea (grug):** Kubernetes runs the workloads. Service Mesh decides which calls get through.
 
@@ -12,7 +12,7 @@ Where the configuration lands depends on where the destination is — a policy c
 | another namespace | which destinations it may reach | which identities it accepts |
 | off-platform | which hosts it may reach | nothing — there is no pod out there |
 
-**Scope: workloads talking to workloads.** Which service reaches which service. Not who the human is — that's [Platform Auth](./platform-auth.md), and it is *not* a prerequisite for anything here.
+**Scope: workloads talking to workloads.** Which service reaches which service. Not who the human is — that's [Platform Engineering: Auth](./wip/platform-engineering-auth.md), and it is *not* a prerequisite for anything here.
 
 [Platform](../platform/)'s [`API`](../platform/api/) and [`SPA`](../platform/spa/) compositions generate every Istio object. Nothing written in a workspace names an Istio kind, mentions Envoy, or contains a SPIFFE string — the fields sit on the app's own definition, beside everything else it already configures.
 
@@ -74,7 +74,7 @@ The last row is the real one. Before this, a failed call had one explanation; no
 | [Learn as you build](#learn-as-you-build) | one doc link per concept, in build order | — |
 | TEMP [Where we are today](#where-we-are-today) | validated cluster facts — don't rediscover them | — |
 
-Phases run in order and risk rises as you go down — never skip one. Human identity and fine-grained authorization live in [Platform Auth](./platform-auth.md) and block none of this.
+Phases run in order and risk rises as you go down — never skip one. Human identity and fine-grained authorization live in [Platform Engineering: Auth](./wip/platform-engineering-auth.md) and block none of this.
 
 ---
 
@@ -86,7 +86,7 @@ Everything on this page is the **finished architecture** — what every namespac
 
 **Grug:** one call passes several checks. Each check asks a different question. Each can say no on its own.
 
-Three of those checks are this doc's job. Two more sit above them for user and object authorization — those live in [Platform Auth](./platform-auth.md).
+Three of those checks are this doc's job. Two more sit above them for user and object authorization — those live in [Platform Engineering: Auth](./wip/platform-engineering-auth.md).
 
 ```mermaid
 flowchart TB
@@ -107,8 +107,8 @@ flowchart TB
 | 1 | L3/L4 | Cilium `NetworkPolicy` | may the packet exist at all? | IP / port / label selector |
 | 2 | L5/L6 riding on L4 | Istio `PeerAuthentication` (STRICT) | is the peer a cryptographically real mesh workload? | SPIFFE X.509 SVID |
 | 3 | L7 | Istio `AuthorizationPolicy` (`source.principals`) | is *that workload* granted this method+path? | SPIFFE principal string |
-| 4 | L7 | user identity | which human, what role? | Entra OIDC JWT — see [Platform Auth](./platform-auth.md) |
-| 5 | L7+ | object authorization | on *this object*? | user + object + relationship — see [Platform Auth](./platform-auth.md) |
+| 4 | L7 | user identity | which human, what role? | Entra OIDC JWT — see [Platform Engineering: Auth](./wip/platform-engineering-auth.md) |
+| 5 | L7+ | object authorization | on *this object*? | user + object + relationship — see [Platform Engineering: Auth](./wip/platform-engineering-auth.md) |
 
 **Grug reading:** 1 is "can the wire carry it", 2 is "is downstream real", 3 is "is downstream allowed". Each is useless alone. Together they are defense in depth, and each is a separate audit answer.
 
@@ -217,7 +217,7 @@ No SPIFFE strings, no Istio kinds. **Edict 3 at work:** the SPA's dependency is 
 
 **Why named interfaces, not a flat caller list:** one API's `/public/*` and `/admin/*` must not share a grant, and "who calls `collection`?" is the question to answer before deprecating anything.
 
-**`methods`/`paths` default to everything — narrow only when you have to.** Most APIs here have exactly one trust boundary, and for those a wildcard grants the same effective permission as enumerating every route — with nothing to keep in sync, because whatever the app serves, the wildcard already covers. Narrowing is for the case named interfaces exist to solve: `/public/*` and `/admin/*` must not share a grant. Real cost, paid only by teams with a boundary worth protecting. See [platform-local-test.md's open question 5](./platform-local-test.md#open-questions--undecided) for the caveats once you do narrow.
+**`methods`/`paths` default to everything — narrow only when you have to.** Most APIs here have exactly one trust boundary, and for those a wildcard grants the same effective permission as enumerating every route — with nothing to keep in sync, because whatever the app serves, the wildcard already covers. Narrowing is for the case named interfaces exist to solve: `/public/*` and `/admin/*` must not share a grant. Real cost, paid only by teams with a boundary worth protecting. See [Platform Engineering: Local Test → open question 5](./wip/platform-engineering-local-test.md#open-questions--undecided) for the caveats once you do narrow.
 
 ## Posture
 
@@ -276,7 +276,7 @@ Facts validated on this cluster. Don't rediscover them.
 
 | Fact | Consequence for the plan |
 |---|---|
-| Istio 1.30.3, sidecar mode, istiod + istio-cni only. **No ingress gateway.** | north-south enters via unmeshed Traefik. Its plaintext needs a `PeerAuthentication` port-level `PERMISSIVE` exception before Phase 4's STRICT flip, or a public site goes dark. Also the prerequisite for user identity in [Platform Auth](./platform-auth.md) |
+| Istio 1.30.3, sidecar mode, istiod + istio-cni only. **No ingress gateway.** | north-south enters via unmeshed Traefik. Its plaintext needs a `PeerAuthentication` port-level `PERMISSIVE` exception before Phase 4's STRICT flip, or a public site goes dark. Also the prerequisite for user identity in [Platform Engineering: Auth](./wip/platform-engineering-auth.md) |
 | Istio-over-Cilium works on k3s/ARM64 with `cni.exclusive: false` + `socketLB.hostNamespaceOnly: true` | no CNI work needed |
 | Meshed namespaces: `js-pollock`, `mattjarrett-dev`, `my-vinyl`, `sump-pump` | the only Phase-1..7 candidates |
 | **Zero** `PeerAuthentication` / `AuthorizationPolicy` / `ServiceEntry` / `Sidecar` objects exist | greenfield policy, no legacy to unpick |
@@ -542,7 +542,7 @@ files, opens PR, auto-merges → CI check gates it
 
 Because Launchpad hides the PR, **GitHub is not the approver — Launchpad is.** That's a real trade, and it is what makes Phase 6's CI check load-bearing rather than nice-to-have: launchpad-api can open a PR, but it cannot merge a red one.
 
-Design, controls, and the Entra↔GitHub identity constraints: [Platform Auth → Approval flow](./platform-auth.md#approval-flow-where-the-decision-actually-lives).
+Design, controls, and the Entra↔GitHub identity constraints: [Platform Engineering: Auth → Approval flow](./wip/platform-engineering-auth.md#approval-flow-where-the-decision-actually-lives).
 
 Launchpad's value is everything *except* the decision — **discovery** (browse the `provides` catalog; nobody can answer "what interfaces exist?" from a git tree today), **authoring** (generate both sides correctly), **visibility** (PR → sync → XR Ready → denial count in one place; you already have the SSE half), **hygiene** ("this grant is 90 days unused").
 
@@ -582,7 +582,7 @@ The per-phase checkpoints tell you a phase is finished. These tell you the *prog
 
 - Every in-scope namespace at `enforce`, every edge two-sided-declared, zero real denials.
 - Break-glass tested on a real namespace, not just documented.
-- Layers 2–3 live. Layer 1 explicitly decided — built, or recorded as accepted risk. Layers 4–5 tracked in [Platform Auth](./platform-auth.md).
+- Layers 2–3 live. Layer 1 explicitly decided — built, or recorded as accepted risk. Layers 4–5 tracked in [Platform Engineering: Auth](./wip/platform-engineering-auth.md).
 
 Phase 9 is **not** required for done — it changes who types the YAML, not what the YAML controls.
 

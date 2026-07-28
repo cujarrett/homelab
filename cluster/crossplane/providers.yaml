@@ -10,7 +10,7 @@ spec:
         spec:
           # Keep provider/function runtimes off the control-plane node (ctrl-1) — they
           # are memory-heavy (provider-aws-s3 + family-aws alone ~830Mi) and ctrl-1 needs
-          # headroom for istiod and fleet-wide sidecars (platform-connections plan).
+          # headroom for istiod and fleet-wide sidecars (platform-engineering-connections plan).
           nodeSelector:
             node-role.kubernetes.io/worker: worker
           containers:

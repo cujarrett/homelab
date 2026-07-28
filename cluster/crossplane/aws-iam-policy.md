@@ -81,5 +81,5 @@ aws iam put-user-policy \
 ## What is NOT managed here
 
 - The `aws-creds` Secret in `crossplane-system` — created manually, never stored in Git
-- The trust anchor (`homelab-spire`) — created in Phase 4 of `docs/workload-identity.md`; cluster-wide and permanent
+- The trust anchor (`homelab-spire`) — created in Phase 4 of [Platform Engineering: Workload Identity](../../docs/platform-engineering-workload-identity.md); cluster-wide and permanent
 - The `aws-platform-config` EnvironmentConfig — contains `trustAnchorArn`; applied manually

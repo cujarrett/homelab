@@ -153,7 +153,7 @@ When any AWS cloud binding is declared, the composition adds:
 
 The `TRUST_ANCHOR_ARN` is injected into the sidecar from the `aws-platform-config` EnvironmentConfig — it never appears in user-visible binding Secrets.
 
-For the full workload identity design: [`docs/workload-identity.md`](../../../docs/workload-identity.md)
+For the full workload identity design: [Platform Engineering: Workload Identity](../../docs/platform-engineering-workload-identity.md)
 
 ## Operations
 
