@@ -43,8 +43,22 @@ spec:
             {{-   $wpMaxWorkers = "32" }}
             {{- end }}
             # --- MariaDB credentials Secret ---
-            # Passwords derived from the XR's immutable UID (sha256, hex-truncated).
-            # No human input, nothing sensitive in Git.
+            # Passwords are read back from the live Secret whenever it exists, and only
+            # derived from the XR UID on first creation. MariaDB applies MYSQL_*_PASSWORD
+            # only when the datadir is empty, so handing it a fresh value against a
+            # retained PVC locks the site out of its own database with no way back in.
+            {{- $dbPassword := printf "%s-db" $uid | sha256sum | trunc 32 }}
+            {{- $rootPassword := printf "%s-root" $uid | sha256sum | trunc 32 }}
+            {{- $observedSecret := index $observedResources "mariadb-secret" }}
+            {{- if $observedSecret }}
+            {{-   $observedData := $observedSecret.resource.data | default dict }}
+            {{-   if index $observedData "password" }}
+            {{-     $dbPassword = index $observedData "password" | b64dec }}
+            {{-   end }}
+            {{-   if index $observedData "rootPassword" }}
+            {{-     $rootPassword = index $observedData "rootPassword" | b64dec }}
+            {{-   end }}
+            {{- end }}
             apiVersion: v1
             kind: Secret
             metadata:
@@ -57,8 +71,8 @@ spec:
             stringData:
               database: wordpress
               username: wordpress
-              password: "{{ printf "%s-db" $uid | sha256sum | trunc 32 }}"
-              rootPassword: "{{ printf "%s-root" $uid | sha256sum | trunc 32 }}"
+              password: "{{ $dbPassword }}"
+              rootPassword: "{{ $rootPassword }}"
             ---
             # --- MariaDB data PVC ---
             # storageClassName is frozen on first creation: once bound, a PVC's storageClassName
@@ -165,6 +179,11 @@ spec:
                         limits:
                           cpu: {{ $dbCPULim }}
                           memory: {{ $dbMemLim }}
+                      readinessProbe:
+                        exec:
+                          command: ["healthcheck.sh", "--connect", "--innodb_initialized"]
+                        initialDelaySeconds: 10
+                        periodSeconds: 10
                       volumeMounts:
                         - name: data
                           mountPath: /var/lib/mysql
@@ -192,8 +211,10 @@ spec:
                   name: mysql
             ---
             # --- WordPress Deployment ---
-            # initContainer seeds wp-content from the image on first run (empty PVC),
-            # leaving existing data untouched on subsequent starts (migration-safe).
+            # initContainer seeds wp-content from the image on first run, leaving existing
+            # data untouched on subsequent starts (migration-safe). Tests for themes/ rather
+            # than emptiness — Longhorn formats ext4, so a fresh PVC already holds lost+found
+            # and an is-it-empty check would skip the seed on every new instance.
             apiVersion: apps/v1
             kind: Deployment
             metadata:
@@ -226,7 +247,7 @@ spec:
                         - sh
                         - -c
                         - |
-                          if [ -z "$(ls -A /target)" ]; then
+                          if [ ! -d /target/themes ]; then
                             echo "Seeding wp-content from image..."
                             cp -r /var/www/html/wp-content/. /target/
                           fi
@@ -253,6 +274,15 @@ spec:
                               key: password
                       ports:
                         - containerPort: 80
+                      # Probes a static asset, not /, so the check never occupies one of the
+                      # MaxRequestWorkers PHP slots. No livenessProbe on purpose — a slow PHP
+                      # render under load reads as dead and restarts the pod exactly when busiest.
+                      readinessProbe:
+                        httpGet:
+                          path: /wp-includes/js/wp-embed.min.js
+                          port: 80
+                        initialDelaySeconds: 5
+                        periodSeconds: 10
                       resources:
                         requests:
                           cpu: {{ $wpCPUReq }}
@@ -465,7 +495,10 @@ spec:
                 - match: "Host(`{{ $params.host }}`) && (Path(`/wp-login.php`) || Path(`/xmlrpc.php`) || PathPrefix(`/wp-json/wp/v2/users`))"
                   kind: Rule
                   priority: 100
+                  # Headers first — a 429 from the rate limiter short-circuits the rest of
+                  # the chain, and the response still needs the security headers on it.
                   middlewares:
+                    - name: {{ $name }}-wp-security-headers
                     - name: {{ $name }}-wp-security-ratelimit
                   services:
                     - name: {{ $name }}-wordpress
@@ -533,6 +566,7 @@ spec:
                   kind: Rule
                   priority: 200
                   middlewares:
+                    - name: {{ $name }}-wp-security-headers
                     - name: {{ $name }}-xmlrpc-block
                   services:
                     - name: {{ $name }}-wordpress
