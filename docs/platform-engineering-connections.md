@@ -2,11 +2,11 @@
 
 > **The one idea (grug):** Kubernetes runs the workloads. Service Mesh decides which calls get through.
 
-Istio puts a proxy beside every pod. Nothing reaches a workload without passing that proxy, and nothing leaves without passing its own. This doc covers what those proxies are configured to do, why, and where the design stops.
+Istio puts a proxy beside every pod. Nothing reaches a workload without passing that proxy, and nothing leaves without passing its own.
 
 There is a live walkthrough at [connections.mattjarrett.dev](https://connections.mattjarrett.dev) — four real calls against this cluster, two of them refused.
 
-**Scope: workloads talking to workloads.** Which service reaches which service — never which person. *Can this workload call that workload* is answered here; *can Alice view Order 123* is a separate concern, not yet designed, and nothing here depends on it. See [Design principles](#design-principles) #5 for what keeps that door open.
+**Scope: workloads talking to workloads.** *Can this workload call that workload* is answered here. *Can Alice view Order 123* is a separate concern, not yet designed, and nothing here depends on it — principle 5 is what keeps that door open.
 
 [Platform](../platform/)'s [`Api`](../platform/api/) and [`Spa`](../platform/spa/) compositions generate every Istio object. Nothing in a workspace file names an Istio kind, mentions Envoy, or contains a SPIFFE string.
 
@@ -16,9 +16,8 @@ There is a live walkthrough at [connections.mattjarrett.dev](https://connections
 |---|---|
 | [Design principles](#design-principles) | what to reason from when a new question comes up |
 | [What you set on an app](#what-you-set-on-an-app) | the entire developer-facing surface |
-| [What gets rendered](#what-gets-rendered) | the four Istio objects, and what each decides |
+| [What gets rendered](#what-gets-rendered) | the four gates, and which one refused your call |
 | [The identity it rests on](#the-identity-it-rests-on) | why a name in a header would not be enough |
-| [Where policy lands](#where-policy-lands) | why the two directions are configured at opposite ends |
 | [What it costs](#what-it-costs) | honestly |
 | [Known limits](#known-limits) | the holes, named |
 | [Status](#status) | what is enforcing |
@@ -65,11 +64,9 @@ spec:
         upstream: my-vinyl-api.my-vinyl.svc.cluster.local
 ```
 
-**The SPA needs no new field.** Principle 3 — `apiProxies` already states the dependency, so the composition reads it. `consumes` carries only what nothing else states: off-platform hosts, and apps in another namespace.
+**The SPA needs no new field.** Principle 3 — `apiProxies` already states the dependency, so the composition reads it. `consumes` carries only what nothing else states: off-platform hosts, and apps in another namespace. Same-namespace destinations, and anything an app creates itself such as its own `Cache`, are reachable outbound and still gated inbound by the callee's `provides` — so nothing works undeclared.
 
-**Nothing is declared for same-namespace destinations, or for what an app creates itself** (its own `Cache`). Those are reachable outbound, and still gated inbound by the callee's `provides`, so nothing works undeclared.
-
-**`connectionPosture` has two values.** `off` renders nothing. `enforce` renders everything below. There is no intermediate rung: Istio has a dry-run mode worth adding if a namespace ever has callers nobody can enumerate, but every namespace here has a small, knowable caller set, and a wrong guess surfaces as a loud 403 rather than an outage.
+**`connectionPosture` has two values.** `off` renders nothing, `enforce` renders everything below. There is no intermediate rung: Istio has a dry-run mode worth adding if a namespace ever has callers nobody can enumerate, but every namespace here has a small, knowable caller set, and a wrong guess surfaces as a loud 403 rather than an outage.
 
 ## What gets rendered
 
@@ -103,7 +100,9 @@ flowchart LR
 
 Gates 1 and 2 come from the caller's `consumes` (and, for a `Spa`, its `apiProxies`). Gates 3 and 4 come from the callee's `provides` — `AuthorizationPolicy` gets one rule per declared interface, and the first ALLOW makes that workload deny-by-default, so an unnamed caller gets 403.
 
-Which gate refused a call is the fastest way to place a fault: a 403 is gate 4, a reset is gate 3, and a 502 through nginx usually means gate 1 blackholed the destination.
+**Which gate refused a call is the fastest way to place a fault.** A 403 is gate 4, a connection reset is gate 3, and a 502 through nginx usually means gate 1 blackholed the destination.
+
+**The two directions sit at opposite ends because a policy can only attach to a pod that exists.** Off-platform therefore has no gate 3 or 4 — there is nothing out there to hold a rule — which is why `consumes` cannot be dropped as redundant. The same shape covers shared in-cluster stores that run no policy of their own, such as NATS: enforced caller-side only, needing no special field.
 
 **Two exceptions, both for unmeshed infrastructure with no identity to match on.** Prometheus scrapes the metrics port; Traefik forwards ingress to the app port. The Traefik exception applies only when a workload sets `host`, which means **an app with an Ingress stays reachable from the ingress controller regardless of its grants**. How far that reaches depends on `tlsIssuer` — `letsencrypt-prod` means the internet, `local-lab-ca-issuer` means the homelab network.
 
@@ -120,41 +119,21 @@ spiffe://cluster.local/ns/my-vinyl/sa/my-vinyl-spa
              ^trust domain    ^namespace     ^service account
 ```
 
-Bound to a private key that never leaves the pod. It is what `AuthorizationPolicy` matches on, and the only identity in the stack that survives an attacker already inside the cluster network. Network position proves nothing, an IP proves nothing, a header proves nothing.
+Bound to a private key that never leaves the pod. It is what `AuthorizationPolicy` matches on, and the only identity here that survives an attacker already inside the cluster network — an IP or a header proves nothing.
 
 **Hard rule: every workload gets its own ServiceAccount.** The compositions do this. The moment two apps share one they are the same identity, and every grant between them is meaningless.
-
-## Where policy lands
-
-A policy can only attach to a pod that exists, which is why the two directions are configured at opposite ends.
-
-| Destination | On the caller's proxy | On the callee's proxy |
-|---|---|---|
-| same namespace | nothing | which identities it accepts |
-| another namespace | which destinations it may reach | which identities it accepts |
-| off-platform | which hosts it may reach | nothing — there is no pod out there |
-
-Off-platform is the mirror image of on-platform. With no callee to hold a policy, the caller's own outbound sidecar is the only checkpoint — which is why `consumes` exists, and why egress control cannot be dropped as redundant.
-
-The same shape covers shared in-cluster stores that run no policy of their own, such as NATS: enforced caller-side only, needing no special field.
 
 ## What it costs
 
 **Grug:** a couple of fields on an app, once. In return the proxy refuses anything not listed, and the refusal is legible.
 
-| Cost | Shape |
-|---|---|
-| Two fields on an app's definition | once per app, then it sits there |
-| Istio objects to generate and keep correct, in a composition every app shares | paid once on the platform side, and every change re-checked against every workspace |
-| A third thing that can be wrong when something breaks: a 403, an mTLS reset, or blocked egress, rather than only "can it reach the IP" | ongoing, and the same shape every time |
-
-The last row is the real one. Before this, a failed call had one explanation; now it has several, and telling them apart is a skill to build. That is the honest price of moving reachability out of the network and into policy.
+The real cost is not the fields — it is that a failed call now has several explanations instead of one. A 403, an mTLS reset and blocked egress all used to be "can it reach the IP", and telling them apart is a skill to build. That is the honest price of moving reachability out of the network and into policy, and the gate list above is the map for paying it.
 
 **On scale.** In an organisation this shape carries a second cost — a grant becomes a cross-team wait, and someone has to own approving it. Here there is one operator and two files, so that cost does not exist. Worth naming, so the design is not mistaken for solving a coordination problem it has never faced.
 
 ## Known limits
 
-Both limits are the same shape — a layer that is not built. One sits below what the mesh enforces, one above it.
+Two of these are the same shape — a layer that is not built. One sits below what the mesh enforces, one above it.
 
 ```mermaid
 flowchart TB
