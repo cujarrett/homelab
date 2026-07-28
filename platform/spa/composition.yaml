@@ -158,7 +158,7 @@ spec:
                         # outbound HTTP by :authority, so forwarding the original Host makes it
                         # look up a name that is not in the mesh registry — under REGISTRY_ONLY
                         # that is a blackhole, and nginx reports it as a 502 upstream reset.
-                        proxy_set_header Host $proxy_host;
+                        proxy_set_header Host {{ (splitList "/" .upstream) | first }};
                         proxy_set_header X-Forwarded-Host $host;
                         # Use Traefik's forwarded header — $remote_addr is Traefik's pod IP, not the client.
                         proxy_set_header X-Real-IP $http_x_real_ip;
@@ -169,6 +169,9 @@ spec:
                         proxy_buffering off;
                         proxy_cache off;
                         proxy_read_timeout 3600s;
+                        # Connection '' only clears the hop-by-hop header on HTTP/1.1; without
+                        # this line proxy_pass falls back to HTTP/1.0, which also breaks SSE.
+                        proxy_http_version 1.1;
                         proxy_set_header Connection '';
                         chunked_transfer_encoding on;
                     }
