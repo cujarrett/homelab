@@ -116,6 +116,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `sump-pump` | Api ×2 + Topic + Subscription | IoT sump pump bridge + consumer + weather-exporter |
 | `launchpad` | Api | `launchpad.mattjarrett.dev` via Cloudflare Tunnel; BFF for Launchpad UI, provisions ephemeral demo sandboxes |
 | `demo-certs` | cert-manager `Certificate` objects only (no workloads) | 10 long-lived `letsencrypt-prod` certs for the 5 fixed demo sandbox slots (`demo{1-5}.mattjarrett.dev` + `demo{1-5}-api.mattjarrett.dev`); `launchpad-api` copies the resulting secrets into each sandbox namespace at creation time so cert-manager skips issuance there and Let's Encrypt's 5-certs-per-exact-hostname-per-168h limit is never hit |
+| `platform-connections-demo` | Api ×3 + Spa | Service mesh walkthrough at `connections.mattjarrett.dev`; two callers run one image and differ only in what they declare |
 | `platform-exporter` | platform-exporter | Custom Prometheus exporter for platform metrics; scraped via `platform-exporter-servicemonitor` |
 | `spire-server`, `spire-system` | SPIRE | Workload identity (SPIFFE); agent DaemonSet on all nodes |
 
@@ -136,6 +137,7 @@ UniFi DHCP DNS: primary `192.168.10.100`, fallback `1.1.1.1`.
 - `myvinyl.mattjarrett.dev` — my-vinyl SPA, routed via Cloudflare Tunnel
 - `jspollock.mattjarrett.dev` — js-pollock SPA, routed via Cloudflare Tunnel
 - `launchpad.mattjarrett.dev` — Launchpad BFF, routed via Cloudflare Tunnel
+- `connections.mattjarrett.dev` — service mesh walkthrough, routed via Cloudflare Tunnel
 - `demo{1-5}.mattjarrett.dev` / `demo{1-5}-api.mattjarrett.dev` — fixed ephemeral demo sandbox slots provisioned by `launchpad-api`, not permanently bound to any one app
 
 ## Cloudflare Tunnel Operations
