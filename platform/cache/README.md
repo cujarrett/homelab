@@ -79,7 +79,7 @@ The ElastiCache cluster uses IAM authentication with TLS required. The IAM Role'
 "aws:PrincipalTag/x509SAN/URI": "spiffe://homelab.local/ns/{namespace}/sa/{service-account}"
 ```
 
-The `aws-spiffe-helper` sidecar exchanges the pod's SVID for short-lived STS credentials every 50 minutes. The app reads `AWS_PROFILE_CACHE` and uses those credentials when connecting to ElastiCache — no password, no static keys. For the full design: [`docs/workload-identity.md`](../../../docs/workload-identity.md)
+The `aws-spiffe-helper` sidecar exchanges the pod's SVID for short-lived STS credentials every 50 minutes. The app reads `AWS_PROFILE_CACHE` and uses those credentials when connecting to ElastiCache — no password, no static keys. For the full design: [Platform Engineering: Workload Identity](../../docs/platform-engineering-workload-identity.md)
 
 ## Operations
 
