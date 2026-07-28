@@ -8,6 +8,7 @@ Crossplane composition that hosts an Angular (or any static) SPA on nginx.
 - **Service** — ClusterIP on port 80
 - **Middleware** — Traefik rate limiter: 60 requests/min average, burst of 20, keyed per client IP (`CF-Connecting-IP` header)
 - **Ingress** — Traefik `websecure` entrypoint with cert-manager TLS; rate limit middleware applied
+- **Connection policy** *(optional)* — only when `connectionPosture` is `enforce`. Refuses any call this app makes to a destination it has not declared, and any inbound call that does not carry a workload identity the platform issued. See [Platform Engineering: Connections](../../docs/platform-engineering-connections.md).
 
 The namespace is owned by the tenant — created by `namespace.yaml` in the tenant directory, not by this composition.
 
@@ -24,10 +25,13 @@ The namespace is owned by the tenant — created by `namespace.yaml` in the tena
 | `tlsSecret` | no | — | Name of a pre-existing TLS Secret in the app namespace. When set, the Ingress references it directly and cert-manager issuance is skipped. Used by sandbox slots to reuse long-lived demo certs. |
 | `contentSecurityPolicy` | no | `default-src 'self'; frame-ancestors 'none'; base-uri 'self';` | CSP header value. Override with app-specific origins (Google Fonts, external APIs, etc.). |
 | `replicas` | no | `1` | Number of nginx replicas. Stateless — safe to scale freely. |
-| `apiProxy.enabled` | no | `false` | Proxy `/api/` to an in-cluster service (keeps the API off the public internet). |
-| `apiProxy.upstream` | no | — | FQDN of the upstream service (e.g. `my-api.my-tenant.svc.cluster.local`). nginx proxies `/api/` → `http://<upstream>/`. |
+| `apiProxies` | no | — | Array of path prefixes to proxy to in-cluster services, keeping those APIs off the public internet. Each entry requires `path` and `upstream`; the prefix is stripped before proxying. |
+| `connectionPosture` | no | `off` | `off` = this app may call anything it can reach, and anything may call it. `enforce` = only declared calls work — everything else is refused. |
+| `consumes` | no | — | Destinations this app calls that nothing else already states: off-platform hostnames, and apps in another namespace. Only read when `connectionPosture` is `enforce`. Entries take `host`, and optionally `port`, `protocol`, `app`, `namespace`. |
 
-The health check endpoint is always `/healthz` — not configurable. Mesh injection follows the namespace annotation; there is no per-instance mesh parameter on Spa.
+`apiProxies` doubles as a connection declaration — under `enforce` the composition allows those upstreams without you restating them in `consumes`. Same-namespace destinations are allowed too; they are still gated by whatever the callee itself declares.
+
+The health check endpoint is always `/healthz` — not configurable.
 
 ## Example
 
@@ -41,6 +45,10 @@ spec:
     namespace: foo
     image: ghcr.io/owner/foo:sha-abc123
     host: foo.local.lab
+    connectionPosture: enforce
+    apiProxies:
+      - path: /api/
+        upstream: bar.foo.svc.cluster.local
 ```
 
 Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
