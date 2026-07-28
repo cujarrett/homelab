@@ -52,7 +52,7 @@ Applies to every `.md` file in this repo — same grug philosophy, applied to pr
 - **No time-bound content.** No "tonight", "this session", "first night", no timeboxes. Say "Phases 0, 1 and 6 touch no cluster" — not "do this at 10pm". Docs outlive the session that wrote them.
 - **Index at the top** for any doc with more than three chapters: one "start here" line, then a table of every chapter. Verify every anchor resolves before finishing.
 - **Link to real paths**, don't just code-format them — `[Api](../platform/api/)`, not `` `Api` ``.
-- **Cross-doc links use the human title and a `./` relative path** — `[Platform Engineering: Auth](./platform-engineering-auth.md)`, never a bare or backticked filename. A reader should see what the doc *is*, not what it's called on disk. Deep links keep the title too: `[Platform Engineering: Auth → Approval flow](./platform-engineering-auth.md#approval-flow-where-the-decision-actually-lives)`.
+- **Cross-doc links use the human title and a `./` relative path** — `[Platform Engineering: Connections](./platform-engineering-connections.md)`, never a bare or backticked filename. A reader should see what the doc *is*, not what it's called on disk. Deep links keep the title too: `[Platform Engineering: Connections → Known limits](./platform-engineering-connections.md#known-limits)`. **Never link to a doc under `local-only/`** — it is gitignored, so the link is dead for every reader but you.
 
 ## Overview
 A 4-node k3s Kubernetes homelab managed entirely via GitOps with ArgoCD.
