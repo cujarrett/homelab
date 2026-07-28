@@ -154,7 +154,12 @@ spec:
                     location {{ .path }} {
                         access_log /var/log/nginx/access.log api_proxy;
                         proxy_pass http://{{ .upstream }}/;
-                        proxy_set_header Host $host;
+                        # Host must name the upstream, not the browser's hostname. Envoy routes
+                        # outbound HTTP by :authority, so forwarding the original Host makes it
+                        # look up a name that is not in the mesh registry — under REGISTRY_ONLY
+                        # that is a blackhole, and nginx reports it as a 502 upstream reset.
+                        proxy_set_header Host $proxy_host;
+                        proxy_set_header X-Forwarded-Host $host;
                         # Use Traefik's forwarded header — $remote_addr is Traefik's pod IP, not the client.
                         proxy_set_header X-Real-IP $http_x_real_ip;
                         proxy_set_header X-Forwarded-For $http_x_forwarded_for;
