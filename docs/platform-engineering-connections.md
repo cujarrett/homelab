@@ -73,14 +73,37 @@ spec:
 
 ## What gets rendered
 
-Four objects per workload, all derived from those two fields, all enforced by the Envoy sidecar. No app code changes, ever.
+Four objects per workload, all derived from those two fields, all enforced by the Envoy sidecar. No app code changes, ever. Two gates on the way out, two on the way in — and a call has to pass every gate on its path.
 
-| Object | Layer | Decides |
-|---|---|---|
-| `PeerAuthentication` | L5/6 | STRICT — is the caller a real mesh workload? |
-| `AuthorizationPolicy` | L7 inbound | One rule per `provides` interface. The first ALLOW policy makes the workload deny-by-default, so an unnamed caller gets 403 |
-| `Sidecar` | L7 outbound | `REGISTRY_ONLY` — own namespace, `istio-system`, and declared destinations only |
-| `ServiceEntry` | L7 outbound | One per `consumes` host. An unregistered host is refused at the caller's own sidecar |
+```mermaid
+flowchart LR
+    APP["downstream app<br/>plain HTTP<br/>knows nothing"] --> G1
+
+    subgraph OUT["downstream's sidecar — OUTBOUND"]
+      G1{"1 · Sidecar egress list<br/>REGISTRY_ONLY<br/><i>may I leave toward this?</i>"}
+      G2{"2 · ServiceEntry<br/><i>off-platform host — registered?</i>"}
+    end
+
+    subgraph IN["upstream's sidecar — INBOUND<br/>only exists if the upstream is on-platform"]
+      G3{"3 · PeerAuthentication<br/><i>real mTLS identity?</i>"}
+      G4{"4 · AuthorizationPolicy<br/><i>is that identity granted?</i>"}
+      G3 -->|yes| G4
+    end
+
+    G1 -->|"yes, on-platform dest"| G3
+    G1 -->|"yes, off-platform dest"| G2
+    G2 -->|yes| NET["allowed — host on the internet<br/>no sidecar, gates 3-4 don't exist"]
+    G4 -->|yes| DST["allowed — upstream app<br/>plain HTTP<br/>knows nothing"]
+
+    G1 -->|no| D1["blocked at source<br/>REGISTRY_ONLY"]
+    G2 -->|no| D2["blocked<br/>unregistered host"]
+    G3 -->|no| D3["connection reset<br/>plaintext refused"]
+    G4 -->|no| D4["RBAC 403"]
+```
+
+Gates 1 and 2 come from the caller's `consumes` (and, for a `Spa`, its `apiProxies`). Gates 3 and 4 come from the callee's `provides` — `AuthorizationPolicy` gets one rule per declared interface, and the first ALLOW makes that workload deny-by-default, so an unnamed caller gets 403.
+
+Which gate refused a call is the fastest way to place a fault: a 403 is gate 4, a reset is gate 3, and a 502 through nginx usually means gate 1 blackholed the destination.
 
 **Two exceptions, both for unmeshed infrastructure with no identity to match on.** Prometheus scrapes the metrics port; Traefik forwards ingress to the app port. The Traefik exception applies only when a workload sets `host`, which means **an app with an Ingress stays reachable from the ingress controller regardless of its grants**. How far that reaches depends on `tlsIssuer` — `letsencrypt-prod` means the internet, `local-lab-ca-issuer` means the homelab network.
 
@@ -130,6 +153,25 @@ The last row is the real one. Before this, a failed call had one explanation; no
 **On scale.** In an organisation this shape carries a second cost — a grant becomes a cross-team wait, and someone has to own approving it. Here there is one operator and two files, so that cost does not exist. Worth naming, so the design is not mistaken for solving a coordination problem it has never faced.
 
 ## Known limits
+
+Both limits are the same shape — a layer that is not built. One sits below what the mesh enforces, one above it.
+
+```mermaid
+flowchart TB
+    subgraph L34["L3/L4 — packets"]
+      A["Cilium NetworkPolicy<br/><i>may this IP reach that IP:port?</i><br/><b>not built</b>"]
+    end
+    subgraph L56["L5/L6 — session"]
+      B["Istio PeerAuthentication — mTLS<br/><i>is the caller a real mesh workload?</i>"]
+    end
+    subgraph L7a["L7 — workload authz"]
+      C["Istio AuthorizationPolicy · source.principals<br/><i>is THAT workload allowed on this route?</i>"]
+    end
+    A -.-> B --> C -.-> D["user authorization<br/><i>may this person do this?</i><br/><b>not designed</b>"] --> E["app code<br/>knows none of this"]
+
+    style A stroke-dasharray: 5 5
+    style D stroke-dasharray: 5 5
+```
 
 **The mesh is governance, not containment.** Istio's egress lock lives in the sidecar, so code inside a pod can step around it — run as UID 1337, which Istio excludes from iptables redirect, or dial an IP directly so there is no SNI for `REGISTRY_ONLY` to match. Envoy never sees the packet.
 
