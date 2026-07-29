@@ -3608,7 +3608,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "time() - max_over_time(timestamp(sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"}) != count(kube_node_info))[30d:30s])",
+              "expr": "time() - max(node_boot_time_seconds)",
               "instant": true,
               "legendFormat": "Time Since Last Power Outage",
               "refId": "A"
