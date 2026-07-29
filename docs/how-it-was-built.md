@@ -236,7 +236,7 @@ Every service deployed in the cluster is only reachable from inside the cluster 
 k3s ships Traefik automatically. Configure it to bind host ports directly:
 
 ```bash
-kubectl apply -f apps/traefik/helmchartconfig.yaml
+kubectl apply -f cluster/traefik/helmchartconfig.yaml
 kubectl rollout status daemonset traefik -n kube-system
 ```
 
@@ -244,7 +244,7 @@ Test with the whoami app:
 
 ```bash
 cat <<EOF | kubectl apply -f -
-apiVersion: apps/v1
+apiVersion: cluster/v1
 kind: Deployment
 metadata:
   name: whoami
@@ -354,8 +354,8 @@ kubectl get pods -n cert-manager
 Create issuers:
 
 ```bash
-# Edit apps/cert-manager/issuers.yaml first — update your-email@example.com
-kubectl apply -f apps/cert-manager/issuers.yaml
+# Edit cluster/cert-manager/issuers.yaml first — update your-email@example.com
+kubectl apply -f cluster/cert-manager/issuers.yaml
 ```
 
 Trust the CA on your laptop:
@@ -434,7 +434,7 @@ kubectl patch storageclass longhorn -p \
 Expose the UI:
 
 ```bash
-kubectl apply -f apps/longhorn/ingress.yaml
+kubectl apply -f cluster/longhorn/ingress.yaml
 ```
 
 
@@ -445,7 +445,7 @@ kubectl apply -f apps/longhorn/ingress.yaml
 
 Managing a cluster by running `kubectl apply` by hand doesn't scale and leaves no audit trail of what changed and when. Argo CD implements GitOps: it watches this GitHub repo and automatically syncs any changes you push to the cluster. The Git history becomes a full audit log, rollbacks are a `git revert` away, and the cluster's desired state is always defined as code — never just whatever was last typed into a terminal.
 
-The `apps/` and `platform/` directory structure already exists in this repo — use this repo as your GitOps source, or copy the files to a dedicated `homelab-gitops` repo.
+The `cluster/` and `platform/` directory structure already exists in this repo — use this repo as your GitOps source, or copy the files to a dedicated `homelab-gitops` repo.
 
 Install Argo CD:
 
@@ -471,7 +471,7 @@ kubectl -n argocd get secret argocd-initial-admin-secret \
 Expose UI:
 
 ```bash
-kubectl apply -f apps/argocd/ingress.yaml
+kubectl apply -f cluster/argocd/ingress.yaml
 ```
 
 Connect GitHub repo and create root app:
@@ -490,8 +490,8 @@ argocd repo add https://github.com/<YOUR_USERNAME>/homelab.git \
   --username <YOUR_USERNAME> \
   --password <GITHUB_PAT>
 
-# Edit apps/argocd/bootstrap.yaml first — update repoURL with your GitHub username
-kubectl apply -f apps/argocd/bootstrap.yaml
+# Edit cluster/argocd/bootstrap.yaml first — update repoURL with your GitHub username
+kubectl apply -f cluster/argocd/bootstrap.yaml
 ```
 
 Change admin password and delete initial secret:
@@ -532,7 +532,7 @@ kubectl get pods -n monitoring   # Takes 3-5 min
 Expose Grafana and Prometheus:
 
 ```bash
-kubectl apply -f apps/monitoring/ingresses.yaml
+kubectl apply -f cluster/monitoring/ingresses.yaml
 ```
 
 
@@ -627,11 +627,6 @@ curl -s -u "admin:${GRAFANA_PASS}" \
 
 ---
 
-## Security Checklist
-
-
----
-
 <a id="adguard"></a>
 ## 12 — AdGuard Home (Replace /etc/hosts with Wildcard DNS)
 
@@ -641,14 +636,14 @@ This cluster does not use MetalLB — Traefik uses `hostPort` for HTTP/HTTPS (po
 
 ### Create the manifest
 
-The manifest lives at [apps/adguard/adguard.yaml](apps/adguard/adguard.yaml). ArgoCD's root app recurses the `apps/` directory, so no additional ArgoCD Application is needed — committing the file is enough.
+The manifest lives at [cluster/adguard/adguard.yaml](cluster/adguard/adguard.yaml). ArgoCD's root app recurses the `cluster/` directory, so no additional ArgoCD Application is needed — committing the file is enough.
 
 ### Apply
 
 ArgoCD will sync automatically on push. To apply manually:
 
 ```bash
-kubectl apply -f apps/adguard/adguard.yaml
+kubectl apply -f cluster/adguard/adguard.yaml
 kubectl rollout status deployment/adguard-home -n adguard
 ```
 
@@ -786,7 +781,7 @@ curl -sk https://adguard.local.lab -o /dev/null -w "%{http_code}"
 <a id="crossplane"></a>
 ## 14 — Install Crossplane
 
-Running `helm install` for each app works fine for a handful of services, but it doesn't give you a reusable, self-service API. Crossplane extends Kubernetes so you can define infrastructure (databases, apps, DNS records, cloud resources) as custom Kubernetes resources — the same declarative model you use for Deployments and Services. This is the foundation that makes the `Wordpress` XR in step 16 possible.
+Running `helm install` for each app works fine for a handful of services, but it doesn't give you a reusable, self-service API. Crossplane extends Kubernetes so you can define infrastructure (databases, apps, DNS records, cloud resources) as custom Kubernetes resources — the same declarative model you use for Deployments and Services. This is the foundation the `Wordpress` XR is built on.
 
 ```bash
 helm repo add crossplane-stable https://charts.crossplane.io/stable && helm repo update
@@ -801,12 +796,12 @@ kubectl get pods -n crossplane-system
 Install functions:
 
 ```bash
-kubectl apply -f apps/crossplane/providers.yaml
+kubectl apply -f cluster/crossplane/providers.yaml
 kubectl get functions   # Wait for HEALTHY: True — both function-patch-and-transform and function-go-templating
 ```
 
 Grant Crossplane RBAC to compose native Kubernetes resources:
 
 ```bash
-kubectl apply -f apps/crossplane/rbac.yaml
+kubectl apply -f cluster/crossplane/rbac.yaml
 ```

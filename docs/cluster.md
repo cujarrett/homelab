@@ -67,8 +67,10 @@ ssh pi@192.168.10.100 "journalctl -u getty@tty1 -n 30 --no-pager && ps aux | gre
 | External access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; zero-trust public ingress, no exposed firewall ports |
 | Remote access | Tailscale | Subnet router on `ctrl-1`; advertises `192.168.10.0/24`; split DNS for `local.lab` |
 | Platform | Crossplane | XRDs + Compositions in `platform/`; see [Platform](../platform/README.md) |
-| Service mesh | Cilium | eBPF CNI + mesh; mTLS via SPIRE Mutual Auth; `toFQDNs` egress enforcement; Hubble observability |
-| Observability | kube-prometheus-stack | Prometheus (365d retention), Grafana, Alertmanager |
+| CNI | Cilium | Pod networking only — WireGuard node encryption, kube-proxy replacement, Hubble observability. Its own mutual auth is disabled; mesh concerns belong to Istio |
+| Service mesh | Istio | Sidecar mesh chained onto Cilium; workload mTLS and platform-rendered connection policy. See [Platform Engineering: Connections](./platform-engineering-connections.md) |
+| Workload identity | SPIRE | SPIFFE SVIDs backing AWS IAM Roles Anywhere. See [Platform Engineering: Workload Identity](./platform-engineering-workload-identity.md) |
+| Observability | kube-prometheus-stack | Prometheus (30d retention), Grafana, Alertmanager |
 | Logs | Loki + Promtail | Loki SingleBinary, 30d retention; Promtail DaemonSet ships logs |
 | Messaging | NATS JetStream | 3-replica cluster in `nats`; NACK controller manages Stream and Consumer CRDs |
 
@@ -81,14 +83,18 @@ ssh pi@192.168.10.100 "journalctl -u getty@tty1 -n 30 --no-pager && ps aux | gre
 | `argocd` | ArgoCD | `argocd.local.lab` |
 | `monitoring` | kube-prometheus-stack | Prometheus, Grafana (`grafana.local.lab`), Alertmanager |
 | `monitoring` | Loki + Promtail | Log aggregation |
-| `monitoring` | prometheus-sump-pump | Long-term IoT Prometheus; ~50yr retention; pinned to `work-1` |
+| `monitoring` | prometheus-sump-pump | Long-term IoT Prometheus; ~50yr retention on `longhorn-retain` |
+| `monitoring` | prometheus-pod-history | Long-term pod-lifespan Prometheus; federates a recording rule so dead-pod records outlive the main 30d retention |
 | `longhorn-system` | Longhorn | `longhorn.local.lab` |
 | `adguard` | AdGuard Home | Pinned to `ctrl-1` via hostPort 53 |
 | `cloudflare` | cloudflared | Cloudflare Tunnel; public ingress entry point |
 | `cert-manager` | cert-manager | TLS issuers for internal and public hosts |
-| `spire` | SPIRE | Workload identity; backs Cilium Mutual Auth mTLS and AWS IAM Roles Anywhere |
-| `kube-system` | Cilium | eBPF CNI, service mesh, Hubble relay (`hubble.local.lab`) |
+| `demo-certs` | cert-manager `Certificate` objects only | Long-lived certs for the five demo sandbox slots; no workloads |
+| `spire-server`, `spire-system` | SPIRE | Workload identity; agent DaemonSet on all nodes |
+| `istio-system` | Istio | Control plane for the sidecar mesh |
+| `kube-system` | Cilium | CNI, Hubble relay (`hubble.local.lab`) |
 | `crossplane-system` | Crossplane | Platform compositions, XRDs, AWS provider |
+| `platform-exporter` | platform-exporter | Prometheus exporter for platform state |
 | `nats` | NATS + NACK | JetStream cluster (3 replicas) |
 
 Application namespaces (`mattjarrett-com`, `my-vinyl`, etc.) are owned by tenant
@@ -99,12 +105,12 @@ Application namespaces (`mattjarrett-com`, `my-vinyl`, etc.) are owned by tenant
 ## Networking
 
 External traffic enters through Cloudflare Tunnel to Traefik on `work-1`. Traefik
-terminates TLS and routes to in-cluster Services. All pod-to-pod traffic uses mTLS via
-Cilium Mutual Auth at the kernel level — no sidecar required.
+terminates TLS and routes to in-cluster Services. Node-to-node traffic is encrypted by
+Cilium with WireGuard; pod-to-pod mTLS is Istio's, via a sidecar on each meshed pod.
 
 ```
 Internet → Cloudflare → cloudflared (cloudflare ns)
-         → Traefik (kube-system) ──mTLS (eBPF)──► Pod
+         → Traefik (kube-system) ──mTLS (Istio sidecar)──► Pod
 ```
 
 Internal traffic (`*.local.lab`) routes via AdGuard's wildcard DNS entry → Traefik on
@@ -123,6 +129,7 @@ TLS from `local-lab-ca-issuer`. DNS via AdGuard wildcard `*.local.lab → 192.16
 
 | Host | App |
 |---|---|
+| `adguard.local.lab` | AdGuard Home |
 | `argocd.local.lab` | ArgoCD |
 | `grafana.local.lab` | Grafana |
 | `prometheus.local.lab` | Prometheus |
@@ -140,11 +147,13 @@ section of [`CLAUDE.md`](../CLAUDE.md) for the API workflow.
 | Hostname | Namespace | Stack |
 |---|---|---|
 | `mattjarrett.com` | `mattjarrett-com` | WordPress (`Wordpress`) |
+| `kentjarrett.com` | `kentjarrett-com` | WordPress (`Wordpress`) |
 | `mattjarrett.dev` | `mattjarrett-dev` | Angular SPA (`Spa`) |
 | `blog.mattjarrett.dev` | `blog` | Ghost (raw Deployment) |
 | `myvinyl.mattjarrett.dev` | `my-vinyl` | `Spa` + `Api` + `Cache` |
 | `jspollock.mattjarrett.dev` | `js-pollock` | `Spa` |
 | `launchpad.mattjarrett.dev` | `launchpad` | `Spa` + `Api` (API cluster-internal, reached via nginx `/api/` proxy) |
+| `connections.mattjarrett.dev` | `platform-connections-demo` | `Spa` + `Api` ×3 — service mesh walkthrough |
 
 Guest sandbox slots (`demo1`–`demo5` and `demo1-api`–`demo5-api` under `mattjarrett.dev`)
 are pre-registered in the tunnel and reuse long-lived certs from the `demo-certs` namespace.
@@ -167,6 +176,6 @@ stored in Git.
 
 ## Related Docs
 
-- [How it was built](how-it-was-built.md) — step-by-step build history from bare Pi to this state
-- [Cluster upgrade](cluster-upgrade.md) — k3s upgrade procedure
+- [How it was built](./how-it-was-built.md) — step-by-step build history from bare Pi to this state
 - [Platform](../platform/README.md) — Crossplane-based internal developer platform
+- [Nothing Novel](./nothing-novel.md) — the public prior art behind every mechanism here
