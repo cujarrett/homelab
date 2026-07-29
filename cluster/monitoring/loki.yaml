@@ -34,6 +34,9 @@ spec:
           compactor:
             retention_enabled: true
             delete_request_store: filesystem
+            # The 24h default lands a cleanup a day after you ask for it. Ten
+            # minutes is still long enough to cancel a mistake.
+            delete_request_cancel_period: 10m
         singleBinary:
           replicas: 1
           affinity:
