@@ -116,29 +116,14 @@ spec:
         # a twelve second run measurable.
         - alert: SumpPumpNotReporting
           expr: |
-            (time() - max(shelly_last_seen_timestamp_unix)) > 600
+            max(shelly_webhook_configured) == 0
+          for: 10m
           labels:
             severity: critical
           annotations:
             summary: "Sump pump power meter has been unreachable for 10 minutes"
             description: >-
               Every other sump pump alert reads healthy when the feed is dead, so
-              absence needs its own alert. The bridge cannot read the meter, so no
-              readings are arriving regardless of what the other panels show.
-
-        # Early warning for the same outage. The reconciler repairs device config
-        # on a timer, so this firing means it cannot reach the device at all —
-        # readings are still arriving until the config drifts, but nothing is
-        # maintaining it.
-        - alert: SumpPumpWebhookConfigUnmanaged
-          expr: |
-            max(shelly_webhook_configured) == 0
-          for: 150s
-          labels:
-            severity: warning
-          annotations:
-            summary: "Sump pump device config is no longer being maintained"
-            description: >-
-              The bridge cannot reach the power meter to confirm its webhook
-              config. Readings may still flow, but a device reboot would now stop
-              them silently instead of self-healing.
+              absence needs its own alert. Readings may still be arriving for now,
+              but nothing is maintaining the device config, so the next reboot
+              would stop them silently instead of self-healing.
