@@ -43,7 +43,7 @@ spec:
               # Stream name as seen in NATS (nats stream ls)
               name: {{ $params.streamName }}
               # Subjects this stream captures — NATS wildcard > = "all subtokens"
-              # e.g. nms.harvest.> captures nms.harvest.crops, nms.harvest.minerals, etc.
+              # e.g. foo.events.> captures foo.events.created, foo.events.updated, etc.
               subjects:
               {{- range $params.subjects }}
                 - {{ . | quote }}

@@ -27,7 +27,7 @@ spec:
                     streamName:
                       type: string
                       description: >
-                        NATS JetStream stream name (e.g. NMS-HARVEST).
+                        NATS JetStream stream name (e.g. FOO-EVENTS).
                         Must not contain spaces, wildcards, or dots.
                         Uppercase is conventional for stream names.
                     subjects:
@@ -35,7 +35,7 @@ spec:
                       description: >
                         NATS subjects this stream captures. Supports wildcards:
                         * matches a single token, > matches one or more tokens.
-                        e.g. ["nms.harvest.>"] captures all nms.harvest.* subjects.
+                        e.g. ["foo.events.>"] captures all foo.events.* subjects.
                       minItems: 1
                       items:
                         type: string
