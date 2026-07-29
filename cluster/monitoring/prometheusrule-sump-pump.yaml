@@ -21,6 +21,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
             summary: "Sump pump is running a lot — {{ $value | printf \"%.0f\" }} cycles this hour"
             description: >-
               Water is coming in faster than usual, which is what rain looks
@@ -33,6 +34,7 @@ spec:
           labels:
             severity: critical
           annotations:
+            dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
             summary: "Sump pump is running very hard — {{ $value | printf \"%.0f\" }} cycles this hour"
             description: >-
               Past the rate a heavy storm normally drives. If the weather does not
@@ -55,6 +57,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
             summary: "Sump pump ran {{ $value | printf \"%.0f\" }} minutes this hour, normal is ~7"
             description: >-
               Total runtime is up. Alongside a high cycle count that is just weather;
@@ -67,6 +70,7 @@ spec:
           labels:
             severity: critical
           annotations:
+            dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
             summary: "Sump pump ran {{ $value | printf \"%.0f\" }} minutes of the last hour"
             description: >-
               At this duty cycle there is little idle time to cool between runs.
@@ -84,6 +88,7 @@ spec:
           labels:
             severity: critical
           annotations:
+            dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
             summary: "Rain in the last 6h but the sump pump barely ran"
             description: >-
               Measurable rain with almost no pump activity points at a dead pump, a
@@ -99,6 +104,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
             summary: "Sump pump has run fewer than 10 times in 24 hours"
             description: >-
               Normal even in dry weather, but only just — this was true for a single
@@ -121,6 +127,7 @@ spec:
           labels:
             severity: critical
           annotations:
+            dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
             summary: "Sump pump power meter has been unreachable for 10 minutes"
             description: >-
               Every other sump pump alert reads healthy when the feed is dead, so

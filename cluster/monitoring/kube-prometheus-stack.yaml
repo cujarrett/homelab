@@ -30,12 +30,21 @@ spec:
           # wins. Lives here because operator v0.92.1 drops title/message from the
           # AlertmanagerConfig CRD, and templateFiles skips Helm's tpl so Go
           # syntax survives. Severity is per alert: a namespace group can mix.
+          # summary says what happened, description says what to do about it —
+          # the old template dropped the description whenever a summary existed,
+          # so every rule's diagnostic guidance was written and never delivered.
+          # Labels and links are here because an alert naming only its rule
+          # cannot be acted on from a phone.
           templateFiles:
             discord.tmpl: |
               {{ define "discord.default.title" }}{{ if eq .Status "firing" }}🔴 FIRING{{ else }}✅ RESOLVED{{ end }}{{ if .GroupLabels.namespace }} · {{ .GroupLabels.namespace }}{{ end }} ({{ .Alerts | len }}){{ end }}
 
-              {{ define "discord.default.message" }}{{ range .Alerts }}{{ if eq .Labels.severity "critical" }}🚨{{ else if eq .Labels.severity "warning" }}⚠️{{ else }}ℹ️{{ end }} **{{ .Labels.alertname }}**
-              {{ if .Annotations.summary }}{{ .Annotations.summary }}{{ else }}{{ .Annotations.description }}{{ end }}
+              {{ define "discord.default.message" }}{{ range .Alerts }}{{ if eq .Labels.severity "critical" }}🚨 `CRITICAL`{{ else if eq .Labels.severity "warning" }}⚠️ `WARNING`{{ else }}ℹ️ `INFO`{{ end }} **{{ .Labels.alertname }}**
+              {{ with .Annotations.summary }}{{ . }}
+              {{ end }}{{ with .Annotations.description }}> {{ . }}
+              {{ end }}{{ with .Labels.pod }}`pod={{ . }}` {{ end }}{{ with .Labels.service }}`service={{ . }}` {{ end }}{{ with .Labels.node }}`node={{ . }}` {{ end }}{{ with .Labels.instance }}`instance={{ . }}` {{ end }}
+              since {{ .StartsAt.Format "15:04 MST" }}{{ with .Annotations.dashboard_url }} · [dashboard]({{ . }}){{ end }}{{ with .GeneratorURL }} · [query]({{ . }}){{ end }}
+
               {{ end }}{{ end }}
           alertmanagerSpec:
             affinity:
