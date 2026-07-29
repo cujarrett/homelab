@@ -902,7 +902,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "avg_over_time(((sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"}) == bool count(kube_node_info)) * min(probe_success{probe_group=\"internet\"}))[30d:30s]) * 100",
+              "expr": "avg_over_time(((sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"}) == bool count(kube_node_info)) * max(probe_success{probe_group=\"internet\"}))[30d:30s]) * 100",
               "instant": true,
               "legendFormat": "30d Availability",
               "refId": "A"
@@ -3672,7 +3672,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "time() - max_over_time(timestamp(min(probe_success{probe_group=\"internet\"}) == 0)[30d:30s])",
+              "expr": "time() - max_over_time(timestamp(max(probe_success{probe_group=\"internet\"}) == 0)[30d:30s])",
               "instant": true,
               "legendFormat": "Time Since Last Internet Outage",
               "refId": "A"
