@@ -1,0 +1,37 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: power
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: power
+      interval: 5m
+      rules:
+        # A whole-rack power loss cannot be caught while it happens — Prometheus
+        # dies with the nodes and records nothing, and comparing Ready nodes to
+        # total nodes yields no result when both sides go absent at once. Node
+        # boot time is read after recovery instead, so the evidence survives the
+        # event that produced it.
+        #
+        # All four nodes booting within five minutes of each other is the
+        # signature of lost mains power. A single node rebooting for maintenance
+        # leaves the others' boot times far behind, so the window stays wide and
+        # this stays quiet.
+        - alert: ClusterPowerLoss
+          expr: |
+            (max(node_boot_time_seconds) - min(node_boot_time_seconds)) < 300
+            and
+            (time() - max(node_boot_time_seconds)) < 1800
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "All nodes rebooted together — the rack lost power"
+            description: >-
+              Every node booted within the same five minute window, which mains
+              power loss is the only ordinary cause of. Check that workloads
+              reading from hardware outside the cluster actually resumed — device
+              side config does not always survive a power cycle.

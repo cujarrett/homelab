@@ -100,14 +100,43 @@ spec:
               24 window across the whole archive. Worth confirming the pit is
               actually dry rather than the sensor being stuck.
 
+        # absent(sump_pump_running) cannot see this failure: the exporters stay up
+        # and keep publishing 0 with no device behind them, so the series is never
+        # absent. The bridge polls the meter on a timer instead, and that poll is
+        # the liveness signal.
+        #
+        # Deliberately not based on webhook arrival rate. The meter only sends on
+        # change, so an idle pump legitimately goes quiet for long stretches, and
+        # any attempt to force a steady heartbeat throttles the events that make
+        # a twelve second run measurable.
         - alert: SumpPumpNotReporting
           expr: |
-            absent(sump_pump_running)
-          for: 15m
+            max(shelly_device_reachable) == 0
+            or
+            (time() - max(shelly_last_seen_timestamp_unix)) > 900
+          for: 5m
           labels:
             severity: critical
           annotations:
-            summary: "No sump pump readings for 15 minutes"
+            summary: "Sump pump power meter has been unreachable for 10 minutes"
             description: >-
-              Every other sump pump alert reads healthy when the feed is simply
-              dead, so absence needs its own alert.
+              Every other sump pump alert reads healthy when the feed is dead, so
+              absence needs its own alert. The bridge cannot read the meter, so no
+              readings are arriving regardless of what the other panels show.
+
+        # Early warning for the same outage. The reconciler repairs device config
+        # on a timer, so this firing means it cannot reach the device at all —
+        # readings are still arriving until the config drifts, but nothing is
+        # maintaining it.
+        - alert: SumpPumpWebhookConfigUnmanaged
+          expr: |
+            max(shelly_webhook_configured) == 0
+          for: 150
+          labels:
+            severity: warning
+          annotations:
+            summary: "Sump pump device config is no longer being maintained"
+            description: >-
+              The bridge cannot reach the power meter to confirm its webhook
+              config. Readings may still flow, but a device reboot would now stop
+              them silently instead of self-healing.
