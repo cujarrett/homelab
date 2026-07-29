@@ -43,9 +43,14 @@ spec:
         # hour spent running — times 60 reads straight off as minutes per hour.
         # Normal is ~7. Runtime needs both tiers: runs can stretch out at a normal
         # cycle count, which no rate threshold sees.
+        #
+        # Scoped to the consumer. Both apps export this gauge, but only the
+        # consumer is scraped every 10s — the bridge defaults to 60s, which cannot
+        # see an eleven second run and reads high enough to fire on its own. The
+        # counter based alerts are safe unscoped; a gauge is not.
         - alert: SumpPumpRunningLongHours
           expr: |
-            max(avg_over_time(sump_pump_running[1h])) * 60 > 10
+            max(avg_over_time(sump_pump_running{job="sump-pump-consumer"}[1h])) * 60 > 10
           for: 10m
           labels:
             severity: warning
@@ -57,7 +62,7 @@ spec:
 
         - alert: SumpPumpRunningNearlyConstantly
           expr: |
-            max(avg_over_time(sump_pump_running[1h])) * 60 > 15
+            max(avg_over_time(sump_pump_running{job="sump-pump-consumer"}[1h])) * 60 > 15
           for: 10m
           labels:
             severity: critical
@@ -102,8 +107,8 @@ spec:
 
         # absent(sump_pump_running) cannot see this failure: the exporters stay up
         # and keep publishing 0 with no device behind them, so the series is never
-        # absent. The bridge polls the meter on a timer instead, and that poll is
-        # the liveness signal.
+        # absent. The bridge reconciles the meter's config on a timer instead, and
+        # a reconcile succeeding means the meter answered — that is the signal.
         #
         # Deliberately not based on webhook arrival rate. The meter only sends on
         # change, so an idle pump legitimately goes quiet for long stretches, and
@@ -111,10 +116,7 @@ spec:
         # a twelve second run measurable.
         - alert: SumpPumpNotReporting
           expr: |
-            max(shelly_device_reachable) == 0
-            or
-            (time() - max(shelly_last_seen_timestamp_unix)) > 900
-          for: 5m
+            (time() - max(shelly_last_seen_timestamp_unix)) > 600
           labels:
             severity: critical
           annotations:
@@ -131,7 +133,7 @@ spec:
         - alert: SumpPumpWebhookConfigUnmanaged
           expr: |
             max(shelly_webhook_configured) == 0
-          for: 150
+          for: 150s
           labels:
             severity: warning
           annotations:
