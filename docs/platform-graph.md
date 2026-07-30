@@ -4,13 +4,7 @@
 
 > **The one idea (grug):** every team ships its own small GraphQL API. A router glues them into one big one that clients see as a single schema.
 
-A client asks one endpoint one question. Behind it, the question is split across several independently deployed services, each owning the part of the schema it knows about. Nobody writes the glue by hand — it is computed from the schemas.
-
-This is a plan. Nothing here exists in the cluster.
-
 ## Index
-
-Start with [Federation in five minutes](#federation-in-five-minutes) — everything after it assumes those three words.
 
 | Chapter | What's in it |
 |---|---|
@@ -48,7 +42,9 @@ Federation is the case where several teams each own part of one product's schema
 - **Composition** — the step that merges every subgraph schema into one **supergraph schema**. It fails loudly if two subgraphs disagree, which is the entire safety property.
 - **Router** — the single endpoint clients hit. It reads the composed schema, splits an incoming query into a **query plan**, calls the subgraphs it needs, and stitches one response back.
 
-The link between subgraphs is an **entity** — a type with a `@key`, meaning "here is how to identify one of these". Any subgraph can then attach fields to it.
+The link between subgraphs is an **entity** — a type that exists once in the product but is split across services, the way one row can be split across two tables owned by two teams that share nothing but a join key.
+
+Say a storefront has a `records` team and a `reviews` team. `records` owns the `Record` type outright — `id`, `title`, `artist` all live in its database. `reviews` never touches any of that; it only knows which reviews belong to which record `id`. Neither schema below is the whole picture on its own — each is one team's honest description of the part it owns:
 
 ```graphql
 # records subgraph — owns the type
@@ -65,7 +61,9 @@ type Record @key(fields: "id") {
 }
 ```
 
-A client asks for `title` and `reviews` together. The router fetches `title` from `records`, hands the `id` to `reviews`, and merges. Neither team wrote that.
+`@key(fields: "id")` is what tells the router these two blocks are the same entity rather than a name collision — "join these on `id`". Without it, two subgraphs declaring `type Record` would just be a schema conflict.
+
+A client asks for `title` and `reviews` together. The router fetches `title` from `records`, hands that record's `id` to `reviews`, and merges the two results into one `Record` before the client ever sees a response. Neither team wrote that merge, and neither team's code ever calls the other's.
 
 Two more words that appear everywhere once a registry is involved:
 
