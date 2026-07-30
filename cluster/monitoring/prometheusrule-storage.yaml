@@ -20,6 +20,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-mbp/homelab"
             summary: "Longhorn volume {{ $labels.pvc }} holds more on disk than its capacity"
             description: >-
               {{ $labels.volume }} ({{ $labels.pvc }}) is using
@@ -41,6 +42,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-mbp/homelab"
             summary: "Node {{ $labels.instance }} root filesystem is {{ $value | printf \"%.0f\" }}% full"
             description: >-
               Largest consumers are usually /var/lib/longhorn (replica data) and

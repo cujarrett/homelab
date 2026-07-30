@@ -19,6 +19,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-cert-manager/cert-manager"
             summary: "Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} expires in {{ $value | printf \"%.0f\" }} days"
             description: >-
               Renewal should have happened at 30 days remaining and did not.
@@ -32,6 +33,7 @@ spec:
           labels:
             severity: critical
           annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-cert-manager/cert-manager"
             summary: "Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} expires in {{ $value | printf \"%.0f\" }} days"
             description: >-
               If this is local-lab-ca, every .local.lab host loses TLS together
@@ -46,6 +48,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-cert-manager/cert-manager"
             summary: "Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} has not been ready for 1h"
             description: >-
               A new public hostname must exist in the Cloudflare tunnel config before
