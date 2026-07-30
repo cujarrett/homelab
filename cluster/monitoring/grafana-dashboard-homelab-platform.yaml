@@ -380,12 +380,12 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "histogram_quantile(0.5, sum(platform_xr_time_to_ready_seconds_bucket{kind!~\"X?Topic|X?Subscription\"}) by (le, kind, backend))",
+              "expr": "sum(platform_xr_time_to_ready_seconds_sum{kind!~\"X?Topic|X?Subscription\"}) by (kind, backend)\n/\nsum(platform_xr_time_to_ready_seconds_count{kind!~\"X?Topic|X?Subscription\"}) by (kind, backend)",
               "legendFormat": "{{kind}} / {{backend}}",
               "refId": "A"
             }
           ],
-          "title": "XR Time-to-Ready \u2014 p50 by Kind",
+          "title": "XR Time-to-Ready \u2014 mean by Kind",
           "type": "bargauge"
         },
         {
@@ -407,11 +407,11 @@ data:
                   },
                   {
                     "color": "yellow",
-                    "value": 80
+                    "value": 10
                   },
                   {
                     "color": "red",
-                    "value": 90
+                    "value": 30
                   }
                 ]
               },
@@ -461,12 +461,12 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "label_replace(\n  (\n    histogram_quantile(0.5,\n      sum by (le, init_container) (\n        platform_pod_init_container_seconds_bucket{init_container!~\"linkerd.*|wait-for-object-storage-.*-binding\"}\n      )\n    )\n    or\n    label_replace(\n      histogram_quantile(0.5,\n        sum by (le) (\n          platform_pod_init_container_seconds_bucket{init_container=~\"wait-for-object-storage-.*-binding\"}\n        )\n      ),\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"init_container\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n)",
+              "expr": "label_replace(\n  (\n    sum by (init_container) (\n      platform_pod_init_container_seconds_sum{init_container!~\"linkerd.*|istio-proxy|wait-for-object-storage-.*-binding\"}\n    )\n    /\n    sum by (init_container) (\n      platform_pod_init_container_seconds_count{init_container!~\"linkerd.*|istio-proxy|wait-for-object-storage-.*-binding\"}\n    )\n    or\n    label_replace(\n      sum(platform_pod_init_container_seconds_sum{init_container=~\"wait-for-object-storage-.*-binding\"})\n      /\n      sum(platform_pod_init_container_seconds_count{init_container=~\"wait-for-object-storage-.*-binding\"}),\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"init_container\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n)",
               "legendFormat": "{{init_container}}",
               "refId": "A"
             }
           ],
-          "title": "Binding Wait \u2014 p50 per Stage",
+          "title": "Binding Wait \u2014 mean per Stage",
           "type": "bargauge"
         },
         {
@@ -542,12 +542,12 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "histogram_quantile(0.5, sum(platform_managed_time_to_ready_seconds_bucket{kind!~\"NATS.*\"}) by (le, kind))",
+              "expr": "sum(platform_managed_time_to_ready_seconds_sum{kind!~\"NATS.*\"}) by (kind)\n/\nsum(platform_managed_time_to_ready_seconds_count{kind!~\"NATS.*\"}) by (kind)",
               "legendFormat": "{{kind}}",
               "refId": "A"
             }
           ],
-          "title": "AWS Provisioning \u2014 p50 by Type",
+          "title": "AWS Provisioning \u2014 mean by Type",
           "type": "bargauge"
         },
         {
@@ -716,7 +716,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "label_replace(\n  (\n    platform_pod_init_container_seconds_instance{exported_namespace!=\"platform-exporter\",init_container!~\"linkerd.*|wait-for-object-storage-.*-binding\"}\n    or\n    label_replace(\n      platform_pod_init_container_seconds_instance{exported_namespace!=\"platform-exporter\",init_container=~\"wait-for-object-storage-.*-binding\"},\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"stage\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n) < 3600",
+              "expr": "label_replace(\n  (\n    platform_pod_init_container_seconds_instance{exported_namespace!=\"platform-exporter\",init_container!~\"linkerd.*|istio-proxy|wait-for-object-storage-.*-binding\"}\n    or\n    label_replace(\n      platform_pod_init_container_seconds_instance{exported_namespace!=\"platform-exporter\",init_container=~\"wait-for-object-storage-.*-binding\"},\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"stage\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n) < 3600",
               "legendFormat": "{{exported_namespace}} \u00b7 {{stage}}",
               "refId": "C"
             }
@@ -1090,7 +1090,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "label_replace(\n  (\n    platform_pod_init_container_seconds_instance{init_container!~\"linkerd.*|wait-for-object-storage-.*-binding\"}\n    or\n    label_replace(\n      platform_pod_init_container_seconds_instance{init_container=~\"wait-for-object-storage-.*-binding\"},\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"stage\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n)",
+              "expr": "label_replace(\n  (\n    platform_pod_init_container_seconds_instance{init_container!~\"linkerd.*|istio-proxy|wait-for-object-storage-.*-binding\"}\n    or\n    label_replace(\n      platform_pod_init_container_seconds_instance{init_container=~\"wait-for-object-storage-.*-binding\"},\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"stage\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n)",
               "format": "table",
               "instant": true,
               "legendFormat": "",
