@@ -1,4 +1,6 @@
-# Platform Engineering: Graph
+# Platform Graph
+
+[Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](./nothing-novel.md)
 
 > **The one idea (grug):** every team ships its own small GraphQL API. A router glues them into one big one that clients see as a single schema.
 
@@ -440,7 +442,7 @@ The stdlib-only spirit survives as **"one framework, no framework stack"** — `
 
 ## How it meets Connections
 
-The router is an ordinary caller. Everything in [Platform Engineering: Connections](./platform-engineering-connections.md) applies unchanged, and the graph adds no new mechanism.
+The router is an ordinary caller. Everything in [Platform Connections](./platform-connections.md) applies unchanged, and the graph adds no new mechanism.
 
 - The `FederatedGraph` sets `host`, so its router takes the ingress exception — reachable from Traefik, which is the point.
 - Every `Subgraph` sets `connectionPosture: enforce` and grants exactly one caller: the router's ServiceAccount, `<graph>-router`. Nothing else in the cluster can call a subgraph directly.
@@ -579,5 +581,5 @@ Each of phases 3 and 4 ships a README in the shape [`platform/api/README.md`](..
 | Building a subgraph in Node | [@apollo/subgraph](https://www.apollographql.com/docs/apollo-server/using-federation/apollo-subgraph-setup) |
 | Composition library, MIT drop-in | [the-guild-org/federation](https://github.com/the-guild-org/federation) |
 | Existing platform offerings | [platform/](../platform/) |
-| Mesh design this builds on | [Platform Engineering: Connections](./platform-engineering-connections.md) |
+| Mesh design this builds on | [Platform Connections](./platform-connections.md) |
 | Demo repo pattern | [platform-connections-demo](https://github.com/cujarrett/platform-connections-demo) |

@@ -10,7 +10,7 @@ Crossplane composition that deploys an API server (Go, Node, GraphQL, etc.) with
 - **ServiceMonitor** — Prometheus scrape target on the metrics port
 - **Ingress** *(optional)* — Traefik `websecure` with TLS; only created when `host` is set. cert-manager issues a certificate via `tlsIssuer` unless `tlsSecret` points to a pre-existing Secret, in which case issuance is skipped.
 - **Cache** *(optional)* — short-lived cache cluster owned by this Api; created and deleted alongside it
-- **Connection policy** *(optional)* — only when `connectionPosture` is `enforce`. Refuses any call this API makes to a destination it has not declared, and any inbound call whose workload identity is not named in `provides`. Metrics scraping and, when `host` is set, ingress traffic stay reachable — neither carries a workload identity to match on. See [Platform Engineering: Connections](../../docs/platform-engineering-connections.md).
+- **Connection policy** *(optional)* — only when `connectionPosture` is `enforce`. Refuses any call this API makes to a destination it has not declared, and any inbound call whose workload identity is not named in `provides`. Metrics scraping and, when `host` is set, ingress traffic stay reachable — neither carries a workload identity to match on. See [Platform Connections](../../docs/platform-connections.md).
 
 `ObjectStorage`, `Sql`, and `NoSql` are created independently and bound via refs. They outlive any one Api. For `ObjectStorage` and `NoSql`, this composition creates the IAM Role, RolesAnywhere Profile, and binding Secret when the ref is declared — their binding secrets only contain names, region, and ARNs, which Api can compute. For `Sql`, those are created by the Sql composition itself, because its binding secret contains RDS connection details (host, port, username) that are only known after RDS provisioning. The tenant lists consuming Api names in `consumerServiceAccounts` on the Sql — each gets its own IAM role and binding secret scoped to its SA.
 
@@ -166,7 +166,7 @@ When any AWS cloud binding is declared, the composition adds:
 
 The `TRUST_ANCHOR_ARN` is injected into the sidecar from the `aws-platform-config` EnvironmentConfig — it never appears in user-visible binding Secrets.
 
-For the full workload identity design: [Platform Engineering: Workload Identity](../../docs/platform-engineering-workload-identity.md)
+For the full workload identity design: [Platform Workload Identity](../../docs/platform-workload-identity.md)
 
 ## Operations
 

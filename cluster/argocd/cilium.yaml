@@ -16,8 +16,8 @@ spec:
           kubeProxyReplacement: true
           k8sServiceHost: 192.168.10.100
           k8sServicePort: 6443
-          # Istio interop (platform-engineering-connections plan, phase 1): allow Istio's CNI plugin to
-          # co-exist in the CNI config dir instead of Cilium claiming it exclusively.
+          # Istio interop — allow Istio's CNI plugin to co-exist in the CNI config dir
+          # instead of Cilium claiming it exclusively. See docs/platform-connections.md.
           cni:
             exclusive: false
           # Keep socket-level LB in the host namespace only, so pod-level socketLB does not
