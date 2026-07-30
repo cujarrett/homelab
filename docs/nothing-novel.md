@@ -25,6 +25,6 @@ Deny-by-default is older than all of it — a firewall rule, or a Kubernetes `Ne
 
 ## What is actually mine
 
-The selection, and nothing else: which offerings exist, what each one exposes, what the defaults are, and where the platform stops. See [Platform](../platform/README.md) for the offerings and [Platform Engineering: Connections](./platform-engineering-connections.md) for where it stops.
+The selection, and nothing else: which offerings exist, what each one exposes, what the defaults are, and where the platform stops. See [Platform](../platform/README.md) for the offerings and [Platform Connections](./platform-connections.md) for where it stops.
 
 That leaves judgement, not invention. Judgement is meant to be argued with.

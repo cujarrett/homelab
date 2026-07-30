@@ -1,10 +1,12 @@
-# Platform Engineering: Binding
+# Platform Binding
+
+[Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](./nothing-novel.md)
 
 Kubernetes gave us CRDs to describe custom resources, and tools like [Crossplane](https://crossplane.io) turned them into a powerful way to provision infrastructure through APIs. You can declare what you want like S3 or RDS and the platform takes care of the rest.
 
 But there's still a gap in the experience: getting those provisioned credentials into the application without turning every team into accidental infrastructure plumbers.
 
-[Platform Engineering: Binding](https://servicebinding.io) closes that gap by standardizing how credentials are delivered to workloads—consistently, predictably, as files mounted into the container where the app already lives.
+[Platform Binding](https://servicebinding.io) closes that gap by standardizing how credentials are delivered to workloads—consistently, predictably, as files mounted into the container where the app already lives.
 
 ## The servicebinding.io Convention
 

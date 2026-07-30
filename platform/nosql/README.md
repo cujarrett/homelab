@@ -75,7 +75,7 @@ Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 
 ## Per-workload auth
 
-When `Api` declares `nosqlRef`, it creates an IAM Role whose trust policy is locked to the pod's exact SPIFFE ID (`spiffe://homelab.local/ns/{namespace}/sa/{service-account}`). The inline policy grants specific DynamoDB actions (GetItem, PutItem, UpdateItem, DeleteItem, Query, Scan, BatchGetItem, BatchWriteItem) scoped to this table's ARN and its indexes — no other table is reachable. For the full design: [Platform Engineering: Workload Identity](../../docs/platform-engineering-workload-identity.md)
+When `Api` declares `nosqlRef`, it creates an IAM Role whose trust policy is locked to the pod's exact SPIFFE ID (`spiffe://homelab.local/ns/{namespace}/sa/{service-account}`). The inline policy grants specific DynamoDB actions (GetItem, PutItem, UpdateItem, DeleteItem, Query, Scan, BatchGetItem, BatchWriteItem) scoped to this table's ARN and its indexes — no other table is reachable. For the full design: [Platform Workload Identity](../../docs/platform-workload-identity.md)
 
 ## Operations
 

@@ -125,7 +125,7 @@ cfg, _ := config.LoadDefaultConfig(ctx,
 s3 := s3.NewFromConfig(cfg)
 ```
 
-For the full design: [Platform Engineering: Workload Identity](../docs/platform-engineering-workload-identity.md)
+For the full design: [Platform Workload Identity](../docs/platform-workload-identity.md)
 
 ---
 

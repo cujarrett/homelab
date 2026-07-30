@@ -107,7 +107,7 @@ The inline policy grants only `rds-db:connect` scoped to the `app` database user
 "Resource": "arn:aws:rds-db:{region}:{account}:dbuser/*/app"
 ```
 
-For the full workload identity design: [Platform Engineering: Workload Identity](../../docs/platform-engineering-workload-identity.md)
+For the full workload identity design: [Platform Workload Identity](../../docs/platform-workload-identity.md)
 
 > **`skipFinalSnapshot: true`** The RDS instance is created without a final snapshot. Deleting the XR permanently destroys the data with no recovery path. Intentional for homelab cost management.
 

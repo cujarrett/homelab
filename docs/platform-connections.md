@@ -1,4 +1,6 @@
-# Platform Engineering: Connections
+# Platform Connections
+
+[Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](./nothing-novel.md)
 
 > **The one idea (grug):** Kubernetes runs the workloads. Service Mesh decides which calls get through.
 
