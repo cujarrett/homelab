@@ -14,6 +14,16 @@ spec:
       values: |
         kubeApiServer:
           enabled: false
+        # Merged into every default alert's annotations, so a chart-bundled
+        # rule (KubePodCrashLooping, NodeFilesystemSpaceFillingUp, etc.) is
+        # never just a title with nowhere to look — namespace-scoped alerts
+        # deep link filtered to that namespace, everything else falls back
+        # to the general cluster dashboard. Custom rules under
+        # prometheusrule-*.yaml set their own dashboard_url instead, since
+        # a specific dashboard beats this generic fallback.
+        defaultRules:
+          additionalRuleAnnotations:
+            dashboard_url: '{{ if $labels.namespace }}https://grafana.local.lab/d/homelab-namespace-overview/namespace-overview?var-namespace={{ $labels.namespace }}{{ else }}https://grafana.local.lab/d/homelab-mbp/homelab{{ end }}'
         kubelet:
           serviceMonitor:
             metricRelabelings:
