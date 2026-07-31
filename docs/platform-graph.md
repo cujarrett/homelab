@@ -1,8 +1,8 @@
 # Platform Graph
 
-[Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](./nothing-novel.md)
-
 > **The one idea (grug):** every team ships its own small GraphQL API. A router glues them into one big one that clients see as a single schema.
+
+[Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](./nothing-novel.md)
 
 ## Index
 
