@@ -84,7 +84,6 @@ ssh pi@192.168.10.100 "journalctl -u getty@tty1 -n 30 --no-pager && ps aux | gre
 | `monitoring` | kube-prometheus-stack | Prometheus, Grafana (`grafana.local.lab`), Alertmanager |
 | `monitoring` | Loki + Promtail | Log aggregation |
 | `monitoring` | prometheus-sump-pump | Long-term IoT Prometheus; ~50yr retention on `longhorn-retain` |
-| `monitoring` | prometheus-pod-history | Long-term pod-lifespan Prometheus; federates a recording rule so dead-pod records outlive the main 30d retention |
 | `longhorn-system` | Longhorn | `longhorn.local.lab` |
 | `adguard` | AdGuard Home | Pinned to `ctrl-1` via hostPort 53 |
 | `cloudflare` | cloudflared | Cloudflare Tunnel; public ingress entry point |
