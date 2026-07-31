@@ -6,7 +6,7 @@ Istio puts a proxy beside every pod. Nothing reaches a workload without passing 
 
 There is a live walkthrough at [connections.mattjarrett.dev](https://connections.mattjarrett.dev) — four real calls against this cluster, two of them refused.
 
-**Scope: workloads talking to workloads.** *Can this workload call that workload* is answered here. *Can Alice view Order 123* is a separate concern, not yet designed, and nothing here depends on it — principle 5 is what keeps that door open.
+**Scope: workloads talking to workloads.** *Can this workload call that workload* is answered here. *Can Alice view Order 123* is a separate concern, not yet designed, and nothing here depends on it.
 
 [Platform](../platform/)'s [`Api`](../platform/api/) and [`Spa`](../platform/spa/) compositions generate every Istio object. Nothing in a workspace file names an Istio kind, mentions Envoy, or contains a SPIFFE string.
 
@@ -14,7 +14,7 @@ There is a live walkthrough at [connections.mattjarrett.dev](https://connections
 
 ## Design principles
 
-**Grug:** seven rules. When a new question comes up, answer it from these instead of case by case.
+**Grug:** six rules. When a new question comes up, answer it from these instead of case by case.
 
 | # | Principle | Why |
 |---|---|---|
@@ -22,9 +22,8 @@ There is a live walkthrough at [connections.mattjarrett.dev](https://connections
 | 2 | **Each pod's proxy is configured from its own app's definition** | Inbound rules come from the app being called, outbound from the app calling. One fact each, not one fact stored twice |
 | 3 | **Read what already exists** | Where a field already states a dependency, the composition uses it rather than asking again |
 | 4 | **Fail loud, never silent-permissive** | A missing entry surfaces as a refused connection or a 403 — never a quiet allow |
-| 5 | **One rule, not two policies** | Istio ORs separate ALLOW policies together, which widens access. Conditions that must all hold belong in the same rule — this is what keeps user authorization addable later |
-| 6 | **Apps never see Istio** | No Istio kinds, no SPIFFE strings, no Envoy in any workspace file |
-| 7 | **The mesh is governance, not containment** | A compromised pod can step around the sidecar. Say so plainly rather than overselling |
+| 5 | **Apps never see Istio** | No Istio kinds, no SPIFFE strings, no Envoy in any workspace file |
+| 6 | **The mesh is governance, not containment** | A compromised pod can step around the sidecar. Say so plainly rather than overselling |
 
 ## What you set on an app
 
@@ -193,6 +192,8 @@ Only the kernel can stop that. A Cilium `NetworkPolicy` is enforced at the pod's
 | ServiceEntry | L7 | [egress control](https://istio.io/latest/docs/tasks/traffic-management/egress/egress-control/) | registers a host; alone it gates nothing |
 | Sidecar + `REGISTRY_ONLY` | L7 | [ref](https://istio.io/latest/docs/reference/config/networking/sidecar/) | this is what makes egress default-deny |
 | Cilium NetworkPolicy | L3/L4 | [policy](https://docs.cilium.io/en/stable/security/policy/) | the containment layer the mesh cannot be |
+
+> **Note — splitting a requirement widens it.** Istio ORs ALLOW policies and rules together, so two rules are two ways in, not two conditions. Anything that must all hold goes in one rule: `from` + `to` + `when` together. This is also what lets user authorization be added later as a `when` on the existing rule rather than a second policy that ORs around it.
 
 ## Worked example
 
