@@ -12,9 +12,18 @@ Runs a fullscreen Chromium kiosk on `ctrl-1`'s attached 1U display, showing the 
 
 ## Display
 
-- Resolution: 1424×280 (1U rack display)
+GeeekPi 6.91" 1U rack-mount LCD, mounted in the DeskPi RackMate and driven from `ctrl-1` over micro-HDMI.
+
+- Resolution: 1424×280 native
 - URL: `https://grafana.local.lab/playlists/play/adc6g24?kiosk`
 - Memory-constrained flags: `--max-old-space-size=64`, `--renderer-process-limit=1`
+
+Confirm the touch state at any time:
+
+```bash
+# Lists only root hubs while the touch lead is unplugged
+ssh pi@192.168.10.100 "lsusb && DISPLAY=:0 xinput list"
+```
 
 ## Restart the kiosk display on ctrl-1
 
@@ -41,4 +50,4 @@ Do **not** just `pkill chromium` — the loop will relaunch with the old URL sti
 ## X server requirement
 
 Requires `/etc/X11/xorg.conf.d/99-pi5.conf` on `ctrl-1` to force the display DRM device.
-See the homelab `copilot-instructions.md` for the config file contents.
+See [Homelab Cluster Context → 1U Display](../../CLAUDE.md#1u-display-ctrl-1) for the config file contents.
