@@ -140,5 +140,5 @@ The tag should match the SHA of the commit that just built.
 
 ## Before committing
 
-Run `/pre-commit-review`, then give the user the `git add` and a suggested commit
+Run `/security-review`, then give the user the `git add` and a suggested commit
 message as separate steps. Never run git write commands yourself.
