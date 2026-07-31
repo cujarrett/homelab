@@ -543,7 +543,7 @@ kubectl apply -f cluster/monitoring/ingresses.yaml
 
 A rack with no display is just a box. The 1U LCD mounted in the rack can show a live Grafana cluster-health dashboard so you can see CPU, memory, and disk usage at a glance without opening a laptop. This turns the display from decorative hardware into a useful at-a-glance status panel.
 
-Connect the 1U display to `ctrl-1` via micro-HDMI.
+Connect the GeeekPi 6.91" 1U touch LCD to `ctrl-1` via micro-HDMI. The panel's separate USB touch lead is left unplugged — the kiosk is display-only, and Grafana playlists have no swipe gesture to drive with it.
 
 ```bash
 ssh pi@192.168.10.100
