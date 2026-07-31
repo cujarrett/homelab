@@ -11,7 +11,7 @@ First kubebuilder project. Small enough to finish, real enough to matter, safe e
 1. Every [`Api`](../platform/api/)/ [`Spa`](../platform/spa/) composition emits a small `ConnectionIntent` CR alongside what it already renders (`AuthorizationPolicy`, `PeerAuthentication`, `Sidecar`, `ServiceEntry` — none of that changes), carrying `provides`/`consumes` straight from `spec.parameters`.
 2. A new controller watches every `ConnectionIntent` CR cluster-wide and aggregates them into a graph — `status.edges: [{source, target}]` — answering "who calls whom" without anyone reading N different XR specs by hand.
 
-Not built from live Envoy traffic — from declared intent. Unmeshed namespaces ([`sump-pump`, `launchpad`](./platform-connections.md#not-yet)) can still emit a `ConnectionIntent` and appear in the graph; their edges just aren't policy-enforced. Worth labeling those nodes as "declared, unenforced" once visualization exists.
+Not built from live Envoy traffic — from declared intent. Unmeshed namespaces ([`sump-pump`, `launchpad`](./platform-connections.md#status)) can still emit a `ConnectionIntent` and appear in the graph; their edges just aren't policy-enforced. Worth labeling those nodes as "declared, unenforced" once visualization exists.
 
 ## What kubebuilder produces
 

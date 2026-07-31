@@ -1,4 +1,4 @@
-# scripts/cluster-backup
+# Cluster Backup
 
 ## backup-cluster-state.sh
 
@@ -7,7 +7,7 @@ Captures all cluster secrets, app data, and node config to `~/Desktop/cluster-ba
 ### 1. Run the backup
 
 ```bash
-bash ~/Developer/homelab/scripts/cluster-backup/backup-cluster-state.sh
+bash ~/Developer/homelab/docs/cluster-backup/backup-cluster-state.sh
 ```
 
 ### 2. Encrypt

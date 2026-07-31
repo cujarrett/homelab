@@ -90,7 +90,7 @@ tar czf wp-content.tar.gz wp-content/
 ### Run the restore script
 
 ```bash
-./scripts/restore-wordpress.sh \
+./docs/wordpress/restore-wordpress.sh \
   --backup-dir  ~/Library/CloudStorage/Dropbox/Projects/Matt\ Jarrett\ Media/website/lightsail-backup \
   --namespace   mattjarrett-com \
   --instance    mattjarrett-com \
@@ -137,7 +137,7 @@ Log in at `https://mattjarrett.com/wp-admin` with your original credentials.
 Even if your site was live at `https://mattjarrett.com` before you snapshotted it, the dump will have `http://127.0.0.1` baked into `wp_options`. Pass `--old-url http://127.0.0.1` when restoring from a Lightsail snapshot.
 
 ```bash
-./scripts/restore-wordpress.sh \
+./docs/wordpress/restore-wordpress.sh \
   --backup-dir  ~/Desktop/wp-backup \
   --namespace   mattjarrett-com \
   --instance    mattjarrett-com \
