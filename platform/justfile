@@ -1,5 +1,9 @@
 # Platform tests
 
+# Render every workspace XR against the current compositions (~1 min, no cluster)
+render-check:
+    ./test/render-check.sh
+
 # Full e2e: inflates every integration including real AWS (~15-25 min, a few cents)
 test-e2e:
     ./test/e2e.sh

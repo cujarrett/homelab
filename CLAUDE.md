@@ -56,7 +56,7 @@ Applies to every `.md` file in this repo — same grug philosophy, applied to pr
 
 ## Overview
 A 4-node k3s Kubernetes homelab managed entirely via GitOps with ArgoCD.
-All workloads are defined as manifests in this repo under `cluster/`, `platform/`, `homelab-workspaces/`, and `scripts/`.
+All workloads are defined as manifests in this repo under `cluster/`, `platform/`, and `homelab-workspaces/`.
 GitHub repo: `https://github.com/cujarrett/homelab.git` (branch: `main`)
 
 ## Hardware & Network
@@ -357,7 +357,7 @@ DO NOT remove the file first — that orphans resources.
 ### WordPress restore
 Backup location: `REDACTED`
 ```bash
-bash scripts/restore-wordpress.sh \
+bash docs/wordpress/restore-wordpress.sh \
   --backup-dir "REDACTED" \
   --namespace mattjarrett-com \
   --instance mattjarrett-com \

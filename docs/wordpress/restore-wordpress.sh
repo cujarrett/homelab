@@ -3,7 +3,7 @@
 # Restores a WordPress site into the Wordpress stack.
 #
 # Usage:
-#   ./scripts/restore-wordpress.sh \
+#   ./docs/wordpress/restore-wordpress.sh \
 #     --backup-dir  /path/to/backup \
 #     --namespace   mattjarrett-com \
 #     --instance    mattjarrett-com \

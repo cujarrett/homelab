@@ -636,7 +636,7 @@ This cluster does not use MetalLB — Traefik uses `hostPort` for HTTP/HTTPS (po
 
 ### Create the manifest
 
-The manifest lives at [cluster/adguard/adguard.yaml](cluster/adguard/adguard.yaml). ArgoCD's root app recurses the `cluster/` directory, so no additional ArgoCD Application is needed — committing the file is enough.
+The manifest lives at [cluster/adguard/adguard.yaml](../cluster/adguard/adguard.yaml). ArgoCD's root app recurses the `cluster/` directory, so no additional ArgoCD Application is needed — committing the file is enough.
 
 ### Apply
 

@@ -4,10 +4,10 @@ description: Render every workspace XR against the current compositions and chec
 
 # Render check
 
-Run the script from the repo root:
+Run it from `platform/`:
 
 ```bash
-./scripts/render-check.sh
+just render-check
 ```
 
 **Prerequisite:** Docker must be running — `crossplane render` pulls `function-go-templating` as a container.

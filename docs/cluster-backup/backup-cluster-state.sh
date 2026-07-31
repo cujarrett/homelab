@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Usage: ./scripts/backup-cluster-state.sh
+# Usage: ./docs/cluster-backup/backup-cluster-state.sh
 #
 # Captures cluster secrets, app data, and node config to ~/Desktop/cluster-backup/.
 # Follow the printed instructions to encrypt and move to Dropbox, then delete the

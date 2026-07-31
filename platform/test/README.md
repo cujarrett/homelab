@@ -1,4 +1,31 @@
-# Platform E2E Test
+# Platform Tests
+
+Two tests live here. Render check is the fast offline one, run on every composition change. The e2e is the slow live one, run before merging anything that touches AWS or workload identity.
+
+Start with [Render check](#render-check) — it is the one you run most.
+
+| Chapter | What it covers |
+|---|---|
+| [Render check](#render-check) | The offline check — what it catches and how to run it |
+| [End-to-end test](#end-to-end-test) | The live test and its three modes |
+| [Credentials the e2e uses](#credentials-the-e2e-uses) | Which credentials the e2e needs and what each one does |
+| [What the e2e inflates](#what-the-e2e-inflates) | The namespace, manifests, and XRs it creates |
+| [E2E phases](#e2e-phases) | The six phases of a run, in order |
+| [The identity-only exception](#the-identity-only-exception) | Why RDS and ElastiCache verify identity instead of a round-trip |
+| [E2E cost](#e2e-cost) | What a full run costs in AWS |
+| [When to run the e2e](#when-to-run-the-e2e) | Which mode to reach for after which change |
+
+## Render check
+
+Renders every workspace XR against the current compositions offline — no cluster, no AWS, no cost. It fails on a broken XRD schema, a render error, a collapsed YAML list, or a composition edit that reaches an app you did not mean to touch.
+
+```bash
+just render-check       # ~1 min, needs Docker for the function containers
+```
+
+Full details in [render check](../../.claude/commands/render-check.md).
+
+## End-to-end test
 
 One command that proves the platform still works end to end after big composition changes. It inflates an Api with **every** integration — both backends where they exist — verifies each one actually works from inside the pod, tears everything down, and verifies nothing was left behind in the cluster or AWS.
 
@@ -8,7 +35,7 @@ just test-e2e-private   # in-cluster only (~2 min, free)
 just test-e2e-keep      # skip teardown, leave resources for debugging
 ```
 
-## Credentials it uses
+## Credentials the e2e uses
 
 | Credential | Used for | Source |
 |---|---|---|
@@ -17,7 +44,7 @@ just test-e2e-keep      # skip teardown, leave resources for debugging
 
 The test itself never creates AWS resources with your CLI credentials. All provisioning happens through Crossplane (the `aws-creds` secret in `crossplane-system`), and all in-pod AWS access uses workload identity (SPIFFE → IAM Roles Anywhere → STS) — the same path production workloads use. That identity chain is part of what's being tested.
 
-## What it inflates
+## What the e2e inflates
 
 Everything goes into the ephemeral `platform-e2e` namespace, applied directly with `kubectl`. ArgoCD never sees it — `platform-definitions` excludes `test/**` (see `cluster/argocd/platform-xrs.yaml`).
 
@@ -28,7 +55,7 @@ Everything goes into the ephemeral `platform-e2e` namespace, applied directly wi
 
 The Api image is `ghcr.io/cujarrett/hello-world-api:latest` — the Launchpad demo app, whose probes do real round-trips against every binding and report per-integration JSON at `GET /`.
 
-## Phases
+## E2E phases
 
 1. **Preflight** — cluster reachable, Crossplane/NATS/SPIRE running, AWS CLI credentialed, `platform-e2e` namespace free, and the previous run's ElastiCache replication group finished deleting (AWS deletes it asynchronously for ~5-10 min after a run ends; back-to-back runs wait here instead of stalling mid-inflate).
 2. **Inflate** — apply the manifests, wait for every XR to reach `Ready=True`, then wait for the cache binding secret (written only after the ElastiCache replication group is ready, ~12 min) and for both pods to be Available.
@@ -41,11 +68,11 @@ The Api image is `ghcr.io/cujarrett/hello-world-api:latest` — the Launchpad de
 
 Public-cloud RDS and ElastiCache land in the AWS default VPC with no network path from this cluster (ElastiCache has no public option at all — see `platform/sql/README.md` and `platform/cache/README.md`). For those two, the probe verifies the full SPIFFE → RolesAnywhere → STS chain and generates a real RDS IAM auth token, then reports `PASS (identity-only)`. If a network path ever exists, the probe automatically upgrades to a full SQL round-trip.
 
-## Cost
+## E2E cost
 
 RDS `db.t4g.micro` + ElastiCache `cache.t4g.micro` for ~20 minutes ≈ a few cents per full run. DynamoDB and S3 stay in the free tier. `--private-only` costs nothing.
 
-## When to run it
+## When to run the e2e
 
 - `just test-e2e-private` after any change to `platform/api/composition.yaml` or the NATS-related compositions — fast, free
 - `just test-e2e` before merging changes that touch AWS bindings, workload identity, or the sql/cache/nosql/object-storage compositions

@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Render every workspace XR against the current compositions and check the result is
-# sane. Run from the homelab repo root, with Docker running.
+# sane. Runs from anywhere; needs Docker running.
+#
+# Usage:
+#   just render-check                      # from platform/
+#   ./platform/test/render-check.sh        # from anywhere
 #
 # Four gates, each catching a class of bug that reached the cluster at least once:
 #   1. schema    — XRDs pass a server-side dry-run. Catches invalid CRD schemas that
@@ -12,6 +16,9 @@
 #   4. unchanged — workspaces that declare no new fields render byte-identical to HEAD.
 #                  A shared composition means one edit reaches every app.
 set -uo pipefail
+
+# Every path below is repo-root-relative, so anchor to the repo root rather than cwd.
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)" || exit 1
 
 WORKSPACES=${WORKSPACES:-../homelab-workspaces}
 ENVCFG=local-only/aws-platform-config.yaml

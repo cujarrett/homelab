@@ -6,7 +6,7 @@
 #   <backup-dir>/wp-content.tar.gz
 #
 # Usage:
-#   ./scripts/wordpress/backup-wordpress.sh \
+#   ./docs/wordpress/backup-wordpress.sh \
 #     --backup-dir  /path/to/backup \
 #     --namespace   mattjarrett-com \
 #     --instance    mattjarrett-com
@@ -66,4 +66,4 @@ echo "    $(du -h "$WP_CONTENT_TAR" | cut -f1), $(tar tzf "$WP_CONTENT_TAR" | wc
 
 echo ""
 echo "==> Backup complete: $BACKUP_DIR"
-echo "    Restore with: ./scripts/wordpress/restore-wordpress.sh --backup-dir $BACKUP_DIR --namespace $NAMESPACE --instance $INSTANCE --old-url <url> --new-url <url>"
+echo "    Restore with: ./docs/wordpress/restore-wordpress.sh --backup-dir $BACKUP_DIR --namespace $NAMESPACE --instance $INSTANCE --old-url <url> --new-url <url>"
