@@ -268,6 +268,14 @@ spec:
                         return 404;
                     }
 
+                    # ACME HTTP-01 tokens are base64url — never contain a dot. Matching the token
+                    # charset instead of the bare prefix means a probe like acme-challenge/file.php
+                    # falls through to the dotfile deny below and 404s, rather than reaching the
+                    # catch-all and answering 200 with index.html.
+                    location ~ "^/\.well-known/acme-challenge/[A-Za-z0-9_-]+$" {
+                        try_files $uri $uri/ /index.html;
+                    }
+
                     # Default-deny: assumes no Spa app's client-side router defines a route with a
                     # dot in a path segment, so any request whose last segment looks like a filename
                     # (has a `.ext` suffix) or starts with a dotfile is a probe, not real navigation.
@@ -276,10 +284,6 @@ spec:
                     # above still take priority since nginx picks the first matching regex location in
                     # file order. When onboarding a new Spa instance, confirm its router doesn't use
                     # dotted route segments before relying on this default.
-                    location ~ /\.well-known/acme-challenge/ {
-                        try_files $uri $uri/ /index.html;
-                    }
-
                     location ~ /\. {
                         return 404;
                     }
