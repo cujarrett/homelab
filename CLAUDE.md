@@ -265,6 +265,7 @@ Service label format: `{namespace}-{servicename}-{port}@kubernetes`
 ## 1U Display (ctrl-1)
 `ctrl-1` runs a kiosk browser on the attached display. It is **not** managed by systemd — it's a bare background process under the `pi` user.
 
+- Hardware: GeeekPi 6.91" 1U rack-mount LCD, native 1424×280, capacitive touch, mounted in the DeskPi RackMate
 - Script: `~/kiosk.sh` on `ctrl-1`
 - Current URL: `https://grafana.local.lab/playlists/play/adc6g24?kiosk`
 
