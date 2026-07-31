@@ -225,6 +225,7 @@ kubectl apply -f cluster/monitoring/<dashboard>.yaml
 
 | UID | File | Title |
 |---|---|---|
+| `homelab-alertmanager` | `grafana-dashboard-alertmanager.yaml` | Alertmanager — vendored from kube-prometheus-stack so it sits in the root folder instead of Less Used; new uid avoids colliding with the chart's copy |
 | `argo-health-kiosk` | `grafana-dashboard-argo-health-kiosk.yaml` | ArgoCD Health Kiosk |
 | `homelab-cert-manager` | `grafana-dashboard-cert-manager.yaml` | Cert Manager |
 | `homelab-gitops` | `grafana-dashboard-gitops.yaml` | GitOps |
