@@ -55,8 +55,8 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": 0
+                    "color": "text",
+                    "value": null
                   },
                   {
                     "color": "blue",
@@ -115,20 +115,11 @@ data:
           "fieldConfig": {
             "defaults": {
               "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "watt"
+              "unit": "watt",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "blue"
+              }
             }
           },
           "gridPos": {
@@ -179,20 +170,11 @@ data:
           "fieldConfig": {
             "defaults": {
               "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "short"
+              "unit": "short",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "blue"
+              }
             }
           },
           "gridPos": {
@@ -243,16 +225,11 @@ data:
           "fieldConfig": {
             "defaults": {
               "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "dtdurations"
+              "unit": "dtdurations",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "blue"
+              }
             }
           },
           "gridPos": {
@@ -303,20 +280,11 @@ data:
           "fieldConfig": {
             "defaults": {
               "decimals": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "short"
+              "unit": "short",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "blue"
+              }
             }
           },
           "gridPos": {
@@ -431,16 +399,11 @@ data:
           "fieldConfig": {
             "defaults": {
               "decimals": 2,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "currencyUSD"
+              "unit": "currencyUSD",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "blue"
+              }
             }
           },
           "gridPos": {

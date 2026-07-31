@@ -98,7 +98,6 @@ SSH access: `ssh pi@192.168.10.10x`
 | `argocd` | ArgoCD | Ingress at `argocd.local.lab` |
 | `monitoring` | kube-prometheus-stack | Prometheus (30d retention, 35Gi), Grafana (2Gi), Alertmanager (2Gi) |
 | `monitoring` | prometheus-sump-pump | Dedicated long-term Prometheus for sump pump + weather data (18250d retention, 2Gi PVC, `longhorn-retain`, no node pinning); Grafana datasource UID `sump-pump-archive` |
-| `monitoring` | prometheus-pod-history | Dedicated long-term Prometheus (18250d retention, 2Gi PVC, `longhorn-retain`) that federates the pod-lifespan recording rule from the main Prometheus so dead-pod records outlive its 30d retention; Grafana datasource UID `pod-history-archive` |
 | `monitoring` | Loki | SingleBinary mode, filesystem storage, 5Gi PVC, 30d retention |
 | `monitoring` | Promtail | DaemonSet log shipper → Loki at `http://loki.monitoring.svc.cluster.local:3100` |
 | `longhorn-system` | Longhorn | Ingress at `longhorn.local.lab` |
@@ -202,7 +201,6 @@ kubectl delete certificaterequest -n <namespace> --all
 ## Monitoring Stack Details
 - **Prometheus (main)**: `monitoring-kube-prometheus-prometheus`, port 9090, 30d retention, 35Gi PVC
 - **Prometheus (sump-pump)**: `prometheus-sump-pump`, port 9090, 18250d retention, 2Gi PVC (`longhorn-retain`, no node pinning); scrapes sump-pump-bridge, sump-pump-consumer, weather-exporter; Grafana datasource UID `sump-pump-archive`; **PVC mounts at `prometheus-db/` subdirectory** — migration jobs must write blocks there, not to the PVC root
-- **Prometheus (pod-history)**: `prometheus-pod-history`, port 9090, 18250d retention, 2Gi PVC (`longhorn-retain`); scrapes nothing directly — federates the `homelab:pod_lifespan_dead_seconds` recording rule (defined in `cluster/monitoring/prometheusrule-pod-lifespan.yaml`, evaluated hourly on the main Prometheus) via `additionalScrapeConfigs` every 2m, so dead-pod lifespan records outlive the main Prometheus's 30d retention. **Do not raise the federate `scrape_interval` above 5m** — Prometheus's default instant-query lookback is 5m, so a slower interval makes the metric read as absent between scrapes, and leaves the dashboard blank for up to a full interval after any pod recreation; Grafana datasource UID `pod-history-archive`; feeds the Hall of Fame panel on the Pod Uptime Leaderboard dashboard; scoped to real app namespaces only (`adguard|blog|default|js-pollock|kentjarrett-com|launchpad|mattjarrett-com|mattjarrett-dev|my-vinyl|nats|sump-pump`) and excludes Job-owned and `cm-acme-http-solver-*` pods to keep it free of CronJob/ACME-challenge noise
 - **Grafana**: admin secret `grafana-admin-secret`, anonymous viewer access enabled, Loki datasource configured, dashboards loaded via sidecar from all namespaces; the kiosk playlist is managed in the Grafana UI (not provisioned from Git)
 - **Loki**: StatefulSet `loki`, SingleBinary, filesystem, 5Gi PVC (`storage-loki-0`), 30d retention, compactor enabled. `argocd` is ~80% of all log volume — check it first if the PVC fills.
 - **Promtail**: DaemonSet, ships logs to Loki
@@ -218,6 +216,8 @@ argocd app sync <app> --grpc-web                            # recreates the STS;
 Skipping the recreate leaves the app permanently OutOfSync, and any future pod recreate comes back at the old size.
 
 ### Grafana Dashboards
+Colors follow [Dashboard Colors](./docs/dashboard-colors.md) — green/yellow/red are reserved for health, every other value uses the blue/purple family. Read it before adding or editing a panel.
+
 Dashboards are ConfigMaps with label `grafana_dashboard: "1"` in any namespace. Apply locally to test before committing:
 ```bash
 kubectl apply -f cluster/monitoring/<dashboard>.yaml
@@ -237,7 +237,6 @@ kubectl apply -f cluster/monitoring/<dashboard>.yaml
 | `orphans-kiosk` | `grafana-dashboard-orphans-kiosk.yaml` | Orphans — Kiosk |
 | `homelab-orphans` | `grafana-dashboard-orphans.yaml` | Orphaned Resources |
 | `homelab-pod-health` | `grafana-dashboard-pod-health.yaml` | Pod Health Breakdown |
-| `homelab-pod-leaderboard` | `grafana-dashboard-pod-leaderboard.yaml` | Pod Uptime Leaderboard |
 | `homelab-pods-by-node` | `grafana-dashboard-pods-by-node.yaml` | Pods by Node |
 | `service-mesh` | `grafana-dashboard-service-mesh.yaml` | Service Mesh |
 | `sump-pump-kiosk` | `grafana-dashboard-sump-pump-kiosk.yaml` | Sump Pump — Kiosk |

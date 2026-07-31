@@ -29,7 +29,7 @@ data:
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "description": "Total request rate across the mesh (destination-reported).",
-          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "unit": "reqps", "decimals": 1, "thresholds": { "mode": "absolute", "steps": [ { "color": "text", "value": null } ] } } },
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "unit": "reqps", "decimals": 1, "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } } },
           "gridPos": { "h": 4, "w": 5, "x": 0, "y": 0 },
           "id": 1,
           "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
@@ -77,7 +77,7 @@ data:
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "description": "Sidecars currently connected to istiod (xDS).",
-          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "text", "value": null } ] } } },
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } } },
           "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
           "id": 5,
           "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
