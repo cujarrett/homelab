@@ -120,12 +120,6 @@ spec:
               url: http://prometheus-sump-pump.monitoring.svc.cluster.local:9090
               access: proxy
               isDefault: false
-            - name: Pod History Archive
-              uid: pod-history-archive
-              type: prometheus
-              url: http://prometheus-pod-history.monitoring.svc.cluster.local:9090
-              access: proxy
-              isDefault: false
           resources:
             requests:
               memory: 1024Mi
