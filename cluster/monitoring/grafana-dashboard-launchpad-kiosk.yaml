@@ -40,7 +40,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "unit": "short", "decimals": 0,
-              "color": { "fixedColor": "green", "mode": "fixed" }
+              "color": { "fixedColor": "purple", "mode": "fixed" }
             }
           },
           "targets": [{ "expr": "max_over_time(sum(launchpad_guest_workspace_count)[24h:1m])", "legendFormat": "peak 24h", "instant": true, "refId": "A" }]
@@ -81,7 +81,7 @@ data:
               "custom": { "lineWidth": 2, "fillOpacity": 15, "lineInterpolation": "smooth" }
             },
             "overrides": [
-              { "matcher": { "id": "byName", "options": "workspaces" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "workspaces" }, "properties": [{ "id": "color", "value": { "fixedColor": "purple", "mode": "fixed" } }] },
               { "matcher": { "id": "byName", "options": "resources" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] }
             ]
           },

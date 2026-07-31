@@ -147,10 +147,10 @@ data:
                 "steps": [
                   {
                     "color": "green",
-                    "value": 0
+                    "value": null
                   },
                   {
-                    "color": "blue",
+                    "color": "yellow",
                     "value": 1
                   }
                 ]
@@ -197,16 +197,11 @@ data:
         {
           "fieldConfig": {
             "defaults": {
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "blue",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "short"
+              "unit": "short",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "blue"
+              }
             }
           },
           "gridPos": {
