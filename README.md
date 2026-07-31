@@ -4,9 +4,7 @@
 
 A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering and GitOps. The goal is to use Kubernetes as a control plane for infrastructure — not just a place to run containers.
 
-[How it was built](https://blog.mattjarrett.dev/homelab/)
-
-[Homelab Platform Workspaces](https://github.com/cujarrett/homelab-workspaces) — XR instance files for all workspaces
+[How it was built](https://blog.mattjarrett.dev/homelab/) - [What runs on it](https://github.com/cujarrett/homelab-workspaces) - [Blog about it](https://blog.mattjarrett.dev)
 
 ## Platform Stack
 
@@ -15,7 +13,7 @@ A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering a
 | **Cluster** | k3s on 4× Raspberry Pi 5 (1 controller, 3 workers) |
 | **Storage** | Longhorn — distributed block storage with 3× NVMe replication |
 | **GitOps** | Argo CD — cluster state driven from this repo |
-| **Observability** | Prometheus + Grafana + Alertmanager (kube-prometheus-stack) |
+| **Observability** | Prometheus + Grafana + Alertmanager + Loki |
 | **Ingress + TLS** | Traefik + cert-manager (local CA for `*.local.lab`, Let's Encrypt for public) |
 | **DNS** | AdGuard Home — wildcard `*.local.lab → 192.168.10.100` for all network devices |
 | **CNI** | Cilium — eBPF pod networking, WireGuard node encryption, kube-proxy replacement, Hubble observability |
