@@ -2,8 +2,6 @@
 
 > **The one idea (grug):** Kubernetes runs the workloads. Service Mesh decides which calls get through.
 
-[Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](./nothing-novel.md)
-
 Istio puts a proxy beside every pod. Nothing reaches a workload without passing that proxy, and nothing leaves without passing its own.
 
 There is a live walkthrough at [connections.mattjarrett.dev](https://connections.mattjarrett.dev) — four real calls against this cluster, two of them refused.
@@ -12,19 +10,7 @@ There is a live walkthrough at [connections.mattjarrett.dev](https://connections
 
 [Platform](../platform/)'s [`Api`](../platform/api/) and [`Spa`](../platform/spa/) compositions generate every Istio object. Nothing in a workspace file names an Istio kind, mentions Envoy, or contains a SPIFFE string.
 
-## Index
-
-| Chapter | What's in it |
-|---|---|
-| [Design principles](#design-principles) | what to reason from when a new question comes up |
-| [What you set on an app](#what-you-set-on-an-app) | the entire developer-facing surface |
-| [What gets rendered](#what-gets-rendered) | the four gates, and which one refused your call |
-| [The identity it rests on](#the-identity-it-rests-on) | why a name in a header would not be enough |
-| [What it costs](#what-it-costs) | honestly |
-| [Known limits](#known-limits) | the holes, named |
-| [Status](#status) | what is enforcing |
-| [Reference](#reference) | one link per concept |
-| [Worked example](#worked-example) | one real call, traced field by field to the live objects |
+[Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](./nothing-novel.md)
 
 ## Design principles
 
