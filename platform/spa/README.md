@@ -27,9 +27,11 @@ The namespace is owned by the tenant — created by `namespace.yaml` in the tena
 | `replicas` | no | `1` | Number of nginx replicas. Stateless — safe to scale freely. |
 | `apiProxies` | no | — | Array of path prefixes to proxy to in-cluster services, keeping those APIs off the public internet. Each entry requires `path` and `upstream`; the prefix is stripped before proxying. |
 | `connectionPosture` | no | `off` | `off` = this app may call anything it can reach, and anything may call it. `enforce` = only declared calls work — everything else is refused. |
-| `consumes` | no | — | Destinations this app calls that nothing else already states: off-platform hostnames, and apps in another namespace. Only read when `connectionPosture` is `enforce`. Entries take `host`, and optionally `port`, `protocol`, `app`, `namespace`. |
+| `consumes` | no | — | Every destination this app calls, including apps in its own namespace: off-platform hostnames, and any app on the platform. Only read when `connectionPosture` is `enforce`. Entries take `host`, and optionally `port`, `protocol`, `app`, `namespace`. |
 
-`apiProxies` doubles as a connection declaration — under `enforce` the composition allows those upstreams without you restating them in `consumes`. Same-namespace destinations are allowed too; they are still gated by whatever the callee itself declares.
+`apiProxies` doubles as a connection declaration — under `enforce` the composition allows those upstreams without you restating them in `consumes`. Nothing else is automatic: an app in the same namespace still needs a `consumes` entry, and is still gated by whatever the callee itself declares.
+
+What this means for the API on the other end — stripped prefixes, forwarded client headers, and why it needs no hostname of its own — is in [Api → Being called through a Spa](../api/README.md#being-called-through-a-spa).
 
 The health check endpoint is always `/healthz` — not configurable.
 
