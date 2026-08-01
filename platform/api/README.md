@@ -46,7 +46,7 @@ The namespace is owned by the tenant — created by `namespace.yaml` in the tena
 | `provides` | no | — | Interfaces this API exposes, and which apps may call each one. Required to accept any call once `connectionPosture` is `enforce`. Each entry requires `name` and `allowedCallers`; each caller requires `namespace` and `app`. |
 | `provides[].methods` | no | — | HTTP methods this interface accepts. Omit to accept all. |
 | `provides[].paths` | no | — | Path prefixes this interface covers. Omit to cover the whole API. |
-| `consumes` | no | — | Destinations this API calls that nothing else already states: off-platform hostnames, and apps in another namespace. Only read when `connectionPosture` is `enforce`. Entries take `host`, and optionally `port`, `protocol`, `app`, `namespace`. |
+| `consumes` | no | — | Every destination this API calls, including apps in its own namespace: off-platform hostnames, and any app on the platform. A `Cache` this API creates itself is allowed automatically — do not list it. Only read when `connectionPosture` is `enforce`. Entries take `host`, and optionally `port`, `protocol`, `app`, `namespace`. |
 
 ## Example
 
@@ -81,6 +81,17 @@ spec:
 ```
 
 Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
+
+## Being called through a Spa
+
+A [`Spa`](../spa/) can proxy a path prefix to this API, so the browser only ever talks to the SPA's hostname. The Spa declares it with `apiProxies` — a path and this API's in-cluster address — and nothing is set here. Four things follow for this API:
+
+- **No `host` needed.** Skip it and the API gets no Ingress, no public hostname, and no certificate. It stays reachable only inside the cluster. Setting `host` anyway leaves it reachable from the ingress controller regardless of `provides`.
+- **The prefix is stripped.** A browser request to `/api/baz` arrives here as `/baz`. Route on the bare path.
+- **Still gated.** Being proxied grants nothing. Under `enforce`, `provides.allowedCallers` must name the Spa or the call is refused with a 403.
+- **Client details move to headers.** The connecting peer is the Spa, so read `X-Forwarded-For` for the client address, `X-Forwarded-Host` for the hostname the browser used, and `X-Forwarded-Proto` for the scheme.
+
+Streaming responses work unchanged — the proxy is configured for Server-Sent Events, with buffering off and a long read timeout.
 
 ## Binding secrets
 
