@@ -66,7 +66,20 @@ spec:
 
 `consumes` carries every destination nothing else already states — off-platform hosts, and any other app, including one in the same namespace. Sitting next to something grants no reach toward it.
 
-The one thing it never carries is what the app creates itself, such as its own `Cache`. The composition made that resource, so it renders the egress entry too. Principle 3 again — never ask for a fact the platform already holds.
+The one thing it never carries is what the app already asked the platform for. A `Cache` it creates, a bucket or table it binds — the composition provisioned those, so it renders their egress entries too. Principle 3 again: never ask for a fact the platform already holds.
+
+**Asking for a resource is declaring the connection to it.** A cloud binding resolves to endpoints nobody should hand-write — the bucket's own hostname, and the two the credential sidecar calls to exchange this pod's identity for temporary keys. Miss that last pair and the pod starts clean and then fails every call, so the platform derives all of them from the binding rather than trusting anyone to remember.
+
+| Declared by | Renders |
+|---|---|
+| `consumes` host | one `ServiceEntry` and one egress entry for that host |
+| `consumes` app + namespace | one egress entry toward that app |
+| `apiProxies.upstream` (`Spa`) | one egress entry toward that upstream |
+| `objectStorageRefs` entry | that bucket's endpoint, plus the credential endpoints |
+| `nosqlRef` | the database endpoint, plus the credential endpoints |
+| `cache` (in-cluster) | that cache's Service |
+
+The rule underneath: **you declare what you need, not where it lives.** An address the platform can derive is one it should never ask for.
 
 **`connectionPosture` has two values.** `off` renders nothing, `enforce` renders everything below. There is no intermediate rung: Istio has a dry-run mode worth adding if a namespace ever has callers nobody can enumerate, but every namespace here has a small, knowable caller set, and a wrong guess surfaces as a loud 403 rather than an outage.
 
@@ -246,7 +259,6 @@ spec:
     mode: REGISTRY_ONLY
   egress:
     - hosts:
-        - ./*.svc.cluster.local
         - istio-system/*
         - '*/my-vinyl-api.my-vinyl.svc.cluster.local'   # <- the one line apiProxies.upstream produced
 ```
@@ -357,8 +369,8 @@ spec:
     mode: REGISTRY_ONLY
   egress:
     - hosts:
-        - ./*.svc.cluster.local
         - istio-system/*
+        - ./my-vinyl-api-cache-redis.my-vinyl.svc.cluster.local   # <- its own Cache, never declared
         - ./api.discogs.com   # <- consumes.host produced this line, gate 1
 ```
 

@@ -87,6 +87,28 @@ spec:
               {{- $awsBindings = append $awsBindings (printf "cache-binding:/bindings/cache:cache") }}
               {{- $sidecarBindingParts = append $sidecarBindingParts "/bindings/cache:cache" }}
             {{- end }}
+            {{- /* AWS endpoints this pod must reach. The mesh has no idea these exist    */ -}}
+            {{- /* otherwise, so under REGISTRY_ONLY every one of them is a blackhole.    */ -}}
+            {{- $awsHosts := list }}
+            {{- if gt (len $awsBindings) 0 }}
+              {{- /* The credential sidecar calls these to turn its SVID into AWS keys.   */ -}}
+              {{- /* Without them nothing else here works — no credentials, no calls.     */ -}}
+              {{- $awsHosts = append $awsHosts "rolesanywhere.us-east-1.amazonaws.com" }}
+              {{- $awsHosts = append $awsHosts "sts.us-east-1.amazonaws.com" }}
+            {{- end }}
+            {{- range $ref := $objectStorageRefs }}
+              {{- /* Virtual-hosted style is the AWS SDK default, so SNI carries the      */ -}}
+              {{- /* bucket name — one host per bucket, not one regional endpoint.        */ -}}
+              {{- $awsHosts = append $awsHosts (printf "platform-%s-%s.s3.us-east-1.amazonaws.com" $ns $ref.name) }}
+            {{- end }}
+            {{- if $nosqlRefName }}
+              {{- /* Every table in a region shares this endpoint — the table name is in */ -}}
+              {{- /* the request body, not the hostname, so IAM is what scopes access.   */ -}}
+              {{- $awsHosts = append $awsHosts "dynamodb.us-east-1.amazonaws.com" }}
+            {{- end }}
+            {{- /* Nothing for public-cloud Sql or Cache — RDS and ElastiCache are VPC   */ -}}
+            {{- /* only, so unreachable from this cluster. If that changes, the call     */ -}}
+            {{- /* fails loudly here and the host goes in consumes.                      */ -}}
             # --- Service ---
             apiVersion: v1
             kind: Service
@@ -791,6 +813,10 @@ spec:
                     {{- if and $sqlRefName (eq $sqlBackend "private-cloud") }}
                     - "./{{ $sqlRefName }}-postgres.{{ $ns }}.svc.cluster.local"
                     {{- end }}
+                    {{- range $h := $awsHosts }}
+                    # Bound by this XR, so the app never declares it.
+                    - "./{{ $h }}"
+                    {{- end }}
                     {{- range $c := $consumes }}
                     {{- if $c.host }}
                     - "./{{ $c.host }}"
@@ -799,6 +825,29 @@ spec:
                     - "{{ $c.namespace }}/{{ $c.app }}.{{ $c.namespace }}.svc.cluster.local"
                     {{- end }}
                     {{- end }}
+            {{- range $h := $awsHosts }}
+            ---
+            # {{ $h }} — an AWS binding implies this endpoint, so the platform registers
+            # it rather than making the app restate it in consumes.
+            apiVersion: networking.istio.io/v1
+            kind: ServiceEntry
+            metadata:
+              name: {{ $name }}-{{ $h | replace "." "-" }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-se-{{ $h | replace "." "-" }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              hosts:
+                - {{ $h | quote }}
+              location: MESH_EXTERNAL
+              resolution: DNS
+              exportTo: ["."]
+              ports:
+                - number: 443
+                  name: tls
+                  protocol: TLS
+            {{- end }}
             {{- range $c := $consumes }}
             {{- if $c.host }}
             ---
