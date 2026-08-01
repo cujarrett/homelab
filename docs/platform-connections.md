@@ -6,9 +6,17 @@ Istio puts a proxy beside every pod. Nothing reaches a workload without passing 
 
 There is a live walkthrough at [connections.mattjarrett.dev](https://connections.mattjarrett.dev) — four real calls against this cluster, two of them refused.
 
-**Scope: workloads talking to workloads.** *Can this workload call that workload* is answered here. *Can Alice view Order 123* is a separate concern, not yet designed, and nothing here depends on it.
+By default, anything running in the cluster can call anything else. So *can this app call that app* already has an answer — yes, always — and nobody chose it.
 
-[Platform](../platform/)'s [`Api`](../platform/api/) and [`Spa`](../platform/spa/) compositions generate every Istio object. Nothing in a workspace file names an Istio kind, mentions Envoy, or contains a SPIFFE string.
+**Why internal developer platforms do this.** A small system can keep its connections in someone's head. A few thousand services across a few hundred teams cannot, and every fix that relies on people remembering breaks at that size. A platform's job is to make the right thing the automatic thing, and three things follow from that. None of them are about Kubernetes.
+
+- **A breach stops at one app.** Attacker gets into the weakest app. From there they reach only what that app could already reach.
+- **Nobody waits on the security team.** The team writes the dependency in its own file. No ticket, no rule to approve.
+- **You can prove it.** "It is on a private network" is not proof. A line in git is.
+
+**Scope: workloads talking to workloads.** *Can Alice view Order 123* is a separate concern, not yet designed.
+
+Platform's [`Api`](../platform/api/) and [`Spa`](../platform/spa/) compositions generate every Istio object. Nothing in a workspace file names an Istio kind, mentions Envoy, or contains a SPIFFE string.
 
 [Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](./nothing-novel.md)
 
@@ -18,7 +26,7 @@ There is a live walkthrough at [connections.mattjarrett.dev](https://connections
 
 | # | Principle | Why |
 |---|---|---|
-| 1 | **Nothing is reachable by position** | Sitting in the same cluster, or the same namespace, grants nothing on its own |
+| 1 | **Nothing is reachable without being declared** | Sitting in the same cluster, or the same namespace, grants nothing on its own |
 | 2 | **Each pod's proxy is configured from its own app's definition** | Inbound rules come from the app being called, outbound from the app calling. One fact each, not one fact stored twice |
 | 3 | **Read what already exists** | Where a field already states a dependency, the composition uses it rather than asking again |
 | 4 | **Fail loud, never silent-permissive** | A missing entry surfaces as a refused connection or a 403 — never a quiet allow |
@@ -56,7 +64,9 @@ spec:
 
 **The SPA needs no new field.** Principle 3 — `apiProxies` already states the dependency, so the composition reads it.
 
-`consumes` carries only what nothing else states: off-platform hosts, and apps in another namespace. Everything else is already covered. A same-namespace destination is reachable outbound, as is anything the app creates itself such as its own `Cache`. Both are still gated inbound by the callee's `provides`, so nothing works undeclared.
+`consumes` carries every destination nothing else already states — off-platform hosts, and any other app, including one in the same namespace. Sitting next to something grants no reach toward it.
+
+The one thing it never carries is what the app creates itself, such as its own `Cache`. The composition made that resource, so it renders the egress entry too. Principle 3 again — never ask for a fact the platform already holds.
 
 **`connectionPosture` has two values.** `off` renders nothing, `enforce` renders everything below. There is no intermediate rung: Istio has a dry-run mode worth adding if a namespace ever has callers nobody can enumerate, but every namespace here has a small, knowable caller set, and a wrong guess surfaces as a loud 403 rather than an outage.
 

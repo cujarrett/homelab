@@ -85,7 +85,7 @@ spec:
                       description: "Connection policy for this workload. off renders nothing. enforce blocks calls out unless the destination is same-namespace, already named in apiProxies, or declared in consumes."
                     consumes:
                       type: array
-                      description: "Destinations this SPA calls that no other field already states. Same-namespace destinations and anything already named in apiProxies are allowed automatically — do not list them. Set either host (off-platform) or app+namespace (another namespace on the platform)."
+                      description: "Every destination this SPA calls, including apps in its own namespace. Anything already named in apiProxies is allowed automatically — do not list it. Set either host (off-platform) or app+namespace (any app on the platform)."
                       items:
                         type: object
                         properties:

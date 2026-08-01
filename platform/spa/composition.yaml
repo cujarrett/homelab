@@ -484,11 +484,8 @@ spec:
                 - to:
                     - operation: { ports: ["80"] }
             ---
-            # REGISTRY_ONLY: this SPA may only reach cluster services in its own namespace,
-            # the control plane, whatever apiProxies names, and the hosts it declared. The
-            # wildcard is scoped to svc.cluster.local on purpose — a bare ./* also matches
-            # every ServiceEntry in the namespace, which would let one workload reach a
-            # host its neighbour registered.
+            # REGISTRY_ONLY: only the control plane, the apiProxies upstreams, and what it
+            # declared. No wildcard — a neighbour in the same namespace is refused too.
             apiVersion: networking.istio.io/v1
             kind: Sidecar
             metadata:
@@ -504,7 +501,6 @@ spec:
                 mode: REGISTRY_ONLY
               egress:
                 - hosts:
-                    - "./*.svc.cluster.local"
                     - "istio-system/*"
                     {{- range $apiProxies }}
                     - "*/{{ .upstream }}"

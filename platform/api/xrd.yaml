@@ -31,6 +31,8 @@ spec:
                         properties:
                           name:
                             type: string
+                            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                            maxLength: 63
                             description: "metadata.name of the ObjectStorage instance."
                     sqlRef:
                       type: object
@@ -39,6 +41,10 @@ spec:
                       properties:
                         name:
                           type: string
+                          # Templated into Service names and the sidecar egress list, so it
+                          # must be a DNS label — an unbounded string could inject a line there.
+                          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                          maxLength: 63
                           description: "metadata.name of the Sql instance."
                         backend:
                           type: string
@@ -52,6 +58,8 @@ spec:
                       properties:
                         name:
                           type: string
+                          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                          maxLength: 63
                           description: "metadata.name of the NoSql instance."
                     cache:
                       type: object
@@ -115,6 +123,8 @@ spec:
                       properties:
                         name:
                           type: string
+                          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                          maxLength: 63
                           description: "metadata.name of the Topic instance (e.g. foo-events)."
                         streamName:
                           type: string
@@ -129,6 +139,8 @@ spec:
                       properties:
                         name:
                           type: string
+                          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                          maxLength: 63
                           description: "metadata.name of the Subscription instance (e.g. foo-consumer)."
                     replicas:
                       type: integer
@@ -184,7 +196,7 @@ spec:
                                   description: "The calling Api/Spa's metadata.name — also its ServiceAccount name."
                     consumes:
                       type: array
-                      description: "Destinations this workload calls that no other field already states. Same-namespace destinations and anything this XR creates itself (e.g. its own cache) are allowed automatically — do not list them. Set either host (off-platform) or app+namespace (another namespace on the platform)."
+                      description: "Every destination this workload calls, including apps in its own namespace. Anything this XR creates itself (e.g. its own cache) is allowed automatically — do not list it. Set either host (off-platform) or app+namespace (any app on the platform)."
                       items:
                         type: object
                         properties:
