@@ -6,7 +6,7 @@
 #   just render-check                      # from platform/
 #   ./platform/test/render-check.sh        # from anywhere
 #
-# Four gates, each catching a class of bug that reached the cluster at least once:
+# Five gates, each catching a class of bug that reached the cluster at least once:
 #   1. schema    — XRDs pass a server-side dry-run. Catches invalid CRD schemas that
 #                  Kubernetes silently refuses, leaving the CRD at its old generation.
 #   2. render    — crossplane render exits 0.
@@ -15,6 +15,11 @@
 #                  sequence into one string, so exit code alone proves nothing.
 #   4. unchanged — workspaces that declare no new fields render byte-identical to HEAD.
 #                  A shared composition means one edit reaches every app.
+#   5. rbac      — every composed kind is granted in cluster/crossplane/rbac.yaml.
+#                  Crossplane composes with its own ServiceAccount, so a kind the
+#                  platform has never composed before renders perfectly and is then
+#                  refused by the API server. The XR goes SYNCED=False while staying
+#                  READY=True, so the app keeps serving and nothing looks wrong.
 set -uo pipefail
 
 # Every path below is repo-root-relative, so anchor to the repo root rather than cwd.
@@ -123,6 +128,10 @@ PY
     red "   FAIL $name — output did not parse cleanly"; fail=1; continue
   fi
 
+  # keep every rendered doc for the rbac gate; the leading --- keeps the last doc of
+  # one workspace from merging into the first doc of the next
+  { echo '---'; cat "$TMP/out.yaml"; } >> "$TMP/all-rendered.yaml"
+
   # compare against HEAD's composition; only meaningful when the composition changed
   if git show "HEAD:$comp" > "$TMP/head-comp.yaml" 2>/dev/null; then
     if crossplane render "$xr" "$TMP/head-comp.yaml" "$FUNCS" -e "$ENVCFG" > "$TMP/head-out.yaml" 2>/dev/null; then
@@ -137,6 +146,62 @@ PY
   fi
   grn "   ok  $name (new)"
 done
+
+# --- 5. RBAC coverage ---------------------------------------------------------
+echo "── rbac"
+if [ -s "$TMP/all-rendered.yaml" ]; then
+  if out=$(python3 - "$TMP/all-rendered.yaml" cluster/crossplane/rbac.yaml <<'PY'
+import sys, yaml
+
+# Groups Crossplane grants itself elsewhere: the XRs are covered by the generated
+# composite roles, and AWS managed resources by each provider's own edit role.
+def skip(group):
+    return group == 'platform.local.lab' or group.endswith('aws.upbound.io')
+
+def plural(kind):
+    k = kind.lower()
+    if k.endswith('y'):  return k[:-1] + 'ies'
+    if k.endswith('s'):  return k + 'es'
+    return k + 's'
+
+granted = set()
+for doc in yaml.safe_load_all(open(sys.argv[2])):
+    if not doc or doc.get('kind') != 'ClusterRole':
+        continue
+    for rule in doc.get('rules') or []:
+        for g in rule.get('apiGroups') or []:
+            for r in rule.get('resources') or []:
+                granted.add((g, r))
+
+missing = {}
+for doc in yaml.safe_load_all(open(sys.argv[1])):
+    if not doc or 'kind' not in doc:
+        continue
+    av = doc.get('apiVersion', '')
+    group = av.split('/')[0] if '/' in av else ''
+    if skip(group):
+        continue
+    res = plural(doc['kind'])
+    if (group, res) in granted or ('*', res) in granted or (group, '*') in granted:
+        continue
+    missing[(group, res)] = doc['kind']
+
+if missing:
+    for (g, r), kind in sorted(missing.items()):
+        print(f"{kind} ({g or 'core'}/{r}) is composed but not granted")
+    sys.exit(1)
+PY
+  ); then
+    grn "   ok  every composed kind is granted"
+  else
+    red "   FAIL cluster/crossplane/rbac.yaml is missing grants"
+    echo "$out" | sed 's/^/        /'
+    echo "        Crossplane will render these fine and the API server will refuse them."
+    fail=1
+  fi
+else
+  red "   FAIL nothing rendered — cannot check rbac coverage"; fail=1
+fi
 
 echo
 [ "$fail" -eq 0 ] && grn "render-check passed" || red "render-check FAILED"
