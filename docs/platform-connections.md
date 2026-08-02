@@ -4,7 +4,7 @@
 
 Istio puts a proxy beside every pod. Nothing reaches a workload without passing that proxy, and nothing leaves without passing its own.
 
-There is a live walkthrough at [connections.mattjarrett.dev](https://connections.mattjarrett.dev) — four real calls against this cluster, two of them refused.
+There is a live walkthrough at [connections.mattjarrett.dev](https://connections.mattjarrett.dev) — six real calls against this cluster, two of them refused.
 
 By default, anything running in the cluster can call anything else. So *can this app call that app* already has an answer — yes, always — and nobody chose it.
 
