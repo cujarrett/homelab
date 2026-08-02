@@ -272,6 +272,13 @@ spec:
                             secretKeyRef:
                               name: {{ $name }}-mariadb
                               key: password
+                        # The built-in theme editor writes PHP that Apache then runs. Nobody
+                        # edits theme files in a browser textarea, so this costs nothing.
+                        # DISALLOW_FILE_MODS is deliberately not set — it would also block
+                        # plugin and core updates, and stale plugins are the bigger risk.
+                        - name: WORDPRESS_CONFIG_EXTRA
+                          value: |
+                            define('DISALLOW_FILE_EDIT', true);
                       ports:
                         - containerPort: 80
                       # Probes a static asset, not /, so the check never occupies one of the
@@ -573,3 +580,111 @@ spec:
                       port: 80
               tls:
                 secretName: wordpress-tls
+            ---
+            # --- WordPress NetworkPolicy ---
+            # Code execution inside this pod should reach the database, DNS and the public
+            # internet -- nothing else. The egress ipBlock subtracts every RFC1918 range, so
+            # a shell here cannot scan the LAN (192.168.10.0/24), the pod CIDR (10.42.0.0/16)
+            # or any other namespace's Services. Link-local is excluded too; it is where cloud
+            # metadata endpoints live and there is no reason for WordPress to reach it.
+            # Public egress stays open because WordPress needs it -- wp-cron loops back through
+            # the site's own public hostname, and update checks call out to wordpress.org.
+            apiVersion: networking.k8s.io/v1
+            kind: NetworkPolicy
+            metadata:
+              name: {{ $name }}-wordpress
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: wordpress-networkpolicy
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              podSelector:
+                matchLabels:
+                  app: wordpress
+                  instance: {{ $name }}
+              policyTypes: ["Ingress", "Egress"]
+              ingress:
+                - from:
+                    - namespaceSelector:
+                        matchLabels:
+                          kubernetes.io/metadata.name: kube-system
+                      podSelector:
+                        matchLabels:
+                          app.kubernetes.io/name: traefik
+                  ports:
+                    - protocol: TCP
+                      port: 80
+                # No rule for the kubelet readiness probe on purpose. It arrives from the
+                # node's cilium_host address with the reserved:host identity, which Cilium
+                # always admits to local pods while enable-host-firewall is false. Adding a
+                # node-CIDR ipBlock here would not match that source anyway, and would open
+                # port 80 to the whole LAN -- bypassing the Traefik rate limit and xmlrpc block.
+              egress:
+                - to:
+                    - namespaceSelector:
+                        matchLabels:
+                          kubernetes.io/metadata.name: kube-system
+                      podSelector:
+                        matchLabels:
+                          k8s-app: kube-dns
+                  ports:
+                    - protocol: UDP
+                      port: 53
+                    - protocol: TCP
+                      port: 53
+                - to:
+                    - podSelector:
+                        matchLabels:
+                          app: mariadb
+                          instance: {{ $name }}
+                  ports:
+                    - protocol: TCP
+                      port: 3306
+                - to:
+                    - ipBlock:
+                        cidr: 0.0.0.0/0
+                        except:
+                          - 10.0.0.0/8
+                          - 172.16.0.0/12
+                          - 192.168.0.0/16
+                          - 169.254.0.0/16
+            ---
+            # --- MariaDB NetworkPolicy ---
+            # The database is reachable only from its own WordPress pod, and talks to nothing
+            # but DNS. No public egress at all -- MariaDB has no reason to originate traffic.
+            apiVersion: networking.k8s.io/v1
+            kind: NetworkPolicy
+            metadata:
+              name: {{ $name }}-mariadb
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: mariadb-networkpolicy
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              podSelector:
+                matchLabels:
+                  app: mariadb
+                  instance: {{ $name }}
+              policyTypes: ["Ingress", "Egress"]
+              ingress:
+                - from:
+                    - podSelector:
+                        matchLabels:
+                          app: wordpress
+                          instance: {{ $name }}
+                  ports:
+                    - protocol: TCP
+                      port: 3306
+              egress:
+                - to:
+                    - namespaceSelector:
+                        matchLabels:
+                          kubernetes.io/metadata.name: kube-system
+                      podSelector:
+                        matchLabels:
+                          k8s-app: kube-dns
+                  ports:
+                    - protocol: UDP
+                      port: 53
+                    - protocol: TCP
+                      port: 53

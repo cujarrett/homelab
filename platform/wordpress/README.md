@@ -8,8 +8,14 @@ Crossplane composition that deploys a self-contained WordPress site with MariaDB
 - **WordPress PVC** — persistent storage for `wp-content` (uploads, themes, plugins)
 - **WordPress Deployment + Service** — Apache/PHP WordPress container; seeds `wp-content` from the image on first run
 - **Ingress** — Traefik `websecure` with cert-manager TLS
+- **NetworkPolicies** — WordPress reaches its database, DNS and the public internet only; the database is reachable from its own WordPress pod only
 
 The namespace is owned by the tenant — created by `namespace.yaml` in the tenant directory.
+
+## Editing theme and plugin code
+
+`DISALLOW_FILE_EDIT` is set, so the built-in code editor is gone from the admin UI. Plugin and
+theme installs and updates are unaffected and still work normally from the UI.
 
 ## Parameters
 
