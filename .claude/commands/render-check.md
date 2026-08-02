@@ -14,7 +14,7 @@ just render-check
 
 ## What it checks
 
-Four gates. Each exists because that class of bug reached the cluster at least once.
+Five gates. Each exists because that class of bug reached the cluster at least once.
 
 | Gate | Catches |
 |---|---|
@@ -22,6 +22,7 @@ Four gates. Each exists because that class of bug reached the cluster at least o
 | **render** | `crossplane render` exits non-zero. |
 | **parse** | Output is valid YAML and no block sequence collapsed into a single string. `crossplane render` exits 0 even when whitespace trimming (`{{- … -}}`) flattens a list, so exit code alone proves nothing. |
 | **blast radius** | A composition edit changing an app you did not intend to touch. `Api` and `Spa` are shared by every workspace, so one edit reaches all of them. |
+| **rbac** | A composed resource kind that [cluster/crossplane/rbac.yaml](../../cluster/crossplane/rbac.yaml) does not grant. Crossplane composes with its own ServiceAccount, so a kind the platform has never composed before renders perfectly and is then refused by the API server. The XR lands on `SYNCED=False` while staying `READY=True` — the app keeps serving and nothing looks broken. XR kinds and AWS managed resources are skipped; Crossplane grants those through its generated composite and provider roles. |
 
 **What it does not check:** whether your *workspace* edits took effect. The comparison renders the current XR against `HEAD`'s composition, and workspaces live in a separate repo this script cannot read history for — so it answers "did my composition change break anyone else", not "did my XR change do what I meant". Verify workspace edits by reading the rendered output.
 
