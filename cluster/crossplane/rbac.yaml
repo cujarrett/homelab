@@ -15,7 +15,7 @@ rules:
     resources: ["deployments", "statefulsets"]
     verbs: ["*"]
   - apiGroups: ["networking.k8s.io"]
-    resources: ["ingresses"]
+    resources: ["ingresses", "networkpolicies"]
     verbs: ["*"]
   - apiGroups: ["traefik.io"]
     resources: ["middlewares", "ingressroutes"]
