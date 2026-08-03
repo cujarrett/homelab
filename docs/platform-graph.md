@@ -9,10 +9,11 @@
 | Chapter | What's in it |
 |---|---|
 | [Federation in five minutes](#federation-in-five-minutes) | the whole concept, no prior GraphQL needed |
+| [Words that already mean something else](#words-that-already-mean-something-else) | four collisions between GraphQL's vocabulary and this platform's |
 | [Topology](#topology) | where everything runs, on one cluster |
 | [Who does what](#who-does-what) | the split between Apollo, the platform, and a team |
 | [Design principles](#design-principles) | what to reason from when a new question comes up |
-| [The offerings](#the-offerings) | the entire developer-facing surface |
+| [The offerings](#the-offerings) | the entire developer-facing surface, offering by offering |
 | [What a team writes](#what-a-team-writes) | one workload, one file, five fields |
 | [Where the schema lives](#where-the-schema-lives) | the schema management UX, and why it is not hand-edited |
 | [The lifecycle](#the-lifecycle) | one commit from a schema edit to a serving supergraph |
@@ -20,12 +21,17 @@
 | [Promotion](#promotion) | moving a subgraph from one graph to the next |
 | [Why one offering, not two](#why-one-offering-not-two) | why `graph` is an `Api` parameter and not a wrapping Kind |
 | [What gets rendered](#what-gets-rendered) | the Kinds mapped onto the objects they become |
+| [The router is a policy surface](#the-router-is-a-policy-surface) | the six things a router does that a proxy does not |
+| [Contracts — one graph, two audiences](#contracts--one-graph-two-audiences) | publishing a filtered public schema from the same subgraphs |
+| [Governance](#governance) | linting, ownership, and reviewing a schema change as a schema change |
 | [What GraphOS costs and caps](#what-graphos-costs-and-caps) | the free tier, and the two limits that bite |
+| [The operator, and why a composition instead](#the-operator-and-why-a-composition-instead) | what Apollo's Kubernetes operator does, and when it wins |
 | [Foundations to install](#foundations-to-install) | everything that has to exist before the first subgraph |
 | [GitHub workflows](#github-workflows) | what CI does on a subgraph repo |
 | [TypeScript conventions](#typescript-conventions) | the first non-Go apps in this homelab |
 | [How it meets Connections](#how-it-meets-connections) | the router is a caller like any other |
 | [Monitoring](#monitoring) | what a graph emits and where it lands |
+| [When there is more than one cluster](#when-there-is-more-than-one-cluster) | what changes, and the one string that breaks |
 | [The demo](#the-demo) | a new monorepo, and what the walkthrough shows |
 | [Known limits](#known-limits) | the deviations and the holes, named |
 | [Open questions](#open-questions) | decide these before building |
@@ -39,7 +45,7 @@ A GraphQL API publishes a **schema** — a typed description of everything it ca
 Federation is the case where several teams each own part of one product's schema, and clients should not have to know that. Three moving parts:
 
 - **Subgraph** — one team's service and its schema. Owns some types outright, and can add fields to types another subgraph owns.
-- **Schema composition** — the step that merges every subgraph schema into one **supergraph schema**. It fails loudly if two subgraphs disagree, which is the entire safety property. **Not the same thing as a Crossplane composition** — this doc uses "composition" bare only for the Crossplane sense (the template behind `Api`/`FederatedGraph`), and always says "schema composition" for this one.
+- **Schema composition** — the step that merges every subgraph schema into one **supergraph schema**. It fails loudly if two subgraphs disagree, which is the entire safety property.
 - **Router** — the single endpoint clients hit. It reads the composed schema, splits an incoming query into a **query plan**, calls the subgraphs it needs, and stitches one response back.
 
 The link between subgraphs is an **entity** — a type that exists once in the product but is split across services, the way one row can be split across two tables owned by two teams that share nothing but a join key.
@@ -69,6 +75,21 @@ Two more words that appear everywhere once a registry is involved:
 
 - **Variant** — one named copy of a graph, like `storefront@dev` and `storefront@prod`. Each holds its own set of subgraph schemas and composes independently. A variant is the environment boundary.
 - **Launch** — one attempt to publish a schema, compose it, and roll the result out. It either produces a new supergraph or fails with a schema composition error, and it is the unit shown in Studio's history.
+
+## Words that already mean something else
+
+**Grug: GraphQL brings four words this platform already spent. Pick which meaning wins, once, and never write the bare word again.**
+
+This is not pedantry. Every one of these has a live object behind it in this cluster, so an ambiguous sentence in a README turns into someone applying the wrong Kind.
+
+| Word | What it already means here | What GraphQL means by it | The rule |
+|---|---|---|---|
+| **composition** | the Crossplane template behind [`Api`](../platform/api/) and `FederatedGraph` | merging subgraph schemas into a supergraph | Bare "composition" is always the Crossplane one. The GraphQL one is always written **schema composition**, in prose, headings and commit messages alike |
+| **`Subscription`** | a platform Kind — a durable consumer cursor on a [`Topic`](../platform/topic/), backed by a message stream | a GraphQL root type, alongside `Query` and `Mutation`, for a long-lived server-push stream | The Kind wins, because it exists. The GraphQL one is written **GraphQL subscription**, lowercase and never backticked, and is out of scope — see below |
+| **graph** | nothing yet | both a registry object and, loosely, "the whole federated API" | `graph` is the `Api` parameter and the registry graph, which are the same thing on purpose. The endpoint clients call is **the supergraph** |
+| **schema** | an XRD's OpenAPI schema, which is how a platform Kind's parameters are validated | a GraphQL type system document | Bare "schema" in a graph context is the GraphQL one. The XRD sense is always written **XRD schema** |
+
+**GraphQL subscriptions are out of scope, and the collision is the smaller reason.** The real ones: a self-hosted router needs a callback or WebSocket transport configured per subgraph, subscriptions hold a connection open for as long as a client cares, and a router that must hold thousands of open sockets is a different sizing problem than one that answers and forgets. Nothing in this design needs server push. If it ever does, the platform `Subscription` Kind and a GraphQL subscription remain unrelated mechanisms that happen to share a noun — a `Topic` feeding a GraphQL subscription would be a subgraph reading its own binding, not a platform feature.
 
 ## Topology
 
@@ -149,7 +170,20 @@ These are the rules to reason from when a question comes up that this doc does n
 
 ## The offerings
 
-One new Kind. Becoming a subgraph is not a new Kind at all — it is one optional field, `graph`, on the `Api` a team already owns.
+**Grug: six things a developer experiences. One of them is a new Kind. That is the point.**
+
+An offering is a capability a developer gets, not a CRD they apply. Listing them as capabilities first is what stops a platform from growing a Kind per noun. Here is the entire developer-facing surface, and the mechanism behind each:
+
+| Offering | What the developer does | Mechanism | Why not a Kind |
+|---|---|---|---|
+| **Subgraph** | sets `graph: storefront` on the [`Api`](../platform/api/) they already own | one optional parameter, plus a conditional branch in `Api`'s composition | A wrapper would re-declare all twenty-odd `Api` parameters forever. See [Why one offering, not two](#why-one-offering-not-two) |
+| **Federated supergraph** | consumes one endpoint, and never learns a subgraph name | **`FederatedGraph`** — the one new Kind, one per variant | It *is* a Kind. It renders nine objects from seven fields and carries five conventions, so it pays for itself |
+| **Schema** | edits `schema.graphql` beside the resolvers; CI publishes it | `rover subgraph publish` from the merge commit | A hand-applied `Schema` resource can claim a field the deployed resolvers do not serve. See [Where the schema lives](#where-the-schema-lives) |
+| **Routing** | nothing at all | the router reads subgraph URLs out of the supergraph the registry composed | Nobody writes a route, so there is nothing to model. Routing is a consequence of publishing |
+| **Promotion** | runs `just promote records`, reviews the PR it opens | a schema check against the prod variant, then an image-tag PR | A `Promotion` resource hides the diff that review, revert and history all key off. See [Promotion](#promotion) |
+| **Contract** | adds `@tag` to a type or field | a contract variant, which filters the supergraph and gets its own router | A contract is one filter rule on a variant, not a workload. See [Contracts](#contracts--one-graph-two-audiences) |
+
+Only the second row is a CRD:
 
 | Kind | Who creates it | What it means |
 |---|---|---|
