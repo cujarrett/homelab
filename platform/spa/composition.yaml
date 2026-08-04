@@ -485,9 +485,8 @@ spec:
                     - operation: { ports: ["80"] }
             ---
             # REGISTRY_ONLY: only the control plane, the apiProxies upstreams, and what
-            # it declared. Upstreams are matched in any namespace because apiProxies
-            # carries an FQDN and not a namespace, but the host itself is exact, so
-            # every other app in the cluster is still refused.
+            # it declared. The upstream's namespace is read out of its FQDN, so each
+            # entry is scoped rather than matching that host in any namespace.
             apiVersion: networking.istio.io/v1
             kind: Sidecar
             metadata:
@@ -505,7 +504,8 @@ spec:
                 - hosts:
                     - "istio-system/*"
                     {{- range $apiProxies }}
-                    - "*/{{ .upstream }}"
+                    {{- $parts := splitList "." .upstream }}
+                    - "{{ if gt (len $parts) 1 }}{{ index $parts 1 }}{{ else }}*{{ end }}/{{ .upstream }}"
                     {{- end }}
                     {{- range $c := $consumes }}
                     {{- if $c.host }}
