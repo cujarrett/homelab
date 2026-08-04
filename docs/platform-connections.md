@@ -217,5 +217,3 @@ Only the kernel can stop that. A Cilium `NetworkPolicy` is enforced at the pod's
 | Cilium NetworkPolicy | L3/L4 | [policy](https://docs.cilium.io/en/stable/security/policy/) | the containment layer the mesh cannot be |
 
 > **Note — splitting a requirement widens it.** Istio ORs ALLOW policies and rules together, so two rules are two ways in, not two conditions. Anything that must all hold goes in one rule: `from` + `to` + `when` together.
-
-[Tracing a Call](./tracing-a-call.md) walks one real call through every object it passes, live from the cluster.
