@@ -2,7 +2,7 @@
 
 Nothing here was invented. Every mechanism is a published pattern, used the way its docs say to use it.
 
-A homelab is for learning what the industry already agreed on, so being recognisable is the goal and cleverness is the failure mode. Every piece below traces to a public spec, a vendor's reference architecture, or a CNCF working group. If one cannot, it does not belong here.
+A homelab is for learning what the industry already agreed on, so being recognisable is the goal and cleverness is a smell. Every piece below traces to a public spec, a vendor's reference architecture, or a CNCF working group. If one cannot, it does not belong here.
 
 ## Where each piece comes from
 
