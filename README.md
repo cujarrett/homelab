@@ -4,7 +4,7 @@
 
 A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering and GitOps. The goal is to use Kubernetes as a control plane for infrastructure — not just a place to run containers.
 
-[How it was built](https://blog.mattjarrett.dev/homelab/) - [What runs on it](https://github.com/cujarrett/homelab-workspaces) - [Blog about it](https://blog.mattjarrett.dev) - [Nothing Novel](./docs/nothing-novel.md)
+[How I built it (and you can too)](https://blog.mattjarrett.dev/homelab/) - [What runs on it](https://github.com/cujarrett/homelab-workspaces) - [Blog about it](https://blog.mattjarrett.dev) - [Nothing Novel](./docs/nothing-novel.md)
 
 ## Platform Stack
 
