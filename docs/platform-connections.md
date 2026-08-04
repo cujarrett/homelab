@@ -14,7 +14,7 @@ By default, anything running in the cluster can call anything else. So *can this
 - **Nobody waits on the security team.** The team writes the dependency in its own file. No ticket, no rule to approve.
 - **You can prove it.** "It is on a private network" is not proof. A line in git is.
 
-**Scope: workloads talking to workloads.** *Can Alice view Order 123* is a separate concern, not yet designed.
+**Scope: workloads talking to workloads.** Whether a *person* may see a particular record is user authorization. That is a different question, answered in a different layer, and it is deliberately not this design's job.
 
 Platform's [`Api`](../platform/api/) and [`Spa`](../platform/spa/) compositions generate every Istio object. Nothing in a workspace file names an Istio kind, mentions Envoy, or contains a SPIFFE string.
 
@@ -126,6 +126,10 @@ Gates 1 and 2 come from the caller's `consumes` (and, for a `Spa`, its `apiProxi
 | 502 through nginx | 1 | Destination missing from the caller's `Sidecar` egress list, so its own proxy blackholed it |
 | Timeout to a public host | 2 | No `ServiceEntry`, so the host was never registered as a destination |
 
+**Registered is not permitted.** Gates 1 and 2 read as one check but are two objects doing different jobs. A `ServiceEntry` puts a hostname in the mesh registry, so Envoy knows the name exists and how to resolve it. The `Sidecar` egress entry says *this particular workload* may send traffic there. Under `REGISTRY_ONLY` a call needs both, and the phonebook does not grant permission to dial.
+
+That split is what keeps a declaration private to the app that made it. A `ServiceEntry` is registered namespace-wide, so if registering alone granted reach, every app in the namespace would silently inherit every host any other app declared. The per-workload egress line is what stops that.
+
 **A policy can only attach to a pod that exists.** That is why the two directions sit at opposite ends of the path.
 
 Off-platform hosts therefore have no gate 3 or 4 — there is nothing out there to hold a rule. So `consumes` cannot be dropped as redundant; for those calls it is the only gate there is. The same shape covers shared in-cluster stores that run no policy of their own, such as NATS — enforced caller-side only, needing no special field.
@@ -161,7 +165,7 @@ The real cost is not the fields — it is that a failed call now has several exp
 
 **Grug:** the mesh sits in the middle of a stack. It does its own job. It does not do the job of the layer below it or the layer above it, and neither of those is built.
 
-Below is packets — could a hostile pod send this at all. Above is people — may this *user* do this. Dotted boxes and dotted arrows below mean not built.
+Below is packets — could a hostile pod send this at all. That layer is not built. Above is people — may this *user* do this. That layer is out of scope, not pending.
 
 ```mermaid
 flowchart TB
@@ -174,7 +178,7 @@ flowchart TB
     subgraph L7a["L7 — workload authz"]
       C["Istio AuthorizationPolicy · source.principals<br/><i>is THAT workload allowed on this route?</i>"]
     end
-    A -.-> B --> C -.-> D["user authorization<br/><i>may this person do this?</i><br/><b>not designed</b>"] --> E["app code<br/>knows none of this"]
+    A -.-> B --> C -.-> D["user authorization<br/><i>may this person do this?</i><br/><b>out of scope</b>"] --> E["app code<br/>knows none of this"]
 
     style A stroke-dasharray: 5 5
     style D stroke-dasharray: 5 5
@@ -196,13 +200,9 @@ Only the kernel can stop that. A Cilium `NetworkPolicy` is enforced at the pod's
 
 **Nothing tests that an app can actually reach its backend.** Rendering is checked; behaviour is not. A workload can serve its page, report `2/2`, sync green, and still be unable to call its own API. This gap has already caused one outage, and closing it is the most valuable work left.
 
+**Long-lived apiserver watches do not survive a sidecar.** A workload holding streaming watch connections to the Kubernetes API has them severed by the proxy. `launchpad` is left unmeshed for this reason rather than papered over with timeouts, so anything that watches the apiserver is currently outside the design.
+
 **`Api` and `Spa` label pods differently** — `app.kubernetes.io/instance` versus `instance`. A selector copied between the two matches nothing and fails silently: the policy renders, ArgoCD reports Synced, enforcement never happens. Converging on one label would remove the trap.
-
-## Status
-
-**Enforcing:** `platform-connections-demo`, `my-vinyl` (SPA + API + cache), `js-pollock`, `mattjarrett-dev`.
-
-**Not yet:** `sump-pump` — its cross-namespace NATS traffic would be blocked, so it waits on that decision. `launchpad` — the namespace is unmeshed because `launchpad-api` holds long-lived apiserver watch streams a proxy would sever. WordPress is out of scope; `blog` is a plain Deployment the platform does not render.
 
 ## Reference
 
@@ -216,197 +216,6 @@ Only the kernel can stop that. A Cilium `NetworkPolicy` is enforced at the pod's
 | Sidecar + `REGISTRY_ONLY` | L7 | [ref](https://istio.io/latest/docs/reference/config/networking/sidecar/) | this is what makes egress default-deny |
 | Cilium NetworkPolicy | L3/L4 | [policy](https://docs.cilium.io/en/stable/security/policy/) | the containment layer the mesh cannot be |
 
-> **Note — splitting a requirement widens it.** Istio ORs ALLOW policies and rules together, so two rules are two ways in, not two conditions. Anything that must all hold goes in one rule: `from` + `to` + `when` together. This is also what lets user authorization be added later as a `when` on the existing rule rather than a second policy that ORs around it.
+> **Note — splitting a requirement widens it.** Istio ORs ALLOW policies and rules together, so two rules are two ways in, not two conditions. Anything that must all hold goes in one rule: `from` + `to` + `when` together.
 
-## Worked example
-
-<details>
-<summary>A worked example walking the full journey using a live example</summary>
-
-This ties it to one real example [myvinyl.mattjarrett.dev](https://myvinyl.mattjarrett.dev) made of `my-vinyl` (a `Spa`) calling `my-vinyl-api` (an `Api`), which in turn calls out to Discogs.com API — the same two files already shown in [What you set on an app](#what-you-set-on-an-app). The `Api`/`Spa` composition templates those fields into the Istio objects below; Istio's own control plane (`istiod`) then watches those objects and pushes the resulting config to each pod's Envoy sidecar, which is what actually enforces it. Below is every object one call passes through, live from the cluster, each one preceded by the XR input that produced it.
-
-The call makes two hops. First the SPA calls the API, passing gates 1, 3 and 4. Then the API calls Discogs, passing gates 1 and 2. Gates 3 and 4 have no second appearance because Discogs has no sidecar to hold them.
-
-### Hop 1, gate 1 — can my-vinyl's sidecar even see the destination?
-
-Made by this field on `my-vinyl.yaml`:
-
-```yaml
-spec:
-  parameters:
-    apiProxies:
-      - path: /api/
-        upstream: my-vinyl-api.my-vinyl.svc.cluster.local
-```
-
-```yaml
-apiVersion: networking.istio.io/v1
-kind: Sidecar
-metadata:
-  name: my-vinyl
-  namespace: my-vinyl
-  annotations:
-    crossplane.io/composition-resource-name: connection-sidecar
-  ownerReferences:
-    - kind: Spa
-      name: my-vinyl
-      controller: true
-spec:
-  workloadSelector:
-    labels:
-      instance: my-vinyl
-  outboundTrafficPolicy:
-    mode: REGISTRY_ONLY
-  egress:
-    - hosts:
-        - istio-system/*
-        - '*/my-vinyl-api.my-vinyl.svc.cluster.local'   # <- the one line apiProxies.upstream produced
-```
-`REGISTRY_ONLY` means anything not in `egress.hosts` doesn't exist as far as my-vinyl's own sidecar is concerned — this is the list that would blackhole a call to anywhere else.
-
-### Hop 1, gate 3 — is the caller a real mesh workload?
-
-Made by this field on both `my-vinyl.yaml` and `my-vinyl-api.yaml`:
-
-```yaml
-spec:
-  parameters:
-    connectionPosture: enforce
-```
-
-```yaml
-apiVersion: security.istio.io/v1
-kind: PeerAuthentication
-metadata:
-  name: my-vinyl-api
-  namespace: my-vinyl
-  annotations:
-    crossplane.io/composition-resource-name: connection-peerauth
-  ownerReferences:
-    - kind: Api
-      name: my-vinyl-api
-      controller: true
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/instance: my-vinyl-api
-  mtls:
-    mode: STRICT              # <- enforce means STRICT, not PERMISSIVE
-  portLevelMtls:
-    "8080":
-      mode: PERMISSIVE        # app port stays open so health checks still work
-    "9090":
-      mode: PERMISSIVE        # metrics port, same reason
-```
-`STRICT` at the top level means every port not explicitly excepted requires real mTLS — no plaintext connection can pass this gate.
-
-### Hop 1, gate 4 — is that identity actually allowed in?
-
-Made by this field on `my-vinyl-api.yaml`:
-
-```yaml
-spec:
-  parameters:
-    provides:
-      - name: collection
-        allowedCallers:
-          - { namespace: my-vinyl, app: my-vinyl }
-```
-
-```yaml
-apiVersion: security.istio.io/v1
-kind: AuthorizationPolicy
-metadata:
-  name: my-vinyl-api
-  namespace: my-vinyl
-  annotations:
-    crossplane.io/composition-resource-name: connection-authz
-  ownerReferences:
-    - kind: Api
-      name: my-vinyl-api
-      controller: true
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/instance: my-vinyl-api
-  action: ALLOW
-  rules:
-    - to:
-        - operation: { ports: ["8080"] }   # app port
-    - to:
-        - operation: { ports: ["9090"] }   # metrics port — the Prometheus exception
-    - from:
-        - source:
-            principals:
-              - cluster.local/ns/my-vinyl/sa/my-vinyl   # <- allowedCallers became this one line
-```
-This is the actual access decision. The first `ALLOW` rule makes this workload deny-by-default, so any principal not listed here gets a 403 — including a typo'd namespace or app name.
-
-### Hop 2, gates 1 & 2 — the outbound call to Discogs
-
-Made by this field on `my-vinyl-api.yaml`, which renders two objects:
-
-```yaml
-spec:
-  parameters:
-    consumes:
-      - { host: api.discogs.com }
-```
-
-```yaml
-apiVersion: networking.istio.io/v1
-kind: Sidecar
-metadata:
-  name: my-vinyl-api
-  namespace: my-vinyl
-  annotations:
-    crossplane.io/composition-resource-name: connection-sidecar
-spec:
-  workloadSelector:
-    labels:
-      app.kubernetes.io/instance: my-vinyl-api
-  outboundTrafficPolicy:
-    mode: REGISTRY_ONLY
-  egress:
-    - hosts:
-        - istio-system/*
-        - ./my-vinyl-api-cache-redis.my-vinyl.svc.cluster.local   # <- its own Cache, never declared
-        - ./api.discogs.com   # <- consumes.host produced this line, gate 1
-```
-
-```yaml
-apiVersion: networking.istio.io/v1
-kind: ServiceEntry
-metadata:
-  name: my-vinyl-api-api-discogs-com
-  namespace: my-vinyl
-  annotations:
-    crossplane.io/composition-resource-name: connection-se-api-discogs-com
-  ownerReferences:
-    - kind: Api
-      name: my-vinyl-api
-      controller: true
-spec:
-  hosts:
-    - api.discogs.com
-  location: MESH_EXTERNAL
-  resolution: DNS
-  ports:
-    - number: 443
-      name: tls
-      protocol: TLS
-  exportTo:
-    - .
-```
-The `Sidecar` entry is gate 1 — without it, `REGISTRY_ONLY` blocks the call before it leaves the pod. The `ServiceEntry` is gate 2 — it's what makes `api.discogs.com` a *registered* destination at all, since Istio has no way to know about an off-platform host otherwise.
-
-### Getting from a live object back to its template
-
-Every object above carries `crossplane.io/composition-resource-name` in its annotations. That's the literal name of the block inside the [`Api`](../platform/api/)/[`Spa`](../platform/spa/) composition that rendered it — `kubectl get authorizationpolicy my-vinyl-api -n my-vinyl -o yaml` gives you the annotation, grepping the composition for `connection-authz` gives you the template that made it.
-
-To pull the live set for this pair yourself:
-```bash
-kubectl get authorizationpolicy,peerauthentication,sidecar,serviceentry -n my-vinyl
-```
-
-</details>
+[Tracing a Call](./tracing-a-call.md) walks one real call through every object it passes, live from the cluster.
