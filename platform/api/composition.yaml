@@ -813,6 +813,11 @@ spec:
                     {{- if and $sqlRefName (eq $sqlBackend "private-cloud") }}
                     - "./{{ $sqlRefName }}-postgres.{{ $ns }}.svc.cluster.local"
                     {{- end }}
+                    {{- if or $topicRefName $subscriptionRefName }}
+                    # The XR already hands this app NATS_URL, so permitting it here is
+                    # the other half of that. Unmeshed, so there is no inbound gate.
+                    - "nats/nats.nats.svc.cluster.local"
+                    {{- end }}
                     {{- range $h := $awsHosts }}
                     # Bound by this XR, so the app never declares it.
                     - "./{{ $h }}"
