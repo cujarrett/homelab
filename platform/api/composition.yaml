@@ -738,10 +738,10 @@ spec:
                   mode: PERMISSIVE
                 {{- end }}
             ---
-            # The first ALLOW policy selecting this workload makes it default-deny, so every
-            # rule this workload needs lives in THIS object. Edict - one rule, not two
-            # policies — separate ALLOW policies OR together and would widen access. A
-            # future user-identity check becomes a `when:` clause on the rule it belongs to.
+            # The first ALLOW policy selecting this workload makes it default-deny, so
+            # every rule this workload needs lives in THIS object. Two ALLOW policies
+            # would OR together and widen access, and anything that must all hold goes
+            # in one rule rather than two.
             apiVersion: security.istio.io/v1
             kind: AuthorizationPolicy
             metadata:
@@ -789,7 +789,7 @@ spec:
                 {{- end }}
             ---
             # REGISTRY_ONLY: only the control plane, what this XR composed, and what it
-            # declared. No wildcard — a neighbour in the same namespace is refused too.
+            # declared. No wildcard, so every other app in the namespace is refused too.
             apiVersion: networking.istio.io/v1
             kind: Sidecar
             metadata:
@@ -851,9 +851,9 @@ spec:
             {{- range $c := $consumes }}
             {{- if $c.host }}
             ---
-            # consumes {{ $c.host }} — registering it is what makes it reachable.
-            # protocol TLS passes the app's own encrypted stream straight through; HTTP
-            # would make Envoy try to terminate it.
+            # consumes {{ $c.host }} — this registers the host. The egress entry above
+            # is what permits it. protocol TLS passes the app's own encrypted stream
+            # straight through; HTTP would make Envoy try to terminate it.
             apiVersion: networking.istio.io/v1
             kind: ServiceEntry
             metadata:

@@ -484,8 +484,10 @@ spec:
                 - to:
                     - operation: { ports: ["80"] }
             ---
-            # REGISTRY_ONLY: only the control plane, the apiProxies upstreams, and what it
-            # declared. No wildcard — a neighbour in the same namespace is refused too.
+            # REGISTRY_ONLY: only the control plane, the apiProxies upstreams, and what
+            # it declared. Upstreams are matched in any namespace because apiProxies
+            # carries an FQDN and not a namespace, but the host itself is exact, so
+            # every other app in the cluster is still refused.
             apiVersion: networking.istio.io/v1
             kind: Sidecar
             metadata:
