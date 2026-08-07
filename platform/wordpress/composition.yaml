@@ -281,9 +281,15 @@ spec:
                             define('DISALLOW_FILE_EDIT', true);
                       ports:
                         - containerPort: 80
-                      # readinessProbe intentionally removed — a Cilium datapath bug misclassifies
-                      # kubelet's host-to-pod probe traffic, dropping it and permanently failing
-                      # readiness. Re-add once the Cilium identity issue is resolved.
+                      # Probes a static asset, not /, so the check never occupies one of the
+                      # MaxRequestWorkers PHP slots. No livenessProbe on purpose — a slow PHP
+                      # render under load reads as dead and restarts the pod exactly when busiest.
+                      readinessProbe:
+                        httpGet:
+                          path: /wp-includes/js/wp-embed.min.js
+                          port: 80
+                        initialDelaySeconds: 5
+                        periodSeconds: 10
                       resources:
                         requests:
                           cpu: {{ $wpCPUReq }}
