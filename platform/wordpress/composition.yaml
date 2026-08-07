@@ -281,8 +281,18 @@ spec:
                             define('DISALLOW_FILE_EDIT', true);
                       ports:
                         - containerPort: 80
-                      # readinessProbe removed — kubelet host-to-pod probe traffic is dropped for
-                      # pods created after a Cilium agent restart. See docs/cilium-host-identity-incident.md.
+                      # Probes a static asset, not /, so the check never occupies one of the
+                      # MaxRequestWorkers PHP slots. No livenessProbe on purpose — a slow PHP
+                      # render under load reads as dead and restarts the pod exactly when busiest.
+                      # initialDelaySeconds covers Apache and PHP warm-up on a Pi; the single
+                      # replica plus Recreate (wp-content is RWO) means this is site downtime.
+                      readinessProbe:
+                        httpGet:
+                          path: /wp-includes/js/wp-embed.min.js
+                          port: 80
+                        initialDelaySeconds: 15
+                        periodSeconds: 10
+                        failureThreshold: 12
                       resources:
                         requests:
                           cpu: {{ $wpCPUReq }}
