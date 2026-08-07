@@ -23,6 +23,19 @@
       "matchPackageNames": ["ghcr.io/cujarrett/aws-spiffe-helper"],
       "pinDigests": true,
       "minimumReleaseAge": "0 days"
+    },
+    {
+      "matchPackageNames": ["cilium"],
+      "minimumReleaseAge": "30 days",
+      "prBodyNotes": [
+        "⚠️ **Before merging:** run `/cilium-pre-merge-check` — any Cilium agent restart can trigger a world-identity regression that breaks kubelet host-to-pod probes, regardless of version. See `docs/cilium-world-identity-bug.md`."
+      ]
+    },
+    {
+      "matchPackageNames": ["adguard/adguardhome"],
+      "prBodyNotes": [
+        "⚠️ **Before merging:** run `/adguard-pre-pull` — AdGuard's `Recreate` rollout strategy plus `ctrl-1`'s DNS pointing only at AdGuard itself means a cold image pull will fail with `ImagePullBackOff`."
+      ]
     }
   ],
   "argocd": {
