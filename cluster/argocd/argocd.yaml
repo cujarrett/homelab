@@ -35,6 +35,13 @@ spec:
           resources:
             limits:
               memory: 512Mi
+          # Probes disabled — kubelet host-to-pod probe traffic is resolved as "world" identity
+          # and dropped for any pod under a NetworkPolicy, so these can never pass. See
+          # docs/cilium-host-identity-incident.md.
+          readinessProbe:
+            enabled: false
+          livenessProbe:
+            enabled: false
         server:
           extraArgs:
             # ArgoCD's server has built-in TLS. --insecure disables it so ArgoCD listens on plain HTTP internally. That's correct here because Traefik is handling TLS termination — HTTPS hits Traefik, which strips TLS and proxies plain HTTP to ArgoCD. If you didn't set --insecure, you'd get a double-TLS situation and the ingress would break.
