@@ -28,7 +28,7 @@
       "matchPackageNames": ["cilium"],
       "minimumReleaseAge": "30 days",
       "prBodyNotes": [
-        "⚠️ **Before merging:** run `/cilium-pre-merge-check` — any Cilium agent restart can trigger a world-identity regression that breaks kubelet host-to-pod probes, regardless of version. See `docs/cilium-world-identity-bug.md`."
+        "⚠️ **Before merging:** run `/cilium-pre-merge-check`. Cilium 1.20.x fails the BPF verifier on this kernel, which breaks kubelet host-to-pod probes cluster-wide. Verify `Host: BPF` and a real probe returns 200 before merging. See `docs/cilium-host-identity-incident.md`."
       ]
     },
     {
