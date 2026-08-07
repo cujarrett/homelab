@@ -29,8 +29,12 @@ spec:
           operator:
             # Single control plane node.
             replicas: 1
+          # BPF masquerade disabled — cilium 1.20.0's SNAT/masquerade BPF program fails the
+          # kernel verifier on this node's kernel (6.12.75+rpt-rpi-2712), leaving the host
+          # endpoint stuck "not-ready" and breaking host-netns→pod traffic (kubelet probes),
+          # while iptables masquerade has no such issue. See cilium/cilium#37478 upstream.
           bpf:
-            masquerade: true
+            masquerade: false
           encryption:
             enabled: true
             type: wireguard
