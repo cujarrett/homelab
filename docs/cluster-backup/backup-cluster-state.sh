@@ -115,6 +115,10 @@ ssh "$CTRL1" "sudo kubectl exec -n kentjarrett-com deploy/kentjarrett-com-wordpr
 echo "==> Node files (ctrl-1)"
 ssh "$CTRL1" 'sudo cat /var/lib/rancher/k3s/server/node-token' > "$OUT/nodes/ctrl-1/node-token" \
   && ok "ctrl-1/node-token" || fail "ctrl-1/node-token"
+# disable-network-policy: true lives only here — losing it silently re-enables k3s's
+# kube-router alongside Cilium and breaks kubelet probes. See docs/postmortem-kubelet-probe-outage.md.
+ssh "$CTRL1" 'sudo cat /etc/rancher/k3s/config.yaml' > "$OUT/nodes/ctrl-1/k3s-config.yaml" \
+  && ok "ctrl-1/k3s-config.yaml" || fail "ctrl-1/k3s-config.yaml"
 scp -q "$CTRL1:~/kiosk.sh" "$OUT/nodes/ctrl-1/kiosk.sh" \
   && ok "ctrl-1/kiosk.sh" || fail "ctrl-1/kiosk.sh"
 ssh "$CTRL1" 'sudo cat /etc/X11/xorg.conf.d/99-pi5.conf' > "$OUT/nodes/ctrl-1/99-pi5.conf" \
