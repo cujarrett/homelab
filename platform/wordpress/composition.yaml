@@ -242,7 +242,7 @@ spec:
                     node-role.kubernetes.io/worker: worker
                   initContainers:
                     - name: init-wp-content
-                      image: wordpress:6-apache
+                      image: wordpress:7.0.2-php8.3-apache
                       command:
                         - sh
                         - -c
@@ -256,7 +256,10 @@ spec:
                           mountPath: /target
                   containers:
                     - name: wordpress
-                      image: wordpress:6-apache
+                      # Pinned to an exact patch — core lives in the container filesystem, not
+                      # the PVC, so whatever this tag ships is what every restart runs. Renovate
+                      # bumps it. The php8.3 suffix keeps PHP fixed across those bumps.
+                      image: wordpress:7.0.2-php8.3-apache
                       env:
                         - name: WORDPRESS_DB_HOST
                           value: {{ $name }}-mariadb:3306
@@ -272,17 +275,24 @@ spec:
                             secretKeyRef:
                               name: {{ $name }}-mariadb
                               key: password
-                        # The built-in theme editor writes PHP that Apache then runs. Nobody
-                        # edits theme files in a browser textarea, so this costs nothing.
-                        # DISALLOW_FILE_MODS is deliberately not set — it would also block
-                        # plugin and core updates, and stale plugins are the bigger risk.
+                        # Blocks the browser theme/plugin editor, not updates — DISALLOW_FILE_MODS
+                        # isn't set since that would also block plugin/core updates.
+                        # No WP_AUTO_UPDATE_CORE — core isn't on the PVC, so a self-update would
+                        # be discarded on next restart; the pinned tag above is the real version.
                         - name: WORDPRESS_CONFIG_EXTRA
                           value: |
                             define('DISALLOW_FILE_EDIT', true);
                       ports:
                         - containerPort: 80
-                      # readinessProbe removed — kubelet host-to-pod probe traffic is dropped as
-                      # "world" identity on some nodes. See docs/cilium-host-identity-incident.md.
+                      # Probes a static asset, not /, so the check never occupies one of the
+                      # MaxRequestWorkers PHP slots. No livenessProbe on purpose — a slow PHP
+                      # render under load reads as dead and restarts the pod exactly when busiest.
+                      readinessProbe:
+                        httpGet:
+                          path: /wp-includes/js/wp-embed.min.js
+                          port: 80
+                        initialDelaySeconds: 5
+                        periodSeconds: 10
                       resources:
                         requests:
                           cpu: {{ $wpCPUReq }}
@@ -580,8 +590,8 @@ spec:
             # a shell here cannot scan the LAN (192.168.10.0/24), the pod CIDR (10.42.0.0/16)
             # or any other namespace's Services. Link-local is excluded too; it is where cloud
             # metadata endpoints live and there is no reason for WordPress to reach it.
-            # Public egress stays open because WordPress needs it -- wp-cron loops back through
-            # the site's own public hostname, and update checks call out to wordpress.org.
+            # Public egress stays open because WordPress needs it -- update checks and core
+            # auto-update downloads call out to wordpress.org.
             apiVersion: networking.k8s.io/v1
             kind: NetworkPolicy
             metadata:

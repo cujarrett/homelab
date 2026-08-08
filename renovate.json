@@ -16,6 +16,17 @@
       ],
       "depNameTemplate": "ghcr.io/cujarrett/aws-spiffe-helper",
       "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/platform/wordpress/composition\\.yaml/"
+      ],
+      "matchStrings": [
+        "image: (?<depName>wordpress):(?<currentValue>[^\\s@]+)"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
     }
   ],
   "packageRules": [
@@ -28,7 +39,15 @@
       "matchPackageNames": ["cilium"],
       "minimumReleaseAge": "30 days",
       "prBodyNotes": [
-        "⚠️ **Before merging:** run `/cilium-pre-merge-check`. Cilium 1.20.x fails the BPF verifier on this kernel, which breaks kubelet host-to-pod probes cluster-wide. Verify `Host: BPF` and a real probe returns 200 before merging. See `docs/cilium-host-identity-incident.md`."
+        "⚠️ **Before merging:** run `/cilium-pre-merge-check`. Cilium 1.20.x fails the BPF verifier on this kernel, which breaks kubelet host-to-pod probes cluster-wide. Verify `Host: BPF` and a real probe returns 200 before merging. See `docs/postmortem-kubelet-probe-outage.md`."
+      ]
+    },
+    {
+      "matchPackageNames": ["wordpress"],
+      "minimumReleaseAge": "7 days",
+      "prBodyNotes": [
+        "⚠️ WordPress core lives in the container filesystem, not the `wp-content` PVC. Whatever tag is pinned here is what a restarted pod runs — a self-applied update inside the pod is discarded on restart. Merging this is what makes the version durable.",
+        "To take a security release before the 7-day cooldown expires, tick this update on the Renovate Dependency Dashboard under **Pending Status Checks** to force the PR immediately. Editing the tag by hand also works and is faster."
       ]
     },
     {
