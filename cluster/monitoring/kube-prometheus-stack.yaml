@@ -14,6 +14,17 @@ spec:
       values: |
         kubeApiServer:
           enabled: false
+        # kube-proxy, scheduler, and controller-manager aren't separately reachable on k3s —
+        # kube-proxy is replaced entirely by Cilium's kubeProxyReplacement, and the other two
+        # are embedded in the k3s binary rather than run as scrapeable pods. Left enabled, these
+        # ServiceMonitors scrape nothing and fire KubeProxyDown/KubeSchedulerDown/
+        # KubeControllerManagerDown permanently. See docs/postmortem-kubelet-probe-outage.md.
+        kubeProxy:
+          enabled: false
+        kubeScheduler:
+          enabled: false
+        kubeControllerManager:
+          enabled: false
         # Merged into every default alert's annotations, so a chart-bundled
         # rule (KubePodCrashLooping, NodeFilesystemSpaceFillingUp, etc.) is
         # never just a title with nowhere to look — namespace-scoped alerts
