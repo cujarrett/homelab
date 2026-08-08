@@ -1,5 +1,10 @@
 # K3s Lab Plan
 
+A record of the original build, kept as written. The cluster has moved on since — Cilium
+replaced flannel, and Istio, SPIRE and NATS arrived after step 14. For what runs today see
+[Cluster](./cluster.md); to rebuild or upgrade a node see [Upgrading k3s](./k3s-upgrade.md).
+Steps that would now mislead carry a **Since changed** note.
+
 <details>
 <summary><strong>Contents</strong></summary>
 
@@ -130,6 +135,13 @@ curl -sfL https://get.k3s.io | sh -s - server \
   --tls-san ctrl-1.local.lab \
   --node-name ctrl-1
 ```
+
+> **Since changed.** The cluster now runs Cilium as its CNI, which needs two settings this
+> command does not have: `--flannel-backend none` (k3s's bundled flannel otherwise creates a
+> `flannel.1` device that collides with Cilium's VXLAN port and crash-loops the server) and
+> `disable-network-policy: true` in `/etc/rancher/k3s/config.yaml` (k3s's kube-router otherwise
+> enforces NetworkPolicy alongside Cilium and silently breaks every kubelet probe). Rebuilding a
+> node? Follow [Upgrading k3s](./k3s-upgrade.md), not this command.
 
 Verify:
 
