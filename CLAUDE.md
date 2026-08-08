@@ -88,7 +88,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | DNS | AdGuard Home | Runs in `adguard` namespace, pinned to node `ctrl-1` via nodeSelector, hostPort 53 UDP |
 | External Access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; token from secret `cloudflare-tunnel-token` |
 | Platform Abstraction | Crossplane | Nine XR types — see the Crossplane Platform section below |
-| CNI | Cilium | DaemonSet in `kube-system` on all 4 nodes; Helm chart from `helm.cilium.io`. Plumbing only — pod networking, WireGuard node encryption, kube-proxy replacement, Hubble. Mesh features (mutual auth, connection policy) belong to Istio; Cilium's SPIRE mutual auth is disabled. |
+| CNI | Cilium | DaemonSet in `kube-system` on all 4 nodes; Helm chart from `helm.cilium.io`. Pinned to 1.19.6 — 1.20.x fails the BPF verifier on this kernel. Plumbing only — pod networking, WireGuard node encryption, kube-proxy replacement, Hubble, NetworkPolicy. Sole policy enforcer: k3s's kube-router is disabled via `disable-network-policy` in `/etc/rancher/k3s/config.yaml` on `ctrl-1` (node-level, not in this repo). Mesh features (mutual auth, connection policy) belong to Istio; Cilium's SPIRE mutual auth is disabled. |
 | Service Mesh | Istio | Sidecar mesh chained onto Cilium CNI; provides workload mTLS. Permissive mode — nothing is denied. Platform-managed connection policy is designed but not built; see [Platform Connections](./docs/platform-connections.md). |
 | Workload Identity | SPIRE | `spire-server` + `spire-system` namespaces; Helm chart from `spiffe.github.io/helm-charts-hardened`. Previously backed Cilium mutual auth (now disabled); retained for potential Istio/SPIFFE use. |
 
