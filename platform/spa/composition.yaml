@@ -268,6 +268,12 @@ spec:
                         return 404;
                     }
 
+                    # Bare credential/debug/health probe paths with no extension for the
+                    # default-deny rule to catch
+                    location ~* ^/(private-key|__debug__|info|health|api/v[0-9]+/(config|env))(/|$) {
+                        return 404;
+                    }
+
                     # ACME HTTP-01 tokens are base64url — never contain a dot. Matching the token
                     # charset instead of the bare prefix means a probe like acme-challenge/file.php
                     # falls through to the dotfile deny below and 404s, rather than reaching the
