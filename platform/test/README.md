@@ -17,13 +17,38 @@ Start with [Render check](#render-check) — it is the one you run most.
 
 ## Render check
 
-Renders every workspace XR against the current compositions offline — no cluster, no AWS, no cost. It fails on a broken XRD schema, a render error, a collapsed YAML list, or a composition edit that reaches an app you did not mean to touch.
+Renders every workspace XR against the current compositions offline — no cluster, no AWS, no cost.
 
 ```bash
 just render-check       # ~1 min, needs Docker for the function containers
 ```
 
-Full details in [render check](../../.claude/commands/render-check.md).
+Docker must be running — `crossplane render` pulls the composition functions as containers.
+
+Five gates run. Each exists because that class of bug reached the cluster at least once.
+
+| Gate | Catches |
+|---|---|
+| **schema** | An XRD whose enum holds a YAML boolean (`off`, `on`, `yes`, `no` unquoted), or a `default` outside its own enum. Kubernetes rejects the generated CRD, Crossplane leaves it at the old generation, and nothing logs why. A server-side dry-run does **not** catch this — the XRD is valid, only CRD generation fails. |
+| **render** | `crossplane render` exits non-zero. |
+| **parse** | Output is valid YAML and no block sequence collapsed into a single string. `crossplane render` exits 0 even when whitespace trimming (`{{- … -}}`) flattens a list, so exit code alone proves nothing. |
+| **diff** | Two comparisons against `HEAD`, one per repo. Holding the XR still and moving the composition shows the blast radius of a composition edit — `Api` and `Spa` are shared by every workspace, so one edit reaches all of them. Holding the composition still and moving the XR shows what your own XR edit did; an XR that renders identically after an edit usually means a field name the XRD does not declare, which Crossplane drops in silence. |
+| **rbac** | A composed resource kind that [rbac.yaml](../../cluster/crossplane/rbac.yaml) does not grant. Crossplane composes with its own ServiceAccount, so a kind the platform has never composed before renders perfectly and is then refused by the API server. The XR lands on `SYNCED=False` while staying `READY=True` — the app keeps serving and nothing looks broken. XR kinds and AWS managed resources are skipped; Crossplane grants those through its generated composite and provider roles. |
+
+Reading the output:
+
+- `ok … (composition change does not affect it)` — what every workspace you did not intend to touch must say.
+- `ok … (CHANGED vs HEAD — review below)` — your composition edit reaches this app. Read the diff and confirm you meant it.
+- `ok … (new)` — not present at `HEAD`, so there is nothing to compare against.
+- `xr edit renders as — review below` — the indented second line under a workspace. Your XR edit did this. Read it and confirm it is what you meant.
+- `xr edited but the output is identical — did the edit take effect?` — the edit changed nothing downstream. Check the field name against the XRD.
+- `FAIL` — fix before pushing.
+
+The XR-side comparison only runs for XRs you actually edited, so a composition-only run costs nothing extra. Both sides compare against local `HEAD`, not `origin/main` — pull `../homelab-workspaces` before trusting the diff if the remote has moved.
+
+Workspaces are discovered from `../homelab-workspaces/*/*.yaml` by their `kind`, so new apps and new XR types are picked up automatically — nothing to keep in sync here.
+
+Fixtures the check feeds to `crossplane render` live in [fixtures/](./fixtures/) — the composition functions to pull, and a placeholder stand-in for the `aws-platform-config` EnvironmentConfig.
 
 ## End-to-end test
 
