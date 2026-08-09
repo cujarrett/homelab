@@ -221,12 +221,30 @@ spec:
                     app.kubernetes.io/instance: {{ $name }}
                 spec:
                   serviceAccountName: {{ $name }}
+                  # runAsNonRoot without runAsUser on purpose. The app images do not agree
+                  # on a UID — the alpine builds run as 100, distroless/static:nonroot as
+                  # 65532 — and pinning one here would hand a container a filesystem owned
+                  # by the other. Kubernetes still refuses to start anything whose image
+                  # resolves to root, which is the property being bought.
+                  securityContext:
+                    runAsNonRoot: true
+                    seccompProfile:
+                      type: RuntimeDefault
                   {{- if or (gt (len $objectStorageRefs) 0) $sqlRefName $nosqlRefName $cacheEnabled }}
                   initContainers:
                     {{- range $i, $ref := $objectStorageRefs }}
                     {{- $osMountName := "object-storage" }}{{- if gt $i 0 }}{{- $osMountName = printf "object-storage-%d" $i }}{{- end }}
                     - name: wait-for-object-storage-{{ $ref.name }}-binding
                       image: busybox:1.36
+                      # busybox has no non-root user of its own. 65532 is arbitrary and
+                      # safe here — these only stat a 0644 file on a mounted Secret.
+                      securityContext:
+                        runAsUser: 65532
+                        runAsGroup: 65532
+                        allowPrivilegeEscalation: false
+                        readOnlyRootFilesystem: true
+                        capabilities:
+                          drop: [ALL]
                       command:
                         - sh
                         - -c
@@ -239,6 +257,15 @@ spec:
                     {{- if $sqlRefName }}
                     - name: wait-for-sql-binding
                       image: busybox:1.36
+                      # busybox has no non-root user of its own. 65532 is arbitrary and
+                      # safe here — these only stat a 0644 file on a mounted Secret.
+                      securityContext:
+                        runAsUser: 65532
+                        runAsGroup: 65532
+                        allowPrivilegeEscalation: false
+                        readOnlyRootFilesystem: true
+                        capabilities:
+                          drop: [ALL]
                       command:
                         - sh
                         - -c
@@ -251,6 +278,15 @@ spec:
                     {{- if $nosqlRefName }}
                     - name: wait-for-nosql-binding
                       image: busybox:1.36
+                      # busybox has no non-root user of its own. 65532 is arbitrary and
+                      # safe here — these only stat a 0644 file on a mounted Secret.
+                      securityContext:
+                        runAsUser: 65532
+                        runAsGroup: 65532
+                        allowPrivilegeEscalation: false
+                        readOnlyRootFilesystem: true
+                        capabilities:
+                          drop: [ALL]
                       command:
                         - sh
                         - -c
@@ -263,6 +299,15 @@ spec:
                     {{- if $cacheEnabled }}
                     - name: wait-for-cache-binding
                       image: busybox:1.36
+                      # busybox has no non-root user of its own. 65532 is arbitrary and
+                      # safe here — these only stat a 0644 file on a mounted Secret.
+                      securityContext:
+                        runAsUser: 65532
+                        runAsGroup: 65532
+                        allowPrivilegeEscalation: false
+                        readOnlyRootFilesystem: true
+                        capabilities:
+                          drop: [ALL]
                       command:
                         - sh
                         - -c
@@ -277,6 +322,11 @@ spec:
                     - name: api
                       image: {{ $xr.spec.parameters.image }}
                       imagePullPolicy: Always
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        readOnlyRootFilesystem: true
+                        capabilities:
+                          drop: [ALL]
                       ports:
                         - containerPort: {{ $xr.spec.parameters.port | default 8080 }}
                       resources:
@@ -340,8 +390,9 @@ spec:
                         - secretRef:
                             name: {{ $secretRefName }}
                       {{- end }}
-                      {{- if or (gt (len $objectStorageRefs) 0) $sqlRefName $nosqlRefName $cacheEnabled (gt (len $awsBindings) 0) }}
                       volumeMounts:
+                        - name: tmp
+                          mountPath: /tmp
                         {{- if gt (len $awsBindings) 0 }}
                         - name: aws-credentials
                           mountPath: /aws-credentials
@@ -368,11 +419,15 @@ spec:
                           mountPath: /bindings/cache
                           readOnly: true
                         {{- end }}
-                      {{- end }}
                     {{- if gt (len $awsBindings) 0 }}
                     - name: aws-credentials-sidecar
                       image: ghcr.io/cujarrett/aws-spiffe-helper:main
                       imagePullPolicy: Always
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        readOnlyRootFilesystem: true
+                        capabilities:
+                          drop: [ALL]
                       env:
                         - name: AWS_BINDINGS
                           value: {{ join "," $sidecarBindingParts | quote }}
@@ -382,6 +437,8 @@ spec:
                         - name: TRUST_ANCHOR_ARN
                           value: {{ $trustAnchorArn | quote }}
                       volumeMounts:
+                        - name: tmp
+                          mountPath: /tmp
                         - name: spiffe-bundle
                           mountPath: /var/run/secrets/spiffe.io
                           readOnly: true
@@ -409,8 +466,9 @@ spec:
                           readOnly: true
                         {{- end }}
                     {{- end }}
-                  {{- if or (gt (len $objectStorageRefs) 0) $sqlRefName $nosqlRefName $cacheEnabled (gt (len $awsBindings) 0) }}
                   volumes:
+                    - name: tmp
+                      emptyDir: {}
                     {{- if gt (len $awsBindings) 0 }}
                     - name: spiffe-bundle
                       csi:
@@ -443,7 +501,6 @@ spec:
                         secretName: {{ $name }}-cache
                         optional: true
                     {{- end }}
-                  {{- end }}
             {{- /* --- AWS IAM resources: one Role + Profile + binding Secret per objectStorageRef. --- */}}
             {{- /* Role and Profile lifecycle is tied to this Api (deleted with it).                   */}}
             {{- /* Bucket name is computed from convention: platform-{ns}-{refName}.                    */}}
