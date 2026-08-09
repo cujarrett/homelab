@@ -67,8 +67,9 @@ ssh pi@192.168.10.100 "journalctl -u getty@tty1 -n 30 --no-pager && ps aux | gre
 | External access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; zero-trust public ingress, no exposed firewall ports |
 | Remote access | Tailscale | Subnet router on `ctrl-1`; advertises `192.168.10.0/24`; split DNS for `local.lab` |
 | Platform | Crossplane | XRDs + Compositions in `platform/`; see [Platform](../platform/README.md) |
-| CNI | Cilium | Pod networking, WireGuard node encryption, kube-proxy replacement, Hubble observability, NetworkPolicy. Sole policy enforcer — k3s's kube-router is disabled, see [Kubelet Probe Outage](./postmortem-kubelet-probe-outage.md). Its own mutual auth is disabled; mesh concerns belong to Istio |
+| CNI | Cilium | Pod networking, WireGuard node encryption, kube-proxy replacement, Hubble observability, NetworkPolicy. Sole policy enforcer — k3s's kube-router is disabled, see [Kubelet Probe Outage](./postmortems/postmortem-kubelet-probe-outage.md). Its own mutual auth is disabled; mesh concerns belong to Istio |
 | Service mesh | Istio | Sidecar mesh chained onto Cilium; workload mTLS and platform-rendered connection policy. See [Platform Connections](./platform-connections.md) |
+| Secrets | External Secrets Operator | Syncs `grafana-admin-secret` from AWS Secrets Manager. See [External Secrets](./external-secrets.md) |
 | Workload identity | SPIRE | SPIFFE SVIDs backing AWS IAM Roles Anywhere. See [Platform Workload Identity](./platform-workload-identity.md) |
 | Observability | kube-prometheus-stack | Prometheus (30d retention), Grafana, Alertmanager |
 | Logs | Loki + Promtail | Loki SingleBinary, 30d retention; Promtail DaemonSet ships logs |
@@ -89,6 +90,7 @@ ssh pi@192.168.10.100 "journalctl -u getty@tty1 -n 30 --no-pager && ps aux | gre
 | `cloudflare` | cloudflared | Cloudflare Tunnel; public ingress entry point |
 | `cert-manager` | cert-manager | TLS issuers for internal and public hosts |
 | `demo-certs` | cert-manager `Certificate` objects only | Long-lived certs for the five demo sandbox slots; no workloads |
+| `external-secrets` | External Secrets Operator | Writes `grafana-admin-secret` from AWS Secrets Manager |
 | `spire-server`, `spire-system` | SPIRE | Workload identity; agent DaemonSet on all nodes |
 | `istio-system` | Istio | Control plane for the sidecar mesh |
 | `kube-system` | Cilium | CNI, Hubble relay (`hubble.local.lab`) |
