@@ -6,8 +6,6 @@
 
 ## Index
 
-Start with [What it solves](#what-it-solves), then work the [Build order](#build-order) top to bottom.
-
 | Chapter | What it covers |
 |---|---|
 | [What it solves](#what-it-solves) | The real problem, stated without overselling |
