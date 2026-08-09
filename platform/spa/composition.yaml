@@ -24,6 +24,20 @@ spec:
             {{- $sizeResourceMap := dict "xs" (dict "cpuReq" "25m" "cpuLim" "100m" "memReq" "32Mi" "memLim" "64Mi") "sm" (dict "cpuReq" "50m" "cpuLim" "200m" "memReq" "64Mi" "memLim" "128Mi") "md" (dict "cpuReq" "100m" "cpuLim" "500m" "memReq" "128Mi" "memLim" "256Mi") "lg" (dict "cpuReq" "250m" "cpuLim" "1000m" "memReq" "256Mi" "memLim" "512Mi") }}
             {{- $sizeKey := $params.size | default "sm" }}
             {{- $sizeRes := get $sizeResourceMap $sizeKey | default (get $sizeResourceMap "sm") }}
+            {{- $observedResources := .observed.resources | default dict }}
+            # Checksum of the nginx ConfigMap, which is mounted with subPath. subPath mounts
+            # never receive ConfigMap updates, so without this a changed nginx.conf updates the
+            # ConfigMap and is silently ignored by the running pod — the pod keeps serving the
+            # old rules until something else happens to restart it. Feeding the hash to a pod
+            # annotation makes the change roll the Deployment instead.
+            {{- $configChecksum := "" }}
+            {{- $observedNginxConfig := index $observedResources "nginx-config" }}
+            {{- if $observedNginxConfig }}
+            {{-   range $_, $v := ($observedNginxConfig.resource.data | default dict) }}
+            {{-     $configChecksum = printf "%s%s" $configChecksum $v }}
+            {{-   end }}
+            {{- end }}
+            {{- $configChecksum = $configChecksum | sha256sum | trunc 16 }}
             # --- nginx ConfigMap ---
             # Generated from XR params so the SPA image stays generic across instances.
             apiVersion: v1
@@ -337,6 +351,8 @@ spec:
                   labels:
                     app: spa
                     instance: {{ $name }}
+                  annotations:
+                    checksum/config: "{{ $configChecksum }}"
                 spec:
                   serviceAccountName: {{ $name }}
                   containers:
