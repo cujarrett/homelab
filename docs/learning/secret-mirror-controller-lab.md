@@ -80,8 +80,8 @@ Nothing here touches the cluster until step 3, and even then only a scratch name
 ### 1. Scaffold
 
 ```bash
-mkdir -p ~/Developer/platform-secret-mirror && cd ~/Developer/platform-secret-mirror
-kubebuilder init --domain local.lab --repo github.com/cujarrett/platform-secret-mirror
+mkdir -p ~/Developer/secret-mirror-controller && cd ~/Developer/secret-mirror-controller
+kubebuilder init --domain local.lab --repo github.com/cujarrett/secret-mirror-controller
 kubebuilder create api --group platform --version v1alpha1 --kind SecretMirror --resource --controller
 ```
 
