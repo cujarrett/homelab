@@ -224,7 +224,7 @@ argocd app sync <app> --grpc-web                            # recreates the STS;
 Skipping the recreate leaves the app permanently OutOfSync, and any future pod recreate comes back at the old size.
 
 ### Grafana Dashboards
-Colors follow [Dashboard Colors](./docs/dashboard-colors.md) — green/yellow/red are reserved for health, every other value uses the blue/purple family. Read it before adding or editing a panel.
+Colors follow [Dashboard Colors](./cluster/monitoring/dashboard-colors.md) — green/yellow/red are reserved for health, every other value uses the blue/purple family. Read it before adding or editing a panel.
 
 Dashboards are ConfigMaps with label `grafana_dashboard: "1"` in any namespace. Apply locally to test before committing:
 ```bash
