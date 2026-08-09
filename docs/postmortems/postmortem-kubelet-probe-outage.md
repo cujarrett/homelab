@@ -84,7 +84,7 @@ so nothing in Git reflects it. A node rebuilt without it brings the bug back sil
 - [x] Disable k3s's NetworkPolicy controller; clear stale kube-router rules on all four nodes
 - [x] Pin Cilium to 1.19.6 until the 1.20.x verifier failure is fixed upstream
 - [x] Restore the readiness probes removed as a workaround
-- [x] Add [cilium-pre-merge-check](../.claude/commands/cilium-pre-merge-check.md), which probes a
+- [x] Add [cilium-pre-merge-check](../../.claude/commands/cilium-pre-merge-check.md), which probes a
       *policy-selected* pod — the only case that reveals this fault
 - [x] Hold Cilium Renovate PRs 30 days with a pre-merge warning
 - [x] Disable the `kubeProxy`, `kubeScheduler`, `kubeControllerManager` scrape jobs — they have
