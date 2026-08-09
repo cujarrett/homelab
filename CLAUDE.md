@@ -26,6 +26,12 @@
 
 Before telling the user to commit, always run `/security-review`. It reviews the pending changes on the current branch for security issues. Once it confirms the changes are safe, offer the user a suggested commit message — do not run `git commit` yourself.
 
+**Report length scales with risk, overriding the skill's own output format.**
+
+- **Clean** — one line. `Clean — no findings.` Nothing about what was scanned, which checks passed, or why the change is low risk. A clean review is not an opportunity to describe the work.
+- **Anything real** — spend the words. For each finding give the file and line, what an attacker does with it, and the fix. Prefer one concrete exploit walkthrough over a list of categories.
+- **Uncertain** — say what would settle it, in a sentence.
+
 ## Philosophy: Grug-Brained Development
 
 > "Complexity very, very bad." — [grugbrain.dev](https://grugbrain.dev/)
