@@ -670,6 +670,63 @@ spec:
                       regex: "go_.*|process_.*|promhttp_.*"
                       action: drop
             {{- if $host }}
+            {{- /* Public means reachable from the internet through the tunnel — either a  */ -}}
+            {{- /* letsencrypt-prod cert or a pre-issued demo slot secret. Internal hosts  */ -}}
+            {{- /* stay off the rate limiter on purpose, see the Middleware comment below. */ -}}
+            {{- $isPublic := or (eq $tlsIssuer "letsencrypt-prod") (ne $tlsSecret "") }}
+            ---
+            # --- Security response headers Middleware ---
+            # An Api serves its own responses with no nginx in front, so these have to come
+            # from Traefik. default-src 'none' because a JSON API should never be a document
+            # context — it makes a reflected-content bug unexploitable in a browser.
+            apiVersion: traefik.io/v1alpha1
+            kind: Middleware
+            metadata:
+              name: {{ $name }}-security-headers
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: security-headers-middleware
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              headers:
+                customResponseHeaders:
+                  Server: ""
+                  X-Powered-By: ""
+                  X-Content-Type-Options: "nosniff"
+                  X-Frame-Options: "DENY"
+                  Referrer-Policy: "strict-origin-when-cross-origin"
+                  # "0" disables the legacy XSS auditor — removed from modern browsers,
+                  # and enabling it created XS-Leak side channels in older ones. Matches Spa.
+                  X-XSS-Protection: "0"
+                  Strict-Transport-Security: "max-age=31536000; includeSubDomains"
+                  Content-Security-Policy: "default-src 'none'; frame-ancestors 'none'"
+            {{- if $isPublic }}
+            ---
+            # --- Rate limit Middleware ---
+            # Public hosts only. Keyed on CF-Connecting-IP because public traffic all
+            # arrives from the two cloudflared pod IPs, so the default remote-address key
+            # would put every visitor in one shared bucket.
+            #
+            # That keying is exactly why internal hosts are excluded rather than given a
+            # different limit. A .local.lab request carries no CF-Connecting-IP, so every
+            # caller would fall into one shared bucket — and sump-pump-bridge.local.lab is
+            # IoT ingest, where a throttled POST is a lost reading, not a retried page load.
+            apiVersion: traefik.io/v1alpha1
+            kind: Middleware
+            metadata:
+              name: {{ $name }}-ratelimit
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: ratelimit-middleware
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              rateLimit:
+                average: 60
+                burst: 20
+                period: 1m
+                sourceCriterion:
+                  requestHeaderName: CF-Connecting-IP
+            {{- end }}
             ---
             # tlsIssuer: local-lab-ca-issuer for .local.lab; letsencrypt-prod for public hosts
             # tlsSecret: skip issuance and reference a pre-existing secret (e.g. demo slot certs)
@@ -681,6 +738,9 @@ spec:
               annotations:
                 traefik.ingress.kubernetes.io/router.entrypoints: websecure
                 traefik.ingress.kubernetes.io/router.tls: "true"
+                # Headers first — a 429 from the rate limiter short-circuits the rest of
+                # the chain, and the response still needs the security headers on it.
+                traefik.ingress.kubernetes.io/router.middlewares: "{{ $ns }}-{{ $name }}-security-headers@kubernetescrd{{ if $isPublic }},{{ $ns }}-{{ $name }}-ratelimit@kubernetescrd{{ end }}"
                 {{- if not $tlsSecret }}
                 cert-manager.io/cluster-issuer: {{ $tlsIssuer }}
                 {{- end }}
