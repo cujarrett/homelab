@@ -33,7 +33,7 @@ next plain reinstall silently drops it and flannel comes back.
 enforcer, kube-router, on by default. Cilium enforces NetworkPolicy too. With both running, a
 kubelet health check to any pod that has a NetworkPolicy gets silently dropped by kube-router
 before Cilium ever sees it — the pod looks unhealthy forever even though it's serving requests
-fine. This actually happened; see [Kubelet Probe Outage](./postmortem-kubelet-probe-outage.md)
+fine. This actually happened; see [Kubelet Probe Outage](../postmortems/postmortem-kubelet-probe-outage.md)
 for what it looked like from the outside. Fixed with a setting in a file on the server,
 `/etc/rancher/k3s/config.yaml`, containing `disable-network-policy: true`. That file already
 exists — it was created once, as the fix — and normally never needs to be touched again.
@@ -178,7 +178,7 @@ done
 # lack of a browser User-Agent, not the site being down.
 ```
 
-Then run [`/cilium-pre-merge-check`](../.claude/commands/cilium-pre-merge-check.md) — it probes a
+Then run [`/cilium-pre-merge-check`](../../.claude/commands/cilium-pre-merge-check.md) — it probes a
 NetworkPolicy-selected pod from its own node, the only way to catch the host-identity failure.
 
 ---
@@ -217,5 +217,5 @@ upgrades. Node data, labels and `/etc/rancher/k3s/` are untouched.
 
 ## Related Docs
 
-- [Cluster](./cluster.md) — current stack and hardware
-- [Kubelet Probe Outage](./postmortem-kubelet-probe-outage.md) — why several checks above exist
+- [Cluster](../cluster.md) — current stack and hardware
+- [Kubelet Probe Outage](../postmortems/postmortem-kubelet-probe-outage.md) — why several checks above exist
