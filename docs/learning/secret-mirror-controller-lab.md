@@ -10,7 +10,7 @@
 |---|---|
 | [What it solves](#what-it-solves) | The real problem, stated without overselling |
 | [Shape](#shape) | The CRD, and what the controller does with it |
-| [Two rules](#two-rules) | Safety label, and why a finalizer is unavoidable here |
+| [Two rules](#two-rules) | Never clobber a Secret it does not own, and why the finalizer is a choice |
 | [Build order](#build-order) | Ten steps with checkpoints — the lab itself |
 | [What this skipped](#what-this-skipped) | Optional follow-on reading, after the build |
 | [What this teaches](#what-this-teaches) | Concept checklist, and what it skips |
@@ -60,7 +60,9 @@ Each reconcile does the same four things regardless of what triggered it — rea
 
 **Never touch a Secret it did not create.** Every copy gets a label naming the `SecretMirror` that owns it. If a Secret already exists at the target name without that label, leave it alone and report it. A controller with write access to Secrets in every namespace must not clobber something a human put there.
 
-**Cleanup belongs to the controller, not to garbage collection.** ownerReferences would work here — the disallowed case is a *cross-namespace* owner, and a cluster-scoped `SecretMirror` may legally own a Secret in any namespace. GC is still the wrong tool: it only covers deleting the mirror, while step 5 needs delete-when-no-longer-selected, which no ownerReference can express. A finalizer puts both on one code path and makes the cleanup ordered rather than eventual.
+**The finalizer is chosen, not forced.** ownerReferences would work — the disallowed case is a *cross-namespace* owner, and a cluster-scoped `SecretMirror` may legally own a Secret in any namespace, so garbage collection would clean the copies up on its own. What a finalizer adds is certainty about *when*: the mirror survives until the controller has confirmed every copy is gone, so deleting a mirror and immediately recreating it cannot race a collection still in flight. That is the whole technical gain. The other half of the reason is that finalizers are worth knowing and this is a cheap place to write one.
+
+This has nothing to do with pruning. Removing a copy from a namespace that stopped matching is ordinary reconcile work in step 5, and happens while the mirror is very much alive.
 
 ## Build order
 
@@ -167,7 +169,7 @@ Two traps to handle:
 - Cleanup must be safe to run twice, because a failure requeues and runs it again.
 - A finalizer that can never succeed leaves the object stuck in `Terminating` forever, and someone has to strip the field by hand.
 
-**Checkpoint:** test the alternative before writing it. Put an ownerReference to the cluster-scoped `SecretMirror` on a copy in another namespace, delete the mirror, and watch GC remove the copy within seconds. It works — which is the point. The finalizer is not what makes deletion possible, it is what puts deletion on the same code path as pruning and makes it ordered instead of eventual.
+**Checkpoint:** test the alternative before writing it. Put an ownerReference to the cluster-scoped `SecretMirror` on a copy in another namespace, delete the mirror, and watch GC remove the copy within seconds. It works — which is the point. The finalizer is not what makes deletion possible; it only decides whether the mirror disappears before or after its copies do.
 
 ### 7. Watches
 
