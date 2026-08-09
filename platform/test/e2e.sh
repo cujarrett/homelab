@@ -287,7 +287,7 @@ if ! $PRIVATE_ONLY; then
 fi
 
 # Apis last — their readiness gates on bindings (and the owned Cache).
-if wait_ready api e2e-api-private 600; then
+if wait_ready apis.platform.local.lab e2e-api-private 600; then
   record inflate "api/e2e-api-private Ready" PASS ""
 else
   record inflate "api/e2e-api-private Ready" FAIL "timeout 600s"; INFLATE_OK=false
@@ -299,7 +299,7 @@ else
 fi
 
 if ! $PRIVATE_ONLY; then
-  if wait_ready api e2e-api-public 960; then
+  if wait_ready apis.platform.local.lab e2e-api-public 960; then
     record inflate "api/e2e-api-public Ready" PASS ""
   else
     record inflate "api/e2e-api-public Ready" FAIL "timeout 960s"; INFLATE_OK=false
@@ -394,10 +394,10 @@ fi
 
 echo "== Phase 4: teardown (RDS/ElastiCache deletion takes several minutes)"
 # Apis first — deleting them cascades the owned Cache (and ElastiCache).
-kubectl delete api e2e-api-private --ignore-not-found >/dev/null 2>&1
-kubectl delete api e2e-api-public --ignore-not-found >/dev/null 2>&1
-wait_gone api e2e-api-private 300 || record teardown "api/e2e-api-private deleted" FAIL "still present after 300s"
-wait_gone api e2e-api-public 900 || record teardown "api/e2e-api-public deleted" FAIL "still present after 900s"
+kubectl delete apis.platform.local.lab e2e-api-private --ignore-not-found >/dev/null 2>&1
+kubectl delete apis.platform.local.lab e2e-api-public --ignore-not-found >/dev/null 2>&1
+wait_gone apis.platform.local.lab e2e-api-private 300 || record teardown "api/e2e-api-private deleted" FAIL "still present after 300s"
+wait_gone apis.platform.local.lab e2e-api-public 900 || record teardown "api/e2e-api-public deleted" FAIL "still present after 900s"
 # The owned Caches outlive their Api briefly — the ElastiCache replication
 # group takes ~5-10 min to delete in AWS and the Cache XR waits for it.
 wait_gone cache e2e-api-private-cache 300 || record teardown "cache/e2e-api-private-cache deleted" FAIL "still present after 300s"
