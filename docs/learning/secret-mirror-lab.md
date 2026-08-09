@@ -47,7 +47,7 @@ spec:
     matchLabels:
       launchpad.local.lab/slot: demo1
 status:
-  copies: 0
+  copies: 0           # selected namespaces holding an up-to-date copy
   conditions: []      # Ready, SourceMissing
   observedGeneration: 0
 ```
@@ -62,7 +62,7 @@ Each reconcile does the same four things regardless of what triggered it — rea
 
 **Never touch a Secret it did not create.** Every copy gets a label naming the `SecretMirror` that owns it. If a Secret already exists at the target name without that label, leave it alone and report it. A controller with write access to Secrets in every namespace must not clobber something a human put there.
 
-**The finalizer is forced, not chosen.** ownerReferences cannot cross namespaces, so garbage collection physically cannot clean up the copies when the `SecretMirror` is deleted. Nothing but the controller can do it. This is the case finalizers exist for.
+**Cleanup belongs to the controller, not to garbage collection.** ownerReferences would work here — the disallowed case is a *cross-namespace* owner, and a cluster-scoped `SecretMirror` may legally own a Secret in any namespace. GC is still the wrong tool: it only covers deleting the mirror, while step 5 needs delete-when-no-longer-selected, which no ownerReference can express. A finalizer puts both on one code path and makes the cleanup ordered rather than eventual.
 
 ## Build order
 
@@ -111,7 +111,19 @@ Things to get right: `+kubebuilder:resource:scope=Cluster`, `+kubebuilder:subres
 
 ### 3. Make one copy
 
-The smallest thing that does something. Reconcile reads the source Secret, lists namespaces matching the selector, and creates a copy in each. No pruning, no finalizer, no status yet.
+The smallest thing that does something. Reconcile reads the source Secret, lists namespaces matching the selector, and makes each one hold a copy — creating it if absent, correcting it if it has drifted, leaving it alone if it is already right. No pruning, no finalizer, no status yet.
+
+That last distinction is the whole job. A reconcile is not a create; it is a decision taken fresh every time, per target namespace:
+
+| Target Secret | Owned by this mirror | Matches source | Action |
+|---|---|---|---|
+| missing | — | — | create |
+| exists | yes | no | update |
+| exists | yes | yes | no-op |
+| exists | no | either | leave alone, report conflict |
+| exists, namespace no longer selected | yes | either | delete |
+
+Step 3 handles the first three rows, step 4 the fourth, step 5 the fifth.
 
 Set up a scratch source and target rather than touching `demo-certs`:
 
@@ -157,7 +169,7 @@ Two traps to handle:
 - Cleanup must be safe to run twice, because a failure requeues and runs it again.
 - A finalizer that can never succeed leaves the object stuck in `Terminating` forever, and someone has to strip the field by hand.
 
-**Checkpoint:** try to prove the finalizer is unnecessary before you write it — set an ownerReference from the cluster-scoped `SecretMirror` to a copy in another namespace and see what the API server says. Understanding the refusal is the point; the finalizer is the consequence.
+**Checkpoint:** test the alternative before writing it. Put an ownerReference to the cluster-scoped `SecretMirror` on a copy in another namespace, delete the mirror, and watch GC remove the copy within seconds. It works — which is the point. The finalizer is not what makes deletion possible, it is what puts deletion on the same code path as pruning and makes it ordered instead of eventual.
 
 ### 7. Watches
 
@@ -194,9 +206,9 @@ Steps 9 and 10 are the stretch goals. Stop after step 8 if the afternoon is gone
 
 ## What this teaches
 
-Scaffolding, CRD schema and markers, the status subresource, conditions, `observedGeneration`, printcolumns, typed clients, label selectors, `Watches` with map functions, drift correction, finalizers and idempotent cleanup, why ownerReferences cannot cross namespaces, Events, RBAC that actually bites, envtest, ARM64 images, GitOps deploy.
+Scaffolding, CRD schema and markers, the status subresource, conditions, `observedGeneration`, printcolumns, typed clients, label selectors, `Watches` with map functions, drift correction, finalizers and idempotent cleanup, when ownerReference GC applies and when a finalizer is the better path, Events, RBAC that actually bites, envtest, ARM64 images, GitOps deploy.
 
-It cannot demonstrate owned-resource garbage collection, since crossing namespaces is exactly what rules that out. For the rest, see [What this skipped](#what-this-skipped).
+It leaves owned-resource garbage collection mostly untouched — step 6 proves GC would work, then deliberately does the cleanup by hand instead. [`Backup`](#parked-candidates) is the candidate that actually leans on it. For the rest, see [What this skipped](#what-this-skipped).
 
 Honest caveat: emberstack/reflector and kubed already do this. The value here is a small thing fully understood rather than a novel capability.
 
