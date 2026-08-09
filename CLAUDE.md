@@ -231,26 +231,7 @@ Dashboards are ConfigMaps with label `grafana_dashboard: "1"` in any namespace. 
 kubectl apply -f cluster/monitoring/<dashboard>.yaml
 ```
 
-| UID | File | Title |
-|---|---|---|
-| `homelab-alertmanager` | `grafana-dashboard-alertmanager.yaml` | Alertmanager — vendored from kube-prometheus-stack so it sits in the root folder instead of Less Used; new uid avoids colliding with the chart's copy |
-| `argo-health-kiosk` | `grafana-dashboard-argo-health-kiosk.yaml` | ArgoCD Health Kiosk |
-| `homelab-cert-manager` | `grafana-dashboard-cert-manager.yaml` | Cert Manager |
-| `homelab-gitops` | `grafana-dashboard-gitops.yaml` | GitOps |
-| `homelab-kiosk` | `grafana-dashboard-homelab-kiosk.yaml` | Homelab — Kiosk |
-| `homelab-mbp` | `grafana-dashboard-homelab-mbp.yaml` | Homelab |
-| `homelab-platform` | `grafana-dashboard-homelab-platform.yaml` | Platform |
-| `launchpad-kiosk` | `grafana-dashboard-launchpad-kiosk.yaml` | Launchpad — Kiosk |
-| `homelab-namespace-overview` | `grafana-dashboard-namespace-overview.yaml` | Namespace Overview |
-| `orphans-kiosk` | `grafana-dashboard-orphans-kiosk.yaml` | Orphans — Kiosk |
-| `homelab-orphans` | `grafana-dashboard-orphans.yaml` | Orphaned Resources |
-| `homelab-pod-health` | `grafana-dashboard-pod-health.yaml` | Pod Health Breakdown |
-| `homelab-pods-by-node` | `grafana-dashboard-pods-by-node.yaml` | Pods by Node |
-| `service-mesh` | `grafana-dashboard-service-mesh.yaml` | Service Mesh |
-| `sump-pump-kiosk` | `grafana-dashboard-sump-pump-kiosk.yaml` | Sump Pump — Kiosk |
-| `sump-pump` | `grafana-dashboard-sump-pump.yaml` | Sump Pump |
-| `web-traffic-kiosk` | `grafana-dashboard-web-traffic-kiosk.yaml` | Web Traffic — Kiosk |
-| `web-traffic` | `grafana-dashboard-web-traffic.yaml` | Web Traffic |
+Every dashboard is a ConfigMap in [cluster/monitoring/](./cluster/monitoring/) named `grafana-dashboard-*.yaml`, with its UID inside the file. List them with `ls cluster/monitoring/grafana-dashboard-*.yaml` rather than keeping an index here — a hand-maintained table goes stale the first time one is added.
 
 **Adding a new dashboard to the kiosk playlist:**
 1. Create the dashboard ConfigMap in `cluster/monitoring/` with `grafana_dashboard: "1"` label
