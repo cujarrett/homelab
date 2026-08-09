@@ -4,9 +4,9 @@ metadata:
   name: grafana-dashboard-homelab-mbp
   namespace: monitoring
   labels:
-    grafana_dashboard: "1"
+    grafana_dashboard: '1'
 data:
-  homelab-mbp.json: |-
+  homelab-mbp.json: |
     {
       "annotations": {
         "list": [
@@ -2338,7 +2338,7 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
+            "w": 4,
             "x": 0,
             "y": 20
           },
@@ -2470,8 +2470,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 6,
+            "w": 4,
+            "x": 4,
             "y": 20
           },
           "id": 104,
@@ -2526,6 +2526,99 @@ data:
             }
           ],
           "title": "PVCs",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "ExternalSecrets reporting Ready. Drops to 0 if ESO cannot reach AWS Secrets Manager.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "color": "red",
+                      "index": 0,
+                      "text": "Not Synced"
+                    }
+                  }
+                },
+                {
+                  "type": "special",
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "color": "red",
+                      "text": "No Data"
+                    }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 4,
+            "x": 8,
+            "y": 20
+          },
+          "id": 352,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.1.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "sum(externalsecret_status_condition{condition=\"Ready\",status=\"True\"})",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Secrets Synced",
           "type": "stat"
         },
         {
