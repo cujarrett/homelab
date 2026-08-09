@@ -38,6 +38,7 @@ spec:
     namespace: platform-e2e
     image: ghcr.io/cujarrett/hello-world-api:latest
     port: 8080
+    metricsPort: 8080
     sqlRef:
       name: e2e-sql-private
       backend: private-cloud
