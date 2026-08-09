@@ -61,7 +61,7 @@ ssh pi@192.168.10.100 "journalctl -u getty@tty1 -n 30 --no-pager && ps aux | gre
 | Kubernetes | k3s | Lightweight distro |
 | GitOps | ArgoCD | App-of-apps pattern; recurses `cluster/` |
 | Ingress | Traefik | DaemonSet via k3s `HelmChartConfig`; binds hostPorts 80/443 |
-| TLS | cert-manager | Local CA (`local-lab-ca-issuer`) for `.local.lab`; Let's Encrypt for public hosts; SPIRE identity certs for mTLS |
+| TLS | cert-manager | Local CA (`local-lab-ca-issuer`) for `.local.lab`; Let's Encrypt for public hosts. Workload mTLS is Istio's own CA, not cert-manager |
 | Storage | Longhorn | StorageClasses: `longhorn` (default, Delete), `longhorn-retain` (Retain), `longhorn-delete` (explicit Delete) |
 | DNS | AdGuard Home | Pinned to `ctrl-1`; wildcard `*.local.lab → 192.168.10.100` for all cluster hosts |
 | External access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; zero-trust public ingress, no exposed firewall ports |
@@ -98,8 +98,9 @@ ssh pi@192.168.10.100 "journalctl -u getty@tty1 -n 30 --no-pager && ps aux | gre
 | `platform-exporter` | platform-exporter | Prometheus exporter for platform state |
 | `nats` | NATS + NACK | JetStream cluster (3 replicas) |
 
-Application namespaces (`mattjarrett-com`, `my-vinyl`, etc.) are owned by tenant
-`namespace.yaml` files, not by the cluster bootstrap.
+This table is cluster infrastructure only. Application namespaces (`mattjarrett-com`,
+`my-vinyl`, etc.) are owned by tenant `namespace.yaml` files, not by the cluster
+bootstrap, and are listed in [CLAUDE.md](../CLAUDE.md).
 
 ---
 
