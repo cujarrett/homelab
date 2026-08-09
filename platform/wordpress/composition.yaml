@@ -277,17 +277,10 @@ spec:
                               key: password
                         # Blocks the browser theme/plugin editor, not updates — DISALLOW_FILE_MODS
                         # isn't set since that would also block plugin/core updates.
-                        # WP_AUTO_UPDATE_CORE is what actually keeps this patched. The official
-                        # image skips roughly half of WordPress security releases outright —
-                        # 6.8.4-6.8.7, 6.9.3, 6.9.5 and 6.9.6 were never built — so the pinned
-                        # tag is a floor, not the current version. Pulling from wordpress.org is
-                        # the only path that does not depend on Docker Hub publishing anything.
-                        # The update lands in the container filesystem and is lost on restart,
-                        # which is fine — the cron below reapplies it within minutes of boot.
-                        # DISABLE_WP_CRON moves scheduled work onto that CronJob. On the default,
-                        # a full-page cache answers requests without entering PHP, so cron never
-                        # fires and auto-updates silently never run — a cached site would patch
-                        # itself less often than an uncached one, which is exactly backwards.
+                        # The official image skips many WordPress security releases, so the pinned
+                        # tag is a floor and WP_AUTO_UPDATE_CORE pulls the rest from wordpress.org.
+                        # DISABLE_WP_CRON hands the checks to the CronJob — a full-page cache
+                        # answers requests without entering PHP, so page-view cron never fires.
                         - name: WORDPRESS_CONFIG_EXTRA
                           value: |
                             define('DISALLOW_FILE_EDIT', true);
@@ -332,12 +325,9 @@ spec:
                         name: {{ $name }}-mpm-tuning
             ---
             # --- wp-cron CronJob ---
-            # Drives WordPress scheduled work on a clock, replacing the trigger-on-page-view
-            # behaviour disabled via DISABLE_WP_CRON. Core auto-updates ride on this, so the
-            # interval is the worst-case delay before a security release gets applied, and the
-            # worst-case window after a restart drops the pod back to the pinned tag.
-            # Hits the ClusterIP rather than the public hostname, keeping the loop in-namespace
-            # instead of routing out through Cloudflare and back.
+            # Runs WordPress scheduled events now that DISABLE_WP_CRON stops page views doing it.
+            # Only executes events already due — the mu-plugin sets the hourly update cadence.
+            # Hits the ClusterIP so the loop stays in-namespace instead of via Cloudflare.
             apiVersion: batch/v1
             kind: CronJob
             metadata:
@@ -476,6 +466,18 @@ spec:
             data:
               security-hardening.php: |
                 <?php
+                // Core resets to the pinned image on restart, but the update_core transient
+                // lives in the database and will still claim the site is current. Twicedaily
+                // checks leave that lie standing for up to 12 hours; hourly bounds it to one.
+                // wp_maybe_auto_update is frequently not scheduled at all, so assert it too.
+                add_action('init', function () {
+                    foreach (['wp_version_check' => 0, 'wp_maybe_auto_update' => 300] as $hook => $offset) {
+                        if (wp_get_schedule($hook) !== 'hourly') {
+                            wp_clear_scheduled_hook($hook);
+                            wp_schedule_event(time() + $offset, 'hourly', $hook);
+                        }
+                    }
+                });
                 // Disable XML-RPC
                 add_filter('xmlrpc_enabled', '__return_false');
                 // Disable Application Passwords so REST API basic-auth is rejected outright.
