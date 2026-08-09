@@ -91,7 +91,7 @@ If any stat panels are missing it, add `"instant": true` to their targets manual
 
 ### 5. Check panel colors
 
-A panel edited in the UI comes back with Grafana's default thresholds — base `green`, `red` at 80 — so a plain count round-trips as a green tile. Green, yellow and red are reserved for health; every other value uses the blue/purple family. Read [Dashboard Colors](../../docs/dashboard-colors.md) and fix any panel that drifted.
+A panel edited in the UI comes back with Grafana's default thresholds — base `green`, `red` at 80 — so a plain count round-trips as a green tile. Green, yellow and red are reserved for health; every other value uses the blue/purple family. Read [Dashboard Colors](../../cluster/monitoring/dashboard-colors.md) and fix any panel that drifted.
 
 ```bash
 grep -n '"color"' cluster/monitoring/<dashboard-configmap>.yaml

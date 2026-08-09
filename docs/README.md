@@ -34,6 +34,5 @@ Everything written down about this cluster. Start with [Cluster](./cluster.md) f
 | Doc | What's in it |
 |---|---|
 | [Learning](./learning/) | The route from cloud-native history to writing controllers |
-| [Dashboard Colors](./dashboard-colors.md) | The palette rules every Grafana panel follows |
 | [Blog Writing Style](./blog-writing-style.md) | Voice and structure for posts about this cluster |
 | [Challenges](./challenges/) | Photos of the physical build problems worth remembering |
