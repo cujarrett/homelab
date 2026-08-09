@@ -90,6 +90,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | Platform Abstraction | Crossplane | Nine XR types — see the Crossplane Platform section below |
 | CNI | Cilium | DaemonSet in `kube-system` on all 4 nodes; Helm chart from `helm.cilium.io`. Pinned to 1.19.6 — 1.20.x fails the BPF verifier on this kernel. Plumbing only — pod networking, WireGuard node encryption, kube-proxy replacement, Hubble, NetworkPolicy. Sole policy enforcer: k3s's kube-router is disabled via `disable-network-policy` in `/etc/rancher/k3s/config.yaml` on `ctrl-1` (node-level, not in this repo). Mesh features (mutual auth, connection policy) belong to Istio; Cilium's SPIRE mutual auth is disabled. |
 | Service Mesh | Istio | Sidecar mesh chained onto Cilium CNI; provides workload mTLS. Permissive mode — nothing is denied. Platform-managed connection policy is designed but not built; see [Platform Connections](./docs/platform-connections.md). |
+| Secrets | External Secrets Operator | Syncs `grafana-admin-secret` from AWS Secrets Manager; `ClusterSecretStore` `aws-secrets-manager` authenticates as the `eso-reader` IAM user. Every other Secret is hand-created |
 | Workload Identity | SPIRE | `spire-server` + `spire-system` namespaces; Helm chart from `spiffe.github.io/helm-charts-hardened`. Previously backed Cilium mutual auth (now disabled); retained for potential Istio/SPIFFE use. |
 
 ## Namespaces & Applications
@@ -117,6 +118,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `demo-certs` | cert-manager `Certificate` objects only (no workloads) | 10 long-lived `letsencrypt-prod` certs for the 5 fixed demo sandbox slots (`demo{1-5}.mattjarrett.dev` + `demo{1-5}-api.mattjarrett.dev`); `launchpad-api` copies the resulting secrets into each sandbox namespace at creation time so cert-manager skips issuance there and Let's Encrypt's 5-certs-per-exact-hostname-per-168h limit is never hit |
 | `platform-connections-demo` | Api ×3 + Spa | Service mesh walkthrough at `connections.mattjarrett.dev`; two callers run one image and differ only in what they declare |
 | `platform-exporter` | platform-exporter | Custom Prometheus exporter for platform metrics; scraped via `platform-exporter-servicemonitor` |
+| `external-secrets` | External Secrets Operator | Writes `grafana-admin-secret` from AWS Secrets Manager |
 | `spire-server`, `spire-system` | SPIRE | Workload identity (SPIFFE); agent DaemonSet on all nodes |
 
 ## Internal Hostnames (`.local.lab`)
@@ -379,7 +381,7 @@ Applications from the `workloads` project can live in any namespace (`sourceName
 ## Key Conventions
 - ArgoCD `automated: { prune: true, selfHeal: true }` on all apps — cluster converges to repo state automatically
 - `ServerSideApply: true` used on most apps
-- Secrets (tunnel tokens, Grafana admin creds, etc.) are pre-created manually in the cluster — never stored in Git
+- Secrets (tunnel tokens, Ghost creds, etc.) are pre-created manually in the cluster — never stored in Git. The one exception is `grafana-admin-secret`, which comes from AWS Secrets Manager via External Secrets Operator — see [External Secrets](./docs/external-secrets.md)
 - Traefik annotations on all Ingresses: `traefik.ingress.kubernetes.io/router.entrypoints: websecure` and `traefik.ingress.kubernetes.io/router.tls: "true"`
 - cert-manager annotation on all Ingresses: `cert-manager.io/cluster-issuer: local-lab-ca-issuer` (internal) or `letsencrypt-prod` (public) — Spa and Api expose this via the `tlsIssuer` parameter (default `local-lab-ca-issuer`); the WordPress composition hardcodes `letsencrypt-prod` since WordPress sites are always public
 - Spa compositions use `gotemplating.fn.crossplane.io/ready: "True"` on go-templating resources to avoid false `Ready=False` on the XR
