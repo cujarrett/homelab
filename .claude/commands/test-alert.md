@@ -64,7 +64,10 @@ Report the before/after counts and whether a message should now be in `#homelab-
 To check a rule's expression fires without waiting for real conditions, query it with the threshold inverted (`<` for a `>` rule) — a non-empty result proves the metric and label shape are right:
 
 ```bash
-curl -sk --data-urlencode 'query=<expr with inverted comparison>' -G 'https://prometheus.local.lab/api/v1/query'
+curl -sk --netrc-optional --data-urlencode 'query=<expr with inverted comparison>' -G 'https://prometheus.local.lab/api/v1/query'
 ```
+
+`--netrc-optional` picks the credentials out of `~/.netrc` — Prometheus sits behind
+basicAuth. A 401 here means the netrc entry is missing, not that the rule is wrong.
 
 Rules live on the main Prometheus, not the sump-pump archive — the archive has `alerting: None` and reaches no Alertmanager.

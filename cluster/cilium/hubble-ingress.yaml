@@ -4,6 +4,7 @@ metadata:
   name: hubble-ui
   namespace: kube-system
   annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: "kube-system-hubble-basic-auth@kubernetescrd"
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
     cert-manager.io/cluster-issuer: local-lab-ca-issuer
@@ -24,3 +25,19 @@ spec:
                 name: hubble-ui
                 port:
                   number: 80
+---
+# --- basicAuth Middleware ---
+# The Hubble UI has no native authentication, so the control has to sit at the proxy.
+# Credentials live in the hand-created `hubble-basic-auth` Secret in this namespace
+# (key `users`, bcrypt htpasswd line) — never in Git, same as the tunnel token.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: hubble-basic-auth
+  namespace: kube-system
+spec:
+  basicAuth:
+    secret: hubble-basic-auth
+    # Strip the Authorization header once Traefik has checked it. Without this
+    # Traefik forwards the credential on to a backend that has no use for it.
+    removeHeader: true

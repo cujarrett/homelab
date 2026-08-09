@@ -171,9 +171,11 @@ for u in \
   https://longhorn.local.lab \
   https://adguard.local.lab \
   https://hubble.local.lab
-do echo "$u $(curl -sk -o /dev/null -w '%{http_code}' $u --max-time 10 -A 'Mozilla/5.0')"
+do echo "$u $(curl -sk --netrc-optional -o /dev/null -w '%{http_code}' $u --max-time 10 -A 'Mozilla/5.0')"
 done
 # 200 means up. 302 is fine too — some apps redirect their own root (Prometheus, AdGuard).
+# prometheus/longhorn/hubble sit behind basicAuth — --netrc-optional reads ~/.netrc.
+# A 401 on those three means the netrc entry is missing, not that the host is down.
 # Without -A above, the *.mattjarrett.dev hosts 403 — that's Cloudflare rejecting curl's
 # lack of a browser User-Agent, not the site being down.
 ```
