@@ -42,6 +42,20 @@ spec:
             {{- else if eq $size "lg" }}
             {{-   $wpMaxWorkers = "32" }}
             {{- end }}
+            # Checksum of every ConfigMap mounted with subPath. subPath mounts never receive
+            # ConfigMap updates, so without this a changed mu-plugin updates the ConfigMap and
+            # is silently ignored by the running pod. Feeding the hash to a pod annotation makes
+            # the change roll the Deployment instead.
+            {{- $configChecksum := "" }}
+            {{- range $key := list "security-mu-plugin-configmap" "mpm-tuning-configmap" }}
+            {{-   $cm := index $observedResources $key }}
+            {{-   if $cm }}
+            {{-     range $_, $v := ($cm.resource.data | default dict) }}
+            {{-       $configChecksum = printf "%s%s" $configChecksum $v }}
+            {{-     end }}
+            {{-   end }}
+            {{- end }}
+            {{- $configChecksum = $configChecksum | sha256sum | trunc 16 }}
             # --- MariaDB credentials Secret ---
             # Passwords are read back from the live Secret whenever it exists, and only
             # derived from the XR UID on first creation. MariaDB applies MYSQL_*_PASSWORD
@@ -236,6 +250,8 @@ spec:
                   labels:
                     app: wordpress
                     instance: {{ $name }}
+                  annotations:
+                    checksum/config: "{{ $configChecksum }}"
                 spec:
                   # Keep off the control-plane node (ctrl-1) — WordPress + MariaDB are memory-heavy
                   nodeSelector:
