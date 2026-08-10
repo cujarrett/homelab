@@ -159,6 +159,8 @@ spec:
                   # Keep off the control-plane node (ctrl-1) — WordPress + MariaDB are memory-heavy
                   nodeSelector:
                     node-role.kubernetes.io/worker: worker
+                  # Neither WordPress nor MariaDB calls the apiserver.
+                  automountServiceAccountToken: false
                   # Neither image can run non-root: both entrypoints extract files and
                   # chown them before dropping privileges, and MariaDB's datadir is
                   # already owned by uid 999 on the existing volume. So the containment
@@ -271,6 +273,8 @@ spec:
                   # Keep off the control-plane node (ctrl-1) — WordPress + MariaDB are memory-heavy
                   nodeSelector:
                     node-role.kubernetes.io/worker: worker
+                  # Neither WordPress nor MariaDB calls the apiserver.
+                  automountServiceAccountToken: false
                   # Neither image can run non-root: both entrypoints extract files and
                   # chown them before dropping privileges, and MariaDB's datadir is
                   # already owned by uid 999 on the existing volume. So the containment
@@ -409,6 +413,7 @@ spec:
                         instance: {{ $name }}
                     spec:
                       restartPolicy: OnFailure
+                      automountServiceAccountToken: false
                       nodeSelector:
                         node-role.kubernetes.io/worker: worker
                       securityContext:

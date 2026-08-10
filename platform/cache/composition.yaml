@@ -75,6 +75,7 @@ spec:
                   labels:
                     app: {{ $name }}-redis
                 spec:
+                  automountServiceAccountToken: false
                   securityContext:
                     runAsNonRoot: true
                     runAsUser: 65532

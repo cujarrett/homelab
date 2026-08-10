@@ -354,6 +354,8 @@ spec:
                   annotations:
                     checksum/config: "{{ $configChecksum }}"
                 spec:
+                  automountServiceAccountToken: false
+                  # nginx never calls the apiserver — no token to steal from this pod.
                   serviceAccountName: {{ $name }}
                   # The nginx images run as root and bind 80. Both had to go: 8080 is
                   # bindable unprivileged, and 65532 overrides the image's user the same
