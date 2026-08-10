@@ -97,6 +97,10 @@ Answer yes to both prompts. `--repo` is only the Go module path — no GitHub re
 | `config/` | generated YAML — never hand-edit |
 | `Makefile` | the codegen entrypoint, kept even though the rest of the homelab uses `just` |
 
+Open the first two now, while they are still empty. `secretmirror_types.go` is what step 2 fills in, and `secretmirror_controller.go` is the only file steps 3 through 8 touch — knowing what a bare `Reconcile` and `SetupWithManager` look like is what makes every later addition legible as a diff rather than a wall of new code. Skim `cmd/main.go` for twenty seconds to see the manager gets built and the controller registered, then leave it until step 9.
+
+Do not read `config/` yet. It is worth opening exactly once, in the next checkpoint, after your own fields appear in it.
+
 ### 2. The type
 
 Write the spec and status from [Shape](#shape) into `secretmirror_types.go`, then:
