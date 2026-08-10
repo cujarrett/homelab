@@ -159,9 +159,24 @@ spec:
                   # Keep off the control-plane node (ctrl-1) — WordPress + MariaDB are memory-heavy
                   nodeSelector:
                     node-role.kubernetes.io/worker: worker
+                  # Neither image can run non-root: both entrypoints extract files and
+                  # chown them before dropping privileges, and MariaDB's datadir is
+                  # already owned by uid 999 on the existing volume. So the containment
+                  # here is capability-shaped instead — see the per-container drops.
+                  securityContext:
+                    seccompProfile:
+                      type: RuntimeDefault
                   containers:
                     - name: mariadb
                       image: mariadb:11
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        capabilities:
+                          drop: [ALL]
+                          # The entrypoint chowns the datadir and drops to the mysql
+                          # user. Verified as the minimum that still initialises a
+                          # database — fewer and it exits before listening.
+                          add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
                       env:
                         - name: MYSQL_ROOT_PASSWORD
                           valueFrom:
@@ -256,9 +271,22 @@ spec:
                   # Keep off the control-plane node (ctrl-1) — WordPress + MariaDB are memory-heavy
                   nodeSelector:
                     node-role.kubernetes.io/worker: worker
+                  # Neither image can run non-root: both entrypoints extract files and
+                  # chown them before dropping privileges, and MariaDB's datadir is
+                  # already owned by uid 999 on the existing volume. So the containment
+                  # here is capability-shaped instead — see the per-container drops.
+                  securityContext:
+                    seccompProfile:
+                      type: RuntimeDefault
                   initContainers:
                     - name: init-wp-content
                       image: wordpress:7.0.2-php8.3-apache
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        capabilities:
+                          drop: [ALL]
+                          # Only copies into the volume — no privilege drop, so no SETUID.
+                          add: [CHOWN, DAC_OVERRIDE, FOWNER]
                       command:
                         - sh
                         - -c
@@ -276,6 +304,15 @@ spec:
                       # the PVC, so whatever this tag ships is what every restart runs. Renovate
                       # bumps it. The php8.3 suffix keeps PHP fixed across those bumps.
                       image: wordpress:7.0.2-php8.3-apache
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        capabilities:
+                          drop: [ALL]
+                          # NET_BIND_SERVICE for port 80, SETUID/SETGID so Apache can
+                          # drop to www-data, and CHOWN/DAC_OVERRIDE/FOWNER for the
+                          # entrypoint's core extraction. Verified as the minimum — the
+                          # planned set without CHOWN and DAC_OVERRIDE exited on startup.
+                          add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID, NET_BIND_SERVICE]
                       env:
                         - name: WORDPRESS_DB_HOST
                           value: {{ $name }}-mariadb:3306
@@ -374,9 +411,20 @@ spec:
                       restartPolicy: OnFailure
                       nodeSelector:
                         node-role.kubernetes.io/worker: worker
+                      securityContext:
+                        runAsNonRoot: true
+                        runAsUser: 65532
+                        runAsGroup: 65532
+                        seccompProfile:
+                          type: RuntimeDefault
                       containers:
                         - name: curl
                           image: curlimages/curl:8.21.0
+                          securityContext:
+                            allowPrivilegeEscalation: false
+                            readOnlyRootFilesystem: true
+                            capabilities:
+                              drop: [ALL]
                           args:
                             # -f turns a 5xx into a non-zero exit, so a broken cron surfaces as a
                             # failed Job instead of succeeding quietly and never running cron.
