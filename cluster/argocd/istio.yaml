@@ -56,6 +56,11 @@ spec:
     helm:
       releaseName: istiod
       values: |
+        # Use the istio-cni DaemonSet instead of injecting a NET_ADMIN init container into
+        # every pod. Without this istiod still injects istio-init even though the CNI is
+        # installed, and that init container is what fails Pod Security Admission.
+        cni:
+          enabled: true
         # Pin the control plane to ctrl-1 — istiod sits next to the apiserver it watches.
         nodeSelector:
           node-role.kubernetes.io/control-plane: "true"
