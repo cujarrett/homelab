@@ -75,9 +75,20 @@ spec:
                   labels:
                     app: {{ $name }}-redis
                 spec:
+                  securityContext:
+                    runAsNonRoot: true
+                    runAsUser: 65532
+                    runAsGroup: 65532
+                    seccompProfile:
+                      type: RuntimeDefault
                   containers:
                     - name: redis
                       image: redis:7-alpine
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        readOnlyRootFilesystem: true
+                        capabilities:
+                          drop: [ALL]
                       ports:
                         - containerPort: 6379
                       resources:
@@ -92,6 +103,17 @@ spec:
                           port: 6379
                         initialDelaySeconds: 5
                         periodSeconds: 10
+                      # redis writes its dump and pid under /data even with persistence off.
+                      volumeMounts:
+                        - name: data
+                          mountPath: /data
+                        - name: tmp
+                          mountPath: /tmp
+                  volumes:
+                    - name: data
+                      emptyDir: {}
+                    - name: tmp
+                      emptyDir: {}
             ---
             apiVersion: v1
             kind: Service

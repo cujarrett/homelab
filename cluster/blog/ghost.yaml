@@ -2,6 +2,10 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: blog
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
 ---
 # Ghost content PVC — stores SQLite DB, themes, images, and all uploaded files.
 # Uses Recreate strategy because the RWO PVC can only be mounted by one pod at a time.
