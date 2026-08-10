@@ -14,9 +14,22 @@ spec:
         app: platform-exporter
     spec:
       serviceAccountName: platform-exporter
+      # runAsUser overrides the image's own USER, which is a name (USER app) — the
+      # kubelet will not honour runAsNonRoot for a name it cannot resolve.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: platform-exporter
           image: ghcr.io/cujarrett/platform-exporter:sha-517de153649800285c0756f5e908fb0de8d87d16
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
           ports:
             - name: metrics
               containerPort: 8080
@@ -35,6 +48,12 @@ spec:
             limits:
               cpu: 100m
               memory: 64Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
