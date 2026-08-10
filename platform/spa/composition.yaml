@@ -69,7 +69,7 @@ spec:
                                       '$status $body_bytes_sent "$http_referer" "$http_user_agent"';
                 {{- end }}
                 server {
-                    listen 80;
+                    listen 8080;
                     server_tokens off;
 
                     root /usr/share/nginx/html;
@@ -355,12 +355,26 @@ spec:
                     checksum/config: "{{ $configChecksum }}"
                 spec:
                   serviceAccountName: {{ $name }}
+                  # The nginx images run as root and bind 80. Both had to go: 8080 is
+                  # bindable unprivileged, and 65532 overrides the image's user the same
+                  # way the Api composition does.
+                  securityContext:
+                    runAsNonRoot: true
+                    runAsUser: 65532
+                    runAsGroup: 65532
+                    seccompProfile:
+                      type: RuntimeDefault
                   containers:
                     - name: spa
                       image: {{ $params.image }}
                       imagePullPolicy: Always
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        readOnlyRootFilesystem: true
+                        capabilities:
+                          drop: [ALL]
                       ports:
-                        - containerPort: 80
+                        - containerPort: 8080
                       resources:
                         requests:
                           cpu: {{ get $sizeRes "cpuReq" }}
@@ -371,7 +385,7 @@ spec:
                       readinessProbe:
                         httpGet:
                           path: /healthz
-                          port: 80
+                          port: 8080
                         initialDelaySeconds: 5
                         periodSeconds: 10
                       volumeMounts:
@@ -379,10 +393,24 @@ spec:
                           mountPath: /etc/nginx/conf.d/default.conf
                           subPath: default.conf
                           readOnly: true
+                        - name: run
+                          mountPath: /run
+                        - name: nginx-cache
+                          mountPath: /var/cache/nginx
+                        - name: tmp
+                          mountPath: /tmp
                   volumes:
                     - name: nginx-config
                       configMap:
                         name: {{ $name }}-nginx-config
+                    # nginx writes its pid to /run and its proxy/client temp files to
+                    # /var/cache/nginx — both on a read-only root without these.
+                    - name: run
+                      emptyDir: {}
+                    - name: nginx-cache
+                      emptyDir: {}
+                    - name: tmp
+                      emptyDir: {}
             ---
             # --- Service ---
             apiVersion: v1
@@ -401,7 +429,7 @@ spec:
                 instance: {{ $name }}
               ports:
                 - port: 80
-                  targetPort: 80
+                  targetPort: 8080
             ---
             # --- Rate limit Middleware ---
             # Caps requests per client to 60/min with a burst of 20.
@@ -469,7 +497,7 @@ spec:
             {{- $consumes := $params.consumes | default list }}
             {{- if eq $posture "enforce" }}
             ---
-            # Every Spa has an Ingress, and Traefik is unmeshed, so port 80 cannot be
+            # Every Spa has an Ingress, and Traefik is unmeshed, so port 8080 cannot be
             # restricted by identity. How far that reaches depends on tlsIssuer —
             # letsencrypt-prod means the internet, local-lab-ca-issuer means the
             # homelab network. Either way it is wider than the mesh can narrow.
@@ -487,7 +515,7 @@ spec:
               mtls:
                 mode: STRICT
               portLevelMtls:
-                "80":
+                "8080":
                   mode: PERMISSIVE
             ---
             apiVersion: security.istio.io/v1
@@ -504,7 +532,7 @@ spec:
               action: ALLOW
               rules:
                 - to:
-                    - operation: { ports: ["80"] }
+                    - operation: { ports: ["8080"] }
             ---
             # REGISTRY_ONLY: only the control plane, the apiProxies upstreams, and what
             # it declared. The upstream's namespace is read out of its FQDN, so each
