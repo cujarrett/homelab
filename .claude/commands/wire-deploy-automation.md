@@ -101,12 +101,38 @@ Walk them through it:
 3. Repository permissions → **Contents: Read and write** — that is the entire requirement, the workflow does one GET and one PUT
 4. Generate, copy, then `gh secret set HOMELAB_PAT -R cujarrett/<repo>`
 
+`gh secret set` has no `-` stdin convention — `--body` takes a literal string and
+stdin is read only when the flag is absent. Piping into `--body -` stores a
+one-character secret and discards the token, and the command still prints its
+success line. The result is a `deploy` job failing on `Bad credentials (HTTP 401)`
+that survives any number of token regenerations, because the token was never the
+problem. Pass `--body "$VAR"` or omit the flag entirely.
+
 The token needs no access to the repo the workflow runs *in*, only to the repo it
 writes *to*. Flag that fine-grained PATs expire, and that when this one does the
 `deploy` job fails while `build-and-push` stays green — images keep building and the
 cluster keeps running the old SHA.
 
-## 4. Verify
+**The cluster-manifest exception.** A service whose manifests live in `homelab` under
+`cluster/` rather than as an XR in `homelab-workspaces` — `platform-exporter` is the
+only one — cannot use the reusable workflow, which is hardcoded to its own repo. It
+carries an inline GET/`sed`/PUT `deploy` step instead, and its token is scoped to
+`cujarrett/homelab`. Same secret name, different target repo: scope that one to
+`homelab-workspaces` by mistake and the API returns 404 rather than 401, so it fails
+looking like a missing file instead of a bad token.
+
+## 4. Document the rotation in the repo
+
+Expiry is the failure this pattern actually hits, and it lands in a repo whose README
+may say nothing about deploys at all. Every wired repo gets a `## Deployment` section
+with a `### Rotating HOMELAB_PAT` subsection covering four things — which repo the
+token is scoped to, that each repo holds its own token because `cujarrett` is a
+personal account, that expiry shows up as a green build with a failed `deploy`, and
+the `gh secret set` command with this repo's name already filled in. Copy the section
+from a wired repo and change the names; do not replace it with a link to another
+repo's copy, since the person rotating a token is usually reading only that repo.
+
+## 5. Verify
 
 Validate the YAML parses and the reusable workflow is reachable before pushing:
 
