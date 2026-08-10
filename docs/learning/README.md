@@ -9,9 +9,10 @@ Read the lineage first, build a controller second, and let the rest backfill. Wr
 | # | Doc | What you end with |
 |---|---|---|
 | 1 | [Cloud Native Lineage](./cloud-native-lineage.md) | Where Kubernetes came from — Borg, Raft, the runtime wars, CoreOS |
-| 2 | [Secret Mirror](./secret-mirror-lab.md) | A real controller, built step by step against a genuine gap |
+| 2 | [Secret Mirror](./secret-mirror-controller-lab.md) | A real controller, built step by step against a genuine gap |
 | 3 | [Kubernetes the Hard Way](./kubernetes-the-hard-way.md) | A cluster stood up from parts on VMs, and the Linux primitives under it |
 | 4 | [OSI, for real](./osi-for-real.md) | A packet-path doc for one public hostname |
+| 5 | [Pod Security Admission](./pod-security-admission.md) | What the cluster will refuse to run, and how to find out before it refuses |
 
 ## Rhythm
 
