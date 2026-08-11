@@ -10,27 +10,26 @@ spec:
     - name: storage
       interval: 5m
       rules:
-        # volume-head alone cannot exceed capacity, so a ratio above 1 is unpurged
-        # snapshot layers — Longhorn marks them removed then stalls silently.
-        # 1.1 for 6h clears the 0.88 steady state and rebuild spikes.
-        - alert: LonghornVolumeSnapshotBloat
+        # Longhorn actualSize sums the whole snapshot chain, so a ratio above 1 is
+        # normal for any volume holding a snapshot and cannot tell a stalled purge
+        # from a healthy one. kubelet reports real filesystem usage instead.
+        - alert: PersistentVolumeFillingUp
           expr: |
-            longhorn_volume_actual_size_bytes / longhorn_volume_capacity_bytes > 1.1
-          for: 6h
+            kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes > 0.85
+          for: 1h
           labels:
             severity: warning
           annotations:
             dashboard_url: "https://grafana.local.lab/d/homelab-mbp/homelab"
-            summary: "Longhorn volume {{ $labels.pvc }} holds more on disk than its capacity"
+            summary: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ $value | humanizePercentage }} full"
             description: >-
-              {{ $labels.volume }} ({{ $labels.pvc }}) is using
-              {{ $value | humanizePercentage }} of its capacity on each replica,
-              so unpurged snapshot layers are holding the difference. Check the
-              chain with `kubectl get engines.longhorn.io -n longhorn-system`; if a
-              snapshot shows removed=true it never got purged, and the reclaim is
-              a snapshotPurge action against the volume on the longhorn-manager API.
+              {{ $labels.persistentvolumeclaim }} in {{ $labels.namespace }} has
+              less than 15% free. For storage-loki-0 the argocd namespace is
+              usually ~80% of the volume, so check it first with a Loki query
+              before expanding the PVC.
 
-        # Backstop — the bloat alert says nothing about the node underneath.
+        # Backstop — per-PVC usage says nothing about the node underneath, where a
+        # genuine snapshot leak in /var/lib/longhorn would actually surface.
         - alert: NodeDiskFillingUp
           expr: |
             100 - (
