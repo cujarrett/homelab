@@ -77,6 +77,10 @@ spec:
           tls:
             spire:
               enabled: false
+          config:
+            # Advertise the /.well-known/ path that Cloudflare lets datacenter callers reach.
+            # Traefik rewrites it back to /keys — see cluster/spire/oidc-jwks-ingress.yaml.
+            jwksUri: https://oidc.mattjarrett.dev/.well-known/keys
           ingress:
             enabled: true
             className: traefik
