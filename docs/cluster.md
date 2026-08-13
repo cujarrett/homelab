@@ -156,6 +156,7 @@ section of [`CLAUDE.md`](../CLAUDE.md) for the API workflow.
 | `jspollock.mattjarrett.dev` | `js-pollock` | `Spa` |
 | `launchpad.mattjarrett.dev` | `launchpad` | `Spa` + `Api` (API cluster-internal, reached via nginx `/api/` proxy) |
 | `connections.mattjarrett.dev` | `platform-connections-demo` | `Spa` + `Api` ×3 — service mesh walkthrough |
+| `oidc.mattjarrett.dev` | `spire-server` | SPIRE OIDC discovery document and JWKS — see [SPIRE OIDC Federation](./spire-oidc-federation.md) |
 
 Guest sandbox slots (`demo1`–`demo5` and `demo1-api`–`demo5-api` under `mattjarrett.dev`)
 are pre-registered in the tunnel and reuse long-lived certs from the `demo-certs` namespace.
