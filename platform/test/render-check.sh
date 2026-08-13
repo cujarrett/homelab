@@ -105,8 +105,10 @@ for xr in "$WORKSPACES"/*/*.yaml; do
   comp="platform/$dir/composition.yaml"
   name="$(basename "$(dirname "$xr")")/$(basename "$xr" .yaml)"
 
-  if ! crossplane render "$xr" "$comp" "$FUNCS" -e "$ENVCFG" > "$TMP/out.yaml" 2>&1; then
-    red "   FAIL $name — render error"; sed 's/^/        /' "$TMP/out.yaml" | head -5; fail=1; continue
+  # stderr goes to its own file. Merging it corrupts the YAML this gate then parses, and
+  # Docker Desktop warns on stderr for reasons that have nothing to do with the render.
+  if ! crossplane render "$xr" "$comp" "$FUNCS" -e "$ENVCFG" > "$TMP/out.yaml" 2>"$TMP/err.txt"; then
+    red "   FAIL $name — render error"; sed 's/^/        /' "$TMP/err.txt" | head -5; fail=1; continue
   fi
 
   # parse: valid YAML, and no list that collapsed into a string
