@@ -66,9 +66,34 @@ spec:
         spiffe-csi-driver:
           enabled: true
 
-        # Not needed — AWS trust uses RolesAnywhere (cert-based), not OIDC federation.
+        # Publishes the JWT-SVID signing keys so AWS and Entra can validate them.
+        # Public by necessity — both clouds fetch the discovery doc and JWKS from the internet.
         spiffe-oidc-discovery-provider:
-          enabled: false
+          enabled: true
+          # Traefik terminates TLS at the edge; the provider serves plain HTTP behind it.
+          tls:
+            spire:
+              enabled: false
+          # Must match the issuer registered in AWS IAM and in Entra federated credentials.
+          jwtIssuer: https://oidc.mattjarrett.dev
+          ingress:
+            enabled: true
+            className: traefik
+            # Suppresses the chart's nginx-specific annotations — ours are set below.
+            controllerType: other
+            annotations:
+              traefik.ingress.kubernetes.io/router.entrypoints: websecure
+              traefik.ingress.kubernetes.io/router.tls: "true"
+              cert-manager.io/cluster-issuer: letsencrypt-prod
+            hosts:
+              - host: oidc.mattjarrett.dev
+                paths:
+                  - path: /
+                    pathType: Prefix
+            tls:
+              - secretName: oidc-mattjarrett-dev-tls
+                hosts:
+                  - oidc.mattjarrett.dev
   destination:
     server: https://kubernetes.default.svc
     namespace: spire-server
