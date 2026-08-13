@@ -20,6 +20,7 @@ A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering a
 | **Service Mesh** | Istio — sidecar mesh for workload mTLS |
 | **Tunnel** | Cloudflare Tunnel — zero-trust public ingress, no exposed firewall ports |
 | **Remote Access** | Tailscale subnet router on ctrl-1 |
+| **Workload Identity** | SPIRE — SPIFFE identity per pod, published over OIDC so AWS and Entra trust it |
 | **Platform API** | Crossplane — XRDs and Compositions expose self-service infrastructure APIs |
 
 ## Hardware
