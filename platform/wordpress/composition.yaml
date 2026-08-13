@@ -284,7 +284,7 @@ spec:
                       type: RuntimeDefault
                   initContainers:
                     - name: init-wp-content
-                      image: wordpress:7.0.2-php8.3-apache
+                      image: wordpress:7.0.3-php8.3-apache
                       securityContext:
                         allowPrivilegeEscalation: false
                         capabilities:
@@ -307,7 +307,7 @@ spec:
                       # Pinned to an exact patch — core lives in the container filesystem, not
                       # the PVC, so whatever this tag ships is what every restart runs. Renovate
                       # bumps it. The php8.3 suffix keeps PHP fixed across those bumps.
-                      image: wordpress:7.0.2-php8.3-apache
+                      image: wordpress:7.0.3-php8.3-apache
                       securityContext:
                         allowPrivilegeEscalation: false
                         capabilities:
