@@ -10,14 +10,14 @@ A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering a
 
 | Layer | Technology |
 |---|---|
-| **Cluster** | k3s on 4× Raspberry Pi 5 (1 controller, 3 workers) |
+| **Cluster** | k3s on 4× Raspberry Pi 5 (1 controller 16gb , 3 workers 8gb ) |
 | **Storage** | Longhorn — distributed block storage with 3× NVMe replication |
 | **GitOps** | Argo CD — cluster state driven from this repo |
 | **Observability** | Prometheus + Grafana + Alertmanager + Loki |
 | **Ingress + TLS** | Traefik + cert-manager (local CA for `*.local.lab`, Let's Encrypt for public) |
 | **DNS** | AdGuard Home — wildcard `*.local.lab → 192.168.10.100` for all network devices |
 | **CNI** | Cilium — eBPF pod networking, WireGuard node encryption, kube-proxy replacement, Hubble observability |
-| **Service Mesh** | Istio — sidecar mesh for workload mTLS and platform-managed connection policy |
+| **Service Mesh** | Istio — sidecar mesh for workload mTLS |
 | **Tunnel** | Cloudflare Tunnel — zero-trust public ingress, no exposed firewall ports |
 | **Remote Access** | Tailscale subnet router on ctrl-1 |
 | **Platform API** | Crossplane — XRDs and Compositions expose self-service infrastructure APIs |
