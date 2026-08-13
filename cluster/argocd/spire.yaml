@@ -15,6 +15,9 @@ spec:
         global:
           spire:
             trustDomain: homelab.local
+            # Sets both the JWT-SVID `iss` claim minted by spire-server and the issuer
+            # advertised by the discovery document — AWS and Entra require them to match.
+            jwtIssuer: https://oidc.mattjarrett.dev
             clusterName: homelab
             namespaces:
               create: true
@@ -74,8 +77,6 @@ spec:
           tls:
             spire:
               enabled: false
-          # Must match the issuer registered in AWS IAM and in Entra federated credentials.
-          jwtIssuer: https://oidc.mattjarrett.dev
           ingress:
             enabled: true
             className: traefik
