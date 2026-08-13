@@ -35,6 +35,10 @@ spec:
             {{- $env := $xr.spec.parameters.backend | default "private-cloud" }}
             {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
             {{- $awsAccountId := index $envCtx "awsAccountId" | default "*" }}
+            {{- /* Public issuer, so it is hardcoded next to the trust domain rather than */ -}}
+            {{- /* injected. Must match the IAM OIDC provider registered in AWS.          */ -}}
+            {{- $oidcIssuerHost := "oidc.mattjarrett.dev" }}
+            {{- $oidcProviderArn := printf "arn:aws:iam::%s:oidc-provider/%s" $awsAccountId $oidcIssuerHost }}
             {{- $dataRetention := $xr.spec.parameters.dataRetention | default "delete" }}
             {{- /* storageClassName is frozen on first creation: once bound, a PVC's storageClassName
                  is immutable. Read back the observed value so reconciles are always no-ops. */}}
@@ -233,12 +237,8 @@ spec:
             {{- range $consumerServiceAccounts }}
             {{- $consumer := . }}
             {{- $sqlRoleKey := printf "sql-role-%s" $consumer }}
-            {{- $sqlProfileKey := printf "sql-profile-%s" $consumer }}
-            {{- $sqlProfileObs := index ($.observed.resources | default dict) $sqlProfileKey | default dict }}
-            {{- $sqlProfileArn := "" }}
-            {{- if $sqlProfileObs.resource }}{{- $sqlProfileArn = $sqlProfileObs.resource.status.atProvider.arn | default "" }}{{- end }}
             {{- $sqlPredictedRoleArn := printf "arn:aws:iam::%s:role/crossplane/crossplane-%s-%s-%s-sql" $awsAccountId $ns $name $consumer }}
-            {{- $sqlTrustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringEquals" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $consumer))))) | toJson }}
+            {{- $sqlTrustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Federated" $oidcProviderArn) "Action" "sts:AssumeRoleWithWebIdentity" "Condition" (dict "StringEquals" (dict (printf "%s:aud" $oidcIssuerHost) "sts.amazonaws.com" (printf "%s:sub" $oidcIssuerHost) (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $consumer))))) | toJson }}
             ---
             # IAM Role for RDS IAM DB Auth. Trust scoped to consumer {{ $consumer }}.
             apiVersion: iam.aws.upbound.io/v1beta1
@@ -261,37 +261,10 @@ spec:
                 inlinePolicy:
                   - name: platform-sql-{{ $ns }}-{{ $name }}-{{ $consumer }}
                     policy: {{ $sqlInlinePolicy | quote }}
-            {{- $sqlProfileExternalName := "00000000-0000-0000-0000-000000000000" }}
-            {{- if $sqlProfileObs.resource }}
-              {{- $sqlObservedExternalName := index ($sqlProfileObs.resource.metadata.annotations | default dict) "crossplane.io/external-name" | default "" }}
-              {{- if $sqlObservedExternalName }}{{- $sqlProfileExternalName = $sqlObservedExternalName }}{{- end }}
-            {{- end }}
+            {{- if $rdsConn }}
             ---
-            # RolesAnywhere Profile for consumer {{ $consumer }}.
-            apiVersion: rolesanywhere.aws.upbound.io/v1beta1
-            kind: Profile
-            metadata:
-              name: {{ $name }}-{{ $consumer }}-sql
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: {{ $sqlProfileKey }}
-                gotemplating.fn.crossplane.io/ready: "True"
-                crossplane.io/external-name: {{ $sqlProfileExternalName }}
-            spec:
-              deletionPolicy: Delete
-              forProvider:
-                name: crossplane-{{ $ns }}-{{ $name }}-{{ $consumer }}-sql
-                enabled: true
-                durationSeconds: 3600
-                roleArns:
-                  - {{ $sqlPredictedRoleArn }}
-                tags:
-                  App: {{ $name }}
-                  Namespace: {{ $ns }}
-                  Consumer: {{ $consumer }}
-            {{- if and $rdsConn $sqlProfileArn }}
-            ---
-            # Binding Secret for consumer {{ $consumer }}. Written once RDS is ready and profile ARN is known.
-            # No password — the app uses role-arn/profile-arn via the sidecar to generate
+            # Binding Secret for consumer {{ $consumer }}. Written once RDS is ready.
+            # No password — the app uses role-arn via the sidecar to generate
             # a short-lived RDS auth token with: aws rds generate-db-auth-token.
             apiVersion: v1
             kind: Secret
@@ -310,7 +283,6 @@ spec:
               database: {{ $name | replace "-" "_" }}
               username: {{ index $rdsConn "username" | default "" | b64dec }}
               role-arn: {{ $sqlPredictedRoleArn }}
-              profile-arn: {{ $sqlProfileArn }}
             {{- end }}
             {{- end }}{{- /* end range consumerServiceAccounts */}}
             {{- end }}
