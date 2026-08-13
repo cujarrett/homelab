@@ -48,11 +48,12 @@ spec:
               {{- end }}
             {{- end }}
             {{- $cacheRoleObs := index (.observed.resources | default dict) "cache-role" | default dict }}
-            {{- $cacheProfileObs := index (.observed.resources | default dict) "cache-profile" | default dict }}
-            {{- $cacheProfileArn := "" }}
-            {{- if $cacheProfileObs.resource }}{{- $cacheProfileArn = $cacheProfileObs.resource.status.atProvider.arn | default "" }}{{- end }}
             {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
             {{- $awsAccountId := index $envCtx "awsAccountId" | default "" }}
+            {{- /* Public issuer, so it is hardcoded next to the trust domain rather than */ -}}
+            {{- /* injected. Must match the IAM OIDC provider registered in AWS.          */ -}}
+            {{- $oidcIssuerHost := "oidc.mattjarrett.dev" }}
+            {{- $oidcProviderArn := printf "arn:aws:iam::%s:oidc-provider/%s" $awsAccountId $oidcIssuerHost }}
             {{- $cachePredictedRoleArn := printf "arn:aws:iam::%s:role/crossplane/crossplane-%s-%s" $awsAccountId $ns $name }}
             {{- if eq $env "private-cloud" }}
             ---
@@ -150,7 +151,7 @@ spec:
             {{- $consumerSA := $xr.spec.parameters.consumerServiceAccount }}
             {{- /* Trust policy scoped to the exact Api SA via StringEquals on the SPIFFE URI.   */}}
             {{- /* consumerServiceAccount is passed by the Api composition when creating Cache.  */}}
-            {{- $cacheTrustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Service" "rolesanywhere.amazonaws.com") "Action" (list "sts:AssumeRole" "sts:TagSession" "sts:SetSourceIdentity") "Condition" (dict "StringEquals" (dict "aws:PrincipalTag/x509SAN/URI" (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $consumerSA))))) | toJson }}
+            {{- $cacheTrustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Federated" $oidcProviderArn) "Action" "sts:AssumeRoleWithWebIdentity" "Condition" (dict "StringEquals" (dict (printf "%s:aud" $oidcIssuerHost) "sts.amazonaws.com" (printf "%s:sub" $oidcIssuerHost) (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $consumerSA))))) | toJson }}
             {{- $userId := printf "%s-user" $name }}
             {{- $userGroupId := $name }}
             {{- /* ElastiCache limits replication group IDs to 40 chars. Fall back to a   */}}
@@ -226,33 +227,6 @@ spec:
                 inlinePolicy:
                   - name: platform-cache-{{ $ns }}-{{ $name }}
                     policy: {{ $cacheInlinePolicy | quote }}
-            {{- $cacheProfileExternalName := "00000000-0000-0000-0000-000000000000" }}
-            {{- if $cacheProfileObs.resource }}
-              {{- $cacheObservedExternalName := index ($cacheProfileObs.resource.metadata.annotations | default dict) "crossplane.io/external-name" | default "" }}
-              {{- if $cacheObservedExternalName }}{{- $cacheProfileExternalName = $cacheObservedExternalName }}{{- end }}
-            {{- end }}
-            ---
-            # RolesAnywhere Profile for ElastiCache. Role ARN is computed from the deterministic
-            # external-name convention — no longer deferred waiting for observed role ARN.
-            apiVersion: rolesanywhere.aws.upbound.io/v1beta1
-            kind: Profile
-            metadata:
-              name: {{ $name }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: cache-profile
-                gotemplating.fn.crossplane.io/ready: "True"
-                crossplane.io/external-name: {{ $cacheProfileExternalName }}
-            spec:
-              deletionPolicy: Delete
-              forProvider:
-                name: crossplane-{{ $ns }}-{{ $name }}
-                enabled: true
-                durationSeconds: 3600
-                roleArns:
-                  - {{ $cachePredictedRoleArn }}
-                tags:
-                  App: {{ $name }}
-                  Namespace: {{ $ns }}
             ---
             # ReplicationGroup. Rendered immediately; Crossplane retries until UserGroup propagates to AWS.
             # Provider writes connection details to a connection secret in crossplane-system once ElastiCache is up.
@@ -281,9 +255,9 @@ spec:
                 # Implementation secret — tenants only need the binding secret
                 name: {{ $ns }}-{{ $name }}-rg-conn
                 namespace: crossplane-system
-            {{- if and $rgConn $cacheProfileArn }}
+            {{- if $rgConn }}
             ---
-            # Binding Secret for ElastiCache. Written once the cluster is ready and profile ARN is known.
+            # Binding Secret for ElastiCache. Written once the cluster is ready.
             # No password — the app calls elasticache generate-auth-token via the sidecar.
             apiVersion: v1
             kind: Secret
@@ -300,6 +274,5 @@ spec:
               host: {{ index $rgConn "primary_endpoint_address" | default "" | b64dec }}
               port: {{ index $rgConn "port" | default "" | b64dec | quote }}
               role-arn: {{ $cachePredictedRoleArn }}
-              profile-arn: {{ $cacheProfileArn }}
             {{- end }}
             {{- end }}
