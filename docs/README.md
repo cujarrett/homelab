@@ -17,6 +17,7 @@ Everything written down about this cluster. Start with [Cluster](./cluster.md) f
 | [Platform Connections](./platform-connections.md) | Who may call whom, and how the mesh enforces it |
 | [Platform Binding](./platform-service-binding.md) | How an app gets wired to the infrastructure it asks for |
 | [Platform Workload Identity](./platform-workload-identity.md) | SPIFFE identity, and what proves a workload is who it claims |
+| [SPIRE OIDC Federation](./spire-oidc-federation.md) | Publishing SPIRE's signing keys so AWS and Entra will trust a pod |
 | [External Secrets](./external-secrets.md) | Grafana's admin login out of AWS Secrets Manager, and why only that one |
 
 ## Operate it
