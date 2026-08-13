@@ -97,7 +97,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | CNI | Cilium | DaemonSet in `kube-system` on all 4 nodes; Helm chart from `helm.cilium.io`. Pinned to 1.19.6 — 1.20.x fails the BPF verifier on this kernel. Plumbing only — pod networking, WireGuard node encryption, kube-proxy replacement, Hubble, NetworkPolicy. Sole policy enforcer: k3s's kube-router is disabled via `disable-network-policy` in `/etc/rancher/k3s/config.yaml` on `ctrl-1` (node-level, not in this repo). Mesh features (mutual auth, connection policy) belong to Istio; Cilium's SPIRE mutual auth is disabled. |
 | Service Mesh | Istio | Sidecar mesh chained onto Cilium CNI; provides workload mTLS. Permissive mode — nothing is denied. Platform-managed connection policy is designed but not built; see [Platform Connections](./docs/platform-connections.md). |
 | Secrets | External Secrets Operator | Syncs `grafana-admin-secret` from AWS Secrets Manager; `ClusterSecretStore` `aws-secrets-manager` authenticates as the `eso-reader` IAM user. Every other Secret is hand-created |
-| Workload Identity | SPIRE | `spire-server` + `spire-system` namespaces; Helm chart from `spiffe.github.io/helm-charts-hardened`. Previously backed Cilium mutual auth (now disabled); retained for potential Istio/SPIFFE use. |
+| Workload Identity | SPIRE | `spire-server` + `spire-system` namespaces; Helm chart from `spiffe.github.io/helm-charts-hardened`. Issues X.509 SVIDs backing AWS IAM Roles Anywhere, and JWT-SVIDs published via the OIDC discovery provider at `oidc.mattjarrett.dev`
 
 ## Namespaces & Applications
 | Namespace | App | Notes |
@@ -125,7 +125,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `platform-connections-demo` | Api ×3 + Spa | Service mesh walkthrough at `connections.mattjarrett.dev`; two callers run one image and differ only in what they declare |
 | `platform-exporter` | platform-exporter | Custom Prometheus exporter for platform metrics; scraped via `platform-exporter-servicemonitor` |
 | `external-secrets` | External Secrets Operator | Writes `grafana-admin-secret` from AWS Secrets Manager |
-| `spire-server`, `spire-system` | SPIRE | Workload identity (SPIFFE); agent DaemonSet on all nodes |
+| `spire-server`, `spire-system` | SPIRE | Workload identity (SPIFFE); agent DaemonSet on all nodes; OIDC discovery provider serving `oidc.mattjarrett.dev` |
 
 ## Internal Hostnames (`.local.lab`)
 
@@ -155,6 +155,7 @@ To restore filtering without making AdGuard a hard dependency for every device, 
 - `jspollock.mattjarrett.dev` — js-pollock SPA, routed via Cloudflare Tunnel
 - `launchpad.mattjarrett.dev` — Launchpad BFF, routed via Cloudflare Tunnel
 - `connections.mattjarrett.dev` — service mesh walkthrough, routed via Cloudflare Tunnel
+- `oidc.mattjarrett.dev` — SPIRE OIDC discovery document and JWKS, routed via Cloudflare Tunnel; the JWKS is served under `/.well-known/keys` because Cloudflare's bot protection 403s datacenter callers elsewhere on the zone
 - `demo{1-5}.mattjarrett.dev` / `demo{1-5}-api.mattjarrett.dev` — fixed ephemeral demo sandbox slots provisioned by `launchpad-api`, not permanently bound to any one app
 
 ## Cloudflare Tunnel Operations
