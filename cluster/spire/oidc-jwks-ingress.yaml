@@ -1,0 +1,41 @@
+# Cloudflare's bot protection 403s datacenter callers on this zone, which stops AWS STS
+# and Entra from fetching the signing keys. Requests under /.well-known/ are let through,
+# so the JWKS is published there and rewritten back to the provider's real /keys path.
+# The discovery document advertises this URL via config.jwksUri in cluster/argocd/spire.yaml.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: spire-oidc-jwks
+  namespace: spire-server
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: "spire-server-spire-oidc-jwks-rewrite@kubernetescrd"
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+    # Reuses the cert issued for the chart's own ingress — no second Certificate object.
+    - hosts:
+        - oidc.mattjarrett.dev
+      secretName: oidc-mattjarrett-dev-tls
+  rules:
+    - host: oidc.mattjarrett.dev
+      http:
+        paths:
+          # Longer than the chart ingress's "/" rule, so Traefik matches this router first.
+          - path: /.well-known/keys
+            pathType: Prefix
+            backend:
+              service:
+                name: spire-spiffe-oidc-discovery-provider
+                port:
+                  number: 80
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: spire-oidc-jwks-rewrite
+  namespace: spire-server
+spec:
+  replacePath:
+    path: /keys
