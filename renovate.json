@@ -12,9 +12,9 @@
         "/platform/api/composition\\.yaml/"
       ],
       "matchStrings": [
-        "image: ghcr\\.io/cujarrett/aws-spiffe-helper:(?<currentValue>[^\\s@]+)(@(?<currentDigest>sha256:[0-9a-f]+))?"
+        "image: ghcr\\.io/cujarrett/workload-identity-sidecar:(?<currentValue>[^\\s@]+)(@(?<currentDigest>sha256:[0-9a-f]+))?"
       ],
-      "depNameTemplate": "ghcr.io/cujarrett/aws-spiffe-helper",
+      "depNameTemplate": "ghcr.io/cujarrett/workload-identity-sidecar",
       "datasourceTemplate": "docker"
     },
     {
@@ -31,7 +31,7 @@
   ],
   "packageRules": [
     {
-      "matchPackageNames": ["ghcr.io/cujarrett/aws-spiffe-helper"],
+      "matchPackageNames": ["ghcr.io/cujarrett/workload-identity-sidecar"],
       "pinDigests": true,
       "minimumReleaseAge": "0 days"
     },

@@ -65,7 +65,7 @@ just test-e2e-keep      # skip teardown, leave resources for debugging
 | Credential | Used for | Source |
 |---|---|---|
 | kubeconfig | All cluster operations (apply XRs, wait, port-forward, teardown) | Your local `~/.kube/config`, reachable via Tailscale |
-| AWS CLI credentials | **Teardown verification only** — read-only `describe`/`list`/`head` calls confirming RDS, DynamoDB, S3, IAM, RolesAnywhere, and ElastiCache are clean | Default AWS CLI credential chain (`aws sts get-caller-identity` must work); needs read access to those services in `us-east-1` |
+| AWS CLI credentials | **Teardown verification only** — read-only `describe`/`list`/`head` calls confirming RDS, DynamoDB, S3, IAM, and ElastiCache are clean | Default AWS CLI credential chain (`aws sts get-caller-identity` must work); needs read access to those services in `us-east-1` |
 
 The test itself never creates AWS resources with your CLI credentials. All provisioning happens through Crossplane (the `aws-creds` secret in `crossplane-system`), and all in-pod AWS access uses workload identity (SPIFFE → IAM Roles Anywhere → STS) — the same path production workloads use. That identity chain is part of what's being tested.
 
@@ -87,11 +87,11 @@ The Api image is `ghcr.io/cujarrett/hello-world-api:latest` — the Launchpad de
 3. **Contract checks** — binding secrets have exactly the documented keys (public sql has `role-arn` and no `password`, private has `password` and no ARNs), the AWS sidecar exists only on the public Api, NATS env vars exist only on the private one, RBAC roles are scoped per Api.
 4. **Data plane** — port-forward to each Api and poll the probe's `GET /` until every integration reports `ok`: Postgres insert/count, Redis INCR, NATS publish + durable-consumer fetch, DynamoDB put/get/delete, S3 put/get/delete.
 5. **Teardown** — delete Apis first (cascades the owned Cache), then the standalone XRs, and wait for every object to disappear.
-6. **Verify teardown** — namespace empty and terminated, NATS stream/consumer gone, and via AWS CLI: RDS instance, DynamoDB table, S3 bucket, IAM roles, and RolesAnywhere profiles all gone. The ElastiCache replication group reports `PASS (deleting)` if AWS is still finishing its async deletion. Any orphan is a FAIL naming the orphan.
+6. **Verify teardown** — namespace empty and terminated, NATS stream/consumer gone, and via AWS CLI: RDS instance, DynamoDB table, S3 bucket, and IAM roles all gone. The ElastiCache replication group reports `PASS (deleting)` if AWS is still finishing its async deletion. Any orphan is a FAIL naming the orphan.
 
 ## The identity-only exception
 
-Public-cloud RDS and ElastiCache land in the AWS default VPC with no network path from this cluster (ElastiCache has no public option at all — see `platform/sql/README.md` and `platform/cache/README.md`). For those two, the probe verifies the full SPIFFE → RolesAnywhere → STS chain and generates a real RDS IAM auth token, then reports `PASS (identity-only)`. If a network path ever exists, the probe automatically upgrades to a full SQL round-trip.
+Public-cloud RDS and ElastiCache land in the AWS default VPC with no network path from this cluster (ElastiCache has no public option at all — see `platform/sql/README.md` and `platform/cache/README.md`). For those two, the probe verifies the full SPIFFE → OIDC → STS chain and generates a real RDS IAM auth token, then reports `PASS (identity-only)`. If a network path ever exists, the probe automatically upgrades to a full SQL round-trip.
 
 ## E2E cost
 

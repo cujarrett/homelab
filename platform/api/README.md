@@ -12,7 +12,7 @@ Crossplane composition that deploys an API server (Go, Node, GraphQL, etc.) with
 - **Cache** *(optional)* — short-lived cache cluster owned by this Api; created and deleted alongside it
 - **Connection policy** *(optional)* — only when `connectionPosture` is `enforce`. Refuses any call this API makes to a destination it has not declared, and any inbound call whose workload identity is not named in `provides`. Metrics scraping and, when `host` is set, ingress traffic stay reachable — neither carries a workload identity to match on. See [Platform Connections](../../docs/platform-connections.md).
 
-`ObjectStorage`, `Sql`, and `NoSql` are created independently and bound via refs. They outlive any one Api. For `ObjectStorage` and `NoSql`, this composition creates the IAM Role, RolesAnywhere Profile, and binding Secret when the ref is declared — their binding secrets only contain names, region, and ARNs, which Api can compute. For `Sql`, those are created by the Sql composition itself, because its binding secret contains RDS connection details (host, port, username) that are only known after RDS provisioning. The tenant lists consuming Api names in `consumerServiceAccounts` on the Sql — each gets its own IAM role and binding secret scoped to its SA.
+`ObjectStorage`, `Sql`, and `NoSql` are created independently and bound via refs. They outlive any one Api. For `ObjectStorage` and `NoSql`, this composition creates the IAM Role and binding Secret when the ref is declared — their binding secrets only contain names, region, and ARNs, which Api can compute. For `Sql`, those are created by the Sql composition itself, because its binding secret contains RDS connection details (host, port, username) that are only known after RDS provisioning. The tenant lists consuming Api names in `consumerServiceAccounts` on the Sql — each gets its own IAM role and binding secret scoped to its SA.
 
 The namespace is owned by the tenant — created by `namespace.yaml` in the tenant directory, not by this composition.
 
@@ -34,10 +34,10 @@ The namespace is owned by the tenant — created by `namespace.yaml` in the tena
 | `readinessCheckPath` | no | `/healthz` | HTTP path the readiness probe hits. Set to `/readyz` for apps that gate readiness on external dependencies. |
 | `cache.enabled` | no | `false` | Provision a cache cluster owned by this Api. |
 | `cache.backend` | no | `private-cloud` | `private-cloud`=in-cluster Redis, `public-cloud`=AWS ElastiCache. |
-| `objectStorageRefs` | no | — | Array of references to existing `ObjectStorage` instances. Each creates an IAM Role, RolesAnywhere Profile, and binding Secret. |
+| `objectStorageRefs` | no | — | Array of references to existing `ObjectStorage` instances. Each creates an IAM Role and binding Secret. |
 | `sqlRef.name` | no | — | Name of an existing `Sql` instance to bind. |
 | `sqlRef.backend` | no | `private-cloud` | Must match the `Sql` instance's backend. When `public-cloud`, the sidecar exchanges the SVID for STS credentials for RDS IAM DB auth. |
-| `nosqlRef.name` | no | — | Name of an existing `NoSql` instance to bind. Creates an IAM Role, RolesAnywhere Profile, and binding Secret. |
+| `nosqlRef.name` | no | — | Name of an existing `NoSql` instance to bind. Creates an IAM Role and binding Secret. |
 | `secretRef.name` | no | — | Name of a pre-existing Secret to inject into the container via `envFrom`. |
 | `topicRef.name` | no | — | Name of an `Topic` this API publishes to. Injects `NATS_URL` and `NATS_STREAM` env vars. |
 | `topicRef.streamName` | no | — | NATS stream name from the Topic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the Topic's streamName differs from its metadata.name. |
@@ -108,7 +108,6 @@ Multiple `objectStorageRefs` each get their own mount. The first ref mounts at `
 | `bucket` | Bucket name (`platform-{namespace}-{ref-name}`) |
 | `region` | `us-east-1` |
 | `role-arn` | IAM role ARN (scoped to this bucket, this pod's SPIFFE ID) |
-| `profile-arn` | RolesAnywhere profile ARN |
 
 The composition injects one `AWS_PROFILE_*` env var per object storage ref into the app container, named after the ref: `AWS_PROFILE_{REF_NAME_UPPER_SNAKE_CASE}`. For example, a ref named `foo-assets` gets `AWS_PROFILE_FOO_ASSETS=object-storage`.
 
@@ -130,7 +129,6 @@ s3Client := s3.NewFromConfig(cfg)
 | `username` | Database user (`app`) | all |
 | `password` | Database password | `private-cloud` only |
 | `role-arn` | IAM role ARN | `public-cloud` only |
-| `profile-arn` | RolesAnywhere profile ARN | `public-cloud` only |
 
 For `public-cloud`, the sidecar writes a `sql` named profile to the credentials file and the composition injects `AWS_PROFILE_SQL=sql`. The app uses that profile's STS credentials to call `rds:GenerateDBAuthToken` and uses the resulting short-lived token as the database password.
 
@@ -143,7 +141,6 @@ For `public-cloud`, the sidecar writes a `sql` named profile to the credentials 
 | `table-name` | DynamoDB table name |
 | `region` | `us-east-1` |
 | `role-arn` | IAM role ARN (scoped to this table, this pod's SPIFFE ID) |
-| `profile-arn` | RolesAnywhere profile ARN |
 
 The composition injects `AWS_PROFILE_NOSQL=nosql` into the app container.
 
@@ -162,14 +159,13 @@ ddbClient := dynamodb.NewFromConfig(cfg)
 | `host` | Cache endpoint hostname | all |
 | `port` | `6379` | all |
 | `role-arn` | IAM role ARN | `public-cloud` only |
-| `profile-arn` | RolesAnywhere profile ARN | `public-cloud` only |
 
 For `public-cloud`, the sidecar writes a `cache` named profile to the credentials file and the composition injects `AWS_PROFILE_CACHE=cache`. The app uses those credentials to authenticate to ElastiCache via IAM auth.
 
 ## AWS credential injection
 
 When any AWS cloud binding is declared, the composition adds:
-- An `aws-credentials-sidecar` container running [`aws-spiffe-helper`](https://github.com/cujarrett/aws-spiffe-helper). It fetches the pod's SVID from the SPIFFE CSI volume and exchanges it for STS credentials (once per binding, every 50 minutes).
+- An `aws-credentials-sidecar` container running [`workload-identity-sidecar`](https://github.com/cujarrett/workload-identity-sidecar). It fetches the pod's SVID from the SPIFFE CSI volume and exchanges it for STS credentials (once per binding, every 50 minutes).
 - A `spiffe-bundle` CSI volume (read-only SPIRE agent socket).
 - An `aws-credentials` emptyDir volume shared between the sidecar and the app container, mounted at `/aws-credentials/credentials`.
 - `AWS_SHARED_CREDENTIALS_FILE=/aws-credentials/credentials` env var in the app container.

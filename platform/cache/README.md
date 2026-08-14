@@ -6,9 +6,9 @@ Owned by `Api` — created and deleted with it when `cache.enabled: true`. Not i
 
 ## What it provisions
 - `backend: private-cloud` — **in-cluster Redis** + binding Secret; no cloud resources
-- `backend: public-cloud` — **AWS ElastiCache** (IAM auth) + IAM Role + RolesAnywhere Profile + binding Secret; no static credentials
+- `backend: public-cloud` — **AWS ElastiCache** (IAM auth) + IAM Role + binding Secret; no static credentials
 
-> **Known limitation: `public-cloud` is not currently reachable from this cluster.** ElastiCache clusters are always VPC-internal — there is no public-access option at all, for any AWS account. There is no network path (VPN, peering, or otherwise) between this homelab cluster and the VPC the ReplicationGroup lands in, so pods cannot connect — verified: connection attempts fail with a raw TCP `i/o timeout`. Everything up to that point works correctly: the ReplicationGroup provisions, IAM Role + RolesAnywhere Profile are created, and the sidecar successfully exchanges the pod's SVID for real STS credentials. The gap is purely network reachability, not identity or credentials. No current workload uses `public-cloud` for Cache. Unlike Sql, there's no "make it internet-reachable" option here at all — the only way to close this gap is bridging into the VPC (e.g. a Tailscale subnet router running inside it, the same pattern already used for the homelab's own LAN) — worth doing only when a real workload needs it.
+> **Known limitation: `public-cloud` is not currently reachable from this cluster.** ElastiCache clusters are always VPC-internal — there is no public-access option at all, for any AWS account. There is no network path (VPN, peering, or otherwise) between this homelab cluster and the VPC the ReplicationGroup lands in, so pods cannot connect — verified: connection attempts fail with a raw TCP `i/o timeout`. Everything up to that point works correctly: the ReplicationGroup provisions, the IAM Role is created, and the sidecar successfully exchanges the pod's SVID for real STS credentials. The gap is purely network reachability, not identity or credentials. No current workload uses `public-cloud` for Cache. Unlike Sql, there's no "make it internet-reachable" option here at all — the only way to close this gap is bridging into the VPC (e.g. a Tailscale subnet router running inside it, the same pattern already used for the homelab's own LAN) — worth doing only when a real workload needs it.
 
 ## Parameters
 
@@ -25,7 +25,7 @@ Secret name equals the Cache's `metadata.name`; namespace comes from the `namesp
 
 **For `private-cloud`:** Written automatically by the composition once the Redis Deployment is ready.
 
-**For `public-cloud`:** Written automatically by the composition once the ReplicationGroup is ready and the profile ARN is available. The role ARN is computed from the deterministic naming convention and does not need to be observed first. No manual steps required.
+**For `public-cloud`:** Written automatically by the composition once the ReplicationGroup is ready. The role ARN is computed from the deterministic naming convention and does not need to be observed first. No manual steps required.
 
 | Key | Value | Backend |
 |---|---|---|
@@ -34,7 +34,6 @@ Secret name equals the Cache's `metadata.name`; namespace comes from the `namesp
 | `host` | Cache endpoint hostname | all |
 | `port` | Cache port (`6379`) | all |
 | `role-arn` | IAM role ARN (scoped to this cache) | `public-cloud` only |
-| `profile-arn` | RolesAnywhere profile ARN | `public-cloud` only |
 
 ## Example
 
@@ -63,23 +62,23 @@ spec:
 
 ## Public-cloud provisioning
 
-The `public-cloud` backend runs a multi-pass chain. Each step is deferred until the previous step's output is available in observed state.
+The `public-cloud` backend runs a two-pass chain. The second step is deferred until the
+first step's output is available in observed state.
 
 ```
 Pass 1: ElastiCache IAM User + UserGroup created
         IAM Role created (trust policy locked to pod's SPIFFE ID; inline policy grants elasticache:Connect to this cluster and user)
-        RolesAnywhere Profile created (role ARN computed from deterministic naming — not deferred)
 Pass 2: ReplicationGroup created (deferred until UserGroup is ready — AWS requirement)
-Pass 3: Binding Secret written (deferred until ReplicationGroup is ready and profile ARN is known)
+        Binding Secret written (deferred until ReplicationGroup is ready)
 ```
 
 The ElastiCache cluster uses IAM authentication with TLS required. The IAM Role's inline policy grants only `elasticache:Connect` scoped to this specific ReplicationGroup and User ARN — no other cluster is reachable. The trust policy is locked to the Api pod's exact SPIFFE ID:
 
 ```json
-"aws:PrincipalTag/x509SAN/URI": "spiffe://homelab.local/ns/{namespace}/sa/{service-account}"
+"oidc.mattjarrett.dev:sub": "spiffe://homelab.local/ns/{namespace}/sa/{service-account}"
 ```
 
-The `aws-spiffe-helper` sidecar exchanges the pod's SVID for short-lived STS credentials every 50 minutes. The app reads `AWS_PROFILE_CACHE` and uses those credentials when connecting to ElastiCache — no password, no static keys. For the full design: [Platform Workload Identity](../../docs/platform-workload-identity.md)
+The `workload-identity-sidecar` exchanges the pod's SVID for short-lived STS credentials every 50 minutes. The app reads `AWS_PROFILE_CACHE` and uses those credentials when connecting to ElastiCache — no password, no static keys. For the full design: [Platform Workload Identity](../../docs/platform-workload-identity.md)
 
 ## Operations
 

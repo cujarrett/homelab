@@ -15,7 +15,7 @@
 # XRs are applied directly with kubectl (never via ArgoCD), so GitOps state is
 # untouched. Public-cloud RDS/ElastiCache are VPC-internal and unreachable from
 # the cluster by design — for those the test verifies provisioning plus the full
-# SPIFFE -> RolesAnywhere -> STS identity chain, reported as "identity-only".
+# SPIFFE -> OIDC -> STS identity chain, reported as "identity-only".
 
 set -uo pipefail
 
@@ -470,8 +470,6 @@ if ! $PRIVATE_ONLY; then
     aws s3api head-bucket --bucket "platform-$NS-e2e-assets" --region "$REGION"
   aws_gone "IAM roles gone" bash -c \
     "aws iam list-roles --path-prefix /crossplane/ --query 'Roles[?contains(RoleName, \`$NS\`)].RoleName' --output text --region $REGION | grep ."
-  aws_gone "RolesAnywhere profiles gone" bash -c \
-    "aws rolesanywhere list-profiles --region $REGION --query 'profiles[?contains(name, \`$NS\`)].name' --output text | grep ."
   # $RG_ID computed in preflight (mirrors the composition's 40-char naming).
   # AWS deletes replication groups asynchronously for ~5-10 min after the XR
   # is gone — "deleting" means the platform did its job, so count it as done.

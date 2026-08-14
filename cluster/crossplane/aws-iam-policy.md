@@ -21,8 +21,8 @@ ever recreated, apply all policies below.
 
 ## Inline policy: CrossplaneWorkloadIdentityManagement
 
-Grants the permissions needed to manage per-workload IAM roles and RolesAnywhere profiles.
-Scoped to the `/crossplane/` IAM path — no permission to touch roles outside that path.
+Grants the permissions needed to manage per-workload IAM roles. Scoped to the
+`/crossplane/` IAM path — no permission to touch roles outside that path.
 
 ```json
 {
@@ -48,22 +48,6 @@ Scoped to the `/crossplane/` IAM path — no permission to touch roles outside t
         "iam:PassRole"
       ],
       "Resource": "arn:aws:iam::*:role/crossplane/*"
-    },
-    {
-      "Sid": "ManageRolesAnywhereProfiles",
-      "Effect": "Allow",
-      "Action": [
-        "rolesanywhere:CreateProfile",
-        "rolesanywhere:DeleteProfile",
-        "rolesanywhere:GetProfile",
-        "rolesanywhere:UpdateProfile",
-        "rolesanywhere:EnableProfile",
-        "rolesanywhere:DisableProfile",
-        "rolesanywhere:TagResource",
-        "rolesanywhere:UntagResource",
-        "rolesanywhere:ListTagsForResource"
-      ],
-      "Resource": "*"
     }
   ]
 }

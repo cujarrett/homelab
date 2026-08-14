@@ -6,9 +6,9 @@ Standalone resource with a lifecycle independent of any one API. Bind to an `Api
 
 ## What it provisions
 - `backend: private-cloud` — **in-cluster Postgres** (Deployment + PVC on Longhorn) + binding Secret; no cloud resources
-- `backend: public-cloud` — **AWS RDS Postgres** + IAM Role + RolesAnywhere Profile + binding Secret; IAM DB auth; no password in the binding Secret
+- `backend: public-cloud` — **AWS RDS Postgres** + IAM Role + binding Secret; IAM DB auth; no password in the binding Secret
 
-> **Known limitation: `public-cloud` is not currently reachable from this cluster.** The RDS instance is created with `publiclyAccessible: false` and no explicit `dbSubnetGroupName`/security group, so it lands in the AWS account's default VPC. There is no network path (VPN, peering, or otherwise) between this homelab cluster and that VPC, so pods cannot open a connection to it — verified: the RDS hostname resolves only to a private VPC IP, and a raw TCP connection times out. Everything up to that point works correctly: the instance provisions, IAM Role + RolesAnywhere Profile are created, and the sidecar successfully exchanges the pod's SVID for real STS credentials. The gap is purely network reachability, not identity or credentials. No current workload uses `public-cloud` for Sql — closing this would mean either making the instance internet-reachable and security-group-restricted (fixes only Sql; Cache's ElastiCache has no public-access option at all), or bridging into the VPC (e.g. a Tailscale subnet router running inside it, the same pattern already used for the homelab's own LAN) — worth doing only when a real workload needs it.
+> **Known limitation: `public-cloud` is not currently reachable from this cluster.** The RDS instance is created with `publiclyAccessible: false` and no explicit `dbSubnetGroupName`/security group, so it lands in the AWS account's default VPC. There is no network path (VPN, peering, or otherwise) between this homelab cluster and that VPC, so pods cannot open a connection to it — verified: the RDS hostname resolves only to a private VPC IP, and a raw TCP connection times out. Everything up to that point works correctly: the instance provisions, the IAM Role is created, and the sidecar successfully exchanges the pod's SVID for real STS credentials. The gap is purely network reachability, not identity or credentials. No current workload uses `public-cloud` for Sql — closing this would mean either making the instance internet-reachable and security-group-restricted (fixes only Sql; Cache's ElastiCache has no public-access option at all), or bridging into the VPC (e.g. a Tailscale subnet router running inside it, the same pattern already used for the homelab's own LAN) — worth doing only when a real workload needs it.
 
 ## Binding secret
 
@@ -30,9 +30,8 @@ Multiple consumers' secrets coexist in the same namespace but each Api's RBAC Ro
 | `username` | Database user (`app`) | all |
 | `password` | Database password | `private-cloud` only |
 | `role-arn` | IAM role ARN | `public-cloud` only |
-| `profile-arn` | RolesAnywhere profile ARN | `public-cloud` only |
 
-**`public-cloud` auth flow:** No password is written to the binding Secret. The `aws-spiffe-helper` sidecar exchanges the pod's SVID for short-lived STS credentials. The app then calls `aws rds generate-db-auth-token` using those credentials to produce a short-lived RDS auth token, which it uses as the database password. No static password is stored anywhere accessible to the app.
+**`public-cloud` auth flow:** No password is written to the binding Secret. The `workload-identity-sidecar` exchanges the pod's SVID for short-lived STS credentials. The app then calls `aws rds generate-db-auth-token` using those credentials to produce a short-lived RDS auth token, which it uses as the database password. No static password is stored anywhere accessible to the app.
 
 > **Note: master password exists but is not app-visible.** The RDS instance requires a master password at creation time. The composition generates one deterministically from the XR UID and stores it outside the tenant namespace, where only the platform can read it. This is the RDS admin password — the app never sees it. The app authenticates via IAM DB auth only.
 
@@ -92,8 +91,7 @@ The `public-cloud` backend runs a multi-pass chain. The RDS instance and IAM Rol
 Pass 1: RDS Instance created (iamDatabaseAuthenticationEnabled: true; master password from the platform-held master secret)
         Per consumer in consumerServiceAccounts:
           IAM Role created (trust policy StringEquals scoped to that SA's SPIFFE ID)
-          RolesAnywhere Profile created (role ARN computed from deterministic naming — not deferred)
-Pass 2: Per consumer: Binding Secret written (deferred until RDS is ready and profile ARN is known)
+Pass 2: Per consumer: Binding Secret written (deferred until RDS is ready)
 ```
 
 **Trust policy scope.** Each consumer gets its own IAM role with a `StringEquals` trust policy scoped to `spiffe://homelab.local/ns/{namespace}/sa/{consumer}`. Multiple Apis can share one RDS instance — each declares itself in `consumerServiceAccounts` and gets an independent role and binding secret.

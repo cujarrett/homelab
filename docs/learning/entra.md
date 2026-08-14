@@ -256,6 +256,53 @@ That `oid` is the point. bar-api never saw the browser and still knows which per
 
 **It cannot manufacture authority.** If the incoming token lacks the scope, the exchange fails. On-behalf-of carries permission forward; it never invents it.
 
+## foo-api proves itself with no secret at all
+
+Both flows above hand Entra a client secret. That secret is a password with a long life, it
+sits in a Secret or a vault, and rotating it means a coordinated deploy. A **federated
+credential** removes it: Entra trusts a token minted by some other issuer and accepts that
+as proof of what foo-api is.
+
+**The trust is three exact strings.** You register them on foo-api's registration under
+`Certificates & secrets → Federated credentials`, and Entra matches all three or refuses.
+
+| Field | What it is | Typical value |
+|---|---|---|
+| Issuer | The external identity provider, which must serve a public discovery document and JWKS | `https://oidc.example.dev` |
+| Subject | The one identity allowed to use this credential, matched against the token's `sub` | `system:serviceaccount:foo:foo-api` |
+| Audience | What the incoming token must be addressed to | `api://AzureADTokenExchange` |
+
+**Matching is literal.** No wildcards, no prefixes, no case folding. A different namespace or
+a renamed service account is a different subject and gets refused. That strictness is the
+security property: the credential names one caller and cannot be widened by accident.
+
+**The token request changes one field.** `client_secret` becomes `client_assertion`, and the
+assertion is the token the external issuer minted.
+
+```js
+const body = new URLSearchParams({
+  grant_type: "client_credentials",
+  client_id: FOO_API_CLIENT_ID,
+  client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+  client_assertion: externalToken,
+  scope: `api://${BAR_API_CLIENT_ID}/.default`
+})
+```
+
+Everything downstream is unchanged. bar-api receives the same claims as the client
+credentials flow and needs no new code, because what changed is how foo-api proved itself,
+not what it was granted.
+
+**Twenty per registration.** That is the hard ceiling on federated credentials, and it is the
+constraint that shapes the design. One credential per caller identity means twenty callers,
+so a registration shared by many workloads runs out, while a registration per workload never
+comes close.
+
+**Where the assertion comes from.** In Kubernetes it is the pod's projected service account
+token, which the kubelet rotates on its own, so there is no expiry to manage. This cluster
+uses SPIFFE identities instead, published over OIDC. See
+[SPIRE OIDC Federation](../spire-oidc-federation.md).
+
 ## What the errors mean
 
 `401` means *I do not believe you*. `403` means *I believe you, and the answer is still no*. Returning `401` for a missing scope sends the caller off to re-authenticate, which cannot help.
@@ -267,4 +314,6 @@ That `oid` is the point. bar-api never saw the browser and still knows which per
 | `AADSTS65001` | Consent is missing. In on-behalf-of it means the middle tier was never granted the downstream permission, and nothing about the incoming token hints at it |
 | `AADSTS50105` | The user is not assigned to an app whose service principal requires assignment. Refused at sign-in, not at the API |
 | `AADSTS7000215` | Wrong client secret |
+| `AADSTS70021` | No federated credential matches the assertion. One of issuer, subject or audience differs, and the message does not say which. Decode the assertion and compare all three character for character |
+| Any federated credential failure mentioning the key or the issuer | Entra could not fetch the issuer's signing keys. The discovery document or the JWKS is unreachable from Microsoft's network, which a check from your own machine will not reveal |
 | A token that decodes but fails everywhere | Check `iss`. A v1 token comes from `sts.windows.net`, a v2 token from `login.microsoftonline.com/…/v2.0`, and which you get depends on the API's manifest rather than anything the caller did |

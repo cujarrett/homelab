@@ -8,7 +8,7 @@ Standalone resource with a lifecycle independent of any one API. Bind to an `Api
 - `public-cloud` — **AWS S3 bucket**, named `platform-{namespace}-{name}`; scoped naming lets IAM inline policies reference the exact ARN without wildcards
 - `private-cloud` — *(in-cluster MinIO planned)*
 
-The IAM Role, RolesAnywhere Profile, and binding Secret are **not** created by ObjectStorage. They are created by the `Api` composition when the ref is declared. ObjectStorage manages only the bucket's lifecycle.
+The IAM Role and binding Secret are **not** created by ObjectStorage. They are created by the `Api` composition when the ref is declared. ObjectStorage manages only the bucket's lifecycle.
 
 ## Parameters
 
@@ -19,7 +19,7 @@ The IAM Role, RolesAnywhere Profile, and binding Secret are **not** created by O
 
 ## Binding secret
 
-Written by the `Api` composition (not by ObjectStorage) once the RolesAnywhere Profile ARN is available. Secret name is `{api-name}-{ref-name}`; namespace comes from the `Api` that references it. Mounted at `/bindings/object-storage/` (first ref), `/bindings/object-storage-1/` (second), etc.
+Written by the `Api` composition (not by ObjectStorage) when the ref is declared. Secret name is `{api-name}-{ref-name}`; namespace comes from the `Api` that references it. Mounted at `/bindings/object-storage/` (first ref), `/bindings/object-storage-1/` (second), etc.
 
 | Key | Value |
 |---|---|
@@ -28,9 +28,8 @@ Written by the `Api` composition (not by ObjectStorage) once the RolesAnywhere P
 | `bucket` | Bucket name (`platform-{namespace}-{ref-name}`) |
 | `region` | `us-east-1` |
 | `role-arn` | IAM role ARN (scoped to this bucket, created by Api) |
-| `profile-arn` | RolesAnywhere profile ARN (created by Api) |
 
-The IAM role's inline policy grants `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, and `s3:ListBucket` scoped to the exact bucket ARN. The `aws-spiffe-helper` sidecar (injected by Api) exchanges the pod's SVID for short-lived STS credentials and writes them as a named profile. The app reads `AWS_PROFILE_{REF_NAME_UPPER_SNAKE_CASE}` and uses the standard AWS SDK. For the full design: [Platform Workload Identity](../../docs/platform-workload-identity.md)
+The IAM role's inline policy grants `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, and `s3:ListBucket` scoped to the exact bucket ARN. The `workload-identity-sidecar` (injected by Api) exchanges the pod's SVID for short-lived STS credentials and writes them as a named profile. The app reads `AWS_PROFILE_{REF_NAME_UPPER_SNAKE_CASE}` and uses the standard AWS SDK. For the full design: [Platform Workload Identity](../../docs/platform-workload-identity.md)
 
 ## Example
 

@@ -8,7 +8,7 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 - **Credentials reach the pod as files, not env vars.** The [servicebinding.io](https://servicebinding.io) convention makes bindings portable and predictable. The app reads `/bindings/sql/host`. It doesn't care whether that's in-cluster Postgres or RDS.
 - **Choose your backend, keep your app the same.** Some resources offer both in-cluster and cloud-managed variants: Postgres or RDS, Redis or ElastiCache. The `sqlRef` works for both. The app reads `/bindings/sql/host`. It doesn't care where the database lives.
 - **Data resources outlive APIs.** `Sql`, `NoSql`, `ObjectStorage` have lifecycles independent of any one `Api`. Create them once, reference them by name.
-- **No static credentials for AWS.** Every AWS binding uses workload identity: a short-lived X.509 certificate exchanged for temporary STS credentials via IAM Roles Anywhere. No access keys in Secrets or config files.
+- **No static credentials for AWS.** Every AWS binding uses workload identity: a short-lived SVID exchanged for temporary STS credentials via OIDC federation. No access keys in Secrets or config files.
 
 ---
 
@@ -60,10 +60,10 @@ Credentials reach the pod via `/bindings/`, following the [servicebinding.io](ht
 ```
 /bindings/
   sql/              type  host  port  database  username  password  (private-cloud)
-  sql/              type  host  port  database  username  role-arn  profile-arn  (public-cloud)
+  sql/              type  host  port  database  username  role-arn  (public-cloud)
   cache/            type  host  port
-  nosql/            type  table-name  region  role-arn  profile-arn
-  object-storage/   type  bucket  region  role-arn  profile-arn
+  nosql/            type  table-name  region  role-arn
+  object-storage/   type  bucket  region  role-arn
 ```
 
 For non-AWS resources (private-cloud SQL, in-cluster cache, NATS), the app reads credential files directly:
@@ -73,7 +73,7 @@ host, _ := os.ReadFile("/bindings/sql/host")
 port, _ := os.ReadFile("/bindings/sql/port")
 ```
 
-For AWS-backed resources (those with `role-arn`/`profile-arn`), the binding Secret contains ARNs — not credentials. The [`aws-spiffe-helper`](https://github.com/cujarrett/aws-spiffe-helper) sidecar reads those and writes actual STS credentials to a separate volume; the app uses `AWS_PROFILE_*` env vars instead. See [AWS credential binding](#aws-credential-binding) below.
+For AWS-backed resources (those with `role-arn`), the binding Secret contains an ARN — not credentials. The [`workload-identity-sidecar`](https://github.com/cujarrett/workload-identity-sidecar) sidecar reads those and writes actual STS credentials to a separate volume; the app uses `AWS_PROFILE_*` env vars instead. See [AWS credential binding](#aws-credential-binding) below.
 
 An init container blocks the app from starting until each binding's Secret is fully synced to the volume. Once it exits, every file is there — no retry logic needed in the app.
 
@@ -92,26 +92,24 @@ spec:
 
 ## AWS credential binding
 
-AWS-backed offerings (`ObjectStorage`, `NoSql`, `Sql` with `backend: public-cloud`, `Cache` with `backend: public-cloud`) use workload identity instead of static keys. The binding Secret contains ARNs and resource metadata — no access key, no secret.
+AWS-backed offerings (`ObjectStorage`, `NoSql`, `Sql` with `backend: public-cloud`, `Cache` with `backend: public-cloud`) use workload identity instead of static keys. The binding Secret contains an ARN and resource metadata — no access key, no secret.
 
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 45, 'rankSpacing': 60}}}%%
 flowchart LR
     subgraph cluster["Cluster"]
-        spire["SPIRE\nissues X.509 SVID\nper pod identity"]
-        sidecar["aws-credentials-sidecar\nexchanges SVID for STS creds\nrefreshes every 50 min"]
+        spire["SPIRE\nissues JWT-SVID\nper pod identity"]
+        sidecar["workload-identity-sidecar\nexchanges SVID for STS creds\nrefreshes every 50 min"]
         app["api container\nreads AWS named profile\nfrom shared volume"]
-        spire -->|"cert + key"| sidecar
+        spire -->|"JWT-SVID"| sidecar
         sidecar -->|"writes credentials"| app
     end
 
     subgraph aws["AWS"]
-        ra["IAM Roles Anywhere\nvalidates cert chain\nchecks SPIFFE ID condition"]
-        sts["STS\n1h temp credentials"]
-        ra --> sts
+        sts["STS\nAssumeRoleWithWebIdentity\nverifies signature against published keys\n1h temp credentials"]
     end
 
-    sidecar -->|"SVID + role ARN"| ra
+    sidecar -->|"JWT-SVID + role ARN"| sts
     sts -->|"access key + session token"| sidecar
 ```
 

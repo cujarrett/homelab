@@ -97,12 +97,3 @@ spec:
   package: xpkg.upbound.io/upbound/provider-aws-dynamodb:v2.6.1
   runtimeConfigRef:
     name: worker-nodes
----
-apiVersion: pkg.crossplane.io/v1
-kind: Provider
-metadata:
-  name: provider-aws-rolesanywhere
-spec:
-  package: xpkg.upbound.io/upbound/provider-aws-rolesanywhere:v2.6.1
-  runtimeConfigRef:
-    name: worker-nodes

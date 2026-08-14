@@ -36,7 +36,6 @@ spec:
             {{- /* The binding Secret already exists in $ns — just mount it.    */ -}}
             {{- $objectStorageRefs := $xr.spec.parameters.objectStorageRefs | default list }}
             {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
-            {{- $trustAnchorArn := index $envCtx "trustAnchorArn" | default "" }}
             {{- $awsAccountId := index $envCtx "awsAccountId" | default "" }}
             {{- /* Public issuer, so it is hardcoded next to the trust domain rather than */ -}}
             {{- /* injected. Must match the IAM OIDC provider registered in AWS.          */ -}}
@@ -95,9 +94,8 @@ spec:
             {{- /* otherwise, so under REGISTRY_ONLY every one of them is a blackhole.    */ -}}
             {{- $awsHosts := list }}
             {{- if gt (len $awsBindings) 0 }}
-              {{- /* The credential sidecar calls these to turn its SVID into AWS keys.   */ -}}
-              {{- /* Without them nothing else here works — no credentials, no calls.     */ -}}
-              {{- $awsHosts = append $awsHosts "rolesanywhere.us-east-1.amazonaws.com" }}
+              {{- /* The credential sidecar calls this to turn its SVID into AWS keys.    */ -}}
+              {{- /* Without it nothing else here works — no credentials, no calls.       */ -}}
               {{- $awsHosts = append $awsHosts "sts.us-east-1.amazonaws.com" }}
             {{- end }}
             {{- range $ref := $objectStorageRefs }}
@@ -410,7 +408,7 @@ spec:
                         {{- end }}
                     {{- if gt (len $awsBindings) 0 }}
                     - name: aws-credentials-sidecar
-                      image: ghcr.io/cujarrett/aws-spiffe-helper:main
+                      image: ghcr.io/cujarrett/workload-identity-sidecar:main
                       imagePullPolicy: Always
                       securityContext:
                         allowPrivilegeEscalation: false
@@ -422,9 +420,6 @@ spec:
                           value: {{ join "," $sidecarBindingParts | quote }}
                         - name: CREDS_FILE
                           value: /aws-credentials/credentials
-                        # Platform-level value — injected directly so it never appears in user-visible binding Secrets.
-                        - name: TRUST_ANCHOR_ARN
-                          value: {{ $trustAnchorArn | quote }}
                       volumeMounts:
                         - name: tmp
                           mountPath: /tmp
