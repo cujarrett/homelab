@@ -13,7 +13,6 @@ Start with [the problem](#the-problem) for why this exists, or [runtime](#runtim
 | [How a pod proves who it is](#how-a-pod-proves-who-it-is) | SPIFFE IDs, attestation, and the trust policy that pins a role to one pod |
 | [Provisioning](#provisioning) | The Crossplane chain from XR to binding Secret |
 | [Runtime](#runtime) | The credential loop, and the code an app writes |
-| [Where this stands](#where-this-stands) | What is deployed today and what is still to migrate |
 | [One-way doors](#one-way-doors) | Decisions that are expensive to reverse |
 
 ---
