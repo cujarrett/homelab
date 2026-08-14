@@ -47,6 +47,7 @@ spec:
             {{- /* everything it creates, or it can create but never delete/update again.  */ -}}
             {{- /* See cluster/crossplane/azuread-permissions.md.                          */ -}}
             {{- $crossplaneEntraSpId := index $envCtx "crossplaneEntraServicePrincipalId" | default "" }}
+            {{- $entraTenantId := index $envCtx "entraTenantId" | default "" }}
             {{- $observedResources := .observed.resources | default dict }}
             {{- $entraAppObs := index $observedResources "entra-application" | default dict }}
             {{- $entraClientId := "" }}
@@ -364,6 +365,17 @@ spec:
                           value: cache
                         {{- end }}
                       {{- end }}
+                      {{- if $entraEnabled }}
+                        # Read by the Azure SDK's WorkloadIdentityCredential - it does the
+                        # client_assertion exchange itself, not this sidecar. See
+                        # workload-identity-sidecar's README for the split.
+                        - name: AZURE_CLIENT_ID
+                          value: {{ $entraClientId | quote }}
+                        - name: AZURE_TENANT_ID
+                          value: {{ $entraTenantId | quote }}
+                        - name: AZURE_FEDERATED_TOKEN_FILE
+                          value: /entra-identity/token
+                      {{- end }}
                       {{- if $topicRefName }}
                         # Topic wiring: injected automatically from topicRef.
                         # App reads NATS_URL + NATS_STREAM to publish events.
@@ -416,8 +428,13 @@ spec:
                           mountPath: /bindings/cache
                           readOnly: true
                         {{- end }}
-                    {{- if gt (len $awsBindings) 0 }}
-                    - name: aws-credentials-sidecar
+                        {{- if $entraEnabled }}
+                        - name: entra-identity
+                          mountPath: /entra-identity
+                          readOnly: true
+                        {{- end }}
+                    {{- if or (gt (len $awsBindings) 0) $entraEnabled }}
+                    - name: workload-identity-sidecar
                       image: ghcr.io/cujarrett/workload-identity-sidecar:main
                       imagePullPolicy: Always
                       securityContext:
@@ -426,18 +443,30 @@ spec:
                         capabilities:
                           drop: [ALL]
                       env:
+                        {{- if gt (len $awsBindings) 0 }}
                         - name: AWS_BINDINGS
                           value: {{ join "," $sidecarBindingParts | quote }}
                         - name: CREDS_FILE
                           value: /aws-credentials/credentials
+                        {{- end }}
+                        {{- if $entraEnabled }}
+                        - name: ENTRA_FEDERATED_TOKEN_FILE
+                          value: /entra-identity/token
+                        {{- end }}
                       volumeMounts:
                         - name: tmp
                           mountPath: /tmp
                         - name: spiffe-bundle
                           mountPath: /var/run/secrets/spiffe.io
                           readOnly: true
+                        {{- if gt (len $awsBindings) 0 }}
                         - name: aws-credentials
                           mountPath: /aws-credentials
+                        {{- end }}
+                        {{- if $entraEnabled }}
+                        - name: entra-identity
+                          mountPath: /entra-identity
+                        {{- end }}
                         {{- range $i, $ref := $objectStorageRefs }}
                         {{- $osMountName := "object-storage" }}{{- if gt $i 0 }}{{- $osMountName = printf "object-storage-%d" $i }}{{- end }}
                         - name: object-storage-{{ $ref.name }}-binding
@@ -463,12 +492,18 @@ spec:
                   volumes:
                     - name: tmp
                       emptyDir: {}
-                    {{- if gt (len $awsBindings) 0 }}
+                    {{- if or (gt (len $awsBindings) 0) $entraEnabled }}
                     - name: spiffe-bundle
                       csi:
                         driver: csi.spiffe.io
                         readOnly: true
+                    {{- end }}
+                    {{- if gt (len $awsBindings) 0 }}
                     - name: aws-credentials
+                      emptyDir: {}
+                    {{- end }}
+                    {{- if $entraEnabled }}
+                    - name: entra-identity
                       emptyDir: {}
                     {{- end }}
                     {{- range $objectStorageRefs }}
@@ -663,27 +698,6 @@ spec:
                 subject: spiffe://homelab.local/ns/{{ $ns }}/sa/{{ $name }}
                 audiences:
                   - api://AzureADTokenExchange
-            {{- if $entraClientId }}
-            ---
-            # Binding Secret. Holds only client-id, a public, non-sensitive identifier -
-            # same as the AWS binding Secret's role-arn, this is not a credential. Written
-            # once the Application has actually reconciled and its server-generated client
-            # ID is known - unlike AWS role ARNs, this can't be predicted from a naming
-            # convention, so something has to carry it from "Entra just assigned this" to
-            # the pod. Not yet consumed anywhere - the sidecar will read it as AZURE_CLIENT_ID.
-            apiVersion: v1
-            kind: Secret
-            metadata:
-              name: {{ $name }}-entra
-              namespace: {{ $ns }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: entra-binding-secret
-                gotemplating.fn.crossplane.io/ready: "True"
-            type: servicebinding.io/entra
-            stringData:
-              type: entra
-              client-id: {{ $entraClientId }}
-            {{- end }}
             {{- end }}{{- /* end entraEnabled */}}
             {{- if $cacheEnabled }}
             ---
