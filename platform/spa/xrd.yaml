@@ -64,6 +64,17 @@ spec:
                     namespace:
                       type: string
                       description: "Namespace to deploy into. Must already exist (created by the tenant's namespace.yaml)."
+                    publicConfig:
+                      type: object
+                      additionalProperties:
+                        type: string
+                      description: >-
+                        Flat key/value pairs served as JSON at /config.json, fetched by the
+                        app on load instead of being baked into the JS bundle at build time —
+                        this keeps one built image deployable across environments unchanged.
+                        Everything here is shipped to any browser that asks: a public API
+                        base URL, a public analytics key, a feature flag. Never a secret —
+                        there is no boundary protecting this file from anyone.
                     apiProxies:
                       type: array
                       description: "Use when this SPA has companion Apis. Each entry routes one path prefix to one in-cluster service; the prefix is stripped before proxying. The Apis need no hostname or Cloudflare Tunnel entry of their own — only the SPA is exposed, and how far depends on its tlsIssuer."
