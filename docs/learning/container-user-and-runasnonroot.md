@@ -2,8 +2,7 @@
 
 A container image can say who its process should run as. Kubernetes can also say
 who it should run as, and can refuse to start a container it is not satisfied
-with. Those two mechanisms disagree in one specific way, and that disagreement is
-what broke the Api rollout.
+with. Those two mechanisms disagree in one specific way.
 
 The short version: **`USER app` and `USER 65532` behave identically at runtime,
 but only one of them lets Kubernetes enforce `runAsNonRoot`.**
@@ -11,14 +10,14 @@ but only one of them lets Kubernetes enforce `runAsNonRoot`.**
 | Chapter | What it covers |
 |---|---|
 | [What USER does](#what-user-does) | The Dockerfile instruction, and what "root" means in a container |
-| [Why a name is not enough](#why-a-name-is-not-enough) | The rule that caused the failure |
+| [Why a name is not enough](#why-a-name-is-not-enough) | The rule that blocks pods, and why |
 | [runAsNonRoot vs runAsUser](#runasnonroot-vs-runasuser) | Two different controls people mix up |
 | [How to check an image](#how-to-check-an-image) | And the check that lies to you |
-| [Fixing it](#fixing-it) | The composition override, and the app-repo alternative |
+| [Fixing it](#fixing-it) | The platform-level fix, and the image-level alternative |
 | [Why the platform is the right place](#why-the-platform-is-the-right-place) | Guaranteed centrally, not requested per repo |
 | [Why 65532](#why-65532) | Where the number comes from, and why not 100 |
-| [Why the ports moved to 8080](#why-the-ports-moved-to-8080) | Privileged ports, and the capability this avoids |
-| [Where this bites next](#where-this-bites-next) | Pod Security Admission |
+| [Privileged ports](#privileged-ports) | Binding a low port without root, and the tradeoff either way |
+| [Where this connects](#where-this-connects) | Pod Security Admission |
 
 ## What USER does
 
@@ -64,7 +63,7 @@ cannot verify user is non-root
 
 The status is `CreateContainerConfigError`. It is not a warning and not a
 crashloop — the container is never created at all. A Deployment rollout stalls
-with the old pods still serving, which is why this failed safe.
+with the old pods still serving, which is why this fails safe.
 
 `USER 65532` needs no resolution. The kubelet reads the number, sees it is not
 zero, and starts the container.
@@ -87,10 +86,11 @@ built for gets a filesystem it does not own. If the image did
 `chown -R app:app /app` and the binary is mode 0700, forcing a different uid
 means the process cannot read its own binary. Whether it works is luck.
 
-This is why the [Api composition](../../platform/api/composition.yaml) sets
-neither: the images disagree on the number — alpine builds use 100, distroless
-uses 65532 — so any single `runAsUser` would hand one of them a filesystem owned
-by the other.
+This is the tradeoff a platform-level default has to make: if images in a fleet
+disagree on their uid — some built on Alpine and using 100, others on distroless
+and using 65532 — a single `runAsUser` override would hand one family a
+filesystem owned by the other. Asserting `runAsNonRoot` alone sidesteps that,
+at the cost of not being able to force a specific number.
 
 ## How to check an image
 
@@ -114,9 +114,8 @@ kubectl exec deploy/foo -c api -- id -u    # prints 100
 
 That is the *resolved* uid, after the runtime read `/etc/passwd`. It prints 100
 for `USER app` and for `USER 100` alike, so it cannot distinguish the case that
-breaks from the case that works. It is the check that missed this before the
-rollout — a running container has already done the resolution the kubelet
-could not.
+breaks from the case that works — a running container has already done the
+resolution the kubelet could not.
 
 Two more things it hides: a distroless image has no shell, so `exec` fails for an
 unrelated reason and looks like a different problem; and `id -u` tells you
@@ -124,11 +123,11 @@ nothing about what a *rebuilt* image would do.
 
 ## Fixing it
 
-Two places this can be fixed, and the platform one turned out to be better.
+There are two independent places to fix this, and they are not equivalent.
 
-**In the composition (what was done).** Set `runAsUser` in the pod spec. It
-overrides whatever the image declares, so the kubelet has a number in front of it
-and never has to resolve anything:
+**At the platform level.** Set `runAsUser` in the pod spec. It overrides whatever
+the image declares, so the kubelet has a number in front of it and never has to
+resolve anything:
 
 ```yaml
 securityContext:
@@ -138,27 +137,26 @@ securityContext:
 ```
 
 The usual objection is file ownership — force a uid the image was not built for
-and the process may not be able to read its own binary. That was checked rather
-than assumed, and it does not apply here. Every app binary is root-owned mode
-0755:
+and the process may not be able to read its own binary. This should be checked
+rather than assumed. A binary that is world-executable makes the objection moot:
 
 ```
--rwxr-xr-x 1 0 0 11546880 /app/weather-exporter
+-rwxr-xr-x 1 0 0 11546880 /app/foo-api
 ```
 
-World-executable, so no image needs to own the uid it runs as. `weather-exporter`
-was run directly as both uid 100 and uid 65532 with a read-only root and a tmpfs
-`/tmp`, and started cleanly both times. The `aws-spiffe-helper` sidecar was
-checked the same way — `spire-agent` and `aws_signing_helper` are both 0755 and
-execute fine as 65532.
+World-executable, so no image needs to own the uid it runs as. A binary in that
+state runs cleanly under any uid, including with a read-only root and a tmpfs
+`/tmp` — there is nothing left for ownership to block.
 
 One consequence worth knowing: uid 65532 has no `/etc/passwd` entry in the alpine
 images. Nothing here cares, but software that calls `getpwuid()` or Go's
 `user.Current()` would fail, and that is the thing to check before assuming this
 trick generalises.
 
-**In the app repos (not needed, but still correct).** The one-line change is to
-number the user that already exists:
+**At the image level.** A pod-spec override makes this fix optional — the
+image's own `USER` no longer matters once something outside it forces the
+number. Doing it anyway keeps each image internally consistent. The one-line
+change is to number the user that already exists:
 
 ```dockerfile
 RUN addgroup -S app && adduser -S app -G app
@@ -168,22 +166,6 @@ USER 100          # was: USER app
 Keep the `adduser` line — the account still needs to exist. Nothing about the
 running process changes, and no `chown` is needed because the uid is unchanged.
 
-These five declare a named user. They no longer block anything, since the
-composition overrides them, but numbering them would let each image keep its own
-identity and passwd entry:
-
-| Repo | Image |
-|---|---|
-| `my-vinyl-api` | `ghcr.io/cujarrett/my-vinyl-api` |
-| `sump-pump-bridge` | `ghcr.io/cujarrett/sump-pump-bridge` |
-| `sump-pump-consumer` | `ghcr.io/cujarrett/sump-pump-consumer` |
-| `weather-exporter` | `ghcr.io/cujarrett/weather-exporter` |
-| `aws-spiffe-helper` | `ghcr.io/cujarrett/aws-spiffe-helper` |
-
-These already declare `USER 65532` and were never affected:
-`launchpad-api`, `platform-connections-demo-api`,
-`platform-connections-demo-downstream`.
-
 For new images, create the account at 65532 rather than relabelling a lower one —
 see [The Dockerfile number is a different decision](#the-dockerfile-number-is-a-different-decision).
 It is the conventional non-root uid, matches `gcr.io/distroless/*:nonroot`, and
@@ -192,7 +174,7 @@ sits well outside any range a base image assigns to a real account.
 ## Why the platform is the right place
 
 A per-repo fix depends on every Dockerfile getting it right, forever, including
-ones not written yet. A composition fix holds regardless of what an app image
+ones not written yet. A platform-level fix holds regardless of what an app image
 declares — an app that ships `USER app`, or no `USER` at all, still runs as a
 non-root uid because the pod spec says so.
 
@@ -201,7 +183,7 @@ centrally rather than requested politely of each team. The app repos stay free t
 declare whatever they like; it simply stops being load-bearing.
 
 The tradeoff is that the override is blunt. It assumes no image genuinely needs
-its own uid — true here because every binary is world-executable, and worth
+its own uid — valid when every binary is world-executable, and worth
 re-checking if an image ever ships files chowned to a specific user.
 
 ## Why 65532
@@ -216,21 +198,21 @@ that no base image's `adduser` will ever hand the same number to a real account 
 alpine's `adduser -S` counts down from 999, Debian's from 100. So a uid picked
 here cannot silently collide with one the image created for itself.
 
-Three of the images already used it, because they build on
-`gcr.io/distroless/static-debian12:nonroot`. Choosing 65532 for the override made
-those a no-op and only moved the alpine ones.
+Images already built on `gcr.io/distroless/static-debian12:nonroot` already use
+it, so choosing 65532 for a fleet-wide override is a no-op for those, and only
+changes the ones built on other bases.
 
-**Why not 100**, which is what the alpine images already ran as: it would have
-been equally valid, and it would have kept `/etc/passwd` resolving inside those
-images. The reason against it is the collision risk in reverse — 100 is squarely
-inside the range `adduser` allocates from, so a future image could legitimately
-assign uid 100 to some other account, and the override would then run the process
-as an identity that means something unintended inside that image. 65532 has no
-such meaning anywhere.
+**Why not 100**, which is what Alpine images commonly run as by default: it
+would have been equally valid, and it would have kept `/etc/passwd` resolving
+inside those images. The reason against it is the collision risk in reverse —
+100 is squarely inside the range `adduser` allocates from, so a future image
+could legitimately assign uid 100 to some other account, and the override would
+then run the process as an identity that means something unintended inside that
+image. 65532 has no such meaning anywhere.
 
 Either way one family of images runs as a uid with no passwd entry. That only
-matters to software that calls `getpwuid()` or Go's `user.Current()`, and nothing
-here does.
+matters to software that calls `getpwuid()` or Go's `user.Current()`, and
+usually nothing does.
 
 ### The Dockerfile number is a different decision
 
@@ -240,9 +222,9 @@ Two numbers, two questions, and they do not have to match.
 that may declare anything. Pick one that cannot mean something else inside any
 image — 65532.
 
-**In a Dockerfile** the number names an account that image actually has. The five
-repos here already create one with `adduser -S app`, which lands on uid 100, so
-the minimal correct fix is to name it:
+**In a Dockerfile** the number names an account that image actually has. A base
+image that creates one with `adduser -S app` typically lands on uid 100, so the
+minimal correct fix is to name it:
 
 ```dockerfile
 RUN addgroup -S app && adduser -S app -G app
@@ -251,12 +233,12 @@ USER 100          # was: USER app
 
 Writing `USER 65532` there instead would declare a uid with nothing behind it —
 no passwd entry, no group, no home — so `getpwuid()` fails and anyone running the
-image outside Kubernetes gets an identity-less user. The change was only ever
-about making the declaration machine-readable; changing which account it points at
-is a second change earning nothing.
+image outside Kubernetes gets an identity-less user. The change is only ever
+about making the declaration machine-readable; changing which account it points
+at is a second change earning nothing.
 
-The consequence is that the image says 100 and the pod runs 65532, because the
-composition overrides it. For a **new** image, close that gap by moving the
+The consequence is that the image can say 100 while the pod runs 65532, because
+the platform override wins. For a **new** image, close that gap by moving the
 account rather than relabelling it:
 
 ```dockerfile
@@ -266,17 +248,26 @@ USER 65532
 
 Then the image and the cluster agree and passwd resolves in both.
 
-## Why the ports moved to 8080
+## Privileged ports
 
-Separate problem from USER, same root cause: **ports below 1024 are privileged**.
-Binding one has always required root, and on Linux the specific privilege is the
-`CAP_NET_BIND_SERVICE` capability.
+Separate problem from USER, same root cause: **ports below 1024 are
+privileged**. Binding one has always required root, and on Linux the specific
+privilege is the `CAP_NET_BIND_SERVICE` capability.
 
-nginx listens on 80. Run it as uid 65532 with `capabilities: drop: [ALL]` and the
-bind fails — the process has neither root nor the one capability that would
-substitute for it. So the listener moved to 8080, which any uid may bind.
+A process listening on port 80, run as a non-root uid with
+`capabilities: drop: [ALL]`, fails to bind — it has neither root nor the one
+capability that would substitute for it. Two ways out.
 
-The alternative was to keep port 80 and add the capability back:
+**Move the listener above 1024** — 8080 is the usual choice, and any uid may
+bind it. A Kubernetes Service can still publish port 80 externally while its
+`targetPort` points at the container's higher port, so nothing outside the pod
+needs to know the number changed:
+
+```
+Ingress -> Service :80 -> targetPort 8080 -> container :8080
+```
+
+**Or add the capability back:**
 
 ```yaml
 capabilities:
@@ -284,37 +275,33 @@ capabilities:
   add: [NET_BIND_SERVICE]
 ```
 
-That works, and it is what the WordPress composition will have to do, because
-Apache starts as root by design in order to bind 80 and drop privileges itself.
-For the Spa it was the wrong trade: handing back a capability to avoid changing a
-number visible only inside the pod.
+This keeps the low port without root, at the cost of one capability the
+container didn't otherwise need. It's the right call for images that start as
+root by design and drop privileges themselves — Apache-based images typically
+do — since remapping the port would fight the image rather than work with it.
 
-Nothing outside the pod noticed. The Service still publishes port 80 and only its
-`targetPort` moved, so the Ingress, the tunnel, and every URL are unchanged:
+One thing a port remap does not update on its own: a service mesh's
+authorization and mTLS policy generally refers to the **workload** port, not the
+Service port, so moving the container's listening port means updating those
+policies too. Worth knowing how that fails: an allow-list policy denies anything
+its rules do not match, and a missed exception for the new port leaves it
+enforcing strict mTLS and refusing plaintext from an unmeshed caller such as an
+ingress controller. Both failure modes are outages, not silent bypasses — the
+mistake fails closed.
 
-```
-Ingress -> Service :80 -> targetPort 8080 -> container :8080
-```
+## Where this connects
 
-The one thing that had to move with it was the mesh policy. Istio's
-`AuthorizationPolicy` and `PeerAuthentication` `portLevelMtls` both refer to the
-**workload** port, not the Service port, so both had to become 8080. Worth
-knowing how that fails: an `ALLOW` policy denies anything its rules do not match,
-and a missed `portLevelMtls` exception leaves the port `STRICT` and refuses
-plaintext from unmeshed Traefik. Both are outages, not bypasses — the mistake
-fails closed.
+Pod Security Admission's `restricted` level **requires** `runAsNonRoot: true`. A
+workload that sets both `runAsNonRoot` and a numeric `runAsUser` in its pod spec
+satisfies that requirement regardless of what its image declares — which is what
+makes the platform-level fix load-bearing beyond just fixing the immediate
+`CreateContainerConfigError`. See
+[Pod Security Admission](./kubernetes-pod-security-admission.md).
 
-## Where this bites next
-
-Pod Security Admission's `restricted` level **requires** `runAsNonRoot: true`.
-Because the composition now sets that *and* a numeric `runAsUser`, Api workloads
-already satisfy it — the five named-user images are no longer a blocker for
-labelling those namespaces `restricted`.
-
-The Spa and WordPress compositions have not been through this yet. WordPress will
-not pass regardless: `wordpress:*-apache` starts as root by design so it can bind
-port 80 and drop to `www-data` itself, which is why it is planned for `baseline`
-rather than `restricted`.
+Not every workload can meet `restricted`, though. An image whose process starts
+as root by design — to bind a low port and drop privileges itself, for example —
+will never pass `restricted` no matter what the pod spec sets, and belongs at
+`baseline` instead.
 
 Worth knowing about the weaker fallback: with `capabilities: drop: [ALL]`,
 `allowPrivilegeEscalation: false` and `readOnlyRootFilesystem: true`, even a root

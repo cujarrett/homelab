@@ -8,13 +8,13 @@ Standalone resource with a lifecycle independent of any one API. Bind to an `Api
 - `public-cloud` — **AWS DynamoDB table**
 - `private-cloud` — *(in-cluster ExtendDB planned)*
 
-The IAM Role, RolesAnywhere Profile, and binding Secret are **not** created by NoSql. They are created by the `Api` composition when `nosqlRef` is declared. NoSql manages only the table's lifecycle.
+The IAM Role and binding Secret are **not** created by NoSql. They are created by the `Api` composition when `nosqlRef` is declared. NoSql manages only the table's lifecycle.
 
 DynamoDB tables are ready in ~10–30 seconds after Crossplane calls the API, making the commit-to-running loop fast regardless of environment.
 
 ## Binding secret
 
-Written by the `Api` composition (not by NoSql) once the RolesAnywhere Profile ARN is available. Secret name is `{api-name}-nosql`; namespace comes from the `Api` that references it. Mounted at `/bindings/nosql/` inside the container.
+Written by the `Api` composition (not by NoSql) when `nosqlRef` is declared. Secret name is `{api-name}-nosql`; namespace comes from the `Api` that references it. Mounted at `/bindings/nosql/` inside the container.
 
 | Key | Value |
 |---|---|
@@ -23,9 +23,8 @@ Written by the `Api` composition (not by NoSql) once the RolesAnywhere Profile A
 | `table-name` | Table name |
 | `region` | `us-east-1` |
 | `role-arn` | IAM role ARN (scoped to this table, created by Api) |
-| `profile-arn` | RolesAnywhere profile ARN (created by Api) |
 
-The `aws-spiffe-helper` sidecar (injected by Api) exchanges the pod's SVID for short-lived STS credentials and writes them as the `nosql` named profile. The app reads `AWS_PROFILE_NOSQL` and uses the standard AWS SDK — no custom endpoint required, the SDK resolves DynamoDB from `region`.
+The `workload-identity-sidecar` (injected by Api) exchanges the pod's SVID for short-lived STS credentials and writes them as the `nosql` named profile. The app reads `AWS_PROFILE_NOSQL` and uses the standard AWS SDK — no custom endpoint required, the SDK resolves DynamoDB from `region`.
 
 ## Parameters
 
