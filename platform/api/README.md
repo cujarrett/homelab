@@ -162,16 +162,19 @@ ddbClient := dynamodb.NewFromConfig(cfg)
 
 For `public-cloud`, the sidecar writes a `cache` named profile to the credentials file and the composition injects `AWS_PROFILE_CACHE=cache`. The app uses those credentials to authenticate to ElastiCache via IAM auth.
 
-## AWS credential injection
+## Workload identity credential injection
 
-When any AWS cloud binding is declared, the composition adds:
-- An `aws-credentials-sidecar` container running [`workload-identity-sidecar`](https://github.com/cujarrett/workload-identity-sidecar). It fetches the pod's SVID from the SPIFFE CSI volume and exchanges it for STS credentials (once per binding, every 50 minutes).
-- A `spiffe-bundle` CSI volume (read-only SPIRE agent socket).
+When any AWS cloud binding is declared, or `entra.enabled` is set, the composition adds a `workload-identity-sidecar` container running [`workload-identity-sidecar`](https://github.com/cujarrett/workload-identity-sidecar) and a `spiffe-bundle` CSI volume (read-only SPIRE agent socket). What else gets added depends on which is enabled - an Api can declare both, and both run independently in the same sidecar.
+
+**AWS** (any `objectStorageRefs`, `nosqlRef`, or `public-cloud` `sqlRef` cache):
+- The sidecar exchanges the pod's SVID for STS credentials, once per binding, every 50 minutes.
 - An `aws-credentials` emptyDir volume shared between the sidecar and the app container, mounted at `/aws-credentials/credentials`.
 - `AWS_SHARED_CREDENTIALS_FILE=/aws-credentials/credentials` env var in the app container.
 - `AWS_PROFILE_*` env vars for every AWS binding: `AWS_PROFILE_{REF_NAME_UPPER_SNAKE_CASE}` per object storage ref, `AWS_PROFILE_NOSQL`, `AWS_PROFILE_SQL` (public-cloud sql), and `AWS_PROFILE_CACHE` (public-cloud cache).
 
-The `TRUST_ANCHOR_ARN` is injected into the sidecar from the `aws-platform-config` EnvironmentConfig - it never appears in user-visible binding Secrets.
+**Entra** (`entra.enabled: true`):
+- The sidecar keeps a raw SPIFFE SVID fresh in an `entra-identity` emptyDir volume, mounted at `/entra-identity/token` - it does not exchange this token itself.
+- `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_FEDERATED_TOKEN_FILE=/entra-identity/token` env vars in the app container. The app's own Azure SDK (`WorkloadIdentityCredential`) reads these and does the exchange on demand - the same contract Azure Kubernetes Service (AKS) uses natively.
 
 For the full workload identity design: [Platform Workload Identity](../../docs/platform-workload-identity.md)
 
