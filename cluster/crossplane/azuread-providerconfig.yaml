@@ -1,0 +1,13 @@
+# See cluster/crossplane/azuread-permissions.md for what the referenced Secret must
+# contain and what Entra permissions the credential behind it needs.
+apiVersion: azuread.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: azuread-creds
+      key: credentials
