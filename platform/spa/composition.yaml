@@ -21,6 +21,7 @@ spec:
             {{- $params := .observed.composite.resource.spec.parameters }}
             {{- $namespace := $params.namespace }}
             {{- $apiProxies := $params.apiProxies | default list }}
+            {{- $publicConfig := $params.publicConfig | default dict }}
             {{- $sizeResourceMap := dict "xs" (dict "cpuReq" "25m" "cpuLim" "100m" "memReq" "32Mi" "memLim" "64Mi") "sm" (dict "cpuReq" "50m" "cpuLim" "200m" "memReq" "64Mi" "memLim" "128Mi") "md" (dict "cpuReq" "100m" "cpuLim" "500m" "memReq" "128Mi" "memLim" "256Mi") "lg" (dict "cpuReq" "250m" "cpuLim" "1000m" "memReq" "256Mi" "memLim" "512Mi") }}
             {{- $sizeKey := $params.size | default "sm" }}
             {{- $sizeRes := get $sizeResourceMap $sizeKey | default (get $sizeResourceMap "sm") }}
@@ -102,6 +103,21 @@ spec:
                         add_header Content-Type text/plain always;
                         add_header Access-Control-Allow-Origin '*' always;
                     }
+
+                    {{- if gt (len $publicConfig) 0 }}
+                    # Fetched by the app on load — never baked into the JS bundle at build
+                    # time, so one image stays deployable unchanged across environments.
+                    # Mounted whole (not subPath), so kubelet syncs edits without a restart.
+                    location = /config.json {
+                        alias /etc/spa-public-config/config.json;
+                        # .json isn't in nginx's default mime.types, so without this it would
+                        # serve as application/octet-stream. add_header can't fix a Content-Type
+                        # nginx computes internally — default_type is the directive that does.
+                        default_type application/json;
+                        add_header Cache-Control "no-cache" always;
+                        add_header X-Content-Type-Options "nosniff" always;
+                    }
+                    {{- end }}
 
                     # no-cache: browser always refetches the entry point
                     # All security headers repeated — nginx drops server-level add_header
@@ -317,6 +333,22 @@ spec:
                         try_files $uri $uri/ /index.html;
                     }
                 }
+            {{- if gt (len $publicConfig) 0 }}
+            ---
+            # --- Public config ConfigMap ---
+            # Served as /config.json. Public by design — never put a secret in publicConfig.
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{ $name }}-public-config
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: public-config
+                gotemplating.fn.crossplane.io/ready: "True"
+            data:
+              config.json: |
+                {{ $publicConfig | toJson }}
+            {{- end }}
             ---
             # --- ServiceAccount ---
             # Dedicated SA per Spa instance — pods do not use the namespace default SA.
@@ -395,6 +427,11 @@ spec:
                           mountPath: /etc/nginx/conf.d/default.conf
                           subPath: default.conf
                           readOnly: true
+                        {{- if gt (len $publicConfig) 0 }}
+                        - name: public-config
+                          mountPath: /etc/spa-public-config
+                          readOnly: true
+                        {{- end }}
                         - name: run
                           mountPath: /run
                         - name: nginx-cache
@@ -405,6 +442,13 @@ spec:
                     - name: nginx-config
                       configMap:
                         name: {{ $name }}-nginx-config
+                    {{- if gt (len $publicConfig) 0 }}
+                    # Whole-directory mount, not subPath — kubelet syncs ConfigMap edits into
+                    # this one on its own, so publicConfig changes reach the pod with no restart.
+                    - name: public-config
+                      configMap:
+                        name: {{ $name }}-public-config
+                    {{- end }}
                     # nginx writes its pid to /run and its proxy/client temp files to
                     # /var/cache/nginx — both on a read-only root without these.
                     - name: run
