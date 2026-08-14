@@ -1,8 +1,8 @@
-# Istio service mesh — sidecar mode. See docs/platform-connections.md.
+# Istio service mesh - sidecar mode. See docs/platform-connections.md.
 # Three charts, ordered by sync-wave: base (CRDs) -> istiod + cni.
 # Cilium stays the CNI; istio-cni chains onto Cilium's conflist (cni.exclusive:false set on Cilium).
 ---
-# istio-base — CRDs + cluster RBAC. Must apply before istiod/cni.
+# istio-base - CRDs + cluster RBAC. Must apply before istiod/cni.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -21,7 +21,7 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
-  # istiod patches its validating webhook at runtime — injects the CA (caBundle) and flips
+  # istiod patches its validating webhook at runtime - injects the CA (caBundle) and flips
   # failurePolicy Ignore->Fail once healthy. Ignore both so ArgoCD doesn't show perpetual
   # drift or revert them on selfHeal.
   ignoreDifferences:
@@ -39,7 +39,7 @@ spec:
       - ServerSideApply=true
       - RespectIgnoreDifferences=true
 ---
-# istiod — control plane, sidecar mode. Pinned to ctrl-1, next to the apiserver.
+# istiod - control plane, sidecar mode. Pinned to ctrl-1, next to the apiserver.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -61,10 +61,10 @@ spec:
         # installed, and that init container is what fails Pod Security Admission.
         cni:
           enabled: true
-        # Pin the control plane to ctrl-1 — istiod sits next to the apiserver it watches.
+        # Pin the control plane to ctrl-1 - istiod sits next to the apiserver it watches.
         nodeSelector:
           node-role.kubernetes.io/control-plane: "true"
-        # One fixed replica — no HPA on a 4-node Pi cluster.
+        # One fixed replica - no HPA on a 4-node Pi cluster.
         autoscaleEnabled: false
         replicaCount: 1
         resources:
@@ -92,7 +92,7 @@ spec:
       - ServerSideApply=true
       - RespectIgnoreDifferences=true
 ---
-# istio-cni — installs the CNI plugin (DaemonSet, all nodes) that wires sidecar
+# istio-cni - installs the CNI plugin (DaemonSet, all nodes) that wires sidecar
 # traffic redirection at pod creation instead of a NET_ADMIN init container.
 apiVersion: argoproj.io/v1alpha1
 kind: Application

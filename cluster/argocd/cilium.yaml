@@ -12,11 +12,11 @@ spec:
       helm:
         releaseName: cilium
         values: |
-          # kube-proxy replacement via eBPF — required for toFQDNs DNS-aware egress policy.
+          # kube-proxy replacement via eBPF - required for toFQDNs DNS-aware egress policy.
           kubeProxyReplacement: true
           k8sServiceHost: 192.168.10.100
           k8sServicePort: 6443
-          # Istio interop — allow Istio's CNI plugin to co-exist in the CNI config dir
+          # Istio interop - allow Istio's CNI plugin to co-exist in the CNI config dir
           # instead of Cilium claiming it exclusively. See docs/platform-connections.md.
           cni:
             exclusive: false
@@ -50,10 +50,10 @@ spec:
                 - port-distribution
                 - icmp
                 - httpV2
-          # Mutual auth DISABLED — Istio owns mTLS now.
+          # Mutual auth DISABLED - Istio owns mTLS now.
           # Cilium is demoted to CNI plumbing; connection policy/mutual auth belongs to Istio.
           # SPIRE keeps running (Istio may use SPIFFE identity later); Cilium simply stops consuming it.
-          # NOTE: the chart's validate.yaml requires spire.enabled to match authentication.enabled —
+          # NOTE: the chart's validate.yaml requires spire.enabled to match authentication.enabled -
           # both must be false together, so the SPIRE integration block below is disabled too.
           authentication:
             enabled: false

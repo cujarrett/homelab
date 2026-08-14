@@ -2,7 +2,7 @@
 
 ![homelab picture](./docs/homelab.jpg)
 
-A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering and GitOps. The goal is to use Kubernetes as a control plane for infrastructure — not just a place to run containers.
+A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering and GitOps. The goal is to use Kubernetes as a control plane for infrastructure - not just a place to run containers.
 
 [How I built it (and you can too)](https://blog.mattjarrett.dev/homelab/) - [What runs on it](https://github.com/cujarrett/homelab-workspaces) - [Blog about it](https://blog.mattjarrett.dev) - [Nothing here is Novel](./docs/nothing-novel.md)
 
@@ -11,17 +11,17 @@ A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering a
 | Layer | Technology |
 |---|---|
 | **Cluster** | k3s on 4× Raspberry Pi 5 (1 controller 16gb , 3 workers 8gb ) |
-| **Storage** | Longhorn — distributed block storage with 3× NVMe replication |
-| **GitOps** | Argo CD — cluster state driven from this repo |
+| **Storage** | Longhorn - distributed block storage with 3× NVMe replication |
+| **GitOps** | Argo CD - cluster state driven from this repo |
 | **Observability** | Prometheus + Grafana + Alertmanager + Loki |
 | **Ingress + TLS** | Traefik + cert-manager (local CA for `*.local.lab`, Let's Encrypt for public) |
-| **DNS** | AdGuard Home — wildcard `*.local.lab → 192.168.10.100` for all network devices |
-| **CNI** | Cilium — eBPF pod networking, WireGuard node encryption, kube-proxy replacement, Hubble observability |
-| **Service Mesh** | Istio — sidecar mesh for workload mTLS |
-| **Tunnel** | Cloudflare Tunnel — zero-trust public ingress, no exposed firewall ports |
+| **DNS** | AdGuard Home - wildcard `*.local.lab → 192.168.10.100` for all network devices |
+| **CNI** | Cilium - eBPF pod networking, WireGuard node encryption, kube-proxy replacement, Hubble observability |
+| **Service Mesh** | Istio - sidecar mesh for workload mTLS |
+| **Tunnel** | Cloudflare Tunnel - zero-trust public ingress, no exposed firewall ports |
 | **Remote Access** | Tailscale subnet router on ctrl-1 |
-| **Workload Identity** | SPIRE — SPIFFE identity per pod, published over OIDC so AWS and Entra trust it |
-| **Platform API** | Crossplane — XRDs and Compositions expose self-service infrastructure APIs |
+| **Workload Identity** | SPIRE - SPIFFE identity per pod, published over OIDC so AWS and Entra trust it |
+| **Platform API** | Crossplane - XRDs and Compositions expose self-service infrastructure APIs |
 
 ## Hardware
 

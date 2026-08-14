@@ -189,7 +189,7 @@ spec:
             apiVersion: v1
             kind: Secret
             metadata:
-              # Implementation secret — kept out of the tenant namespace so only the
+              # Implementation secret - kept out of the tenant namespace so only the
               # platform can read the RDS master password. Name is namespace-qualified
               # to avoid collisions between same-named Sqls in different namespaces.
               name: {{ $ns }}-{{ $name }}-master-secret
@@ -218,7 +218,7 @@ spec:
                 instanceClass: {{ $instanceClass }}
                 allocatedStorage: 20
                 # WARNING: skipFinalSnapshot=true means deleting this XR drops the RDS instance
-                # with no snapshot. Intentional for homelab cost management — data is unrecoverable.
+                # with no snapshot. Intentional for homelab cost management - data is unrecoverable.
                 skipFinalSnapshot: true
                 publiclyAccessible: false
                 username: app
@@ -230,7 +230,7 @@ spec:
                 # calls rds generate-db-auth-token using those credentials as its password.
                 iamDatabaseAuthenticationEnabled: true
               writeConnectionSecretToRef:
-                # Implementation secret — tenants only need the binding secret
+                # Implementation secret - tenants only need the binding secret
                 name: {{ $ns }}-{{ $name }}-rds-conn
                 namespace: crossplane-system
             {{- $sqlInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" "rds-db:connect" "Resource" (printf "arn:aws:rds-db:%s:%s:dbuser/*/app" $region $awsAccountId))) | toJson }}
@@ -264,7 +264,7 @@ spec:
             {{- if $rdsConn }}
             ---
             # Binding Secret for consumer {{ $consumer }}. Written once RDS is ready.
-            # No password — the app uses role-arn via the sidecar to generate
+            # No password - the app uses role-arn via the sidecar to generate
             # a short-lived RDS auth token with: aws rds generate-db-auth-token.
             apiVersion: v1
             kind: Secret

@@ -103,7 +103,7 @@ data:
           "id": 10,
           "type": "timeseries",
           "title": "Requests per Hour",
-          "description": "Each point shows requests in the previous 1-hour window. Use the App dropdown to focus on a single site — other sites' lines disappear.",
+          "description": "Each point shows requests in the previous 1-hour window. Use the App dropdown to focus on a single site - other sites' lines disappear.",
           "gridPos": { "x": 0, "y": 4, "w": 24, "h": 9 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
@@ -122,7 +122,7 @@ data:
           ]
         },
         {
-          "id": 11, "type": "stat", "title": "blog.mattjarrett.dev — Success Rate",
+          "id": 11, "type": "stat", "title": "blog.mattjarrett.dev - Success Rate",
           "gridPos": { "x": 0, "y": 13, "w": 5, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
@@ -130,7 +130,7 @@ data:
           "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\",code!~\"5..\"}[$__range])) / sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[$__range]))", "legendFormat": "Success Rate", "instant": true }]
         },
         {
-          "id": 12, "type": "stat", "title": "mattjarrett.dev — Success Rate",
+          "id": 12, "type": "stat", "title": "mattjarrett.dev - Success Rate",
           "gridPos": { "x": 5, "y": 13, "w": 5, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
@@ -138,7 +138,7 @@ data:
           "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes|web-mattjarrett-dev.*@kubernetes\",code!~\"5..\"}[$__range])) / sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes|web-mattjarrett-dev.*@kubernetes\"}[$__range]))", "legendFormat": "Success Rate", "instant": true }]
         },
         {
-          "id": 14, "type": "stat", "title": "myvinyl.mattjarrett.dev — Success Rate",
+          "id": 14, "type": "stat", "title": "myvinyl.mattjarrett.dev - Success Rate",
           "gridPos": { "x": 10, "y": 13, "w": 5, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
@@ -146,7 +146,7 @@ data:
           "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"my-vinyl-my-vinyl.*@kubernetes\",code!~\"5..\"}[$__range])) / sum(increase(traefik_service_requests_total{exported_service=~\"my-vinyl-my-vinyl.*@kubernetes\"}[$__range]))", "legendFormat": "Success Rate", "instant": true }]
         },
         {
-          "id": 15, "type": "stat", "title": "jspollock.mattjarrett.dev — Success Rate",
+          "id": 15, "type": "stat", "title": "jspollock.mattjarrett.dev - Success Rate",
           "gridPos": { "x": 15, "y": 13, "w": 5, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
@@ -154,7 +154,7 @@ data:
           "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"js-pollock-js-pollock.*@kubernetes\",code!~\"5..\"}[$__range])) / sum(increase(traefik_service_requests_total{exported_service=~\"js-pollock-js-pollock.*@kubernetes\"}[$__range]))", "legendFormat": "Success Rate", "instant": true }]
         },
         {
-          "id": 16, "type": "stat", "title": "launchpad.mattjarrett.dev — Success Rate",
+          "id": 16, "type": "stat", "title": "launchpad.mattjarrett.dev - Success Rate",
           "gridPos": { "x": 20, "y": 13, "w": 4, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },

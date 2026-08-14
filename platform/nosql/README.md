@@ -5,8 +5,8 @@ Crossplane platform primitive that provisions a key-value / document store.
 Standalone resource with a lifecycle independent of any one API. Bind to an `Api` via `nosqlRef.name`.
 
 ## What it provisions
-- `public-cloud` — **AWS DynamoDB table**
-- `private-cloud` — *(in-cluster ExtendDB planned)*
+- `public-cloud` - **AWS DynamoDB table**
+- `private-cloud` - *(in-cluster ExtendDB planned)*
 
 The IAM Role and binding Secret are **not** created by NoSql. They are created by the `Api` composition when `nosqlRef` is declared. NoSql manages only the table's lifecycle.
 
@@ -24,13 +24,13 @@ Written by the `Api` composition (not by NoSql) when `nosqlRef` is declared. Sec
 | `region` | `us-east-1` |
 | `role-arn` | IAM role ARN (scoped to this table, created by Api) |
 
-The `workload-identity-sidecar` (injected by Api) exchanges the pod's SVID for short-lived STS credentials and writes them as the `nosql` named profile. The app reads `AWS_PROFILE_NOSQL` and uses the standard AWS SDK — no custom endpoint required, the SDK resolves DynamoDB from `region`.
+The `workload-identity-sidecar` (injected by Api) exchanges the pod's SVID for short-lived STS credentials and writes them as the `nosql` named profile. The app reads `AWS_PROFILE_NOSQL` and uses the standard AWS SDK - no custom endpoint required, the SDK resolves DynamoDB from `region`.
 
 ## Parameters
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `namespace` | yes | — | Namespace of the owning workload. Used for the Namespace cost-allocation tag; the binding Secret is written by the referencing `Api`. |
+| `namespace` | yes | - | Namespace of the owning workload. Used for the Namespace cost-allocation tag; the binding Secret is written by the referencing `Api`. |
 | `partitionKey` | no | `id` | Partition key attribute name. |
 | `partitionKeyType` | no | `S` | Partition key type: `S`=string, `N`=number, `B`=binary. |
 | `dataRetention` | no | `delete` | AWS resource reclaim on XR deletion: `delete`=table is deleted (data unrecoverable); `retain`=table is orphaned in AWS (data recoverable). |
@@ -74,18 +74,18 @@ Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 
 ## Per-workload auth
 
-When `Api` declares `nosqlRef`, it creates an IAM Role whose trust policy is locked to the pod's exact SPIFFE ID (`spiffe://homelab.local/ns/{namespace}/sa/{service-account}`). The inline policy grants specific DynamoDB actions (GetItem, PutItem, UpdateItem, DeleteItem, Query, Scan, BatchGetItem, BatchWriteItem) scoped to this table's ARN and its indexes — no other table is reachable. For the full design: [Platform Workload Identity](../../docs/platform-workload-identity.md)
+When `Api` declares `nosqlRef`, it creates an IAM Role whose trust policy is locked to the pod's exact SPIFFE ID (`spiffe://homelab.local/ns/{namespace}/sa/{service-account}`). The inline policy grants specific DynamoDB actions (GetItem, PutItem, UpdateItem, DeleteItem, Query, Scan, BatchGetItem, BatchWriteItem) scoped to this table's ARN and its indexes - no other table is reachable. For the full design: [Platform Workload Identity](../../docs/platform-workload-identity.md)
 
 ## Operations
 
 ```bash
-# XR status — SYNCED=composition ran, READY=all children healthy
+# XR status - SYNCED=composition ran, READY=all children healthy
 kubectl get nosqls foo-events
 
-# Detailed conditions — shows exactly WHY something is not ready
+# Detailed conditions - shows exactly WHY something is not ready
 kubectl get nosql foo-events -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
-# Binding secret — confirm all keys are present (written by Api, not NoSql)
+# Binding secret - confirm all keys are present (written by Api, not NoSql)
 # Secret is named {api-name}-nosql, e.g. foo-nosql for an Api named "foo"
 kubectl get secret foo-nosql -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'

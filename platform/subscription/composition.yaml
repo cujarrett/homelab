@@ -25,7 +25,7 @@ spec:
                  This handles Topics whose streamName differs from their metadata.name. */}}
             {{- $stream := ($params.topicRef.streamName | default ($params.topicRef.name | upper)) }}
             # --- Consumer ---
-            # Durable pull consumer — NATS remembers this cursor's position across
+            # Durable pull consumer - NATS remembers this cursor's position across
             # pod restarts and redeployments. The Api that reads this subscription
             # binds to $name as its consumer name and pulls messages explicitly.
             #

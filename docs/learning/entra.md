@@ -18,7 +18,7 @@ Read it alongside the real thing. Open [entra.microsoft.com](https://entra.micro
 
 A **client** registration asks for tokens. A **resource** registration owns the permissions being asked for.
 
-One registration can be both, and for a single app calling only itself it works — the token's `aud` is that app, and the app accepts it. It stops working the moment a second client needs the same API, because that client would have to be granted permissions on a registration that also carries the first app's redirect URIs and sign-in config. Splitting them costs nothing up front and is very awkward to undo later.
+One registration can be both, and for a single app calling only itself it works - the token's `aud` is that app, and the app accepts it. It stops working the moment a second client needs the same API, because that client would have to be granted permissions on a registration that also carries the first app's redirect URIs and sign-in config. Splitting them costs nothing up front and is very awkward to undo later.
 
 | Registration | Holds | Notes |
 |---|---|---|
@@ -54,7 +54,7 @@ way one escapes.
 | | Scope (`scp`) | App role (`roles`) |
 |---|---|---|
 | Shape | Space-delimited **string** | JSON **array** |
-| Source | Consent — by each user, or once for everyone by an admin | Assignment, per user or per application |
+| Source | Consent - by each user, or once for everyone by an admin | Assignment, per user or per application |
 | Means | This app may do X while acting for you | This identity has been granted X |
 | Use when | A person is behind the call | A service or job is calling as itself |
 | Never | Grants a role, however many you consent to | Grants a scope, however many are assigned |
@@ -85,7 +85,7 @@ The two names are unhelpfully close. *App registrations* is the definition of an
 *Enterprise apps* is that same app as it exists in your tenant, and it is the only
 place a grant to a person or a program shows up.
 
-Most real APIs are called both ways. Branch on the **presence of `scp`**, not on config — an app-only token has no `scp` at all, because there is no user to delegate for.
+Most real APIs are called both ways. Branch on the **presence of `scp`**, not on config - an app-only token has no `scp` at all, because there is no user to delegate for.
 
 ```js
 if (claims.scp) {
@@ -109,7 +109,7 @@ Three flows. Which one you are in is decided by one question: **is a person wait
 | An API or cron job, no user involved | Client credentials | The application, and `roles`. No user at all |
 | An API calling onward, for a person | On-behalf-of | The same user, with a new audience |
 
-The second and third look identical from outside — same caller, same endpoint — and produce tokens that agree on almost nothing. Choosing between them is choosing whether the next service can know who asked.
+The second and third look identical from outside - same caller, same endpoint - and produce tokens that agree on almost nothing. Choosing between them is choosing whether the next service can know who asked.
 
 ## A SPA calls foo-api
 

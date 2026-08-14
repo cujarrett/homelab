@@ -4,9 +4,9 @@
 
 Istio puts a proxy beside every pod. Nothing reaches a workload without passing that proxy, and nothing leaves without passing its own.
 
-There is a live walkthrough at [connections.mattjarrett.dev](https://connections.mattjarrett.dev) — six real calls against this cluster, two of them refused.
+There is a live walkthrough at [connections.mattjarrett.dev](https://connections.mattjarrett.dev) - six real calls against this cluster, two of them refused.
 
-By default, anything running in the cluster can call anything else. So *can this app call that app* already has an answer — yes, always — and nobody chose it.
+By default, anything running in the cluster can call anything else. So *can this app call that app* already has an answer - yes, always - and nobody chose it.
 
 **Why internal developer platforms do this.** A small system can keep its connections in someone's head. A few thousand services across a few hundred teams cannot, and every fix that relies on people remembering breaks at that size. A platform's job is to make the right thing the automatic thing, and three things follow from that. None of them are about Kubernetes.
 
@@ -29,7 +29,7 @@ Platform's [`Api`](../platform/api/) and [`Spa`](../platform/spa/) compositions 
 | 1 | **Nothing is reachable without being declared** | Sitting in the same cluster, or the same namespace, grants nothing on its own |
 | 2 | **Each pod's proxy is configured from its own app's definition** | Inbound rules come from the app being called, outbound from the app calling. One fact each, not one fact stored twice |
 | 3 | **Read what already exists** | Where a field already states a dependency, the composition uses it rather than asking again |
-| 4 | **Fail loud, never silent-permissive** | A missing entry surfaces as a refused connection or a 403 — never a quiet allow |
+| 4 | **Fail loud, never silent-permissive** | A missing entry surfaces as a refused connection or a 403 - never a quiet allow |
 | 5 | **Apps never see Istio** | No Istio kinds, no SPIFFE strings, no Envoy in any workspace file |
 | 6 | **The mesh is governance, not containment** | A compromised pod can step around the sidecar. Say so plainly rather than overselling |
 
@@ -38,7 +38,7 @@ Platform's [`Api`](../platform/api/) and [`Spa`](../platform/spa/) compositions 
 Two fields, on the app's own definition, beside everything else it already configures.
 
 ```yaml
-# my-vinyl-api.yaml — who may call me, and what I call
+# my-vinyl-api.yaml - who may call me, and what I call
 spec:
   parameters:
     connectionPosture: enforce
@@ -46,14 +46,14 @@ spec:
       - name: collection
         allowedCallers:
           - { namespace: my-vinyl, app: my-vinyl }
-        # methods/paths optional — omitted means the whole API.
+        # methods/paths optional - omitted means the whole API.
         # Narrow only when one API has more than one trust boundary.
     consumes:
       - { host: api.discogs.com }
 ```
 
 ```yaml
-# my-vinyl.yaml — the SPA declares nothing new
+# my-vinyl.yaml - the SPA declares nothing new
 spec:
   parameters:
     connectionPosture: enforce
@@ -62,13 +62,13 @@ spec:
         upstream: my-vinyl-api.my-vinyl.svc.cluster.local
 ```
 
-**The SPA needs no new field.** Principle 3 — `apiProxies` already states the dependency, so the composition reads it.
+**The SPA needs no new field.** Principle 3 - `apiProxies` already states the dependency, so the composition reads it.
 
-`consumes` carries every destination nothing else already states — off-platform hosts, and any other app, including one in the same namespace. Sitting next to something grants no reach toward it.
+`consumes` carries every destination nothing else already states - off-platform hosts, and any other app, including one in the same namespace. Sitting next to something grants no reach toward it.
 
-The one thing it never carries is what the app already asked the platform for. A `Cache` it creates, a bucket or table it binds — the composition provisioned those, so it renders their egress entries too. Principle 3 again: never ask for a fact the platform already holds.
+The one thing it never carries is what the app already asked the platform for. A `Cache` it creates, a bucket or table it binds - the composition provisioned those, so it renders their egress entries too. Principle 3 again: never ask for a fact the platform already holds.
 
-**Asking for a resource is declaring the connection to it.** A cloud binding resolves to endpoints nobody should hand-write — the bucket's own hostname, and the two the credential sidecar calls to exchange this pod's identity for temporary keys. Miss that last pair and the pod starts clean and then fails every call, so the platform derives all of them from the binding rather than trusting anyone to remember.
+**Asking for a resource is declaring the connection to it.** A cloud binding resolves to endpoints nobody should hand-write - the bucket's own hostname, and the two the credential sidecar calls to exchange this pod's identity for temporary keys. Miss that last pair and the pod starts clean and then fails every call, so the platform derives all of them from the binding rather than trusting anyone to remember.
 
 | Declared by | Renders |
 |---|---|
@@ -93,12 +93,12 @@ Four objects per workload, all derived from those two fields, all enforced by th
 flowchart LR
     APP["downstream app<br/>plain HTTP<br/>knows nothing"] --> G1
 
-    subgraph OUT["downstream's sidecar — OUTBOUND"]
+    subgraph OUT["downstream's sidecar - OUTBOUND"]
       G1{"1 · Sidecar egress list<br/>REGISTRY_ONLY<br/><i>may I leave toward this?</i>"}
-      G2{"2 · ServiceEntry<br/><i>off-platform host — registered?</i>"}
+      G2{"2 · ServiceEntry<br/><i>off-platform host - registered?</i>"}
     end
 
-    subgraph IN["upstream's sidecar — INBOUND<br/>only exists if the upstream is on-platform"]
+    subgraph IN["upstream's sidecar - INBOUND<br/>only exists if the upstream is on-platform"]
       G3{"3 · PeerAuthentication<br/><i>real mTLS identity?</i>"}
       G4{"4 · AuthorizationPolicy<br/><i>is that identity granted?</i>"}
       G3 -->|yes| G4
@@ -106,8 +106,8 @@ flowchart LR
 
     G1 -->|"yes, on-platform dest"| G3
     G1 -->|"yes, off-platform dest"| G2
-    G2 -->|yes| NET["allowed — host on the internet<br/>no sidecar, gates 3-4 don't exist"]
-    G4 -->|yes| DST["allowed — upstream app<br/>plain HTTP<br/>knows nothing"]
+    G2 -->|yes| NET["allowed - host on the internet<br/>no sidecar, gates 3-4 don't exist"]
+    G4 -->|yes| DST["allowed - upstream app<br/>plain HTTP<br/>knows nothing"]
 
     G1 -->|no| D1["blocked at source<br/>REGISTRY_ONLY"]
     G2 -->|no| D2["blocked<br/>unregistered host"]
@@ -115,7 +115,7 @@ flowchart LR
     G4 -->|no| D4["RBAC 403"]
 ```
 
-Gates 1 and 2 come from the caller's `consumes` (and, for a `Spa`, its `apiProxies`). Gates 3 and 4 come from the callee's `provides` — `AuthorizationPolicy` gets one rule per declared interface, and the first ALLOW makes that workload deny-by-default, so an unnamed caller gets 403.
+Gates 1 and 2 come from the caller's `consumes` (and, for a `Spa`, its `apiProxies`). Gates 3 and 4 come from the callee's `provides` - `AuthorizationPolicy` gets one rule per declared interface, and the first ALLOW makes that workload deny-by-default, so an unnamed caller gets 403.
 
 **The symptom tells you the gate.** This is the fastest way to place a fault, and worth memorising before you need it.
 
@@ -132,24 +132,24 @@ That split is what keeps a declaration private to the app that made it. A `Servi
 
 **A policy can only attach to a pod that exists.** That is why the two directions sit at opposite ends of the path.
 
-Off-platform hosts therefore have no gate 3 or 4 — there is nothing out there to hold a rule. So `consumes` cannot be dropped as redundant; for those calls it is the only gate there is. The same shape covers shared in-cluster stores that run no policy of their own, such as NATS — enforced caller-side only, needing no special field.
+Off-platform hosts therefore have no gate 3 or 4 - there is nothing out there to hold a rule. So `consumes` cannot be dropped as redundant; for those calls it is the only gate there is. The same shape covers shared in-cluster stores that run no policy of their own, such as NATS - enforced caller-side only, needing no special field.
 
-**Two exceptions, both for unmeshed infrastructure with no identity to match on.** Prometheus scrapes the metrics port; Traefik forwards ingress to the app port. The Traefik exception applies only when a workload sets `host` — see [Known limits](#known-limits) for what it costs.
+**Two exceptions, both for unmeshed infrastructure with no identity to match on.** Prometheus scrapes the metrics port; Traefik forwards ingress to the app port. The Traefik exception applies only when a workload sets `host` - see [Known limits](#known-limits) for what it costs.
 
-**Proxied requests must carry the upstream's name as `Host`.** Envoy routes outbound HTTP by `:authority` — effectively the `Host` header. Forward the browser's hostname instead and Envoy looks it up in the mesh registry, finds nothing, and `REGISTRY_ONLY` blackholes it — drops it with no route, so the destination never sees a connection at all. The `Spa` composition sets `Host` to the upstream service and keeps the original as `X-Forwarded-Host`.
+**Proxied requests must carry the upstream's name as `Host`.** Envoy routes outbound HTTP by `:authority` - effectively the `Host` header. Forward the browser's hostname instead and Envoy looks it up in the mesh registry, finds nothing, and `REGISTRY_ONLY` blackholes it - drops it with no route, so the destination never sees a connection at all. The `Spa` composition sets `Host` to the upstream service and keeps the original as `X-Forwarded-Host`.
 
 ## The identity it rests on
 
 **Grug:** every pod gets a certificate saying who it is. It cannot be faked. That is the whole foundation.
 
-Istio issues each meshed pod an X.509 **SVID** — ~24h lifetime, auto-rotated, carrying a SPIFFE URI SAN:
+Istio issues each meshed pod an X.509 **SVID** - ~24h lifetime, auto-rotated, carrying a SPIFFE URI SAN:
 
 ```
 spiffe://cluster.local/ns/my-vinyl/sa/my-vinyl-spa
          └ trust domain   └ namespace └ service account
 ```
 
-That string is the workload's **principal** — the name a rule grants access to. It is bound to a private key that never leaves the pod, so holding the name is not enough to claim it. This is the only identity here that survives an attacker already inside the cluster network; an IP or a header proves nothing.
+That string is the workload's **principal** - the name a rule grants access to. It is bound to a private key that never leaves the pod, so holding the name is not enough to claim it. This is the only identity here that survives an attacker already inside the cluster network; an IP or a header proves nothing.
 
 **Hard rule: every workload gets its own ServiceAccount.** The compositions do this. The moment two apps share one they are the same identity, and every grant between them is meaningless.
 
@@ -157,25 +157,25 @@ That string is the workload's **principal** — the name a rule grants access to
 
 **Grug:** a couple of fields on an app, once. In return the proxy refuses anything not listed, and the refusal is legible.
 
-The real cost is not the fields — it is that a failed call now has several explanations instead of one. A 403, an mTLS reset and blocked egress all used to be "can it reach the IP", and telling them apart is a skill to build. That is the honest price of moving reachability out of the network and into policy, and the gate list above is the map for paying it.
+The real cost is not the fields - it is that a failed call now has several explanations instead of one. A 403, an mTLS reset and blocked egress all used to be "can it reach the IP", and telling them apart is a skill to build. That is the honest price of moving reachability out of the network and into policy, and the gate list above is the map for paying it.
 
-**On scale.** In an organisation this shape carries a second cost — a grant becomes a cross-team wait, and someone has to own approving it. Here there is one operator and two files, so that cost does not exist. Worth naming, so the design is not mistaken for solving a coordination problem it has never faced.
+**On scale.** In an organisation this shape carries a second cost - a grant becomes a cross-team wait, and someone has to own approving it. Here there is one operator and two files, so that cost does not exist. Worth naming, so the design is not mistaken for solving a coordination problem it has never faced.
 
 ## Known limits
 
 **Grug:** the mesh sits in the middle of a stack. It does its own job. It does not do the job of the layer below it or the layer above it, and neither of those is built.
 
-Below is packets — could a hostile pod send this at all. That layer is not built. Above is people — may this *user* do this. That layer is out of scope, not pending.
+Below is packets - could a hostile pod send this at all. That layer is not built. Above is people - may this *user* do this. That layer is out of scope, not pending.
 
 ```mermaid
 flowchart TB
-    subgraph L34["L3/L4 — packets"]
+    subgraph L34["L3/L4 - packets"]
       A["Cilium NetworkPolicy<br/><i>may this IP reach that IP:port?</i><br/><b>not built</b>"]
     end
-    subgraph L56["L5/L6 — session"]
-      B["Istio PeerAuthentication — mTLS<br/><i>is the caller a real mesh workload?</i>"]
+    subgraph L56["L5/L6 - session"]
+      B["Istio PeerAuthentication - mTLS<br/><i>is the caller a real mesh workload?</i>"]
     end
-    subgraph L7a["L7 — workload authz"]
+    subgraph L7a["L7 - workload authz"]
       C["Istio AuthorizationPolicy · source.principals<br/><i>is THAT workload allowed on this route?</i>"]
     end
     A -.-> B --> C -.-> D["user authorization<br/><i>may this person do this?</i><br/><b>out of scope</b>"] --> E["app code<br/>knows none of this"]
@@ -184,31 +184,31 @@ flowchart TB
     style D stroke-dasharray: 5 5
 ```
 
-**The mesh is governance, not containment.** Istio's rules live *inside* the pod — injection writes iptables in the pod's own network namespace to push traffic through Envoy. Anything running in that pod is on the same side of the fence as the rules.
+**The mesh is governance, not containment.** Istio's rules live *inside* the pod - injection writes iptables in the pod's own network namespace to push traffic through Envoy. Anything running in that pod is on the same side of the fence as the rules.
 
 The clearest way out is UID 1337. Istio excludes it from the iptables redirect, because that is the UID Envoy itself runs as and it would otherwise redirect into itself forever. A process running as 1337 walks straight past, and Envoy never sees the packet.
 
-Only the kernel can stop that. A Cilium `NetworkPolicy` is enforced at the pod's veth — the virtual cable's host-side end, outside the pod, where nothing inside it can reach.
+Only the kernel can stop that. A Cilium `NetworkPolicy` is enforced at the pod's veth - the virtual cable's host-side end, outside the pod, where nothing inside it can reach.
 
-**That layer is deliberately not built**, and it is not a one-way door. The policy would be generated from the same `consumes` declarations the mesh already uses, so adding it later is additive — no XRD change, no app change, nothing re-declared. Three questions decide it:
+**That layer is deliberately not built**, and it is not a one-way door. The policy would be generated from the same `consumes` declarations the mesh already uses, so adding it later is additive - no XRD change, no app change, nothing re-declared. Three questions decide it:
 
 1. Is Cilium's DNS proxy enabled? `toFQDNs` silently never matches without it.
 2. Would off-platform egress use FQDN rules, or CIDR? FQDN is the expensive path, and the declared-host list already bounds how many exist.
 3. Is a compromised pod inside the threat model, or is the control there to prove only declared calls happen? Only the first needs it.
 
-**An app with an Ingress is reachable from the ingress controller** regardless of its grants, because Traefik is unmeshed and presents no identity to match on. How far that reaches depends on `tlsIssuer` — `letsencrypt-prod` means the internet, `local-lab-ca-issuer` means the homelab network.
+**An app with an Ingress is reachable from the ingress controller** regardless of its grants, because Traefik is unmeshed and presents no identity to match on. How far that reaches depends on `tlsIssuer` - `letsencrypt-prod` means the internet, `local-lab-ca-issuer` means the homelab network.
 
 **Nothing tests that an app can actually reach its backend.** Rendering is checked; behaviour is not. A workload can serve its page, report `2/2`, sync green, and still be unable to call its own API. This gap has already caused one outage, and closing it is the most valuable work left.
 
 **Long-lived apiserver watches do not survive a sidecar.** A workload holding streaming watch connections to the Kubernetes API has them severed by the proxy. `launchpad` is left unmeshed for this reason rather than papered over with timeouts, so anything that watches the apiserver is currently outside the design.
 
-**`Api` and `Spa` label pods differently** — `app.kubernetes.io/instance` versus `instance`. A selector copied between the two matches nothing and fails silently: the policy renders, ArgoCD reports Synced, enforcement never happens. Converging on one label would remove the trap.
+**`Api` and `Spa` label pods differently** - `app.kubernetes.io/instance` versus `instance`. A selector copied between the two matches nothing and fails silently: the policy renders, ArgoCD reports Synced, enforcement never happens. Converging on one label would remove the trap.
 
 ## Reference
 
 | Concept | Layer | Doc | Watch for |
 |---|---|---|---|
-| Sidecar injection | — | [injection](https://istio.io/latest/docs/setup/additional-setup/sidecar-injection/) | meshed pods show 2 containers |
+| Sidecar injection | - | [injection](https://istio.io/latest/docs/setup/additional-setup/sidecar-injection/) | meshed pods show 2 containers |
 | SPIFFE identity | L5/L6 | [identity](https://istio.io/latest/docs/concepts/security/#istio-identity) | the principal string *is* the grant key |
 | PeerAuthentication | L5/L6 | [mutual TLS](https://istio.io/latest/docs/concepts/security/#peer-authentication) | STRICT has no dry-run |
 | AuthorizationPolicy | L7 | [concept](https://istio.io/latest/docs/concepts/security/#authorization) · [ref](https://istio.io/latest/docs/reference/config/security/authorization-policy/) | the first ALLOW makes that workload deny-by-default |
@@ -216,4 +216,4 @@ Only the kernel can stop that. A Cilium `NetworkPolicy` is enforced at the pod's
 | Sidecar + `REGISTRY_ONLY` | L7 | [ref](https://istio.io/latest/docs/reference/config/networking/sidecar/) | this is what makes egress default-deny |
 | Cilium NetworkPolicy | L3/L4 | [policy](https://docs.cilium.io/en/stable/security/policy/) | the containment layer the mesh cannot be |
 
-> **Note — splitting a requirement widens it.** Istio ORs ALLOW policies and rules together, so two rules are two ways in, not two conditions. Anything that must all hold goes in one rule: `from` + `to` + `when` together.
+> **Note - splitting a requirement widens it.** Istio ORs ALLOW policies and rules together, so two rules are two ways in, not two conditions. Anything that must all hold goes in one rule: `from` + `to` + `when` together.

@@ -4,11 +4,11 @@ How to get a backup from an existing WordPress site and restore it into the home
 
 ---
 
-## Part 1 — Getting backup files from an existing site
+## Part 1 - Getting backup files from an existing site
 
 You need two things: a database dump and the `wp-content` directory.
 
-### Option A — Bitnami WordPress on AWS Lightsail
+### Option A - Bitnami WordPress on AWS Lightsail
 
 SSH into the instance:
 
@@ -41,7 +41,7 @@ scp -i ~/.ssh/your-key.pem \
 
 ---
 
-### Option B — Self-hosted / generic WordPress
+### Option B - Self-hosted / generic WordPress
 
 SSH into the server and find the database credentials in `wp-config.php`:
 
@@ -69,7 +69,7 @@ scp user@host:~/wordpress-backup.sql user@host:~/wp-content.tar.gz ~/Desktop/wp-
 
 ---
 
-### Option C — WP-CLI (if available on the server)
+### Option C - WP-CLI (if available on the server)
 
 ```bash
 wp db export wordpress-backup.sql --allow-root
@@ -78,7 +78,7 @@ tar czf wp-content.tar.gz wp-content/
 
 ---
 
-## Part 2 — Restore into the homelab cluster
+## Part 2 - Restore into the homelab cluster
 
 ### Prerequisites
 
@@ -102,9 +102,9 @@ tar czf wp-content.tar.gz wp-content/
 |---|---|
 | `--backup-dir` | Local path to the folder containing `wordpress-backup.sql` and `wp-content/` (or `wp-content.tar.gz`) |
 | `--namespace` | Kubernetes namespace the XR was deployed into |
-| `--instance` | Name of the XR (`metadata.name` in the XR yaml) — used to find the correct pods |
-| `--old-url` | The URL baked into the database dump — the domain the site was running on before the backup was taken (e.g. your old Lightsail address) |
-| `--new-url` | The public domain the site will be served from going forward — Cloudflare Tunnel routes this to the cluster, so use the real domain, not the `.local.lab` hostname |
+| `--instance` | Name of the XR (`metadata.name` in the XR yaml) - used to find the correct pods |
+| `--old-url` | The URL baked into the database dump - the domain the site was running on before the backup was taken (e.g. your old Lightsail address) |
+| `--new-url` | The public domain the site will be served from going forward - Cloudflare Tunnel routes this to the cluster, so use the real domain, not the `.local.lab` hostname |
 
 The script will:
 1. Wait for MariaDB and WordPress pods to be `Ready`
@@ -125,8 +125,8 @@ Log in at `https://mattjarrett.com/wp-admin` with your original credentials.
 ## Notes
 
 - **URL rewrite** covers `wp_options` (siteurl/home), `wp_posts` content and GUIDs, and `wp_postmeta`. If you have a custom table prefix (not `wp_`), edit the script's SQL statements.
-- **Credentials carry over** from the dump — your existing admin username/password will work after import.
-- **Media** is in `wp-content/uploads/` — the script restores the whole `wp-content` tree so nothing is lost.
+- **Credentials carry over** from the dump - your existing admin username/password will work after import.
+- **Media** is in `wp-content/uploads/` - the script restores the whole `wp-content` tree so nothing is lost.
 - **Plugins/themes** are restored from `wp-content` but may need reactivation from wp-admin if the database references are stale.
 
 ---
@@ -161,7 +161,7 @@ kubectl patch daemonset traefik -n kube-system \
 ```
 
 **After a cluster wipe, the PVC is gone but the PV may survive.**
-If using `longhorn-retain`, the PV enters `Released` state. Rebind it before running the restore script — otherwise the script imports data into a fresh empty volume and the old data is still sitting in the released PV.
+If using `longhorn-retain`, the PV enters `Released` state. Rebind it before running the restore script - otherwise the script imports data into a fresh empty volume and the old data is still sitting in the released PV.
 
 1. Clear the `claimRef` on the PV: `kubectl patch pv <pv-name> --type=json -p='[{"op":"remove","path":"/spec/claimRef"}]'`
 2. Set the PVC's Crossplane annotation so it's recognized as managed: `kubectl annotate pvc <pvc-name> -n <namespace> crossplane.io/composition-resource-name=wordpress-pvc`

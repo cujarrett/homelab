@@ -46,14 +46,14 @@
       "matchPackageNames": ["wordpress"],
       "minimumReleaseAge": "7 days",
       "prBodyNotes": [
-        "⚠️ WordPress core lives in the container filesystem, not the `wp-content` PVC. Whatever tag is pinned here is what a restarted pod runs — a self-applied update inside the pod is discarded on restart. Merging this is what makes the version durable.",
+        "⚠️ WordPress core lives in the container filesystem, not the `wp-content` PVC. Whatever tag is pinned here is what a restarted pod runs - a self-applied update inside the pod is discarded on restart. Merging this is what makes the version durable.",
         "To take a security release before the 7-day cooldown expires, tick this update on the Renovate Dependency Dashboard under **Pending Status Checks** to force the PR immediately. Editing the tag by hand also works and is faster."
       ]
     },
     {
       "matchPackageNames": ["adguard/adguardhome"],
       "prBodyNotes": [
-        "⚠️ **Before merging:** run `/adguard-pre-pull` — AdGuard's `Recreate` rollout strategy plus `ctrl-1`'s DNS pointing only at AdGuard itself means a cold image pull will fail with `ImagePullBackOff`."
+        "⚠️ **Before merging:** run `/adguard-pre-pull` - AdGuard's `Recreate` rollout strategy plus `ctrl-1`'s DNS pointing only at AdGuard itself means a cold image pull will fail with `ImagePullBackOff`."
       ]
     }
   ],

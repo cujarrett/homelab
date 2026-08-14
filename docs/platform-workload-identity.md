@@ -34,7 +34,7 @@ Three systems work together.
 
 **[SPIRE](https://spiffe.io/docs/latest/spire-about/spire-concepts/)** is the identity provider. It issues identities to Api pods, matched on the `app: api` label the composition sets, configured in [cluster/argocd/spire.yaml](../cluster/argocd/spire.yaml) under `identities.clusterSPIFFEIDs.homelab-workloads`. Before issuing anything it checks with the kubelet that the pod is genuinely running. What it issues carries the pod's SPIFFE ID, `spiffe://homelab.local/ns/{namespace}/sa/{service-account}`. That URI is the identity.
 
-Spa pods aren't matched at all — see [Static frontends](#static-frontends) for why.
+Spa pods aren't matched at all - see [Static frontends](#static-frontends) for why.
 
 **The [OIDC discovery endpoint](./spire-oidc-federation.md)** is how AWS verifies that identity. SPIRE publishes its JWT signing keys at `oidc.mattjarrett.dev`, registered in AWS as an IAM OIDC identity provider. AWS fetches the keys, validates the token's signature itself, and reads the SPIFFE ID from the `sub` claim. Nothing is shared between the cluster and AWS except public keys.
 
@@ -51,9 +51,9 @@ Deciding if a frontend needs workload identity is simple: does anything server-s
 
 | Pattern | Server-side process at runtime? | Needs workload identity? |
 |---|---|---|
-| CSR — this platform's `Spa` | No, static files only | No |
-| SSR — e.g. Next.js `getServerSideProps`, Nuxt SSR | Yes, every request | Yes |
-| ISR — e.g. Next.js incremental regeneration | Yes, on a timer or a stale request | Yes — caching in front of it doesn't remove the need behind it |
+| CSR - this platform's `Spa` | No, static files only | No |
+| SSR - e.g. Next.js `getServerSideProps`, Nuxt SSR | Yes, every request | Yes |
+| ISR - e.g. Next.js incremental regeneration | Yes, on a timer or a stale request | Yes - caching in front of it doesn't remove the need behind it |
 
 ---
 

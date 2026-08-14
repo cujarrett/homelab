@@ -3,14 +3,14 @@
 Crossplane composition that deploys a self-contained WordPress site with MariaDB.
 
 ## What it provisions
-- **MariaDB PVC** — persistent storage for the database
-- **MariaDB StatefulSet + Service** — database backend; credentials derived from the XR UID (no secrets in Git)
-- **WordPress PVC** — persistent storage for `wp-content` (uploads, themes, plugins)
-- **WordPress Deployment + Service** — Apache/PHP WordPress container; seeds `wp-content` from the image on first run
-- **Ingress** — Traefik `websecure` with cert-manager TLS
-- **NetworkPolicies** — WordPress reaches its database, DNS and the public internet only; the database is reachable from its own WordPress pod only
+- **MariaDB PVC** - persistent storage for the database
+- **MariaDB StatefulSet + Service** - database backend; credentials derived from the XR UID (no secrets in Git)
+- **WordPress PVC** - persistent storage for `wp-content` (uploads, themes, plugins)
+- **WordPress Deployment + Service** - Apache/PHP WordPress container; seeds `wp-content` from the image on first run
+- **Ingress** - Traefik `websecure` with cert-manager TLS
+- **NetworkPolicies** - WordPress reaches its database, DNS and the public internet only; the database is reachable from its own WordPress pod only
 
-The namespace is owned by the tenant — created by `namespace.yaml` in the tenant directory.
+The namespace is owned by the tenant - created by `namespace.yaml` in the tenant directory.
 
 ## Editing theme and plugin code
 
@@ -21,12 +21,12 @@ theme installs and updates are unaffected and still work normally from the UI.
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `host` | yes | — | Ingress hostname. Must match WordPress `siteurl`/`home` in the DB — changing requires a DB search-replace. |
+| `host` | yes | - | Ingress hostname. Must match WordPress `siteurl`/`home` in the DB - changing requires a DB search-replace. |
 | `size` | no | `sm` | Resource tier for WordPress and MariaDB containers. See table below. |
 | `storageSize` | no | `10Gi` | `wp-content` PVC size (uploads, themes, plugins) |
 | `dbStorageSize` | no | `5Gi` | MariaDB PVC size |
 | `replicas` | no | `1` | WordPress pod replicas |
-| `dataRetention` | no | `retain` | `retain` — keep PV on XR delete (uses `longhorn-retain` StorageClass). `delete` — wipe PV on XR delete (uses `longhorn-delete` StorageClass). |
+| `dataRetention` | no | `retain` | `retain` - keep PV on XR delete (uses `longhorn-retain` StorageClass). `delete` - wipe PV on XR delete (uses `longhorn-delete` StorageClass). |
 
 ### Size tiers
 

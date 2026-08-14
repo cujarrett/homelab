@@ -8,9 +8,9 @@
 #     --namespace   mattjarrett-com \
 #     --instance    mattjarrett-com \
 #     --old-url     https://old-site.example.com \
-#     --new-url     https://mattjarrett.com        (public domain — Cloudflare Tunnel routes this to the cluster)
+#     --new-url     https://mattjarrett.com        (public domain - Cloudflare Tunnel routes this to the cluster)
 #
-# NOTE — Lightsail Bitnami backups: the siteurl in the dump is http://127.0.0.1,
+# NOTE - Lightsail Bitnami backups: the siteurl in the dump is http://127.0.0.1,
 # not the real domain. Use --old-url http://127.0.0.1 when restoring from a
 # Lightsail snapshot, even if the site was live at the real domain before backup.
 #
@@ -133,7 +133,7 @@ echo "==> Extracting wp-content..."
 # Exclude mu-plugins: on this platform it's a read-only ConfigMap mount rendered by the
 # composition, not user data. A backup taken from a live cluster pod captures that mounted
 # file, but the restore target mounts it read-only too, so tar can't overwrite it and aborts.
-# Skipping it is correct — the platform re-provides mu-plugins; it's never part of the backup.
+# Skipping it is correct - the platform re-provides mu-plugins; it's never part of the backup.
 kubectl exec -n "$NAMESPACE" "$WP_POD" -- bash -c \
   "tar --exclude='wp-content/mu-plugins/*' -xzf /tmp/wp-content.tar.gz -C /var/www/html/ 2>&1 | grep -v 'Ignoring unknown extended header'; rc=\${PIPESTATUS[0]}; rm -f /tmp/wp-content.tar.gz; exit \$rc"
 

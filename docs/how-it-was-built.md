@@ -1,6 +1,6 @@
 # K3s Lab Plan
 
-A record of the original build, kept as written. The cluster has moved on since — Cilium
+A record of the original build, kept as written. The cluster has moved on since - Cilium
 replaced flannel, and Istio, SPIRE and NATS arrived after step 14. For what runs today see
 [Cluster](./cluster.md); to rebuild or upgrade a node see [Upgrading k3s](./runbooks/k3s-upgrade.md).
 Steps that would now mislead carry a **Since changed** note.
@@ -12,20 +12,20 @@ Steps that would now mislead carry a **Since changed** note.
 |---|
 | [Architecture](#architecture) |
 | [Node IPs](#node-ips) |
-| [1 — Hardware & OS Setup](#node-reference) |
-| [2 — Install k3s on ctrl-1](#k3s-install) |
-| [3 — Join Worker Nodes](#worker-nodes) |
-| [4 — Verify Cluster Health](#cluster-health) |
-| [5 — Configure Traefik](#traefik) |
-| [6 — DNS: /etc/hosts](#dns-hosts) |
-| [7 — Cert-Manager](#cert-manager) |
-| [8 — Longhorn](#longhorn) |
-| [9 — Argo CD](#argocd) |
-| [10 — Prometheus + Grafana](#prometheus-grafana) |
-| [11 — Grafana Kiosk](#grafana-kiosk) |
-| [12 — AdGuard Home](#adguard) |
-| [13 — Tailscale (Remote Access)](#tailscale) |
-| [14 — Crossplane](#crossplane) |
+| [1 - Hardware & OS Setup](#node-reference) |
+| [2 - Install k3s on ctrl-1](#k3s-install) |
+| [3 - Join Worker Nodes](#worker-nodes) |
+| [4 - Verify Cluster Health](#cluster-health) |
+| [5 - Configure Traefik](#traefik) |
+| [6 - DNS: /etc/hosts](#dns-hosts) |
+| [7 - Cert-Manager](#cert-manager) |
+| [8 - Longhorn](#longhorn) |
+| [9 - Argo CD](#argocd) |
+| [10 - Prometheus + Grafana](#prometheus-grafana) |
+| [11 - Grafana Kiosk](#grafana-kiosk) |
+| [12 - AdGuard Home](#adguard) |
+| [13 - Tailscale (Remote Access)](#tailscale) |
+| [14 - Crossplane](#crossplane) |
 
 </details>
 
@@ -93,7 +93,7 @@ Kubernetes Layers (logical):
 ---
 
 <a id="node-reference"></a>
-## 1 — Hardware & OS Setup
+## 1 - Hardware & OS Setup
 
 All 4 nodes fully prepped: NVMe boot, static IPs, open-iscsi, cgroups, kernel modules, Longhorn dir.
 
@@ -106,7 +106,7 @@ ssh pi@192.168.10.103   # work-3
 
 ### Case assembly note
 
-Each Pi 5 + NVMe HAT stack didn't fit the rack case cleanly with a single riser height — the stacks needed to clear the case wall on one side without the HATs touching each other on the other side. The fix was mixing riser lengths on the same board: 11mm risers on one pair of mounting holes and 13.5mm risers on the diagonally opposite pair, rather than four matching risers. This tilts each stack slightly, which was enough to solve both clearance problems at once. Worth knowing if you're replicating this build — a symmetric riser kit alone may not fit this case/HAT combination.
+Each Pi 5 + NVMe HAT stack didn't fit the rack case cleanly with a single riser height - the stacks needed to clear the case wall on one side without the HATs touching each other on the other side. The fix was mixing riser lengths on the same board: 11mm risers on one pair of mounting holes and 13.5mm risers on the diagonally opposite pair, rather than four matching risers. This tilts each stack slightly, which was enough to solve both clearance problems at once. Worth knowing if you're replicating this build - a symmetric riser kit alone may not fit this case/HAT combination.
 
 <details>
 <summary>Photos</summary>
@@ -120,9 +120,9 @@ Each Pi 5 + NVMe HAT stack didn't fit the rack case cleanly with a single riser 
 ---
 
 <a id="k3s-install"></a>
-## 2 — Install k3s on ctrl-1
+## 2 - Install k3s on ctrl-1
 
-K3s is a lightweight, CNCF-certified Kubernetes distribution built for resource-constrained environments. It ships as a single ~100 MB binary, uses roughly half the RAM of standard Kubernetes, and bundles Traefik, CoreDNS, and a Helm controller out of the box — making it a natural fit for Raspberry Pi hardware.
+K3s is a lightweight, CNCF-certified Kubernetes distribution built for resource-constrained environments. It ships as a single ~100 MB binary, uses roughly half the RAM of standard Kubernetes, and bundles Traefik, CoreDNS, and a Helm controller out of the box - making it a natural fit for Raspberry Pi hardware.
 
 ```bash
 ssh pi@192.168.10.100
@@ -157,7 +157,7 @@ Get the node token (needed for workers):
 sudo cat /var/lib/rancher/k3s/server/node-token
 ```
 
-Copy kubeconfig to laptop — run these on your Mac, not ctrl-1:
+Copy kubeconfig to laptop - run these on your Mac, not ctrl-1:
 
 ```bash
 # On your Mac
@@ -178,7 +178,7 @@ brew install kubectl helm
 ---
 
 <a id="worker-nodes"></a>
-## 3 — Join Worker Nodes
+## 3 - Join Worker Nodes
 
 A single-node cluster has limited CPU, RAM, and no redundancy. Adding three workers distributes pod scheduling across all four Pis, keeps the control-plane node free for Kubernetes management traffic, and means workloads can survive a single node going down.
 
@@ -220,9 +220,9 @@ kubectl label node work-3 node-role.kubernetes.io/worker=worker
 ---
 
 <a id="cluster-health"></a>
-## 4 — Verify Cluster Health
+## 4 - Verify Cluster Health
 
-Before layering in any infrastructure, confirm the cluster baseline is solid. Pods need to schedule across workers, DNS must resolve service names, and pod-to-pod networking must work — these are the foundations that everything else depends on. Catching problems here is far easier than debugging them after six more components are installed.
+Before layering in any infrastructure, confirm the cluster baseline is solid. Pods need to schedule across workers, DNS must resolve service names, and pod-to-pod networking must work - these are the foundations that everything else depends on. Catching problems here is far easier than debugging them after six more components are installed.
 
 ```bash
 kubectl get pods -n kube-system
@@ -241,9 +241,9 @@ kubectl run dns-test --image=busybox:1.36 --rm -it --restart=Never -- \
 ---
 
 <a id="traefik"></a>
-## 5 — Configure Traefik (Ingress)
+## 5 - Configure Traefik (Ingress)
 
-Every service deployed in the cluster is only reachable from inside the cluster by default. Traefik is the ingress controller — it listens on ports 80/443 of each node and routes incoming HTTP/HTTPS traffic to the correct pod based on the `Host` header (e.g., `grafana.local.lab → grafana pod`). K3s bundles Traefik automatically, but we configure it to bind to the host ports directly so requests from your Mac actually reach the cluster.
+Every service deployed in the cluster is only reachable from inside the cluster by default. Traefik is the ingress controller - it listens on ports 80/443 of each node and routes incoming HTTP/HTTPS traffic to the correct pod based on the `Host` header (e.g., `grafana.local.lab → grafana pod`). K3s bundles Traefik automatically, but we configure it to bind to the host ports directly so requests from your Mac actually reach the cluster.
 
 k3s ships Traefik automatically. Configure it to bind host ports directly:
 
@@ -319,7 +319,7 @@ sudo sed -i '' '/whoami\.local\.lab/d' /etc/hosts
 ---
 
 <a id="dns-hosts"></a>
-## 6 — DNS: /etc/hosts for Now (AdGuard Home in Step 12)
+## 6 - DNS: /etc/hosts for Now (AdGuard Home in Step 12)
 
 Service hostnames like `longhorn.local.lab` need to resolve to the cluster IP (`192.168.10.100`) before a browser or `curl` can reach them. UniFi Network 10.2 doesn't support wildcard DNS records, so while the cluster is being built, your Mac's `/etc/hosts` file is the simplest workaround. AdGuard Home (step 12) replaces this permanently for all devices on the network.
 
@@ -346,9 +346,9 @@ Phase 2 (deploy AdGuard Home and replace `/etc/hosts`) is covered in step 12 onc
 ---
 
 <a id="cert-manager"></a>
-## 7 — Install Cert-Manager
+## 7 - Install Cert-Manager
 
-HTTPS requires TLS certificates. Without them, every browser request to a cluster service shows a security warning, and tools like the ArgoCD CLI and Helm can refuse to talk to untrusted endpoints. Cert-Manager automates requesting, issuing, and renewing certificates — from Let's Encrypt for public-facing services and from a self-signed local CA for internal `*.local.lab` services — so you never have to manage cert expiry manually.
+HTTPS requires TLS certificates. Without them, every browser request to a cluster service shows a security warning, and tools like the ArgoCD CLI and Helm can refuse to talk to untrusted endpoints. Cert-Manager automates requesting, issuing, and renewing certificates - from Let's Encrypt for public-facing services and from a self-signed local CA for internal `*.local.lab` services - so you never have to manage cert expiry manually.
 
 ```bash
 helm repo add jetstack https://charts.jetstack.io && helm repo update
@@ -360,13 +360,13 @@ helm install cert-manager jetstack/cert-manager \
   --set prometheus.enabled=true
 
 kubectl get pods -n cert-manager
-# cert-manager, cert-manager-cainjector, cert-manager-webhook — all Running
+# cert-manager, cert-manager-cainjector, cert-manager-webhook - all Running
 ```
 
 Create issuers:
 
 ```bash
-# Edit cluster/cert-manager/issuers.yaml first — update your-email@example.com
+# Edit cluster/cert-manager/issuers.yaml first - update your-email@example.com
 kubectl apply -f cluster/cert-manager/issuers.yaml
 ```
 
@@ -383,9 +383,9 @@ sudo security add-trusted-cert -d -r trustRoot \
 ---
 
 <a id="longhorn"></a>
-## 8 — Install Longhorn (Storage)
+## 8 - Install Longhorn (Storage)
 
-By default, Kubernetes pod storage is ephemeral — any data written to disk is lost when a pod restarts or moves to a different node. Longhorn provides distributed block storage backed by the NVMe SSDs on each Raspberry Pi. It automatically replicates volumes across nodes (3× by default), so a disk failure or node loss doesn't destroy your data. Without Longhorn (or similar), stateful workloads like databases and Grafana dashboards can't safely persist anything.
+By default, Kubernetes pod storage is ephemeral - any data written to disk is lost when a pod restarts or moves to a different node. Longhorn provides distributed block storage backed by the NVMe SSDs on each Raspberry Pi. It automatically replicates volumes across nodes (3× by default), so a disk failure or node loss doesn't destroy your data. Without Longhorn (or similar), stateful workloads like databases and Grafana dashboards can't safely persist anything.
 
 ### Pre-flight
 
@@ -400,7 +400,7 @@ chmod +x longhornctl
 exit
 ```
 
-Expected errors and fixes — run on **all 4 nodes**:
+Expected errors and fixes - run on **all 4 nodes**:
 
 | Error | Fix |
 |---|---|
@@ -453,11 +453,11 @@ kubectl apply -f cluster/longhorn/ingress.yaml
 ---
 
 <a id="argocd"></a>
-## 9 — Install Argo CD (GitOps)
+## 9 - Install Argo CD (GitOps)
 
-Managing a cluster by running `kubectl apply` by hand doesn't scale and leaves no audit trail of what changed and when. Argo CD implements GitOps: it watches this GitHub repo and automatically syncs any changes you push to the cluster. The Git history becomes a full audit log, rollbacks are a `git revert` away, and the cluster's desired state is always defined as code — never just whatever was last typed into a terminal.
+Managing a cluster by running `kubectl apply` by hand doesn't scale and leaves no audit trail of what changed and when. Argo CD implements GitOps: it watches this GitHub repo and automatically syncs any changes you push to the cluster. The Git history becomes a full audit log, rollbacks are a `git revert` away, and the cluster's desired state is always defined as code - never just whatever was last typed into a terminal.
 
-The `cluster/` and `platform/` directory structure already exists in this repo — use this repo as your GitOps source, or copy the files to a dedicated `homelab-gitops` repo.
+The `cluster/` and `platform/` directory structure already exists in this repo - use this repo as your GitOps source, or copy the files to a dedicated `homelab-gitops` repo.
 
 Install Argo CD:
 
@@ -489,8 +489,8 @@ kubectl apply -f cluster/argocd/ingress.yaml
 Connect GitHub repo and create root app:
 
 Generate a GitHub PAT at **GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens**. Scope it to only this repo with these permissions:
-- **Contents** — Read-only (ArgoCD reads files from the repo)
-- **Metadata** — Read-only (required by all fine-grained tokens)
+- **Contents** - Read-only (ArgoCD reads files from the repo)
+- **Metadata** - Read-only (required by all fine-grained tokens)
 
 That's it. ArgoCD only needs to clone/pull; it never pushes.
 
@@ -502,7 +502,7 @@ argocd repo add https://github.com/<YOUR_USERNAME>/homelab.git \
   --username <YOUR_USERNAME> \
   --password <GITHUB_PAT>
 
-# Edit cluster/argocd/bootstrap.yaml first — update repoURL with your GitHub username
+# Edit cluster/argocd/bootstrap.yaml first - update repoURL with your GitHub username
 kubectl apply -f cluster/argocd/bootstrap.yaml
 ```
 
@@ -519,9 +519,9 @@ kubectl -n argocd delete secret argocd-initial-admin-secret
 ---
 
 <a id="prometheus-grafana"></a>
-## 10 — Install Prometheus + Grafana + Alertmanager
+## 10 - Install Prometheus + Grafana + Alertmanager
 
-Without observability you're flying blind — you won't know a node is running out of memory until pods start crashing, or a disk is filling up until Longhorn starts refusing writes. Prometheus scrapes real-time metrics from every node and pod; Grafana visualizes them in pre-built dashboards; Alertmanager fires notifications when thresholds are breached. Together they give you the full picture of what the cluster is doing at any moment.
+Without observability you're flying blind - you won't know a node is running out of memory until pods start crashing, or a disk is filling up until Longhorn starts refusing writes. Prometheus scrapes real-time metrics from every node and pod; Grafana visualizes them in pre-built dashboards; Alertmanager fires notifications when thresholds are breached. Together they give you the full picture of what the cluster is doing at any moment.
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts && helm repo update
@@ -551,11 +551,11 @@ kubectl apply -f cluster/monitoring/ingresses.yaml
 ---
 
 <a id="grafana-kiosk"></a>
-## 11 — Grafana Kiosk on 1U Display
+## 11 - Grafana Kiosk on 1U Display
 
 A rack with no display is just a box. The 1U LCD mounted in the rack can show a live Grafana cluster-health dashboard so you can see CPU, memory, and disk usage at a glance without opening a laptop. This turns the display from decorative hardware into a useful at-a-glance status panel.
 
-Connect the GeeekPi 6.91" 1U touch LCD to `ctrl-1` via micro-HDMI. The panel's separate USB touch lead is left unplugged — the kiosk is display-only, and Grafana playlists have no swipe gesture to drive with it.
+Connect the GeeekPi 6.91" 1U touch LCD to `ctrl-1` via micro-HDMI. The panel's separate USB touch lead is left unplugged - the kiosk is display-only, and Grafana playlists have no swipe gesture to drive with it.
 
 ```bash
 ssh pi@192.168.10.100
@@ -614,7 +614,7 @@ EOF
 sudo systemctl daemon-reload && sudo systemctl restart getty@tty1
 ```
 
-Enable anonymous Grafana viewer access for the kiosk — run this on your machine:
+Enable anonymous Grafana viewer access for the kiosk - run this on your machine:
 
 ```bash
 helm upgrade monitoring prometheus-community/kube-prometheus-stack \
@@ -640,15 +640,15 @@ curl -s -u "admin:${GRAFANA_PASS}" \
 ---
 
 <a id="adguard"></a>
-## 12 — AdGuard Home (Replace /etc/hosts with Wildcard DNS)
+## 12 - AdGuard Home (Replace /etc/hosts with Wildcard DNS)
 
-`/etc/hosts` only works on your machine. Any other device on the network — a phone, a tablet, another laptop — can't resolve `*.local.lab`. AdGuard Home is a DNS server that runs in the cluster and serves a wildcard rewrite (`*.local.lab → 192.168.10.100`) to every device that uses it for DNS.
+`/etc/hosts` only works on your machine. Any other device on the network - a phone, a tablet, another laptop - can't resolve `*.local.lab`. AdGuard Home is a DNS server that runs in the cluster and serves a wildcard rewrite (`*.local.lab → 192.168.10.100`) to every device that uses it for DNS.
 
-This cluster does not use MetalLB — Traefik uses `hostPort` for HTTP/HTTPS (ports 80/443 directly on `ctrl-1`). AdGuard uses the same pattern: `hostPort: 53` pinned to `ctrl-1` (`192.168.10.100`), so DNS resolves at the same IP as your ingress. The admin UI is exposed via Ingress through Traefik as normal.
+This cluster does not use MetalLB - Traefik uses `hostPort` for HTTP/HTTPS (ports 80/443 directly on `ctrl-1`). AdGuard uses the same pattern: `hostPort: 53` pinned to `ctrl-1` (`192.168.10.100`), so DNS resolves at the same IP as your ingress. The admin UI is exposed via Ingress through Traefik as normal.
 
 ### Create the manifest
 
-The manifest lives at [cluster/adguard/adguard.yaml](../cluster/adguard/adguard.yaml). ArgoCD's root app recurses the `cluster/` directory, so no additional ArgoCD Application is needed — committing the file is enough.
+The manifest lives at [cluster/adguard/adguard.yaml](../cluster/adguard/adguard.yaml). ArgoCD's root app recurses the `cluster/` directory, so no additional ArgoCD Application is needed - committing the file is enough.
 
 ### Apply
 
@@ -674,7 +674,7 @@ Open `http://localhost:3000` and complete the wizard:
 3. Note the admin interface will move to port 80 after setup → **Next**
 4. Set an admin username and password → **Next** → **Open Dashboard**
 
-After the wizard, the admin UI is available at `https://adguard.local.lab` (once DNS is working — until then, port-forward to port 80).
+After the wizard, the admin UI is available at `https://adguard.local.lab` (once DNS is working - until then, port-forward to port 80).
 
 ### Configure DNS rewrite
 
@@ -736,13 +736,13 @@ sudo sed -i '' '/\.local\.lab/d' /etc/hosts
 <a id="longhorn-backups"></a>
 
 <a id="tailscale"></a>
-## 13 — Tailscale (Remote Access)
+## 13 - Tailscale (Remote Access)
 
-Without this, `kubectl`, `ssh`, and `*.local.lab` only work when you're on the home network. Tailscale creates an encrypted mesh VPN — no port forwarding, no exposed firewall ports, works from any network. Install it on `ctrl-1` as a subnet router so your Mac can reach the entire `192.168.10.0/24` cluster subnet remotely.
+Without this, `kubectl`, `ssh`, and `*.local.lab` only work when you're on the home network. Tailscale creates an encrypted mesh VPN - no port forwarding, no exposed firewall ports, works from any network. Install it on `ctrl-1` as a subnet router so your Mac can reach the entire `192.168.10.0/24` cluster subnet remotely.
 
 ### Create a Tailscale account
 
-Sign up at [tailscale.com](https://tailscale.com) — free tier supports up to 100 devices.
+Sign up at [tailscale.com](https://tailscale.com) - free tier supports up to 100 devices.
 
 ### Install on ctrl-1
 
@@ -791,9 +791,9 @@ curl -sk https://adguard.local.lab -o /dev/null -w "%{http_code}"
 ---
 
 <a id="crossplane"></a>
-## 14 — Install Crossplane
+## 14 - Install Crossplane
 
-Running `helm install` for each app works fine for a handful of services, but it doesn't give you a reusable, self-service API. Crossplane extends Kubernetes so you can define infrastructure (databases, apps, DNS records, cloud resources) as custom Kubernetes resources — the same declarative model you use for Deployments and Services. This is the foundation the `Wordpress` XR is built on.
+Running `helm install` for each app works fine for a handful of services, but it doesn't give you a reusable, self-service API. Crossplane extends Kubernetes so you can define infrastructure (databases, apps, DNS records, cloud resources) as custom Kubernetes resources - the same declarative model you use for Deployments and Services. This is the foundation the `Wordpress` XR is built on.
 
 ```bash
 helm repo add crossplane-stable https://charts.crossplane.io/stable && helm repo update
@@ -809,7 +809,7 @@ Install functions:
 
 ```bash
 kubectl apply -f cluster/crossplane/providers.yaml
-kubectl get functions   # Wait for HEALTHY: True — both function-patch-and-transform and function-go-templating
+kubectl get functions   # Wait for HEALTHY: True - both function-patch-and-transform and function-go-templating
 ```
 
 Grant Crossplane RBAC to compose native Kubernetes resources:

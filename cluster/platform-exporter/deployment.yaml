@@ -14,7 +14,7 @@ spec:
         app: platform-exporter
     spec:
       serviceAccountName: platform-exporter
-      # runAsUser overrides the image's own USER, which is a name (USER app) — the
+      # runAsUser overrides the image's own USER, which is a name (USER app) - the
       # kubelet will not honour runAsNonRoot for a name it cannot resolve.
       securityContext:
         runAsNonRoot: true

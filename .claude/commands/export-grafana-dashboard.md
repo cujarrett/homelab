@@ -5,7 +5,7 @@ argument: '<grafana-dashboard-url>'
 
 Sync the Grafana dashboard at `$ARGUMENTS` to its ConfigMap in the repo.
 
-**Format note:** The Grafana API always returns v1 (`panels`-based) format — this is what Grafana provisioning expects in ConfigMaps. The Grafana UI "Export" button produces v2 (`elements`-based) format which fails provisioning. Always fetch from the API, never from the UI export dialog.
+**Format note:** The Grafana API always returns v1 (`panels`-based) format - this is what Grafana provisioning expects in ConfigMaps. The Grafana UI "Export" button produces v2 (`elements`-based) format which fails provisioning. Always fetch from the API, never from the UI export dialog.
 
 ## Steps
 
@@ -17,7 +17,7 @@ Extract the `<uid>` segment (e.g. `homelab-kiosk`, `web-traffic`, `homelab-mbp`)
 
 ### 2. Fetch the dashboard JSON and write the ConfigMap
 
-Run this in one shot — it fetches from the API, finds the matching ConfigMap, and writes the updated file directly:
+Run this in one shot - it fetches from the API, finds the matching ConfigMap, and writes the updated file directly:
 
 ```bash
 python3 - << 'EOF'
@@ -71,7 +71,7 @@ EOF
 k apply -f cluster/monitoring/<dashboard-configmap>.yaml
 ```
 
-Grafana hot-reloads provisioned dashboards — no restart needed. Open the dashboard URL and confirm it loads correctly before committing.
+Grafana hot-reloads provisioned dashboards - no restart needed. Open the dashboard URL and confirm it loads correctly before committing.
 
 ### 4. Check `"instant": true` for kiosk dashboards
 
@@ -81,7 +81,7 @@ First check whether this dashboard is in the kiosk playlist:
 grep '<uid>' cluster/monitoring/grafana-playlist-kiosk.yaml
 ```
 
-If it is, verify all stat panel targets have `"instant": true` — range queries on stat panels crash the Pi on the kiosk display:
+If it is, verify all stat panel targets have `"instant": true` - range queries on stat panels crash the Pi on the kiosk display:
 
 ```bash
 grep -c '"instant"' cluster/monitoring/<dashboard-configmap>.yaml
@@ -91,7 +91,7 @@ If any stat panels are missing it, add `"instant": true` to their targets manual
 
 ### 5. Check panel colors
 
-A panel edited in the UI comes back with Grafana's default thresholds — base `green`, `red` at 80 — so a plain count round-trips as a green tile. Green, yellow and red are reserved for health; every other value uses the blue/purple family. Read [Dashboard Colors](../../cluster/monitoring/dashboard-colors.md) and fix any panel that drifted.
+A panel edited in the UI comes back with Grafana's default thresholds - base `green`, `red` at 80 - so a plain count round-trips as a green tile. Green, yellow and red are reserved for health; every other value uses the blue/purple family. Read [Dashboard Colors](../../cluster/monitoring/dashboard-colors.md) and fix any panel that drifted.
 
 ```bash
 grep -n '"color"' cluster/monitoring/<dashboard-configmap>.yaml

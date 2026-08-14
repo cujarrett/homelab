@@ -115,7 +115,7 @@ ssh "$CTRL1" "sudo kubectl exec -n kentjarrett-com deploy/kentjarrett-com-wordpr
 echo "==> Node files (ctrl-1)"
 ssh "$CTRL1" 'sudo cat /var/lib/rancher/k3s/server/node-token' > "$OUT/nodes/ctrl-1/node-token" \
   && ok "ctrl-1/node-token" || fail "ctrl-1/node-token"
-# disable-network-policy: true lives only here — losing it silently re-enables k3s's
+# disable-network-policy: true lives only here - losing it silently re-enables k3s's
 # kube-router alongside Cilium and breaks kubelet probes. See docs/postmortem-kubelet-probe-outage.md.
 ssh "$CTRL1" 'sudo cat /etc/rancher/k3s/config.yaml' > "$OUT/nodes/ctrl-1/k3s-config.yaml" \
   && ok "ctrl-1/k3s-config.yaml" || fail "ctrl-1/k3s-config.yaml"
@@ -126,7 +126,7 @@ ssh "$CTRL1" 'sudo cat /etc/X11/xorg.conf.d/99-pi5.conf' > "$OUT/nodes/ctrl-1/99
 scp -q "$CTRL1:~/.bash_profile" "$OUT/nodes/ctrl-1/bash_profile" \
   && ok "ctrl-1/bash_profile" || fail "ctrl-1/bash_profile"
 
-# Worker nodes use the server node-token (already captured above) to join —
+# Worker nodes use the server node-token (already captured above) to join -
 # they do not store a separate token file.
 
 # ── Summary ───────────────────────────────────────────────────────────────────
@@ -144,7 +144,7 @@ if [[ ${#FAILED[@]} -gt 0 ]]; then
 fi
 
 echo ""
-echo "Before encrypting, generate this manually — it cannot be pulled from the cluster:"
+echo "Before encrypting, generate this manually - it cannot be pulled from the cluster:"
 echo "  Tailscale auth key  → https://login.tailscale.com/admin/settings/keys"
 echo ""
 echo "════════════════════════════════════════════════════════════"

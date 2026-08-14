@@ -9,7 +9,7 @@ A repo is wired when a merge to `main` builds the image *and* commits the new ta
 the cluster quietly runs stale images.
 
 The commit is done by [update-image-tag.yml](https://github.com/cujarrett/homelab-workspaces/blob/main/.github/workflows/update-image-tag.yml)
-in `homelab-workspaces` — a reusable workflow that reads the XR file over the GitHub
+in `homelab-workspaces` - a reusable workflow that reads the XR file over the GitHub
 contents API, `sed`s `image: <IMAGE>:.*` to `sha-${GITHUB_SHA}`, and PUTs it back as a
 commit. ArgoCD takes it from there.
 
@@ -24,7 +24,7 @@ grep -n "ghcr.io/cujarrett\|deploy:\|uses: cujarrett/homelab-workspaces" .github
 ```
 
 Every workflow that pushes an image needs a `deploy` job. A workflow with
-`build-and-push` but no `deploy` is the gap. Note the exact image names — a monorepo
+`build-and-push` but no `deploy` is the gap. Note the exact image names - a monorepo
 builds several from one tree.
 
 Then map each image to the XR file(s) it feeds:
@@ -33,7 +33,7 @@ Then map each image to the XR file(s) it feeds:
 grep -rn "image:" /Users/matt-jarrett/Developer/homelab-workspaces/*/
 ```
 
-One image can feed more than one XR — the same binary deployed twice under different
+One image can feed more than one XR - the same binary deployed twice under different
 names is a normal pattern, and both files need bumping.
 
 ## 2. Add the deploy job
@@ -56,7 +56,7 @@ Two things the defaults get wrong outside the simple case:
 **Image name.** The workflow defaults to `ghcr.io/cujarrett/<repo-name>`. That is only
 right when the repo builds one image named after itself. A monorepo building
 `foo-api` and `foo-spa` out of repo `foo` must pass `image:` explicitly, or the `sed`
-matches nothing and the job succeeds having changed nothing — the worst failure mode,
+matches nothing and the job succeeds having changed nothing - the worst failure mode,
 because it looks green.
 
 ```yaml
@@ -66,7 +66,7 @@ because it looks green.
 ```
 
 **One image, several XR files.** `file` takes a single path, so fan out with a matrix.
-Keep `max-parallel: 1` — the commits go to the same branch and will race otherwise.
+Keep `max-parallel: 1` - the commits go to the same branch and will race otherwise.
 
 ```yaml
     strategy:
@@ -81,7 +81,7 @@ Keep `max-parallel: 1` — the commits go to the same branch and will race other
 ```
 
 The `namespace` input only feeds the default for `file`. Once `file` is explicit, drop
-`namespace` — it does nothing.
+`namespace` - it does nothing.
 
 ## 3. Check the secret
 
@@ -93,15 +93,15 @@ gh secret list -R cujarrett/<repo>
 ```
 
 Empty output means it must be created. Secrets are write-only, so a token set on
-another repo cannot be read back — unless the user saved it, a new one is needed.
+another repo cannot be read back - unless the user saved it, a new one is needed.
 Walk them through it:
 
 1. Open **https://github.com/settings/personal-access-tokens/new**
 2. Resource owner `cujarrett`; Repository access **Only select repositories** → `homelab-workspaces`
-3. Repository permissions → **Contents: Read and write** — that is the entire requirement, the workflow does one GET and one PUT
+3. Repository permissions → **Contents: Read and write** - that is the entire requirement, the workflow does one GET and one PUT
 4. Generate, copy, then `gh secret set HOMELAB_PAT -R cujarrett/<repo>`
 
-`gh secret set` has no `-` stdin convention — `--body` takes a literal string and
+`gh secret set` has no `-` stdin convention - `--body` takes a literal string and
 stdin is read only when the flag is absent. Piping into `--body -` stores a
 one-character secret and discards the token, and the command still prints its
 success line. The result is a `deploy` job failing on `Bad credentials (HTTP 401)`
@@ -110,12 +110,12 @@ problem. Pass `--body "$VAR"` or omit the flag entirely.
 
 The token needs no access to the repo the workflow runs *in*, only to the repo it
 writes *to*. Flag that fine-grained PATs expire, and that when this one does the
-`deploy` job fails while `build-and-push` stays green — images keep building and the
+`deploy` job fails while `build-and-push` stays green - images keep building and the
 cluster keeps running the old SHA.
 
 **The cluster-manifest exception.** A service whose manifests live in `homelab` under
-`cluster/` rather than as an XR in `homelab-workspaces` — `platform-exporter` is the
-only one — cannot use the reusable workflow, which is hardcoded to its own repo. It
+`cluster/` rather than as an XR in `homelab-workspaces` - `platform-exporter` is the
+only one - cannot use the reusable workflow, which is hardcoded to its own repo. It
 carries an inline GET/`sed`/PUT `deploy` step instead, and its token is scoped to
 `cujarrett/homelab`. Same secret name, different target repo: scope that one to
 `homelab-workspaces` by mistake and the API returns 404 rather than 401, so it fails
@@ -125,7 +125,7 @@ looking like a missing file instead of a bad token.
 
 Expiry is the failure this pattern actually hits, and it lands in a repo whose README
 may say nothing about deploys at all. Every wired repo gets a `## Deployment` section
-with a `### Rotating HOMELAB_PAT` subsection covering four things — which repo the
+with a `### Rotating HOMELAB_PAT` subsection covering four things - which repo the
 token is scoped to, that each repo holds its own token because `cujarrett` is a
 personal account, that expiry shows up as a green build with a failed `deploy`, and
 the `gh secret set` command with this repo's name already filled in. Copy the section
@@ -154,7 +154,7 @@ gh workflow run <workflow>.yml -R cujarrett/<repo> --ref main
 gh run watch -R cujarrett/<repo>
 ```
 
-A green `deploy` is not proof on its own — a wrong `image:` still passes. Confirm the
+A green `deploy` is not proof on its own - a wrong `image:` still passes. Confirm the
 commit actually landed:
 
 ```bash

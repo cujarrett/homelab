@@ -112,11 +112,11 @@ Expand an acronym inline the first time it appears. Never use it cold.
 
 Example:
 - Wrong: "The platform rotates SVIDs before they expire."
-- Right: "The platform rotates SVIDs — SPIFFE Verifiable Identity Documents — before they expire."
+- Right: "The platform rotates SVIDs - SPIFFE Verifiable Identity Documents - before they expire."
 
 After the first use, the short form is fine.
 
-### Contrast statements — one per post
+### Contrast statements - one per post
 
 The `X isn't Y. It's Z.` shape is the strongest move in this guide and the easiest to
 overuse. The homelab post used it eight times, and readers called it out by name:
@@ -145,11 +145,11 @@ Examples:
 
 Em dashes and certain hyphenated constructions are AI writing smells. Avoid them.
 
-**Em dash (`—`): one per post. Count them before publishing.**
+**Em dash (`-`): one per post. Count them before publishing.**
 
 AI overuses it to staple two thoughts together instead of choosing the right punctuation. Use a period, comma, or colon instead.
 
-- Wrong: "It works — it's also unnecessary."
+- Wrong: "It works - it's also unnecessary."
 - Right: "It works. It's also unnecessary."
 
 This is the highest-signal tell and the easiest to check. The three posts nobody
@@ -157,9 +157,9 @@ complained about hold 1, 3, and 4 em dashes. The homelab post holds 17.
 
 The one you keep should be a genuine parenthetical aside that would be awkward in parentheses.
 
-**Hyphenated adverb–adjective compounds:** "well-documented," "self-service," "long-lived" — fine when they precede a noun. Drop the hyphen after a verb ("it is well documented"). Don't manufacture compound modifiers for their own sake.
+**Hyphenated adverb–adjective compounds:** "well-documented," "self-service," "long-lived" - fine when they precede a noun. Drop the hyphen after a verb ("it is well documented"). Don't manufacture compound modifiers for their own sake.
 
-**Watch for:** "purely certificate-based," "certificate-based approach," "zero-wiring design" — these read like generated prose. Rewrite as plain sentences.
+**Watch for:** "purely certificate-based," "certificate-based approach," "zero-wiring design" - these read like generated prose. Rewrite as plain sentences.
 
 ---
 

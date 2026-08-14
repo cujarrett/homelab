@@ -20,7 +20,7 @@ spec:
     deployment:
       kind: DaemonSet
       # Mesh only Traefik's own pods, not all of kube-system (would also sidecar Cilium's hostNetwork DaemonSets).
-      # Gives Traefik a verifiable identity for AuthorizationPolicy — prerequisite for enforce: true on apps with a direct Ingress.
+      # Gives Traefik a verifiable identity for AuthorizationPolicy - prerequisite for enforce: true on apps with a direct Ingress.
       podAnnotations:
         sidecar.istio.io/inject: "true"
     tolerations:

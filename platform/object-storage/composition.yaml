@@ -31,7 +31,7 @@ spec:
                     map:
                       delete: Delete
                       retain: Orphan
-              # forceDestroy only for dataRetention=delete — AWS refuses DeleteBucket
+              # forceDestroy only for dataRetention=delete - AWS refuses DeleteBucket
               # on a non-empty bucket otherwise, which stalls sandbox teardown forever.
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.dataRetention

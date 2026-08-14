@@ -14,8 +14,8 @@ public by necessity: a cloud can only verify a token if it can fetch the signing
 
 | URL | What it serves |
 |---|---|
-| `https://oidc.mattjarrett.dev/.well-known/openid-configuration` | Discovery document — names the issuer and where the keys live |
-| `https://oidc.mattjarrett.dev/.well-known/keys` | JWKS — the public half of SPIRE's JWT signing key |
+| `https://oidc.mattjarrett.dev/.well-known/openid-configuration` | Discovery document - names the issuer and where the keys live |
+| `https://oidc.mattjarrett.dev/.well-known/keys` | JWKS - the public half of SPIRE's JWT signing key |
 
 Neither accepts input and neither issues anything. Holding a key from here proves nothing;
 a caller still needs a JWT-SVID signed by SPIRE, which requires being a pod SPIRE attested.

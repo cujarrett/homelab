@@ -10,9 +10,9 @@ Scaffold a new homelab Go HTTP API from the canonical templates in [.claude/asse
 ## Inputs
 
 Ask the user for:
-1. **App name** — kebab-case; becomes the repo name, binary name, and image name (e.g. `my-app`)
-2. **Workspace** — homelab-workspaces namespace to deploy to (e.g. `my-vinyl`)
-3. **Port** — default `8080`
+1. **App name** - kebab-case; becomes the repo name, binary name, and image name (e.g. `my-app`)
+2. **Workspace** - homelab-workspaces namespace to deploy to (e.g. `my-vinyl`)
+3. **Port** - default `8080`
 
 ## Procedure
 
@@ -72,20 +72,20 @@ module github.com/cujarrett/<app-name>
 go 1.26
 ```
 
-**`./<app-name>/CLAUDE.md`** — a standalone repo, so it carries the same git rules, pre-commit safety check, and grug philosophy as the homelab repo (Claude working in this repo won't see homelab's CLAUDE.md):
+**`./<app-name>/CLAUDE.md`** - a standalone repo, so it carries the same git rules, pre-commit safety check, and grug philosophy as the homelab repo (Claude working in this repo won't see homelab's CLAUDE.md):
 ```markdown
 ## Rules
 
 - **Never run `git commit`, `git push`, or any git command that writes to or modifies repository history or remotes.** If a task requires committing or pushing, stop and tell the user to run the git command manually.
-- **Whenever a task requires a commit, always give a suggested commit message** — never leave the user to write it themselves.
+- **Whenever a task requires a commit, always give a suggested commit message** - never leave the user to write it themselves.
 
 ### Pre-commit safety check
 
-Before telling the user to commit, always run `/security-review`. It reviews the pending changes on the current branch for security issues. Once it confirms the changes are safe, offer the user a suggested commit message — do not run `git commit` yourself.
+Before telling the user to commit, always run `/security-review`. It reviews the pending changes on the current branch for security issues. Once it confirms the changes are safe, offer the user a suggested commit message - do not run `git commit` yourself.
 
 ## Philosophy: Grug-Brained Development
 
-> "Complexity very, very bad." — [grugbrain.dev](https://grugbrain.dev/)
+> "Complexity very, very bad." - [grugbrain.dev](https://grugbrain.dev/)
 
 - **Say no.** The best weapon against complexity is the word "no". No new feature, no new abstraction, until it earns its place.
 - **No abstraction until a pattern repeats three times.** Let cut points emerge naturally from the code; don't invent them up front.
@@ -113,7 +113,7 @@ Go HTTP API. Single binary, no frameworks.
 | GET | `/healthz` | Liveness probe |
 
 ## Conventions
-- No frameworks — stdlib `net/http` only
+- No frameworks - stdlib `net/http` only
 - `slog` for structured logging
 - Graceful shutdown via `signal.NotifyContext`
 - Errors returned as `{"error":"..."}` JSON
@@ -125,5 +125,5 @@ Go HTTP API. Single binary, no frameworks.
 Remind the user to:
 1. `cd <app-name> && go mod tidy`
 2. Create the GitHub repo and push
-3. Add the `HOMELAB_PAT` secret to the new repo — `/wire-deploy-automation` covers how to scope the token, and is also what to run if the deploy job ever needs rewiring
+3. Add the `HOMELAB_PAT` secret to the new repo - `/wire-deploy-automation` covers how to scope the token, and is also what to run if the deploy job ever needs rewiring
 4. Run `argocd app sync xrs --grpc-web` after the first image is pushed and ArgoCD detects the Api
