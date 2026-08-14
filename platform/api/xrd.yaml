@@ -73,6 +73,13 @@ spec:
                           default: private-cloud
                           enum: [private-cloud, public-cloud]
                           description: "Cache backend: private-cloud=in-cluster Redis, public-cloud=AWS ElastiCache."
+                    entra:
+                      type: object
+                      description: "Entra workload identity. When enabled, the platform creates an Entra app registration, service principal and federated credential for this Api — no manual registration in the Entra portal. If omitted, this Api has no Entra identity."
+                      properties:
+                        enabled:
+                          type: boolean
+                          default: false
                     image:
                       type: string
                       description: >-

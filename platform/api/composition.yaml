@@ -41,6 +41,16 @@ spec:
             {{- /* injected. Must match the IAM OIDC provider registered in AWS.          */ -}}
             {{- $oidcIssuerHost := "oidc.mattjarrett.dev" }}
             {{- $oidcProviderArn := printf "arn:aws:iam::%s:oidc-provider/%s" $awsAccountId $oidcIssuerHost }}
+            {{- $entra := $xr.spec.parameters.entra | default dict }}
+            {{- $entraEnabled := $entra.enabled | default false }}
+            {{- /* crossplane-entra's own service principal object ID - set as owner on   */ -}}
+            {{- /* everything it creates, or it can create but never delete/update again.  */ -}}
+            {{- /* See cluster/crossplane/azuread-permissions.md.                          */ -}}
+            {{- $crossplaneEntraSpId := index $envCtx "crossplaneEntraServicePrincipalId" | default "" }}
+            {{- $observedResources := .observed.resources | default dict }}
+            {{- $entraAppObs := index $observedResources "entra-application" | default dict }}
+            {{- $entraClientId := "" }}
+            {{- if $entraAppObs.resource }}{{- $entraClientId = $entraAppObs.resource.status.atProvider.clientId | default "" }}{{- end }}
             {{- $sqlRefName := "" }}
             {{- if $xr.spec.parameters.sqlRef }}{{- $sqlRefName = $xr.spec.parameters.sqlRef.name }}{{- end }}
             {{- $nosqlRefName := "" }}
@@ -597,6 +607,84 @@ spec:
               role-arn: {{ $nosqlPredictedRoleArn }}
             {{- end }}{{- /* end nosqlRefName */}}
             {{- end }}{{- /* end hasAwsCloudBindings */}}
+            {{- if $entraEnabled }}
+            ---
+            # Entra app registration for this Api. owners is required - an app created
+            # through the API (CLI or Crossplane, doesn't matter) is never auto-owned;
+            # only the interactive portal does that. Without it, crossplane-entra can
+            # create this but never delete or update it. See azuread-permissions.md.
+            apiVersion: applications.azuread.upbound.io/v1beta2
+            kind: Application
+            metadata:
+              name: {{ $name }}-entra
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: entra-application
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                displayName: platform-{{ $ns }}-{{ $name }}
+                owners:
+                  - {{ $crossplaneEntraSpId }}
+            ---
+            # Service principal - required before a federated credential can attach,
+            # and before the app can be assigned any app role on another Api later.
+            apiVersion: serviceprincipals.azuread.upbound.io/v1beta2
+            kind: Principal
+            metadata:
+              name: {{ $name }}-entra
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: entra-principal
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                clientIdRef:
+                  name: {{ $name }}-entra
+                owners:
+                  - {{ $crossplaneEntraSpId }}
+            ---
+            # Trusts a JWT-SVID for this exact pod identity, traded for a real Entra
+            # token via client_assertion - no client secret anywhere.
+            apiVersion: applications.azuread.upbound.io/v1beta1
+            kind: FederatedIdentityCredential
+            metadata:
+              name: {{ $name }}-entra
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: entra-federated-credential
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                applicationIdRef:
+                  name: {{ $name }}-entra
+                displayName: workload-identity
+                issuer: https://{{ $oidcIssuerHost }}
+                subject: spiffe://homelab.local/ns/{{ $ns }}/sa/{{ $name }}
+                audiences:
+                  - api://AzureADTokenExchange
+            {{- if $entraClientId }}
+            ---
+            # Binding Secret. Holds only client-id, a public, non-sensitive identifier -
+            # same as the AWS binding Secret's role-arn, this is not a credential. Written
+            # once the Application has actually reconciled and its server-generated client
+            # ID is known - unlike AWS role ARNs, this can't be predicted from a naming
+            # convention, so something has to carry it from "Entra just assigned this" to
+            # the pod. Not yet consumed anywhere - the sidecar will read it as AZURE_CLIENT_ID.
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $name }}-entra
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: entra-binding-secret
+                gotemplating.fn.crossplane.io/ready: "True"
+            type: servicebinding.io/entra
+            stringData:
+              type: entra
+              client-id: {{ $entraClientId }}
+            {{- end }}
+            {{- end }}{{- /* end entraEnabled */}}
             {{- if $cacheEnabled }}
             ---
             apiVersion: platform.local.lab/v1alpha1
