@@ -10,6 +10,7 @@ Start with [the problem](#the-problem) for why this exists, or [runtime](#runtim
 |---|---|
 | [The problem](#the-problem) | Why static keys and plain IRSA both fall short here |
 | [The pieces](#the-pieces) | SPIRE, the public OIDC endpoint, and the credential sidecar |
+| [Static frontends](#static-frontends) | Why Spa doesn't get one, and when a frontend would |
 | [How a pod proves who it is](#how-a-pod-proves-who-it-is) | SPIFFE IDs, attestation, and the trust policy that pins a role to one pod |
 | [Provisioning](#provisioning) | The Crossplane chain from XR to binding Secret |
 | [Runtime](#runtime) | The credential loop, and the code an app writes |
@@ -31,7 +32,9 @@ The goal: every pod gets its own short-lived AWS identity, scoped to exactly the
 
 Three systems work together.
 
-**[SPIRE](https://spiffe.io/docs/latest/spire-about/spire-concepts/)** is the identity provider. It issues identities only to Api and Spa pods, matched on the `app: api` or `app: spa` label their compositions set, configured in [cluster/argocd/spire.yaml](../cluster/argocd/spire.yaml) under `identities.clusterSPIFFEIDs.homelab-workloads`. Before issuing anything it checks with the kubelet that the pod is genuinely running. What it issues carries the pod's SPIFFE ID, `spiffe://homelab.local/ns/{namespace}/sa/{service-account}`. That URI is the identity.
+**[SPIRE](https://spiffe.io/docs/latest/spire-about/spire-concepts/)** is the identity provider. It issues identities to Api pods, matched on the `app: api` label the composition sets, configured in [cluster/argocd/spire.yaml](../cluster/argocd/spire.yaml) under `identities.clusterSPIFFEIDs.homelab-workloads`. Before issuing anything it checks with the kubelet that the pod is genuinely running. What it issues carries the pod's SPIFFE ID, `spiffe://homelab.local/ns/{namespace}/sa/{service-account}`. That URI is the identity.
+
+Spa pods aren't matched at all — see [Static frontends](#static-frontends) for why.
 
 **The [OIDC discovery endpoint](./spire-oidc-federation.md)** is how AWS verifies that identity. SPIRE publishes its JWT signing keys at `oidc.mattjarrett.dev`, registered in AWS as an IAM OIDC identity provider. AWS fetches the keys, validates the token's signature itself, and reads the SPIFFE ID from the `sub` claim. Nothing is shared between the cluster and AWS except public keys.
 
@@ -39,6 +42,18 @@ Three systems work together.
 
 > **Why one SVID becomes many roles**
 > The one-role-per-pod limit belongs to the AWS SDK's default credential chain, not to the protocol. Any caller holding a valid token can present it to several roles in turn, provided each role's trust policy accepts that subject. Owning the sidecar is what makes this available.
+
+---
+
+## Static frontends
+
+Deciding if a frontend needs workload identity is simple: does anything server-side make an authenticated call on its own behalf.
+
+| Pattern | Server-side process at runtime? | Needs workload identity? |
+|---|---|---|
+| CSR — this platform's `Spa` | No, static files only | No |
+| SSR — e.g. Next.js `getServerSideProps`, Nuxt SSR | Yes, every request | Yes |
+| ISR — e.g. Next.js incremental regeneration | Yes, on a timer or a stale request | Yes — caching in front of it doesn't remove the need behind it |
 
 ---
 
