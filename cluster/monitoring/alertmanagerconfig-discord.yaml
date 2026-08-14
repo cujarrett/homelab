@@ -39,7 +39,7 @@ spec:
         matchers:
           - name: alertname
             value: InfoInhibitor
-      # Ephemeral Launchpad sandboxes — teardown deletes the workload before
+      # Ephemeral Launchpad sandboxes - teardown deletes the workload before
       # the ServiceMonitor is pruned, so Prometheus scrapes a dead target and
       # TargetDown fires briefly. Expected noise, not a real outage.
       - receiver: "null"
@@ -57,6 +57,6 @@ spec:
         - apiURL:
             name: alertmanager-discord
             key: webhook-url
-          # Formatting lives in alertmanager.templateFiles — operator v0.92.1
+          # Formatting lives in alertmanager.templateFiles - operator v0.92.1
           # silently drops title/message from this CRD.
     - name: "null"

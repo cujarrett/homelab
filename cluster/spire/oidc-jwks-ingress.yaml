@@ -14,7 +14,7 @@ metadata:
 spec:
   ingressClassName: traefik
   tls:
-    # Reuses the cert issued for the chart's own ingress — no second Certificate object.
+    # Reuses the cert issued for the chart's own ingress - no second Certificate object.
     - hosts:
         - oidc.mattjarrett.dev
       secretName: oidc-mattjarrett-dev-tls

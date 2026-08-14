@@ -23,4 +23,4 @@ k get compositionrevision --no-headers \
   | sort | awk '{count[$1]++} END {for (c in count) print count[c], c}'
 ```
 
-Note: Crossplane 2.2 does not support `revisionHistoryLimit` on the Composition spec — cleanup must be done manually.
+Note: Crossplane 2.2 does not support `revisionHistoryLimit` on the Composition spec - cleanup must be done manually.

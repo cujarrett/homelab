@@ -28,7 +28,7 @@ spec:
               usually ~80% of the volume, so check it first with a Loki query
               before expanding the PVC.
 
-        # Backstop — per-PVC usage says nothing about the node underneath, where a
+        # Backstop - per-PVC usage says nothing about the node underneath, where a
         # genuine snapshot leak in /var/lib/longhorn would actually surface.
         - alert: NodeDiskFillingUp
           expr: |

@@ -5,8 +5,8 @@ Crossplane platform primitive that provisions object storage.
 Standalone resource with a lifecycle independent of any one API. Bind to an `Api` via `objectStorageRefs`.
 
 ## What it provisions
-- `public-cloud` — **AWS S3 bucket**, named `platform-{namespace}-{name}`; scoped naming lets IAM inline policies reference the exact ARN without wildcards
-- `private-cloud` — *(in-cluster MinIO planned)*
+- `public-cloud` - **AWS S3 bucket**, named `platform-{namespace}-{name}`; scoped naming lets IAM inline policies reference the exact ARN without wildcards
+- `private-cloud` - *(in-cluster MinIO planned)*
 
 The IAM Role and binding Secret are **not** created by ObjectStorage. They are created by the `Api` composition when the ref is declared. ObjectStorage manages only the bucket's lifecycle.
 
@@ -14,7 +14,7 @@ The IAM Role and binding Secret are **not** created by ObjectStorage. They are c
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `namespace` | yes | — | Namespace of the owning workload. Used to construct the bucket name (`platform-{namespace}-{name}`) and the Namespace cost-allocation tag. |
+| `namespace` | yes | - | Namespace of the owning workload. Used to construct the bucket name (`platform-{namespace}-{name}`) and the Namespace cost-allocation tag. |
 | `dataRetention` | no | `delete` | AWS resource reclaim on XR deletion: `delete`=bucket is deleted (data unrecoverable); `retain`=bucket is orphaned in AWS (data recoverable). |
 
 ## Binding secret
@@ -59,13 +59,13 @@ Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 ## Operations
 
 ```bash
-# XR status — SYNCED=composition ran, READY=all children healthy
+# XR status - SYNCED=composition ran, READY=all children healthy
 kubectl get objectstorages foo-assets
 
-# Detailed conditions — shows exactly WHY something is not ready
+# Detailed conditions - shows exactly WHY something is not ready
 kubectl get objectstorage foo-assets -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
-# Binding secret — confirm all keys are present (written by Api, not ObjectStorage)
+# Binding secret - confirm all keys are present (written by Api, not ObjectStorage)
 # Secret is named {api-name}-{ref-name}, e.g. foo-foo-assets for Api "foo" + ref "foo-assets"
 kubectl get secret foo-foo-assets -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'

@@ -22,7 +22,7 @@ spec:
             severity: warning
           annotations:
             dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
-            summary: "Sump pump is running a lot — {{ $value | printf \"%.0f\" }} cycles this hour"
+            summary: "Sump pump is running a lot - {{ $value | printf \"%.0f\" }} cycles this hour"
             description: >-
               Water is coming in faster than usual, which is what rain looks
               like. The resolved notification marks the return to normal.
@@ -35,19 +35,19 @@ spec:
             severity: critical
           annotations:
             dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
-            summary: "Sump pump is running very hard — {{ $value | printf \"%.0f\" }} cycles this hour"
+            summary: "Sump pump is running very hard - {{ $value | printf \"%.0f\" }} cycles this hour"
             description: >-
               Past the rate a heavy storm normally drives. If the weather does not
-              explain it, the pit is refilling between cycles — check the check
+              explain it, the pit is refilling between cycles - check the check
               valve for backflow.
 
         # sump_pump_running is 0 or 1, so its hourly average is the fraction of the
-        # hour spent running — times 60 reads straight off as minutes per hour.
+        # hour spent running - times 60 reads straight off as minutes per hour.
         # Normal is ~7. Runtime needs both tiers: runs can stretch out at a normal
         # cycle count, which no rate threshold sees.
         #
         # Scoped to the consumer. Both apps export this gauge, but only the
-        # consumer is scraped every 10s — the bridge defaults to 60s, which cannot
+        # consumer is scraped every 10s - the bridge defaults to 60s, which cannot
         # see an eleven second run and reads high enough to fire on its own. The
         # counter based alerts are safe unscoped; a gauge is not.
         - alert: SumpPumpRunningLongHours
@@ -77,7 +77,7 @@ spec:
               Sustained, that is how the motor burns out. Suspect a stuck float, or
               a discharge line blocked or frozen.
 
-        # Idle is normal — 20 of 104 six-hour windows were near zero. Rain is what
+        # Idle is normal - 20 of 104 six-hour windows were near zero. Rain is what
         # makes idle suspicious.
         - alert: SumpPumpIdleDespiteRain
           expr: |
@@ -107,14 +107,14 @@ spec:
             dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
             summary: "Sump pump has run fewer than 10 times in 24 hours"
             description: >-
-              Normal even in dry weather, but only just — this was true for a single
+              Normal even in dry weather, but only just - this was true for a single
               24 window across the whole archive. Worth confirming the pit is
               actually dry rather than the sensor being stuck.
 
         # absent(sump_pump_running) cannot see this failure: the exporters stay up
         # and keep publishing 0 with no device behind them, so the series is never
         # absent. The bridge reconciles the meter's config on a timer instead, and
-        # a reconcile succeeding means the meter answered — that is the signal.
+        # a reconcile succeeding means the meter answered - that is the signal.
         #
         # Deliberately not based on webhook arrival rate. The meter only sends on
         # change, so an idle pump legitimately goes quiet for long stretches, and

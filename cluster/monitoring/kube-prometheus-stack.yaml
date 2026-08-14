@@ -14,7 +14,7 @@ spec:
       values: |
         kubeApiServer:
           enabled: false
-        # kube-proxy, scheduler, and controller-manager aren't separately reachable on k3s —
+        # kube-proxy, scheduler, and controller-manager aren't separately reachable on k3s -
         # kube-proxy is replaced entirely by Cilium's kubeProxyReplacement, and the other two
         # are embedded in the k3s binary rather than run as scrapeable pods. Left enabled, these
         # ServiceMonitors scrape nothing and fire KubeProxyDown/KubeSchedulerDown/
@@ -27,7 +27,7 @@ spec:
           enabled: false
         # Merged into every default alert's annotations, so a chart-bundled
         # rule (KubePodCrashLooping, NodeFilesystemSpaceFillingUp, etc.) is
-        # never just a title with nowhere to look — namespace-scoped alerts
+        # never just a title with nowhere to look - namespace-scoped alerts
         # deep link filtered to that namespace, everything else falls back
         # to the general cluster dashboard. Custom rules under
         # prometheusrule-*.yaml set their own dashboard_url instead, since
@@ -47,11 +47,11 @@ spec:
           admissionWebhooks:
             patch: {}
         alertmanager:
-          # Redefines the built-in discord.default.* templates — later definition
+          # Redefines the built-in discord.default.* templates - later definition
           # wins. Lives here because operator v0.92.1 drops title/message from the
           # AlertmanagerConfig CRD, and templateFiles skips Helm's tpl so Go
           # syntax survives. Severity is per alert: a namespace group can mix.
-          # summary says what happened, description says what to do about it —
+          # summary says what happened, description says what to do about it -
           # the old template dropped the description whenever a summary existed,
           # so every rule's diagnostic guidance was written and never delivered.
           # Labels and links are here because an alert naming only its rule

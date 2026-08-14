@@ -16,7 +16,7 @@ spec:
         # first removes that noise before counting.
         #
         # Counts distinct (health_status, sync_status) combinations seen in the window,
-        # not the number of transitions — A -> B -> A -> B looks identical to a single
+        # not the number of transitions - A -> B -> A -> B looks identical to a single
         # A -> B here. Good enough to catch real instability at homelab scale; a normal
         # single deploy (Progressing -> Healthy) is 2 states and stays under threshold.
         - alert: ArgoCDAppFlapping

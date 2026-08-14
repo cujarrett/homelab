@@ -1,8 +1,8 @@
 # Debugging Crossplane
 
-A layered workflow for diagnosing why an XR isn't syncing or ready. Work top-down — each layer reveals the next clue.
+A layered workflow for diagnosing why an XR isn't syncing or ready. Work top-down - each layer reveals the next clue.
 
-## 1. Start at the top — check the XR
+## 1. Start at the top - check the XR
 
 ```bash
 kubectl get api <name>
@@ -11,9 +11,9 @@ kubectl get api <name>
 | Column | What it means |
 |---|---|
 | `SYNCED=True` | Composition ran without errors |
-| `SYNCED=False` | Composition failed — check XR events/conditions |
+| `SYNCED=False` | Composition failed - check XR events/conditions |
 | `READY=True` | All composed resources are ready |
-| `READY=<blank>` | Readiness not yet propagated — children still provisioning or failing |
+| `READY=<blank>` | Readiness not yet propagated - children still provisioning or failing |
 
 ## 2. Read the XR conditions
 
@@ -56,7 +56,7 @@ kubectl get managed | grep <name>
 Look for `SYNCED=False` or `READY=False` on any row. Then drill in:
 
 ```bash
-# Describe gives you Events at the bottom — often has the AWS API error
+# Describe gives you Events at the bottom - often has the AWS API error
 kubectl describe bucket.s3.aws.upbound.io <mr-name>
 kubectl describe user.iam.aws.upbound.io <mr-name>
 kubectl describe accesskey.iam.aws.upbound.io <mr-name>
@@ -78,7 +78,7 @@ If conditions are unhelpful, go to the provider itself:
 # Find the provider pod
 kubectl get pods -n crossplane-system | grep upbound-provider-aws
 
-# Tail logs — filter to your resource name
+# Tail logs - filter to your resource name
 kubectl logs -n crossplane-system -l pkg.crossplane.io/revision --tail=100 | grep <name>
 ```
 
@@ -126,4 +126,4 @@ kubectl logs -n <name> <pod-name> -c init-object-storage   # init container logs
 | `READY=<blank>` on XR | Children still provisioning | `kubectl get managed \| grep <name>` |
 | Pod stuck in `Init` | Binding secret missing or incomplete | Step 7 + step 8 init container logs |
 | Pod `CrashLoopBackOff` | App error, not a platform error | `kubectl logs` on the main container |
-| ArgoCD `SyncError: auto-sync will wipe out all resources` | Would delete all resources — add `allowEmpty=true` to syncOptions | ArgoCD app details |
+| ArgoCD `SyncError: auto-sync will wipe out all resources` | Would delete all resources - add `allowEmpty=true` to syncOptions | ArgoCD app details |

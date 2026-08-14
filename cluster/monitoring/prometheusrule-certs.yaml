@@ -11,7 +11,7 @@ spec:
       interval: 5m
       rules:
         # cert-manager renews at 30 days left, so under 21 means renewal failed.
-        # exported_namespace, not namespace — the metric comes from the controller pod.
+        # exported_namespace, not namespace - the metric comes from the controller pod.
         - alert: CertificateExpiringSoon
           expr: |
             (certmanager_certificate_expiration_timestamp_seconds - time()) / 86400 < 21
@@ -37,9 +37,9 @@ spec:
             summary: "Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} expires in {{ $value | printf \"%.0f\" }} days"
             description: >-
               If this is local-lab-ca, every .local.lab host loses TLS together
-              when it lapses — ArgoCD, Grafana, Prometheus and Longhorn at once.
+              when it lapses - ArgoCD, Grafana, Prometheus and Longhorn at once.
 
-        # Catches a wedged cert before expiry does — usually HTTP-01 failing because
+        # Catches a wedged cert before expiry does - usually HTTP-01 failing because
         # the hostname is missing from the tunnel config.
         - alert: CertificateNotReady
           expr: |

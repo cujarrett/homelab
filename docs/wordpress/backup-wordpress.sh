@@ -50,10 +50,10 @@ kubectl exec -n "$NAMESPACE" "$DB_POD" -- bash -c \
   > "$SQL_FILE"
 
 if ! grep -q "wp_options" "$SQL_FILE"; then
-  echo "ERROR: dump looks wrong — wp_options not found in $SQL_FILE"
+  echo "ERROR: dump looks wrong - wp_options not found in $SQL_FILE"
   exit 1
 fi
-echo "    $(du -h "$SQL_FILE" | cut -f1) — ok"
+echo "    $(du -h "$SQL_FILE" | cut -f1) - ok"
 
 echo "==> Streaming wp-content (this can take a while for multi-GB sites)..."
 kubectl exec -n "$NAMESPACE" "$WP_POD" -- \
@@ -62,7 +62,7 @@ kubectl exec -n "$NAMESPACE" "$WP_POD" -- \
 
 echo "==> Verifying archive..."
 tar tzf "$WP_CONTENT_TAR" > /dev/null
-echo "    $(du -h "$WP_CONTENT_TAR" | cut -f1), $(tar tzf "$WP_CONTENT_TAR" | wc -l | tr -d ' ') entries — ok"
+echo "    $(du -h "$WP_CONTENT_TAR" | cut -f1), $(tar tzf "$WP_CONTENT_TAR" | wc -l | tr -d ' ') entries - ok"
 
 echo ""
 echo "==> Backup complete: $BACKUP_DIR"

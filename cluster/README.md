@@ -12,7 +12,7 @@ cluster/
 
 ## When does an app get a subfolder?
 
-An app gets a subfolder under `cluster/` when it needs **raw Kubernetes manifests** that can't be expressed in Helm values alone — things like `Certificate`, `ServiceMonitor`, `Ingress`, or custom `ConfigMap` resources.
+An app gets a subfolder under `cluster/` when it needs **raw Kubernetes manifests** that can't be expressed in Helm values alone - things like `Certificate`, `ServiceMonitor`, `Ingress`, or custom `ConfigMap` resources.
 
 Those apps use ArgoCD's multi-source feature, pointing at both the Helm chart and the subfolder:
 

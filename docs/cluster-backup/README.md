@@ -12,7 +12,7 @@ bash ~/Developer/homelab/docs/cluster-backup/backup-cluster-state.sh
 
 ### 2. Encrypt
 
-> `age -p` will prompt for a passphrase twice. Remember it — you need it to decrypt.
+> `age -p` will prompt for a passphrase twice. Remember it - you need it to decrypt.
 
 ```bash
 cd ~/Desktop && tar czf - cluster-backup/ | age -p > ~/Desktop/cluster-backup.tar.gz.age

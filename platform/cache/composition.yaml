@@ -64,7 +64,7 @@ spec:
               namespace: {{ $ns }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: redis-deployment
-                # required for native k8s resources — no Crossplane Ready condition
+                # required for native k8s resources - no Crossplane Ready condition
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               replicas: 1
@@ -252,13 +252,13 @@ spec:
                 userGroupIds:
                   - {{ $userGroupId }}
               writeConnectionSecretToRef:
-                # Implementation secret — tenants only need the binding secret
+                # Implementation secret - tenants only need the binding secret
                 name: {{ $ns }}-{{ $name }}-rg-conn
                 namespace: crossplane-system
             {{- if $rgConn }}
             ---
             # Binding Secret for ElastiCache. Written once the cluster is ready.
-            # No password — the app calls elasticache generate-auth-token via the sidecar.
+            # No password - the app calls elasticache generate-auth-token via the sidecar.
             apiVersion: v1
             kind: Secret
             metadata:

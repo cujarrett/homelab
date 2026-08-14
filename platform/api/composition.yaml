@@ -33,7 +33,7 @@ spec:
             {{- $ns := $xr.spec.parameters.namespace }}
             {{- $cacheBackend := ($xr.spec.parameters.cache | default dict).backend | default "private-cloud" }}
             {{- /* Refs point to standalone resources created outside this Api. */ -}}
-            {{- /* The binding Secret already exists in $ns — just mount it.    */ -}}
+            {{- /* The binding Secret already exists in $ns - just mount it.    */ -}}
             {{- $objectStorageRefs := $xr.spec.parameters.objectStorageRefs | default list }}
             {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
             {{- $awsAccountId := index $envCtx "awsAccountId" | default "" }}
@@ -95,20 +95,20 @@ spec:
             {{- $awsHosts := list }}
             {{- if gt (len $awsBindings) 0 }}
               {{- /* The credential sidecar calls this to turn its SVID into AWS keys.    */ -}}
-              {{- /* Without it nothing else here works — no credentials, no calls.       */ -}}
+              {{- /* Without it nothing else here works - no credentials, no calls.       */ -}}
               {{- $awsHosts = append $awsHosts "sts.us-east-1.amazonaws.com" }}
             {{- end }}
             {{- range $ref := $objectStorageRefs }}
               {{- /* Virtual-hosted style is the AWS SDK default, so SNI carries the      */ -}}
-              {{- /* bucket name — one host per bucket, not one regional endpoint.        */ -}}
+              {{- /* bucket name - one host per bucket, not one regional endpoint.        */ -}}
               {{- $awsHosts = append $awsHosts (printf "platform-%s-%s.s3.us-east-1.amazonaws.com" $ns $ref.name) }}
             {{- end }}
             {{- if $nosqlRefName }}
-              {{- /* Every table in a region shares this endpoint — the table name is in */ -}}
+              {{- /* Every table in a region shares this endpoint - the table name is in */ -}}
               {{- /* the request body, not the hostname, so IAM is what scopes access.   */ -}}
               {{- $awsHosts = append $awsHosts "dynamodb.us-east-1.amazonaws.com" }}
             {{- end }}
-            {{- /* Nothing for public-cloud Sql or Cache — RDS and ElastiCache are VPC   */ -}}
+            {{- /* Nothing for public-cloud Sql or Cache - RDS and ElastiCache are VPC   */ -}}
             {{- /* only, so unreachable from this cluster. If that changes, the call     */ -}}
             {{- /* fails loudly here and the host goes in consumes.                      */ -}}
             # --- Service ---
@@ -135,7 +135,7 @@ spec:
                   targetPort: {{ $metricsPort }}
             ---
             # --- ServiceAccount ---
-            # Dedicated SA per Api instance — pods do not use the namespace default SA.
+            # Dedicated SA per Api instance - pods do not use the namespace default SA.
             apiVersion: v1
             kind: ServiceAccount
             metadata:
@@ -198,7 +198,7 @@ spec:
             {{- end }}
             ---
             # --- Deployment ---
-            # Init containers poll for each binding's "type" file — last key written,
+            # Init containers poll for each binding's "type" file - last key written,
             # confirming all binding keys are available before the app starts.
             apiVersion: apps/v1
             kind: Deployment
@@ -224,7 +224,7 @@ spec:
                 spec:
                   serviceAccountName: {{ $name }}
                   # runAsUser overrides the image's own USER, which several app images
-                  # give as a name — and the kubelet refuses runAsNonRoot for a name it
+                  # give as a name - and the kubelet refuses runAsNonRoot for a name it
                   # cannot resolve. 65532 suits every image because the binaries are
                   # root-owned 0755, so none needs to own the uid it runs as.
                   securityContext:
@@ -637,7 +637,7 @@ spec:
                       regex: "go_.*|process_.*|promhttp_.*"
                       action: drop
             {{- if $host }}
-            {{- /* Public means reachable from the internet through the tunnel — either a  */ -}}
+            {{- /* Public means reachable from the internet through the tunnel - either a  */ -}}
             {{- /* letsencrypt-prod cert or a pre-issued demo slot secret. Internal hosts  */ -}}
             {{- /* stay off the rate limiter on purpose, see the Middleware comment below. */ -}}
             {{- $isPublic := or (eq $tlsIssuer "letsencrypt-prod") (ne $tlsSecret "") }}
@@ -645,7 +645,7 @@ spec:
             # --- Security response headers Middleware ---
             # An Api serves its own responses with no nginx in front, so these have to come
             # from Traefik. default-src 'none' because a JSON API should never be a document
-            # context — it makes a reflected-content bug unexploitable in a browser.
+            # context - it makes a reflected-content bug unexploitable in a browser.
             apiVersion: traefik.io/v1alpha1
             kind: Middleware
             metadata:
@@ -662,7 +662,7 @@ spec:
                   X-Content-Type-Options: "nosniff"
                   X-Frame-Options: "DENY"
                   Referrer-Policy: "strict-origin-when-cross-origin"
-                  # "0" disables the legacy XSS auditor — removed from modern browsers,
+                  # "0" disables the legacy XSS auditor - removed from modern browsers,
                   # and enabling it created XS-Leak side channels in older ones. Matches Spa.
                   X-XSS-Protection: "0"
                   Strict-Transport-Security: "max-age=31536000; includeSubDomains"
@@ -676,7 +676,7 @@ spec:
             #
             # That keying is exactly why internal hosts are excluded rather than given a
             # different limit. A .local.lab request carries no CF-Connecting-IP, so every
-            # caller would fall into one shared bucket — and sump-pump-bridge.local.lab is
+            # caller would fall into one shared bucket - and sump-pump-bridge.local.lab is
             # IoT ingest, where a throttled POST is a lost reading, not a retried page load.
             apiVersion: traefik.io/v1alpha1
             kind: Middleware
@@ -705,7 +705,7 @@ spec:
               annotations:
                 traefik.ingress.kubernetes.io/router.entrypoints: websecure
                 traefik.ingress.kubernetes.io/router.tls: "true"
-                # Headers first — a 429 from the rate limiter short-circuits the rest of
+                # Headers first - a 429 from the rate limiter short-circuits the rest of
                 # the chain, and the response still needs the security headers on it.
                 traefik.ingress.kubernetes.io/router.middlewares: "{{ $ns }}-{{ $name }}-security-headers@kubernetescrd{{ if $isPublic }},{{ $ns }}-{{ $name }}-ratelimit@kubernetescrd{{ end }}"
                 {{- if not $tlsSecret }}
@@ -782,12 +782,12 @@ spec:
                 matchLabels: { app.kubernetes.io/instance: {{ $name }} }
               action: ALLOW
               rules:
-                # Prometheus is unmeshed — it presents no identity to match on.
+                # Prometheus is unmeshed - it presents no identity to match on.
                 - to:
                     - operation: { ports: ["{{ $metricsPort }}"] }
                 {{- if $host }}
                 # This Api has an Ingress, and Traefik is unmeshed, so this port cannot
-                # be restricted by identity. How far that reaches depends on tlsIssuer —
+                # be restricted by identity. How far that reaches depends on tlsIssuer -
                 # letsencrypt-prod means the internet, local-lab-ca-issuer means the
                 # homelab network. Drop the host, or mesh Traefik, to close it.
                 - to:
@@ -859,7 +859,7 @@ spec:
                     {{- end }}
             {{- range $h := $awsHosts }}
             ---
-            # {{ $h }} — an AWS binding implies this endpoint, so the platform registers
+            # {{ $h }} - an AWS binding implies this endpoint, so the platform registers
             # it rather than making the app restate it in consumes.
             apiVersion: networking.istio.io/v1
             kind: ServiceEntry
@@ -883,7 +883,7 @@ spec:
             {{- range $c := $consumes }}
             {{- if $c.host }}
             ---
-            # consumes {{ $c.host }} — this registers the host. The egress entry above
+            # consumes {{ $c.host }} - this registers the host. The egress entry above
             # is what permits it. protocol TLS passes the app's own encrypted stream
             # straight through; HTTP would make Envoy try to terminate it.
             apiVersion: networking.istio.io/v1

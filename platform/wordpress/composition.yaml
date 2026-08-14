@@ -156,7 +156,7 @@ spec:
                     app: mariadb
                     instance: {{ $name }}
                 spec:
-                  # Keep off the control-plane node (ctrl-1) — WordPress + MariaDB are memory-heavy
+                  # Keep off the control-plane node (ctrl-1) - WordPress + MariaDB are memory-heavy
                   nodeSelector:
                     node-role.kubernetes.io/worker: worker
                   # Neither WordPress nor MariaDB calls the apiserver.
@@ -164,7 +164,7 @@ spec:
                   # Neither image can run non-root: both entrypoints extract files and
                   # chown them before dropping privileges, and MariaDB's datadir is
                   # already owned by uid 999 on the existing volume. So the containment
-                  # here is capability-shaped instead — see the per-container drops.
+                  # here is capability-shaped instead - see the per-container drops.
                   securityContext:
                     seccompProfile:
                       type: RuntimeDefault
@@ -177,7 +177,7 @@ spec:
                           drop: [ALL]
                           # The entrypoint chowns the datadir and drops to the mysql
                           # user. Verified as the minimum that still initialises a
-                          # database — fewer and it exits before listening.
+                          # database - fewer and it exits before listening.
                           add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
                       env:
                         - name: MYSQL_ROOT_PASSWORD
@@ -244,7 +244,7 @@ spec:
             # --- WordPress Deployment ---
             # initContainer seeds wp-content from the image on first run, leaving existing
             # data untouched on subsequent starts (migration-safe). Tests for themes/ rather
-            # than emptiness — Longhorn formats ext4, so a fresh PVC already holds lost+found
+            # than emptiness - Longhorn formats ext4, so a fresh PVC already holds lost+found
             # and an is-it-empty check would skip the seed on every new instance.
             apiVersion: apps/v1
             kind: Deployment
@@ -270,7 +270,7 @@ spec:
                   annotations:
                     checksum/config: "{{ $configChecksum }}"
                 spec:
-                  # Keep off the control-plane node (ctrl-1) — WordPress + MariaDB are memory-heavy
+                  # Keep off the control-plane node (ctrl-1) - WordPress + MariaDB are memory-heavy
                   nodeSelector:
                     node-role.kubernetes.io/worker: worker
                   # Neither WordPress nor MariaDB calls the apiserver.
@@ -278,7 +278,7 @@ spec:
                   # Neither image can run non-root: both entrypoints extract files and
                   # chown them before dropping privileges, and MariaDB's datadir is
                   # already owned by uid 999 on the existing volume. So the containment
-                  # here is capability-shaped instead — see the per-container drops.
+                  # here is capability-shaped instead - see the per-container drops.
                   securityContext:
                     seccompProfile:
                       type: RuntimeDefault
@@ -289,7 +289,7 @@ spec:
                         allowPrivilegeEscalation: false
                         capabilities:
                           drop: [ALL]
-                          # Only copies into the volume — no privilege drop, so no SETUID.
+                          # Only copies into the volume - no privilege drop, so no SETUID.
                           add: [CHOWN, DAC_OVERRIDE, FOWNER]
                       command:
                         - sh
@@ -304,7 +304,7 @@ spec:
                           mountPath: /target
                   containers:
                     - name: wordpress
-                      # Pinned to an exact patch — core lives in the container filesystem, not
+                      # Pinned to an exact patch - core lives in the container filesystem, not
                       # the PVC, so whatever this tag ships is what every restart runs. Renovate
                       # bumps it. The php8.3 suffix keeps PHP fixed across those bumps.
                       image: wordpress:7.0.3-php8.3-apache
@@ -314,7 +314,7 @@ spec:
                           drop: [ALL]
                           # NET_BIND_SERVICE for port 80, SETUID/SETGID so Apache can
                           # drop to www-data, and CHOWN/DAC_OVERRIDE/FOWNER for the
-                          # entrypoint's core extraction. Verified as the minimum — the
+                          # entrypoint's core extraction. Verified as the minimum - the
                           # planned set without CHOWN and DAC_OVERRIDE exited on startup.
                           add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID, NET_BIND_SERVICE]
                       env:
@@ -332,11 +332,11 @@ spec:
                             secretKeyRef:
                               name: {{ $name }}-mariadb
                               key: password
-                        # Blocks the browser theme/plugin editor, not updates — DISALLOW_FILE_MODS
+                        # Blocks the browser theme/plugin editor, not updates - DISALLOW_FILE_MODS
                         # isn't set since that would also block plugin/core updates.
                         # The official image skips many WordPress security releases, so the pinned
                         # tag is a floor and WP_AUTO_UPDATE_CORE pulls the rest from wordpress.org.
-                        # DISABLE_WP_CRON hands the checks to the CronJob — a full-page cache
+                        # DISABLE_WP_CRON hands the checks to the CronJob - a full-page cache
                         # answers requests without entering PHP, so page-view cron never fires.
                         - name: WORDPRESS_CONFIG_EXTRA
                           value: |
@@ -346,7 +346,7 @@ spec:
                       ports:
                         - containerPort: 80
                       # Probes a static asset, not /, so the check never occupies one of the
-                      # MaxRequestWorkers PHP slots. No livenessProbe on purpose — a slow PHP
+                      # MaxRequestWorkers PHP slots. No livenessProbe on purpose - a slow PHP
                       # render under load reads as dead and restarts the pod exactly when busiest.
                       readinessProbe:
                         httpGet:
@@ -383,7 +383,7 @@ spec:
             ---
             # --- wp-cron CronJob ---
             # Runs WordPress scheduled events now that DISABLE_WP_CRON stops page views doing it.
-            # Only executes events already due — the mu-plugin sets the hourly update cadence.
+            # Only executes events already due - the mu-plugin sets the hourly update cadence.
             # Hits the ClusterIP so the loop stays in-namespace instead of via Cloudflare.
             apiVersion: batch/v1
             kind: CronJob
@@ -395,7 +395,7 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               schedule: "*/5 * * * *"
-              # Forbid, not Allow — a slow run on a Pi would otherwise stack overlapping jobs
+              # Forbid, not Allow - a slow run on a Pi would otherwise stack overlapping jobs
               # against a single WordPress replica and starve the site of PHP workers.
               concurrencyPolicy: Forbid
               successfulJobsHistoryLimit: 1
@@ -499,7 +499,7 @@ spec:
             # so long-lived workers accumulate memory over the container's lifetime and it's
             # never returned to the OS. Recycling after 500 requests bounds that growth.
             # MaxRequestWorkers defaults to 150, which lets Apache spawn far more workers than
-            # the container's memory limit can hold — a traffic bump OOMKills the pod long
+            # the container's memory limit can hold - a traffic bump OOMKills the pod long
             # before per-worker recycling helps. Cap total workers to what the size's memory
             # limit can actually fit.
             apiVersion: v1
@@ -643,7 +643,7 @@ spec:
                 - match: "Host(`{{ $params.host }}`) && (Path(`/wp-login.php`) || Path(`/xmlrpc.php`) || PathPrefix(`/wp-json/wp/v2/users`))"
                   kind: Rule
                   priority: 100
-                  # Headers first — a 429 from the rate limiter short-circuits the rest of
+                  # Headers first - a 429 from the rate limiter short-circuits the rest of
                   # the chain, and the response still needs the security headers on it.
                   middlewares:
                     - name: {{ $name }}-wp-security-headers
@@ -674,7 +674,7 @@ spec:
                   X-Content-Type-Options: "nosniff"
                   X-Frame-Options: "SAMEORIGIN"
                   Referrer-Policy: "strict-origin-when-cross-origin"
-                  # "0" disables the legacy XSS auditor — removed from modern browsers,
+                  # "0" disables the legacy XSS auditor - removed from modern browsers,
                   # and enabling it created XS-Leak side channels in older ones. Matches Spa.
                   X-XSS-Protection: "0"
                   Strict-Transport-Security: "max-age=31536000; includeSubDomains"

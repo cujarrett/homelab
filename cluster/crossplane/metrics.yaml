@@ -1,6 +1,6 @@
 # Exposes the Crossplane metrics port (8080) as a Service and tells Prometheus
 # to scrape it. The metrics.enabled=true Helm flag adds port 8080 to the pod
-# but does NOT create a Service — we do that here.
+# but does NOT create a Service - we do that here.
 apiVersion: v1
 kind: Service
 metadata:
@@ -50,7 +50,7 @@ spec:
     - name: crossplane.xr
       interval: 60s
       rules:
-        # Circuit breaker opened — Crossplane backed off from reconciling a resource.
+        # Circuit breaker opened - Crossplane backed off from reconciling a resource.
         # This is the metric that tracks WatchCircuitOpen incidents.
         - alert: CrossplaneCircuitBreakerOpen
           expr: |
@@ -65,7 +65,7 @@ spec:
               open for over 5 minutes. Crossplane is backing off and not reconciling
               this resource. Check: kubectl get events -A --sort-by=.lastTimestamp | tail -20
 
-        # Reconcile errors spiking — something is consistently failing
+        # Reconcile errors spiking - something is consistently failing
         - alert: CrossplaneReconcileErrors
           expr: |
             rate(controller_runtime_reconcile_errors_total{

@@ -29,7 +29,7 @@ Image `src` attributes in `index.md` are rewritten to relative paths so the file
 
 ### Secrets
 
-Two keys must be pre-created in the cluster as a Secret — never stored in Git:
+Two keys must be pre-created in the cluster as a Secret - never stored in Git:
 
 ```bash
 kubectl create secret generic ghost-backup-creds -n blog \

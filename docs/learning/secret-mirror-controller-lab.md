@@ -1,6 +1,6 @@
 # Secret Mirror
 
-> **The one idea (grug):** you declare a thing. The controller makes the world match, forever. Nobody tells it what changed — it is handed your declaration and works out the rest every time. Delete a copy and it comes back. That is the whole job.
+> **The one idea (grug):** you declare a thing. The controller makes the world match, forever. Nobody tells it what changed - it is handed your declaration and works out the rest every time. Delete a copy and it comes back. That is the whole job.
 
 `SecretMirror` says "this Secret should exist in every namespace with this label". The controller makes that true and keeps it true.
 
@@ -11,7 +11,7 @@
 | [What it solves](#what-it-solves) | The real problem, stated without overselling |
 | [Shape](#shape) | The CRD, and what the controller does with it |
 | [Two rules](#two-rules) | Never clobber a Secret it does not own, and why the finalizer is a choice |
-| [Build order](#build-order) | Ten steps with checkpoints — the lab itself |
+| [Build order](#build-order) | Ten steps with checkpoints - the lab itself |
 | [What this skipped](#what-this-skipped) | Optional follow-on reading, after the build |
 | [What this teaches](#what-this-teaches) | Concept checklist, and what it skips |
 | [Parked candidates](#parked-candidates) | Follow-on projects |
@@ -20,13 +20,13 @@
 
 [launchpad-api](https://github.com/cujarrett/launchpad-api) currently copies TLS Secrets from the `demo-certs` namespace into each sandbox namespace so cert-manager never has to issue them. It does this once, at namespace creation, with a `Create` that swallows `AlreadyExists`, wrapped in a retry ticker.
 
-Worse, that copy is racing ArgoCD. The namespace does not exist when the goroutine starts — it was only just committed to git — so the loop retries once a second and gives up after thirty. If a sync runs slow, the sandbox comes up with no TLS Secret, cert-manager sees an Ingress with no certificate, and starts issuing against the exact hostnames the `demo-certs` scheme exists to keep away from Let's Encrypt's rate limiter.
+Worse, that copy is racing ArgoCD. The namespace does not exist when the goroutine starts - it was only just committed to git - so the loop retries once a second and gives up after thirty. If a sync runs slow, the sandbox comes up with no TLS Secret, cert-manager sees an Ingress with no certificate, and starts issuing against the exact hostnames the `demo-certs` scheme exists to keep away from Let's Encrypt's rate limiter.
 
 A controller does not guess when a namespace is ready. It is told. There is no timeout to exceed and no give-up branch to write.
 
-The renewal case comes free on top: when a source cert renews every sixty days, every copy follows. Sandboxes are short-lived so that rarely bites in practice — the timeout is the live failure, the staleness is the bonus.
+The renewal case comes free on top: when a source cert renews every sixty days, every copy follows. Sandboxes are short-lived so that rarely bites in practice - the timeout is the live failure, the staleness is the bonus.
 
-**Prerequisite before this is useful for real.** `RenderNamespace` in `launchpad-api` emits a Namespace with no labels, so there is nothing to select on. It needs to stamp `launchpad.local.lab/slot: <slot>` at creation. That is a one-line change reaching the cluster through git and ArgoCD like everything else, and it is worth doing separately from the controller — the lab runs entirely on scratch namespaces until then.
+**Prerequisite before this is useful for real.** `RenderNamespace` in `launchpad-api` emits a Namespace with no labels, so there is nothing to select on. It needs to stamp `launchpad.local.lab/slot: <slot>` at creation. That is a one-line change reaching the cluster through git and ArgoCD like everything else, and it is worth doing separately from the controller - the lab runs entirely on scratch namespaces until then.
 
 ## Shape
 
@@ -52,21 +52,21 @@ status:
 
 Cluster-scoped, because it spans namespaces by definition.
 
-Selection is by label, never by name — guests choose their own workspace names, so there is no pattern to match on. The label has to name the *slot* rather than just marking a namespace as a sandbox, because the Secrets are per-slot: a blanket `sandbox: "true"` would copy `demo1`'s cert into `demo3`'s namespace. One `SecretMirror` per slot, each selecting the single namespace currently holding it, or none while the slot is free.
+Selection is by label, never by name - guests choose their own workspace names, so there is no pattern to match on. The label has to name the *slot* rather than just marking a namespace as a sandbox, because the Secrets are per-slot: a blanket `sandbox: "true"` would copy `demo1`'s cert into `demo3`'s namespace. One `SecretMirror` per slot, each selecting the single namespace currently holding it, or none while the slot is free.
 
-Each reconcile does the same four things regardless of what triggered it — read the source, work out which namespaces match, make every one of them hold an identical copy, and remove copies from namespaces that no longer match.
+Each reconcile does the same four things regardless of what triggered it - read the source, work out which namespaces match, make every one of them hold an identical copy, and remove copies from namespaces that no longer match.
 
 ## Two rules
 
 **Never touch a Secret it did not create.** Every copy gets a label naming the `SecretMirror` that owns it. If a Secret already exists at the target name without that label, leave it alone and report it. A controller with write access to Secrets in every namespace must not clobber something a human put there.
 
-**The finalizer is chosen, not forced.** ownerReferences would work — the disallowed case is a *cross-namespace* owner, and a cluster-scoped `SecretMirror` may legally own a Secret in any namespace, so garbage collection would clean the copies up on its own. What a finalizer adds is certainty about *when*: the mirror survives until the controller has confirmed every copy is gone, so deleting a mirror and immediately recreating it cannot race a collection still in flight. That is the whole technical gain. The other half of the reason is that finalizers are worth knowing and this is a cheap place to write one.
+**The finalizer is chosen, not forced.** ownerReferences would work - the disallowed case is a *cross-namespace* owner, and a cluster-scoped `SecretMirror` may legally own a Secret in any namespace, so garbage collection would clean the copies up on its own. What a finalizer adds is certainty about *when*: the mirror survives until the controller has confirmed every copy is gone, so deleting a mirror and immediately recreating it cannot race a collection still in flight. That is the whole technical gain. The other half of the reason is that finalizers are worth knowing and this is a cheap place to write one.
 
 This has nothing to do with pruning. Removing a copy from a namespace that stopped matching is ordinary reconcile work in step 5, and happens while the mirror is very much alive.
 
 ## Build order
 
-Ten steps. Stop at each **Checkpoint** — that is where the idea lands. No code is written ahead of time; ask for each piece when you reach it.
+Ten steps. Stop at each **Checkpoint** - that is where the idea lands. No code is written ahead of time; ask for each piece when you reach it.
 
 ### 0. Prerequisites
 
@@ -85,7 +85,7 @@ kubebuilder init --domain local.lab --repo github.com/cujarrett/secret-mirror-co
 kubebuilder create api --group platform --version v1alpha1 --kind SecretMirror --resource --controller
 ```
 
-Answer yes to both prompts. `--repo` is only the Go module path — no GitHub repo needs to exist yet, but it must match where the repo eventually lives or every import is a lie.
+Answer yes to both prompts. `--repo` is only the Go module path - no GitHub repo needs to exist yet, but it must match where the repo eventually lives or every import is a lie.
 
 **Checkpoint:** those are the only two kubebuilder commands in the whole project. Everything after this is Go and `make`. Look at what landed:
 
@@ -94,10 +94,10 @@ Answer yes to both prompts. `--repo` is only the Go module path — no GitHub re
 | `api/v1alpha1/secretmirror_types.go` | the CRD, written as a Go struct |
 | `internal/controller/secretmirror_controller.go` | the reconcile loop |
 | `cmd/main.go` | builds the manager, registers the controller, starts it |
-| `config/` | generated YAML — never hand-edit |
+| `config/` | generated YAML - never hand-edit |
 | `Makefile` | the codegen entrypoint, kept even though the rest of the homelab uses `just` |
 
-Open the first two now, while they are still empty. `secretmirror_types.go` is what step 2 fills in, and `secretmirror_controller.go` is the only file steps 3 through 8 touch — knowing what a bare `Reconcile` and `SetupWithManager` look like is what makes every later addition legible as a diff rather than a wall of new code. Skim `cmd/main.go` for twenty seconds to see the manager gets built and the controller registered, then leave it until step 9.
+Open the first two now, while they are still empty. `secretmirror_types.go` is what step 2 fills in, and `secretmirror_controller.go` is the only file steps 3 through 8 touch - knowing what a bare `Reconcile` and `SetupWithManager` look like is what makes every later addition legible as a diff rather than a wall of new code. Skim `cmd/main.go` for twenty seconds to see the manager gets built and the controller registered, then leave it until step 9.
 
 Do not read `config/` yet. It is worth opening exactly once, in the next checkpoint, after your own fields appear in it.
 
@@ -115,13 +115,13 @@ Things to get right: `+kubebuilder:resource:scope=Cluster`, `+kubebuilder:subres
 
 ### 3. Make one copy
 
-The smallest thing that does something. Reconcile reads the source Secret, lists namespaces matching the selector, and makes each one hold a copy — creating it if absent, correcting it if it has drifted, leaving it alone if it is already right. No pruning, no finalizer, no status yet.
+The smallest thing that does something. Reconcile reads the source Secret, lists namespaces matching the selector, and makes each one hold a copy - creating it if absent, correcting it if it has drifted, leaving it alone if it is already right. No pruning, no finalizer, no status yet.
 
 That last distinction is the whole job. A reconcile is not a create; it is a decision taken fresh every time, per target namespace:
 
 | Target Secret | Owned by this mirror | Matches source | Action |
 |---|---|---|---|
-| missing | — | — | create |
+| missing | - | - | create |
 | exists | yes | no | update |
 | exists | yes | yes | no-op |
 | exists | no | either | leave alone, report conflict |
@@ -173,7 +173,7 @@ Two traps to handle:
 - Cleanup must be safe to run twice, because a failure requeues and runs it again.
 - A finalizer that can never succeed leaves the object stuck in `Terminating` forever, and someone has to strip the field by hand.
 
-**Checkpoint:** test the alternative before writing it. Put an ownerReference to the cluster-scoped `SecretMirror` on a copy in another namespace, delete the mirror, and watch GC remove the copy within seconds. It works — which is the point. The finalizer is not what makes deletion possible; it only decides whether the mirror disappears before or after its copies do.
+**Checkpoint:** test the alternative before writing it. Put an ownerReference to the cluster-scoped `SecretMirror` on a copy in another namespace, delete the mirror, and watch GC remove the copy within seconds. It works - which is the point. The finalizer is not what makes deletion possible; it only decides whether the mirror disappears before or after its copies do.
 
 ### 7. Watches
 
@@ -188,11 +188,11 @@ Both need a map function to translate the event into the `SecretMirror` that car
 
 ### 8. Status and events
 
-Set `copies`, `observedGeneration`, and conditions — `Ready` when everything is in sync, something explicit when the source is missing. Emit Events so `kubectl describe secretmirror` explains itself.
+Set `copies`, `observedGeneration`, and conditions - `Ready` when everything is in sync, something explicit when the source is missing. Emit Events so `kubectl describe secretmirror` explains itself.
 
 `observedGeneration` is what tells a reader whether the status refers to the spec they are looking at.
 
-**Checkpoint:** delete the source Secret. The status should say so plainly, and existing copies should be left alone rather than deleted — losing the source is not the same as being told to remove the copies.
+**Checkpoint:** delete the source Secret. The status should say so plainly, and existing copies should be left alone rather than deleted - losing the source is not the same as being told to remove the copies.
 
 ### 9. RBAC and deploy
 
@@ -204,7 +204,7 @@ Cluster-wide write on Secrets is real power. This is why step 4 exists.
 
 ### 10. Test with envtest
 
-Unit-test the pure parts first — namespace selection and the decision of what to create, update, skip, or delete. Then envtest for the reconcile loop: create, prune, source-missing, and delete-with-finalizer.
+Unit-test the pure parts first - namespace selection and the decision of what to create, update, skip, or delete. Then envtest for the reconcile loop: create, prune, source-missing, and delete-with-finalizer.
 
 Steps 9 and 10 are the stretch goals. Stop after step 8 if the afternoon is gone; everything above stands on its own.
 
@@ -212,27 +212,27 @@ Steps 9 and 10 are the stretch goals. Stop after step 8 if the afternoon is gone
 
 Scaffolding, CRD schema and markers, the status subresource, conditions, `observedGeneration`, printcolumns, typed clients, label selectors, `Watches` with map functions, drift correction, finalizers and idempotent cleanup, when ownerReference GC applies and when a finalizer is the better path, Events, RBAC that actually bites, envtest, ARM64 images, GitOps deploy.
 
-It leaves owned-resource garbage collection mostly untouched — step 6 proves GC would work, then deliberately does the cleanup by hand instead. [`Backup`](#parked-candidates) is the candidate that actually leans on it. For the rest, see [What this skipped](#what-this-skipped).
+It leaves owned-resource garbage collection mostly untouched - step 6 proves GC would work, then deliberately does the cleanup by hand instead. [`Backup`](#parked-candidates) is the candidate that actually leans on it. For the rest, see [What this skipped](#what-this-skipped).
 
 Honest caveat: emberstack/reflector and kubed already do this. The value here is a small thing fully understood rather than a novel capability.
 
 ## What this skipped
 
-Optional, and better read after the build than before — each item lands once you have hit the shape it describes.
+Optional, and better read after the build than before - each item lands once you have hit the shape it describes.
 
 **Server-side apply, field managers, ownership conflicts.** Who owns which field when two controllers write the same object, and what happens when they disagree. `ServerSideApply: true` is on nearly every app in this cluster, so read `.metadata.managedFields` on a real object and work out who owns what.
 
-**Crossplane mapped onto kubebuilder.** The highest-value item here for the day job, because you already run one controller platform daily. XRD maps to CRD plus schema, Composition to reconcile logic, composed resources to owned resources, `crossplane.io/composition-resource-name` to owner references, and a composition function to a single stateless step inside someone else's reconcile loop. Two systems, one model — moving fluently between them turns KRM from a topic into a lens.
+**Crossplane mapped onto kubebuilder.** The highest-value item here for the day job, because you already run one controller platform daily. XRD maps to CRD plus schema, Composition to reconcile logic, composed resources to owned resources, `crossplane.io/composition-resource-name` to owner references, and a composition function to a single stateless step inside someone else's reconcile loop. Two systems, one model - moving fluently between them turns KRM from a topic into a lens.
 
 **Webhooks and CEL validation.** Validating and defaulting webhooks reject bad specs before they persist; CEL rules in the CRD are the lighter option covering most of the same ground without running a webhook server. Multi-version CRDs and conversion belong here too.
 
 **`ctrl.Result{Requeue: true}` versus returning an error.** Both re-run the reconcile. They differ in backoff and in whether the controller counts it as a failure, and picking the wrong one is a common way to build an accidental hot loop.
 
-**The model underneath, if you want it** — the KRM spec (`kubernetes/design-proposals`, `resource-management`) and the API conventions doc. Why status is separate from spec, and why every field has to be declaratively settable.
+**The model underneath, if you want it** - the KRM spec (`kubernetes/design-proposals`, `resource-management`) and the API conventions doc. Why status is separate from spec, and why every field has to be declaratively settable.
 
 ## Parked candidates
 
-- **Entra app registration** — an `Identity` CR that provisions a Microsoft Entra app registration and writes the credentials back into a Secret. The most true-to-work shape there is: declare a CR, provision an external thing, clean it up on delete. App registrations are free tier. The tenant, the controller's own registration, and admin consent are the time sink, not the Go — so it deserves its own session.
-- **`Backup`** — scheduled WordPress and PVC backups. Spec of source, schedule, retention; creates and owns a `CronJob`, derives status from the Job. Clean, but the real work is backup scripting rather than controller logic.
-- **`SandboxLease`** — TTL on Launchpad demo namespaces. The only candidate that teaches time-based reconcile via `RequeueAfter`.
-- **`ConnectionGraph`** — aggregate `provides` and `consumes` across [`Api`](../../platform/api/) and [`Spa`](../../platform/spa/) into a graph, flagging where caller and callee disagree. Real value, since nothing checks that agreement today, but a pure aggregator skips the create-and-own half of the framework.
+- **Entra app registration** - an `Identity` CR that provisions a Microsoft Entra app registration and writes the credentials back into a Secret. The most true-to-work shape there is: declare a CR, provision an external thing, clean it up on delete. App registrations are free tier. The tenant, the controller's own registration, and admin consent are the time sink, not the Go - so it deserves its own session.
+- **`Backup`** - scheduled WordPress and PVC backups. Spec of source, schedule, retention; creates and owns a `CronJob`, derives status from the Job. Clean, but the real work is backup scripting rather than controller logic.
+- **`SandboxLease`** - TTL on Launchpad demo namespaces. The only candidate that teaches time-based reconcile via `RequeueAfter`.
+- **`ConnectionGraph`** - aggregate `provides` and `consumes` across [`Api`](../../platform/api/) and [`Spa`](../../platform/spa/) into a graph, flagging where caller and callee disagree. Real value, since nothing checks that agreement today, but a pure aggregator skips the create-and-own half of the framework.

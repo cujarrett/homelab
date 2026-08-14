@@ -9,27 +9,27 @@ differently:
 
 | | What it does | Missing it looks like |
 |---|---|---|
-| **DNS record** | tells the internet the hostname exists and points it at the tunnel | `NXDOMAIN` — nothing connects, and cert-manager's HTTP-01 self-check fails with `no such host` |
+| **DNS record** | tells the internet the hostname exists and points it at the tunnel | `NXDOMAIN` - nothing connects, and cert-manager's HTTP-01 self-check fails with `no such host` |
 | **Tunnel ingress entry** | tells `cloudflared` where to send traffic once it arrives | hostname resolves, then returns the tunnel's catch-all 404 |
 
 Existing hostnames already have their DNS records, which is why only the ingress half is
 usually visible. A genuinely new hostname needs both.
 
 All hostnames route to `https://192.168.10.101:443`. A new one must start with
-`noTLSVerify: true` — it can only flip to verified once its Let's Encrypt cert is issued
+`noTLSVerify: true` - it can only flip to verified once its Let's Encrypt cert is issued
 and being served, otherwise the tunnel 502s.
 
 ## Inputs
 
 Ask the user for the hostname. The temp token is passed in from `local-only/cloudflare.txt`
-(gitignored) — read it from there rather than asking, and never echo it.
+(gitignored) - read it from there rather than asking, and never echo it.
 
 **Token permissions.** Two different scopes are needed:
 
-- Account → **Cloudflare Tunnel** → Edit — for the ingress config
-- Zone → **DNS** → Edit, on the relevant zone — for the DNS record
+- Account → **Cloudflare Tunnel** → Edit - for the ingress config
+- Zone → **DNS** → Edit, on the relevant zone - for the DNS record
 
-A tunnel-only token cannot create the DNS record and will not fail loudly — it simply
+A tunnel-only token cannot create the DNS record and will not fail loudly - it simply
 returns zero zones. Check before assuming:
 
 ```bash
@@ -38,7 +38,7 @@ curl -s "https://api.cloudflare.com/client/v4/zones?name=<zone>" \
   | python3 -c "import json,sys; d=json.load(sys.stdin); print('zones visible:', len(d.get('result') or []))"
 ```
 
-Zero means DNS must be done in the dashboard instead — see step 2.
+Zero means DNS must be done in the dashboard instead - see step 2.
 
 ## 1. Tunnel ingress entry
 
@@ -52,7 +52,7 @@ TUNNEL_ID=$(echo "$CREDS" | python3 -c "import json,sys; print(json.load(sys.std
 CF_TOKEN=$(tr -d ' \n\r' < local-only/cloudflare.txt)
 ```
 
-The API is a **full replace** — fetch, insert, PUT the whole array back. Do it
+The API is a **full replace** - fetch, insert, PUT the whole array back. Do it
 programmatically so existing entries keep their exact `originRequest` settings; the
 WordPress hosts use `noTLSVerify: false` with `originServerName`, and retyping them by
 hand takes those sites down.
@@ -66,7 +66,7 @@ import json
 d = json.load(open('/tmp/cf-config.json'))
 cfg = d['result']['config']
 ing = cfg['ingress']
-assert ing[-1].get('service') == 'http_status:404', "catch-all not last — aborting"
+assert ing[-1].get('service') == 'http_status:404', "catch-all not last - aborting"
 new = {"hostname": "<new-hostname>", "service": "https://192.168.10.101:443",
        "originRequest": {"noTLSVerify": True}}
 cfg['ingress'] = ing[:-1] + [new] + [ing[-1]]
@@ -113,12 +113,12 @@ HTTP-01 challenge resolves the hostname from inside the cluster, so it fails if 
 missing.
 
 If anything looked the hostname up while it was still `NXDOMAIN`, that negative answer is
-cached and outlives the fix — the resolvers keep saying `no such host` after the record
+cached and outlives the fix - the resolvers keep saying `no such host` after the record
 exists. Public DNS resolving while the cluster still fails is the signature.
 
 ```bash
-dig +short <hostname> @1.1.1.1     # public — should answer
-dig +short <hostname>              # local resolver — may still be empty
+dig +short <hostname> @1.1.1.1     # public - should answer
+dig +short <hostname>              # local resolver - may still be empty
 ```
 
 Clear it, then retry the cert. cert-manager backs off after failures and will not

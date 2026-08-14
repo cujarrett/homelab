@@ -32,7 +32,7 @@ Playlist URL: `https://grafana.local.lab/playlists/play/adc6g24?kiosk`
 ssh pi@192.168.10.100 "sudo systemctl restart getty@tty1.service"
 ```
 
-Do not `pkill chromium` — the `while` loop in `kiosk.sh` relaunches it with a stale URL.
+Do not `pkill chromium` - the `while` loop in `kiosk.sh` relaunches it with a stale URL.
 
 **Take a remote screenshot** (`scrot` is installed on `ctrl-1`):
 
@@ -67,7 +67,7 @@ ssh pi@192.168.10.100 "journalctl -u getty@tty1 -n 30 --no-pager && ps aux | gre
 | External access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; zero-trust public ingress, no exposed firewall ports |
 | Remote access | Tailscale | Subnet router on `ctrl-1`; advertises `192.168.10.0/24`; split DNS for `local.lab` |
 | Platform | Crossplane | XRDs + Compositions in `platform/`; see [Platform](../platform/README.md) |
-| CNI | Cilium | Pod networking, WireGuard node encryption, kube-proxy replacement, Hubble observability, NetworkPolicy. Sole policy enforcer — k3s's kube-router is disabled, see [Kubelet Probe Outage](./postmortems/postmortem-kubelet-probe-outage.md). Its own mutual auth is disabled; mesh concerns belong to Istio |
+| CNI | Cilium | Pod networking, WireGuard node encryption, kube-proxy replacement, Hubble observability, NetworkPolicy. Sole policy enforcer - k3s's kube-router is disabled, see [Kubelet Probe Outage](./postmortems/postmortem-kubelet-probe-outage.md). Its own mutual auth is disabled; mesh concerns belong to Istio |
 | Service mesh | Istio | Sidecar mesh chained onto Cilium; workload mTLS and platform-rendered connection policy. See [Platform Connections](./platform-connections.md) |
 | Secrets | External Secrets Operator | Syncs `grafana-admin-secret` from AWS Secrets Manager. See [External Secrets](./external-secrets.md) |
 | Workload identity | SPIRE | SPIFFE SVIDs backing AWS IAM Roles Anywhere. See [Platform Workload Identity](./platform-workload-identity.md) |
@@ -155,8 +155,8 @@ section of [`CLAUDE.md`](../CLAUDE.md) for the API workflow.
 | `myvinyl.mattjarrett.dev` | `my-vinyl` | `Spa` + `Api` + `Cache` |
 | `jspollock.mattjarrett.dev` | `js-pollock` | `Spa` |
 | `launchpad.mattjarrett.dev` | `launchpad` | `Spa` + `Api` (API cluster-internal, reached via nginx `/api/` proxy) |
-| `connections.mattjarrett.dev` | `platform-connections-demo` | `Spa` + `Api` ×3 — service mesh walkthrough |
-| `oidc.mattjarrett.dev` | `spire-server` | SPIRE OIDC discovery document and JWKS — see [SPIRE OIDC Federation](./spire-oidc-federation.md) |
+| `connections.mattjarrett.dev` | `platform-connections-demo` | `Spa` + `Api` ×3 - service mesh walkthrough |
+| `oidc.mattjarrett.dev` | `spire-server` | SPIRE OIDC discovery document and JWKS - see [SPIRE OIDC Federation](./spire-oidc-federation.md) |
 
 Guest sandbox slots (`demo1`–`demo5` and `demo1-api`–`demo5-api` under `mattjarrett.dev`)
 are pre-registered in the tunnel and reuse long-lived certs from the `demo-certs` namespace.
@@ -166,7 +166,7 @@ are pre-registered in the tunnel and reuse long-lived certs from the `demo-certs
 ## GitOps
 
 ArgoCD uses an app-of-apps pattern. `cluster/argocd/bootstrap.yaml` is the root
-Application — it recurses `cluster/` and creates Applications for everything defined
+Application - it recurses `cluster/` and creates Applications for everything defined
 there.
 
 All apps use `automated: { prune: true, selfHeal: true }`. The cluster converges to
@@ -179,6 +179,6 @@ stored in Git.
 
 ## Related Docs
 
-- [How it was built](./how-it-was-built.md) — step-by-step build history from bare Pi to this state
-- [Platform](../platform/README.md) — Crossplane-based internal developer platform
-- [Nothing Novel](./nothing-novel.md) — the public prior art behind every mechanism here
+- [How it was built](./how-it-was-built.md) - step-by-step build history from bare Pi to this state
+- [Platform](../platform/README.md) - Crossplane-based internal developer platform
+- [Nothing Novel](./nothing-novel.md) - the public prior art behind every mechanism here

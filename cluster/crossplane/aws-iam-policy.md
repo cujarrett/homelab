@@ -2,7 +2,7 @@
 
 The Crossplane AWS provider authenticates as an IAM user (`crossplane-user`) using
 long-lived access keys stored in the `aws-creds` Secret in `crossplane-system`. That user
-is not managed by Crossplane itself — it must exist before Crossplane is bootstrapped.
+is not managed by Crossplane itself - it must exist before Crossplane is bootstrapped.
 
 This file is the source of truth for what that user must be allowed to do. If the user is
 ever recreated, apply all policies below.
@@ -22,7 +22,7 @@ ever recreated, apply all policies below.
 ## Inline policy: CrossplaneWorkloadIdentityManagement
 
 Grants the permissions needed to manage per-workload IAM roles. Scoped to the
-`/crossplane/` IAM path — no permission to touch roles outside that path.
+`/crossplane/` IAM path - no permission to touch roles outside that path.
 
 ```json
 {
@@ -53,7 +53,7 @@ Grants the permissions needed to manage per-workload IAM roles. Scoped to the
 }
 ```
 
-To apply (idempotent — safe to re-run):
+To apply (idempotent - safe to re-run):
 
 ```bash
 aws iam put-user-policy \
@@ -64,5 +64,5 @@ aws iam put-user-policy \
 
 ## What is NOT managed here
 
-- The `aws-creds` Secret in `crossplane-system` — created manually, never stored in Git. It is one of only two hand-seeded Secrets in the cluster; the other is `aws-eso-creds`, described in [External Secrets](../../docs/external-secrets.md)
-- The IAM OIDC identity provider (`oidc.mattjarrett.dev`) that workload identity trust policies condition on — see [Platform Workload Identity](../../docs/platform-workload-identity.md)
+- The `aws-creds` Secret in `crossplane-system` - created manually, never stored in Git. It is one of only two hand-seeded Secrets in the cluster; the other is `aws-eso-creds`, described in [External Secrets](../../docs/external-secrets.md)
+- The IAM OIDC identity provider (`oidc.mattjarrett.dev`) that workload identity trust policies condition on - see [Platform Workload Identity](../../docs/platform-workload-identity.md)

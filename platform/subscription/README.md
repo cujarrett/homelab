@@ -2,23 +2,23 @@
 
 Provisions a durable message cursor on a Topic. Tracks delivery position across restarts so no messages are missed or replayed.
 
-This is infrastructure only — it does not deploy any compute. Use an Api instance with `subscriptionRef` to deploy the workload that reads from this cursor.
+This is infrastructure only - it does not deploy any compute. Use an Api instance with `subscriptionRef` to deploy the workload that reads from this cursor.
 
 ## What it provisions
 
-- **Message cursor** — durable, named, position tracked across pod restarts
+- **Message cursor** - durable, named, position tracked across pod restarts
 
 ## Parameters
 
 | Field | Required | Default | Description |
 |---|---|---|---|
-| `topicRef.name` | yes | — | `metadata.name` of the Topic to consume from. |
-| `topicRef.streamName` | no | — | NATS stream name from the Topic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the Topic's streamName differs from its metadata.name. |
+| `topicRef.name` | yes | - | `metadata.name` of the Topic to consume from. |
+| `topicRef.streamName` | no | - | NATS stream name from the Topic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the Topic's streamName differs from its metadata.name. |
 | `filterSubject` | no | `>` | Subject filter. `*` = one token, `>` = one or more. e.g. `foo.event.snapshot` |
 | `deliverPolicy` | no | `all` | `all` = replay from start. `new` = only new messages. `last` = most recent only. `lastPerSubject` = most recent per subject. |
 | `ackPolicy` | no | `explicit` | `explicit` = app must ack per message (at-least-once). `all` = cumulative ack. `none` = fire-and-forget. |
 
-Ack wait timeout is hardcoded at 30 seconds — unacked messages are redelivered after this interval. It is not configurable per subscription.
+Ack wait timeout is hardcoded at 30 seconds - unacked messages are redelivered after this interval. It is not configurable per subscription.
 
 ## Example
 

@@ -1,11 +1,11 @@
 # Node Hardware Swap
 
 Moving a node onto new Raspberry Pi 5 hardware by swapping the NVMe SSD across. The OS,
-k3s state, and all configuration move with the SSD — no reinstall required. Written from
+k3s state, and all configuration move with the SSD - no reinstall required. Written from
 the ctrl-1 8GB to 16GB upgrade; the procedure is the same for any node.
 
 Steps 1 through 11 apply to every node. [If the node is ctrl-1](#if-the-node-is-ctrl-1)
-covers what the control plane adds on top — read it first if that is the node you are
+covers what the control plane adds on top - read it first if that is the node you are
 swapping.
 
 **Estimated time:** 2–3 hours. Most of it is waiting, not active work.
@@ -51,7 +51,7 @@ kubectl get pods -A -o wide --field-selector spec.nodeName=<node>
 ### 1. Prepare the micro SD card
 
 You need a micro SD card to boot Pi OS Lite on the new board so you can read the MAC
-address and set the EEPROM boot order. A 16GB card is fine (even a dashcam card works —
+address and set the EEPROM boot order. A 16GB card is fine (even a dashcam card works -
 just put it back when done).
 
 Flash Pi OS Lite (64-bit) onto the card using **Raspberry Pi Imager** on your Mac:
@@ -120,7 +120,7 @@ In the UniFi controller:
 - Find the entry for `192.168.10.100` / `ctrl-1`
 - Update the MAC address to the new board's MAC from step 1
 
-**Do this before migration day.** It takes effect immediately — the reservation will be
+**Do this before migration day.** It takes effect immediately - the reservation will be
 waiting for the new board when it first boots.
 
 ### 5. Save the k3s token
@@ -145,7 +145,7 @@ Move all moveable workloads off ctrl-1 to minimize disruption during downtime.
 kubectl drain ctrl-1 --ignore-daemonsets --delete-emptydir-data --grace-period=30
 ```
 
-DaemonSet pods (Traefik, Promtail, Longhorn node-exporter, etc.) will stay — that's
+DaemonSet pods (Traefik, Promtail, Longhorn node-exporter, etc.) will stay - that's
 expected. The `--ignore-daemonsets` flag skips them.
 
 Verify workers took the load:
@@ -171,12 +171,12 @@ ssh pi@192.168.10.100 "sudo poweroff"
 This cleanly stops k3s before powering down. Wait for the board to fully power off
 (green activity LED stops), then:
 
-1. **Unplug the ethernet cable from the old board** — you only have 4 switch ports, so
+1. **Unplug the ethernet cable from the old board** - you only have 4 switch ports, so
    the cable moves to the new board
 2. Remove the NVMe SSD from the old Pi 5
 3. Slot it into the new Pi 5 16GB
 4. Before powering on: press the M.2 card firmly into the slot and confirm the screw is
-   seated — a loose NVMe will not be detected at boot
+   seated - a loose NVMe will not be detected at boot
 5. **Plug the ethernet cable into the new board**
 
 ### 9. Boot new board
@@ -189,7 +189,7 @@ Connect ethernet, power on. The new board will:
 
 Watch for it to come up:
 ```bash
-# From your Mac — wait ~60s then:
+# From your Mac - wait ~60s then:
 kubectl get node ctrl-1
 # Should show Ready (may take 2-3 minutes)
 ```
@@ -202,7 +202,7 @@ ssh pi@192.168.10.100 "sudo journalctl -u k3s -n 50"
 Also confirm the NVMe was detected:
 ```bash
 ssh pi@192.168.10.100 "lsblk | grep nvme"
-# Should show nvme0n1 — if blank, the SSD is not seated properly
+# Should show nvme0n1 - if blank, the SSD is not seated properly
 ```
 
 **If the board doesn't boot at all** (no SSH, no IP in UniFi): plug in a monitor and
@@ -226,7 +226,7 @@ This will print an auth URL. Open it in a browser and log in. Once authenticated
 off-network access (`kubectl` via Tailscale, `*.local.lab`) resumes.
 
 Then go to the **Tailscale admin console** (https://login.tailscale.com/admin/machines) and
-delete the old stale `ctrl-1` entry — the new board registers as a new device, so you'll
+delete the old stale `ctrl-1` entry - the new board registers as a new device, so you'll
 have two entries until you remove the old one. Also re-approve the subnet route
 (`192.168.10.0/24`) on the new device entry if subnet approval is required in your tailnet.
 
@@ -267,13 +267,13 @@ ctrl-1 is the k3s server, the Tailscale subnet router, and the only node AdGuard
 kiosk can run on. Three things apply on top of the steps above.
 
 **DNS is down for the whole swap.** AdGuard is pinned to ctrl-1 by `nodeSelector`, so
-`*.local.lab` stops resolving the moment it drains — ArgoCD, Grafana, and Longhorn UIs
+`*.local.lab` stops resolving the moment it drains - ArgoCD, Grafana, and Longhorn UIs
 included. External sites still work through the UniFi fallback resolver at `1.1.1.1`.
 
 **Tailscale needs re-authenticating.** Registration is tied to the board, so the node key
 does not survive new hardware. Run `tailscale up` after boot and re-approve the
 `192.168.10.0/24` subnet route in the admin console. Until then, off-network `kubectl` and
-`*.local.lab` are broken. The cluster itself is unaffected — workers reach the API server
+`*.local.lab` are broken. The cluster itself is unaffected - workers reach the API server
 at `192.168.10.100` directly, not over Tailscale.
 
 **The kiosk needs its X config.** `/etc/X11/xorg.conf.d/99-pi5.conf` is not in Git and is

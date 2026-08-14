@@ -42,7 +42,7 @@ spec:
                         name:
                           type: string
                           # Templated into Service names and the sidecar egress list, so it
-                          # must be a DNS label — an unbounded string could inject a line there.
+                          # must be a DNS label - an unbounded string could inject a line there.
                           pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
                           maxLength: 63
                           description: "metadata.name of the Sql instance."
@@ -76,7 +76,7 @@ spec:
                     image:
                       type: string
                       description: >-
-                        Container image (e.g. ghcr.io/owner/api:sha-abc123). Managed by CI —
+                        Container image (e.g. ghcr.io/owner/api:sha-abc123). Managed by CI -
                         set on first create, then updated automatically on each merge to main.
                     repo:
                       type: string
@@ -155,7 +155,7 @@ spec:
                       type: string
                       default: sm
                       enum: [xs, sm, md, lg]
-                      description: "Compute tier for the container. Choose based on expected traffic — Extra Small suits low-traffic or background services; Large suits high-throughput workloads."
+                      description: "Compute tier for the container. Choose based on expected traffic - Extra Small suits low-traffic or background services; Large suits high-throughput workloads."
                     connectionPosture:
                       type: string
                       default: "off"
@@ -173,12 +173,12 @@ spec:
                             description: "Interface name (e.g. collection). Groups a set of routes under one grant."
                           methods:
                             type: array
-                            description: "HTTP methods this interface allows. Omit for all methods — the coarsest, lowest-upkeep default. Narrow only if this API genuinely has more than one trust boundary."
+                            description: "HTTP methods this interface allows. Omit for all methods - the coarsest, lowest-upkeep default. Narrow only if this API genuinely has more than one trust boundary."
                             items:
                               type: string
                           paths:
                             type: array
-                            description: "URL path globs this interface allows (e.g. /api/v1/collection/*). Omit for all paths — see methods."
+                            description: "URL path globs this interface allows (e.g. /api/v1/collection/*). Omit for all paths - see methods."
                             items:
                               type: string
                           allowedCallers:
@@ -193,10 +193,10 @@ spec:
                                   description: "Namespace the calling workload runs in."
                                 app:
                                   type: string
-                                  description: "The calling Api/Spa's metadata.name — also its ServiceAccount name."
+                                  description: "The calling Api/Spa's metadata.name - also its ServiceAccount name."
                     consumes:
                       type: array
-                      description: "Every destination this workload calls, including apps in its own namespace. Anything this XR creates itself (e.g. its own cache) is allowed automatically — do not list it. Set either host (off-platform) or app+namespace (any app on the platform)."
+                      description: "Every destination this workload calls, including apps in its own namespace. Anything this XR creates itself (e.g. its own cache) is allowed automatically - do not list it. Set either host (off-platform) or app+namespace (any app on the platform)."
                       items:
                         type: object
                         properties:
@@ -209,7 +209,7 @@ spec:
                           protocol:
                             type: string
                             enum: [TLS, HTTP]
-                            description: "Wire protocol for host. TLS for any https:// destination — the app terminates its own TLS. HTTP only for plaintext destinations."
+                            description: "Wire protocol for host. TLS for any https:// destination - the app terminates its own TLS. HTTP only for plaintext destinations."
                           app:
                             type: string
                             description: "metadata.name of an Api in another namespace this calls. Use with namespace."

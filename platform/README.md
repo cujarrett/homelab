@@ -1,10 +1,10 @@
 # Platform
 
-Crossplane-based internal developer platform. Declare what your app needs. The platform provisions it, wires it, and delivers credentials directly to the pod — no Terraform, no tickets, no credential management in application code.
+Crossplane-based internal developer platform. Declare what your app needs. The platform provisions it, wires it, and delivers credentials directly to the pod - no Terraform, no tickets, no credential management in application code.
 
 ## Philosophy
 
-- **Declare resources, not steps.** An `Api` with a `sqlRef` is a statement of intent. The composition figures out IAM roles, init containers, volume mounts, credential rotation — none of that is the app's problem.
+- **Declare resources, not steps.** An `Api` with a `sqlRef` is a statement of intent. The composition figures out IAM roles, init containers, volume mounts, credential rotation - none of that is the app's problem.
 - **Credentials reach the pod as files, not env vars.** The [servicebinding.io](https://servicebinding.io) convention makes bindings portable and predictable. The app reads `/bindings/sql/host`. It doesn't care whether that's in-cluster Postgres or RDS.
 - **Choose your backend, keep your app the same.** Some resources offer both in-cluster and cloud-managed variants: Postgres or RDS, Redis or ElastiCache. The `sqlRef` works for both. The app reads `/bindings/sql/host`. It doesn't care where the database lives.
 - **Data resources outlive APIs.** `Sql`, `NoSql`, `ObjectStorage` have lifecycles independent of any one `Api`. Create them once, reference them by name.
@@ -16,14 +16,14 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 
 | XR | What it provisions | `private-cloud` | `public-cloud` |
 |---|---|---|---|
-| [`Api`](api/README.md) | Deployment · Service · Ingress · TLS | — | — |
-| [`Spa`](spa/README.md) | Static frontend via nginx | — | — |
+| [`Api`](api/README.md) | Deployment · Service · Ingress · TLS | - | - |
+| [`Spa`](spa/README.md) | Static frontend via nginx | - | - |
 | [`Sql`](sql/README.md) | Relational database | Postgres on Longhorn | AWS RDS Postgres |
 | [`Cache`](cache/README.md) | Cache cluster (owned by Api) | Redis | AWS ElastiCache |
 | [`NoSql`](nosql/README.md) | Key-value / document store | ExtendDB *(planned)* | AWS DynamoDB |
 | [`ObjectStorage`](object-storage/README.md) | Object store | MinIO *(planned)* | AWS S3 |
-| [`Topic`](topic/README.md) | Durable message stream | NATS JetStream | — |
-| [`Subscription`](subscription/README.md) | Durable consumer cursor | NATS JetStream | — |
+| [`Topic`](topic/README.md) | Durable message stream | NATS JetStream | - |
+| [`Subscription`](subscription/README.md) | Durable consumer cursor | NATS JetStream | - |
 ---
 
 ## How resources connect
@@ -49,7 +49,7 @@ flowchart TD
     spa -.->|"companion API"| api
 ```
 
-`Cache` is created and destroyed with its `Api`. Everything else is independent — delete an `Api` without touching its database.
+`Cache` is created and destroyed with its `Api`. Everything else is independent - delete an `Api` without touching its database.
 
 ---
 
@@ -73,9 +73,9 @@ host, _ := os.ReadFile("/bindings/sql/host")
 port, _ := os.ReadFile("/bindings/sql/port")
 ```
 
-For AWS-backed resources (those with `role-arn`), the binding Secret contains an ARN — not credentials. The [`workload-identity-sidecar`](https://github.com/cujarrett/workload-identity-sidecar) sidecar reads those and writes actual STS credentials to a separate volume; the app uses `AWS_PROFILE_*` env vars instead. See [AWS credential binding](#aws-credential-binding) below.
+For AWS-backed resources (those with `role-arn`), the binding Secret contains an ARN - not credentials. The [`workload-identity-sidecar`](https://github.com/cujarrett/workload-identity-sidecar) sidecar reads those and writes actual STS credentials to a separate volume; the app uses `AWS_PROFILE_*` env vars instead. See [AWS credential binding](#aws-credential-binding) below.
 
-An init container blocks the app from starting until each binding's Secret is fully synced to the volume. Once it exits, every file is there — no retry logic needed in the app.
+An init container blocks the app from starting until each binding's Secret is fully synced to the volume. Once it exits, every file is there - no retry logic needed in the app.
 
 Reference an existing resource from an `Api` by name:
 
@@ -92,7 +92,7 @@ spec:
 
 ## AWS credential binding
 
-AWS-backed offerings (`ObjectStorage`, `NoSql`, `Sql` with `backend: public-cloud`, `Cache` with `backend: public-cloud`) use workload identity instead of static keys. The binding Secret contains an ARN and resource metadata — no access key, no secret.
+AWS-backed offerings (`ObjectStorage`, `NoSql`, `Sql` with `backend: public-cloud`, `Cache` with `backend: public-cloud`) use workload identity instead of static keys. The binding Secret contains an ARN and resource metadata - no access key, no secret.
 
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 45, 'rankSpacing': 60}}}%%
@@ -113,7 +113,7 @@ flowchart LR
     sts -->|"access key + session token"| sidecar
 ```
 
-Each binding gets its own IAM Role scoped to the pod's exact SPIFFE ID — wrong namespace, wrong service account, different cluster: rejected.
+Each binding gets its own IAM Role scoped to the pod's exact SPIFFE ID - wrong namespace, wrong service account, different cluster: rejected.
 
 The app uses named AWS profiles injected by the composition. Profile env var names are derived from the binding: `AWS_PROFILE_{REF_NAME_UPPER_SNAKE_CASE}` for object storage refs, `AWS_PROFILE_NOSQL` for nosql, `AWS_PROFILE_SQL` for public-cloud sql, and `AWS_PROFILE_CACHE` for public-cloud cache.
 
@@ -129,7 +129,7 @@ For the full design: [Platform Workload Identity](../docs/platform-workload-iden
 
 ## Environments and feature branches
 
-**The namespace is the environment boundary.** Every AWS resource name embeds both namespace and XR name — `crossplane-{ns}-{name}-*` for IAM roles, `platform-{ns}-{name}` for S3 buckets. Within a namespace, Api names must be unique (standard Kubernetes). Across namespaces, names are independent — `foo-api` in `ns-alice` and `foo-api` in `ns-bob` produce completely separate IAM roles, secrets, and buckets.
+**The namespace is the environment boundary.** Every AWS resource name embeds both namespace and XR name - `crossplane-{ns}-{name}-*` for IAM roles, `platform-{ns}-{name}` for S3 buckets. Within a namespace, Api names must be unique (standard Kubernetes). Across namespaces, names are independent - `foo-api` in `ns-alice` and `foo-api` in `ns-bob` produce completely separate IAM roles, secrets, and buckets.
 
 ### Feature branch pattern
 
@@ -147,7 +147,7 @@ IAM roles: `crossplane-foo-alice-foo-api-nosql` vs `crossplane-foo-bob-foo-api-n
 
 ### Test / QA / Prod tiers
 
-Use `private-cloud` backends for feature branches and test to avoid AWS cost. Promote to `public-cloud` at QA and above. The `Api` binding is identical — only `backend:` changes in the resource YAML.
+Use `private-cloud` backends for feature branches and test to avoid AWS cost. Promote to `public-cloud` at QA and above. The `Api` binding is identical - only `backend:` changes in the resource YAML.
 
 | Tier | Namespace pattern | Backend | Notes |
 |---|---|---|---|
@@ -158,6 +158,6 @@ Use `private-cloud` backends for feature branches and test to avoid AWS cost. Pr
 
 ### Sql and shared databases
 
-`Sql` creates the underlying RDS instance. Multiple Apis can share one RDS instance by listing themselves in `consumerServiceAccounts` — each gets its own IAM role and binding secret scoped to its SA, identical to how NoSql and ObjectStorage work.
+`Sql` creates the underlying RDS instance. Multiple Apis can share one RDS instance by listing themselves in `consumerServiceAccounts` - each gets its own IAM role and binding secret scoped to its SA, identical to how NoSql and ObjectStorage work.
 
 For feature branches and test, use `backend: private-cloud`. Each branch gets its own in-cluster Postgres at near-zero cost and full isolation. Reserve `public-cloud` Sql for QA and prod.

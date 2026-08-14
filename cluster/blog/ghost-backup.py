@@ -27,7 +27,7 @@ def github_request(path, method="GET", body=None):
 
 def github_commit(file_path, encoded_content, message):
     # Create or update a file in the repo. GitHub requires the existing file's
-    # SHA when updating — without it the request is rejected. A 404 means new file.
+    # SHA when updating - without it the request is rejected. A 404 means new file.
     sha = None
     try:
         existing = github_request(f"contents/{file_path}")
@@ -83,13 +83,13 @@ def fetch_images(html, slug):
 
 # Fetch every published post from Ghost in one request.
 # formats=html gives us the rendered post body (Ghost stores content internally
-# as Lexical JSON, not markdown — html is the closest human-readable export).
+# as Lexical JSON, not markdown - html is the closest human-readable export).
 # include=tags pulls tag names into the same response so we can write them to frontmatter.
 url = (
     f"{ghost_url}/ghost/api/content/posts/"
     f"?key={content_key}&formats=html&limit=all&include=tags"
 )
-# Cloudflare blocks Python's default user agent — use a neutral one.
+# Cloudflare blocks Python's default user agent - use a neutral one.
 req = urllib.request.Request(url, headers={"User-Agent": "blog-backup/1.0"})
 with urllib.request.urlopen(req) as r:
     posts = json.load(r)["posts"]
@@ -130,7 +130,7 @@ for post in posts:
         f"{html}\n"
     )
 
-    # Commit the post markdown — GitHub API requires base64-encoded content.
+    # Commit the post markdown - GitHub API requires base64-encoded content.
     github_commit(
         file_path=f"posts/{slug}/index.md",
         encoded_content=base64.b64encode(content.encode()).decode(),

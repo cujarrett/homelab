@@ -12,7 +12,7 @@ spec:
     path: platform
     directory:
       recurse: true
-      # test/** holds the platform test scripts and the e2e manifests they apply — never applied by ArgoCD
+      # test/** holds the platform test scripts and the e2e manifests they apply - never applied by ArgoCD
       exclude: "test/**"
   destination:
     server: https://kubernetes.default.svc

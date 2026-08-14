@@ -16,7 +16,7 @@ spec:
           spire:
             trustDomain: homelab.local
             # Sets both the JWT-SVID `iss` claim minted by spire-server and the issuer
-            # advertised by the discovery document — AWS and Entra require them to match.
+            # advertised by the discovery document - AWS and Entra require them to match.
             jwtIssuer: https://oidc.mattjarrett.dev
             clusterName: homelab
             namespaces:
@@ -27,13 +27,13 @@ spec:
         spire-server:
           # HA requires a shared datastore; single replica is sufficient for homelab.
           replicaCount: 1
-          # 1 year — avoids frequent CA rotation with no automated rotation tooling in place.
+          # 1 year - avoids frequent CA rotation with no automated rotation tooling in place.
           caTTL: 8760h
           caSubject:
             country: US
             organization: Homelab
             commonName: homelab-spire
-          # Prefer worker nodes — ctrl-1 runs AdGuard (DNS) and the kiosk display.
+          # Prefer worker nodes - ctrl-1 runs AdGuard (DNS) and the kiosk display.
           affinity:
             nodeAffinity:
               preferredDuringSchedulingIgnoredDuringExecution:
@@ -51,7 +51,7 @@ spec:
                 default:
                   enabled: false
                 # Issue an ID to Api pods only (label set by the composition). Spa has no
-                # server-side process to hold one — see docs/platform-workload-identity.md
+                # server-side process to hold one - see docs/platform-workload-identity.md
                 # "Static frontends".
                 homelab-workloads:
                   spiffeIDTemplate: spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}
@@ -71,7 +71,7 @@ spec:
           enabled: true
 
         # Publishes the JWT-SVID signing keys so AWS and Entra can validate them.
-        # Public by necessity — both clouds fetch the discovery doc and JWKS from the internet.
+        # Public by necessity - both clouds fetch the discovery doc and JWKS from the internet.
         spiffe-oidc-discovery-provider:
           enabled: true
           # Traefik terminates TLS at the edge; the provider serves plain HTTP behind it.
@@ -80,12 +80,12 @@ spec:
               enabled: false
           config:
             # Advertise the /.well-known/ path that Cloudflare lets datacenter callers reach.
-            # Traefik rewrites it back to /keys — see cluster/spire/oidc-jwks-ingress.yaml.
+            # Traefik rewrites it back to /keys - see cluster/spire/oidc-jwks-ingress.yaml.
             jwksUri: https://oidc.mattjarrett.dev/.well-known/keys
           ingress:
             enabled: true
             className: traefik
-            # Suppresses the chart's nginx-specific annotations — ours are set below.
+            # Suppresses the chart's nginx-specific annotations - ours are set below.
             controllerType: other
             annotations:
               traefik.ingress.kubernetes.io/router.entrypoints: websecure
@@ -123,6 +123,6 @@ spec:
       kind: ValidatingWebhookConfiguration
       name: spire-server-spire-controller-manager-webhook
       jqPathExpressions:
-        # SPIRE controller-manager owns this webhook after startup — injects caBundle and
+        # SPIRE controller-manager owns this webhook after startup - injects caBundle and
         # reorders entries. Ignore the whole array to avoid permanent ordering drift.
         - .webhooks

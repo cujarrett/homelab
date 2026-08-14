@@ -2,9 +2,9 @@
 #
 # Platform end-to-end test.
 #
-# Inflates an Api with every platform integration — private-cloud (in-cluster
+# Inflates an Api with every platform integration - private-cloud (in-cluster
 # Postgres, Redis, NATS) and public-cloud (AWS RDS, ElastiCache, DynamoDB, S3)
-# — verifies each one actually works from inside the pod, tears everything
+# - verifies each one actually works from inside the pod, tears everything
 # down, and verifies the teardown left nothing behind in the cluster or AWS.
 #
 # Usage:
@@ -14,7 +14,7 @@
 #
 # XRs are applied directly with kubectl (never via ArgoCD), so GitOps state is
 # untouched. Public-cloud RDS/ElastiCache are VPC-internal and unreachable from
-# the cluster by design — for those the test verifies provisioning plus the full
+# the cluster by design - for those the test verifies provisioning plus the full
 # SPIFFE -> OIDC -> STS identity chain, reported as "identity-only".
 
 set -uo pipefail
@@ -42,7 +42,7 @@ FAILURES=0
 record() { # phase check status detail
   RESULTS+=("$1|$2|$3|$4")
   [[ "$3" == FAIL* ]] && FAILURES=$((FAILURES + 1))
-  printf '  [%s] %s — %s%s\n' "$3" "$2" "$1" "${4:+ ($4)}"
+  printf '  [%s] %s - %s%s\n' "$3" "$2" "$1" "${4:+ ($4)}"
 }
 
 report() {
@@ -191,7 +191,7 @@ aws_gone() { # check_name command...
 }
 
 # ---------------------------------------------------------------------------
-# Phase 0 — preflight
+# Phase 0 - preflight
 # ---------------------------------------------------------------------------
 RUN_START=$(date +%s)
 echo "== Phase 0: preflight"
@@ -210,7 +210,7 @@ for check in "crossplane:crossplane-system:app=crossplane" "nats:nats:app.kubern
 done
 
 if kubectl get namespace "$NS" >/dev/null 2>&1; then
-  record preflight "namespace free" FAIL "$NS already exists — previous run not cleaned up?"
+  record preflight "namespace free" FAIL "$NS already exists - previous run not cleaned up?"
   report; exit 1
 fi
 record preflight "namespace free" PASS ""
@@ -224,7 +224,7 @@ if ! $PRIVATE_ONLY; then
   fi
 
   # The previous run's ElastiCache replication group deletes asynchronously for
-  # ~5-10 min after the run ends and the new run reuses the same id — wait it
+  # ~5-10 min after the run ends and the new run reuses the same id - wait it
   # out so back-to-back runs don't stall on the create.
   RG_RAW="crossplane-$NS-e2e-api-public-cache"
   RG_ID="$RG_RAW"
@@ -246,7 +246,7 @@ if ! $PRIVATE_ONLY; then
       echo "  ... waiting for previous replication group to finish deleting"
       sleep 30
     else
-      record preflight "elasticache id free" FAIL "exists with status=$RG_STATUS — previous run not cleaned up?"
+      record preflight "elasticache id free" FAIL "exists with status=$RG_STATUS - previous run not cleaned up?"
       break
     fi
   done
@@ -255,7 +255,7 @@ fi
 (( FAILURES > 0 )) && { report; exit 1; }
 
 # ---------------------------------------------------------------------------
-# Phase 1 — inflate
+# Phase 1 - inflate
 # ---------------------------------------------------------------------------
 echo "== Phase 1: inflate (public-cloud resources take ~10-14 min)"
 kubectl create namespace "$NS" >/dev/null
@@ -286,7 +286,7 @@ if ! $PRIVATE_ONLY; then
   done
 fi
 
-# Apis last — their readiness gates on bindings (and the owned Cache).
+# Apis last - their readiness gates on bindings (and the owned Cache).
 if wait_ready apis.platform.local.lab e2e-api-private 600; then
   record inflate "api/e2e-api-private Ready" PASS ""
 else
@@ -305,7 +305,7 @@ if ! $PRIVATE_ONLY; then
     record inflate "api/e2e-api-public Ready" FAIL "timeout 960s"; INFLATE_OK=false
   fi
   # The cache binding secret is written only after the ElastiCache replication
-  # group is ready (~12 min) — the Api XR reports Ready before that, and the
+  # group is ready (~12 min) - the Api XR reports Ready before that, and the
   # pod stays Pending until this secret exists to mount.
   if wait_secret e2e-api-public-cache 960; then
     record inflate "cache binding secret written" PASS ""
@@ -320,7 +320,7 @@ if ! $PRIVATE_ONLY; then
 fi
 
 # ---------------------------------------------------------------------------
-# Phase 2 — contract checks (binding secrets, deployment shape, RBAC)
+# Phase 2 - contract checks (binding secrets, deployment shape, RBAC)
 # ---------------------------------------------------------------------------
 if $INFLATE_OK; then
   echo "== Phase 2: contract checks"
@@ -370,7 +370,7 @@ if $INFLATE_OK; then
   fi
 
   # -------------------------------------------------------------------------
-  # Phase 3 — data plane via the probe app
+  # Phase 3 - data plane via the probe app
   # -------------------------------------------------------------------------
   echo "== Phase 3: data plane (probes retried while sidecars warm up)"
   check_probes e2e-api-private 18081 "SQL Database,Cache,Topic,Subscription"
@@ -381,7 +381,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Phase 4 — teardown
+# Phase 4 - teardown
 # ---------------------------------------------------------------------------
 if $KEEP; then
   echo "== Phase 4: SKIPPED (--keep). Tear down manually with:"
@@ -393,12 +393,12 @@ if $KEEP; then
 fi
 
 echo "== Phase 4: teardown (RDS/ElastiCache deletion takes several minutes)"
-# Apis first — deleting them cascades the owned Cache (and ElastiCache).
+# Apis first - deleting them cascades the owned Cache (and ElastiCache).
 kubectl delete apis.platform.local.lab e2e-api-private --ignore-not-found >/dev/null 2>&1
 kubectl delete apis.platform.local.lab e2e-api-public --ignore-not-found >/dev/null 2>&1
 wait_gone apis.platform.local.lab e2e-api-private 300 || record teardown "api/e2e-api-private deleted" FAIL "still present after 300s"
 wait_gone apis.platform.local.lab e2e-api-public 900 || record teardown "api/e2e-api-public deleted" FAIL "still present after 900s"
-# The owned Caches outlive their Api briefly — the ElastiCache replication
+# The owned Caches outlive their Api briefly - the ElastiCache replication
 # group takes ~5-10 min to delete in AWS and the Cache XR waits for it.
 wait_gone cache e2e-api-private-cache 300 || record teardown "cache/e2e-api-private-cache deleted" FAIL "still present after 300s"
 wait_gone cache e2e-api-public-cache 900 || record teardown "cache/e2e-api-public-cache deleted" FAIL "still present after 900s"
@@ -426,7 +426,7 @@ if ! $PRIVATE_ONLY; then
 fi
 
 # ---------------------------------------------------------------------------
-# Phase 5 — verify teardown
+# Phase 5 - verify teardown
 # ---------------------------------------------------------------------------
 echo "== Phase 5: verify teardown"
 
@@ -472,7 +472,7 @@ if ! $PRIVATE_ONLY; then
     "aws iam list-roles --path-prefix /crossplane/ --query 'Roles[?contains(RoleName, \`$NS\`)].RoleName' --output text --region $REGION | grep ."
   # $RG_ID computed in preflight (mirrors the composition's 40-char naming).
   # AWS deletes replication groups asynchronously for ~5-10 min after the XR
-  # is gone — "deleting" means the platform did its job, so count it as done.
+  # is gone - "deleting" means the platform did its job, so count it as done.
   RG_STATUS=$(aws elasticache describe-replication-groups --replication-group-id "$RG_ID" --region "$REGION" \
     --query 'ReplicationGroups[].Status' --output text 2>/dev/null)
   case "$RG_STATUS" in
