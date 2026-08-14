@@ -97,3 +97,14 @@ spec:
   package: xpkg.upbound.io/upbound/provider-aws-dynamodb:v2.6.1
   runtimeConfigRef:
     name: worker-nodes
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-azuread
+spec:
+  # Creates the Entra Application, ServicePrincipal and FederatedIdentityCredential
+  # objects per Api binding — the Entra side of workload identity federation.
+  package: xpkg.upbound.io/upbound/provider-azuread:v2.4.0
+  runtimeConfigRef:
+    name: worker-nodes
