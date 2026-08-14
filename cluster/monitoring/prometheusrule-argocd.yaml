@@ -1,0 +1,39 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: argocd
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: argocd
+      interval: 5m
+      rules:
+        # argocd_app_info carries pod/instance labels tied to the application-controller
+        # itself, so a controller restart alone creates a "new" series per app even
+        # when health never changed. Collapsing to (name, health_status, sync_status)
+        # first removes that noise before counting.
+        #
+        # Counts distinct (health_status, sync_status) combinations seen in the window,
+        # not the number of transitions — A -> B -> A -> B looks identical to a single
+        # A -> B here. Good enough to catch real instability at homelab scale; a normal
+        # single deploy (Progressing -> Healthy) is 2 states and stays under threshold.
+        - alert: ArgoCDAppFlapping
+          expr: |
+            count by (name) (
+              count by (name, health_status, sync_status) (
+                count_over_time(argocd_app_info[1h])
+              )
+            ) > 3
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-mbp/homelab"
+            summary: "ArgoCD app {{ $labels.name }} has changed health/sync state {{ $value | printf \"%.0f\" }} times in the last hour"
+            description: >-
+              Usually self-heal fighting an external change, or the underlying
+              workload itself flapping.
+              Check `argocd app get {{ $labels.name }} --grpc-web` for sync history,
+              and `k get pods -n <app namespace>` for restarts.
