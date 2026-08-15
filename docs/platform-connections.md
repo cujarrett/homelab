@@ -4,7 +4,7 @@
 
 Istio puts a proxy beside every pod. Nothing reaches a workload without passing that proxy, and nothing leaves without passing its own.
 
-There is a live walkthrough at [connections.mattjarrett.dev](https://connections.mattjarrett.dev) - six real calls against this cluster, two of them refused.
+There is a live walkthrough at [connections.mattjarrett.dev](https://connections.mattjarrett.dev) - seven real calls against this cluster, three of them refused.
 
 By default, anything running in the cluster can call anything else. So *can this app call that app* already has an answer - yes, always - and nobody chose it.
 
@@ -173,7 +173,9 @@ That independence is the reason to reach for an identity provider at all: at For
 | Mesh | X.509 SVID, issued by Istio | `provides.allowedCallers`, enforced by Envoy |
 | Entra | `entra.enabled`, federated from the pod's SPIFFE identity | `entra.roles.allowedCallers`, checked by the app |
 
-**Turning on `entra.enabled` grants nothing.** It gets a workload an identity Entra recognises, and that is all. A caller with an identity and no role arrives holding a real, signed, unexpired token that names no roles - which is exactly what being refused looks like here.
+**Turning on `entra.enabled` grants nothing.** It gets a workload an identity Entra recognises, and that is all. A refused caller still arrives holding a real, signed, unexpired token - it simply does not name the role this route wants, either because it holds none or because it holds a different one.
+
+**A grant is per role, not per caller.** One workload can hold `Data.Read` and be refused `Data.Admin` on the next route of the same API, without anything about it changing. The mesh cannot express that: it answers once, at the door, for the whole workload. Splitting it there would take a second app and a second entry in `provides`.
 
 ```yaml
 # upstream-api.yaml - the callee declares the role and who holds it
@@ -201,7 +203,7 @@ flowchart LR
     G5 -->|no| D5["403 missing_role<br/>refused by the app<br/>after a valid token"]
 ```
 
-**Where the platform stops.** It creates the app registration, the service principal, the federated credential, the role and the grant, and injects `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_FEDERATED_TOKEN_FILE`. It does not check the token. The `roles` claim is read by app code, because only the app knows which of its own routes needs which role - the same reason `provides.paths` exists rather than the platform guessing.
+**Where the platform stops.** It creates the app registration, the service principal, the federated credential, the role and the grant. It injects `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_FEDERATED_TOKEN_FILE` so the identity works without app code, and one `ENTRA_SCOPE_<APP>` for every app already named in `consumes`, so a caller never has to build an audience string out of a naming convention it cannot see. It does not check the token. The `roles` claim is read by app code, because only the app knows which of its own routes needs which role - the same reason `provides.paths` exists rather than the platform guessing.
 
 **The exchange needs no secret.** The pod's SPIFFE JWT-SVID is presented to Entra as a `client_assertion` and comes back as an access token. See [Platform Workload Identity](./platform-workload-identity.md) for how the federation is set up, and [Entra](./learning/entra.md) for what the claims mean.
 
