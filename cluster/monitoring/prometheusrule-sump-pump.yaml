@@ -10,58 +10,27 @@ spec:
     - name: sump-pump
       interval: 5m
       rules:
-        # Normal: ~30 runs/hour, ~390 run-seconds/hour. Warning sits above p99.
-        # Critical is above the ~90 runs/hour seen in past storms, so a downpour
-        # warns rather than pages. max() because bridge and consumer both export
-        # these, and restarts start fresh series.
-        - alert: SumpPumpRunningALot
-          expr: |
-            max(increase(sump_pump_runs_total[1h])) > 40
-          for: 10m
-          labels:
-            severity: warning
-          annotations:
-            dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
-            summary: "Sump pump is running a lot - {{ $value | printf \"%.0f\" }} cycles this hour"
-            description: >-
-              Water is coming in faster than usual, which is what rain looks
-              like. The resolved notification marks the return to normal.
-
-        - alert: SumpPumpRunningVeryHard
-          expr: |
-            max(increase(sump_pump_runs_total[1h])) > 75
-          for: 10m
-          labels:
-            severity: critical
-          annotations:
-            dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
-            summary: "Sump pump is running very hard - {{ $value | printf \"%.0f\" }} cycles this hour"
-            description: >-
-              Past the rate a heavy storm normally drives. If the weather does not
-              explain it, the pit is refilling between cycles - check the check
-              valve for backflow.
-
         # sump_pump_running is 0 or 1, so its hourly average is the fraction of the
         # hour spent running - times 60 reads straight off as minutes per hour.
-        # Normal is ~7. Runtime needs both tiers: runs can stretch out at a normal
-        # cycle count, which no rate threshold sees.
+        # Normal is ~6. Duty cycle is the primary "working hard" signal because it
+        # is the one tied to motor damage. Cycle count tracks it so closely that a
+        # separate rate alert only double-notified the same rain.
         #
         # Scoped to the consumer. Both apps export this gauge, but only the
         # consumer is scraped every 10s - the bridge defaults to 60s, which cannot
-        # see an eleven second run and reads high enough to fire on its own. The
-        # counter based alerts are safe unscoped; a gauge is not.
+        # see an eleven second run and reads high enough to fire on its own.
         - alert: SumpPumpRunningLongHours
           expr: |
-            max(avg_over_time(sump_pump_running{job="sump-pump-consumer"}[1h])) * 60 > 10
+            max(avg_over_time(sump_pump_running{job="sump-pump-consumer"}[1h])) * 60 > 12
           for: 10m
           labels:
             severity: warning
           annotations:
             dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
-            summary: "Sump pump ran {{ $value | printf \"%.0f\" }} minutes this hour, normal is ~7"
+            summary: "Sump pump ran {{ $value | printf \"%.0f\" }} minutes this hour, normal is ~6"
             description: >-
-              Total runtime is up. Alongside a high cycle count that is just weather;
-              on its own it means each run is moving less water than it should.
+              Water is coming in faster than usual, which is what rain looks like.
+              The resolved notification marks the return to normal.
 
         - alert: SumpPumpRunningNearlyConstantly
           expr: |
@@ -76,6 +45,37 @@ spec:
               At this duty cycle there is little idle time to cool between runs.
               Sustained, that is how the motor burns out. Suspect a stuck float, or
               a discharge line blocked or frozen.
+
+        # Duty cycle divided by cycle count is the average seconds per run. It
+        # separates the two causes that a duty cycle number alone cannot - more
+        # water in, versus each run moving less of it. Rising at a normal cycle
+        # count is impeller wear or a partly blocked discharge, and it shows up
+        # here well before total runtime crosses a threshold.
+        #
+        # Normal is ~11.5s. Across the archive the busiest hours ran longest, so
+        # 30 sits about a third above the worst storm seen rather than just above
+        # p99. The run count guard is load bearing - every reading over 23s in the
+        # archive came from a near idle window where the denominator was tiny
+        # enough to make the ratio meaningless.
+        - alert: SumpPumpRunsGettingLonger
+          expr: |
+            (
+              (max(avg_over_time(sump_pump_running{job="sump-pump-consumer"}[6h])) * 21600)
+              /
+              max(increase(sump_pump_runs_total{job="sump-pump-consumer"}[6h]))
+            ) > 30
+            and
+            max(increase(sump_pump_runs_total{job="sump-pump-consumer"}[6h])) > 60
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
+            summary: "Sump pump runs averaging {{ $value | printf \"%.0f\" }}s, normal is ~12s"
+            description: >-
+              Each cycle is taking far longer than it should to clear the pit. The
+              pump is moving less water per run than it used to - suspect a worn
+              impeller, or a discharge line partly blocked or frozen.
 
         # Idle is normal - 20 of 104 six-hour windows were near zero. Rain is what
         # makes idle suspicious.
@@ -93,7 +93,7 @@ spec:
             description: >-
               Measurable rain with almost no pump activity points at a dead pump, a
               stuck float, or a sensor that has frozen at a fixed reading. This is
-              the failure that a runtime or rate alert cannot see.
+              the failure that a runtime alert cannot see.
 
         # Dry-weather backstop for a sensor stuck at zero. One 48h window in the
         # archive was this quiet, so expect roughly monthly.
