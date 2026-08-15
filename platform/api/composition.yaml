@@ -44,6 +44,9 @@ spec:
             {{- $entra := $xr.spec.parameters.entra | default dict }}
             {{- $entraEnabled := $entra.enabled | default false }}
             {{- $entraRoles := $entra.roles | default list }}
+            {{- /* Declared once here, read by both the mesh rules far below and the      */ -}}
+            {{- /* Entra scope env vars above them.                                       */ -}}
+            {{- $consumes := $xr.spec.parameters.consumes | default list }}
             {{- /* crossplane-entra's own service principal object ID - set as owner on   */ -}}
             {{- /* everything it creates, or it can create but never delete/update again.  */ -}}
             {{- /* See cluster/crossplane/azuread-permissions.md.                          */ -}}
@@ -389,6 +392,15 @@ spec:
                         # one minted for something else.
                         - name: ENTRA_AUDIENCE
                           value: api://{{ $entraTenantId }}/platform-{{ $ns }}-{{ $name }}
+                        {{- range $c := $consumes }}
+                        {{- if and $c.app $c.namespace }}
+                        # One per app this Api already said it calls. The URI format is
+                        # the platform's own, so an app that had to build this string
+                        # would be guessing at a convention it cannot see.
+                        - name: ENTRA_SCOPE_{{ $c.app | upper | replace "-" "_" }}
+                          value: api://{{ $entraTenantId }}/platform-{{ $c.namespace }}-{{ $c.app }}/.default
+                        {{- end }}
+                        {{- end }}
                       {{- end }}
                       {{- if $topicRefName }}
                         # Topic wiring: injected automatically from topicRef.
@@ -926,7 +938,6 @@ spec:
             {{- $posture := $xr.spec.parameters.connectionPosture | default "off" }}
             {{- $appPort := $xr.spec.parameters.port | default 8080 }}
             {{- $provides := $xr.spec.parameters.provides | default list }}
-            {{- $consumes := $xr.spec.parameters.consumes | default list }}
             {{- if eq $posture "enforce" }}
             ---
             # Callers must prove a real mesh identity. Two exceptions, both for unmeshed
