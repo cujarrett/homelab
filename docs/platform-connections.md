@@ -204,6 +204,14 @@ Only the kernel can stop that. A Cilium `NetworkPolicy` is enforced at the pod's
 
 **`Api` and `Spa` label pods differently** - `app.kubernetes.io/instance` versus `instance`. A selector copied between the two matches nothing and fails silently: the policy renders, ArgoCD reports Synced, enforcement never happens. Converging on one label would remove the trap.
 
+## Complications outside HTTP
+
+**Grug:** everything above assumes HTTP. Two things break that assumption - UDP traffic, and the reverse proxies sitting in front of the mesh - and neither is exotic at scale. Syslog ingestion, RTP/media relays, telemetry collectors, DNS, and anything speaking QUIC ahead of HTTP/3 support all land outside this design the same way.
+
+**UDP has no gates 3 and 4, because it has no principal to check.** The scheme in [What gets rendered](#what-gets-rendered) reads mTLS off an X.509 SAN and authorization off an HTTP route - both are TCP/L7 constructs. A UDP workload never gets the same sidecar relationship an `Api` does; Envoy can pass UDP through, but there is no `Host` header, no `:authority`, nothing for an `AuthorizationPolicy` to match a caller identity against. Reachability for a UDP service collapses back to L3/L4 - the layer marked **not built** in [Known limits](#known-limits).
+
+**A reverse proxy only carries what it terminates.** Cloudflare Tunnel and Traefik both work by speaking HTTP/TCP to the origin and HTTP/TCP (or TLS) to the client - every public and internal hostname in this cluster exists because of that. A UDP-only service has no HTTP request for either hop to terminate, so it cannot get a hostname the way `blog.mattjarrett.dev` does. The one Traefik exception already in this doc - unmeshed ingress forwarding straight to an app's port - was built for HTTP; Traefik does not listen on UDP at all, so a UDP workload was never a candidate for it.
+
 ## Reference
 
 | Concept | Layer | Doc | Watch for |
