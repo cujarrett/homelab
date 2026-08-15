@@ -1147,7 +1147,7 @@ data:
                 "uid": "P8E80F9AEF21F6940"
               },
               "editorMode": "code",
-              "expr": "sum_over_time({namespace=\"sump-pump\"} |= \"run_complete\" | logfmt | duration_s != \"\" | unwrap duration_s [$__interval]) / ($__interval_ms / 1000) * 100",
+              "expr": "sum(sum_over_time({namespace=\"sump-pump\"} |= \"run_complete\" | logfmt | duration_s != \"\" | unwrap duration_s [$__interval])) / ($__interval_ms / 1000) * 100",
               "legendFormat": "duty cycle",
               "queryType": "range",
               "refId": "A"
