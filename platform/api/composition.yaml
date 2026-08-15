@@ -387,11 +387,6 @@ spec:
                           value: {{ $entraTenantId | quote }}
                         - name: AZURE_FEDERATED_TOKEN_FILE
                           value: /entra-identity/token
-                        # This Api's own name as an audience. An Api that checks tokens
-                        # compares against this, so it cannot be talked into accepting
-                        # one minted for something else.
-                        - name: ENTRA_AUDIENCE
-                          value: api://{{ $entraTenantId }}/platform-{{ $ns }}-{{ $name }}
                         {{- range $c := $consumes }}
                         {{- if and $c.app $c.namespace }}
                         # One per app this Api already said it calls. The URI format is

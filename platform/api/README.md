@@ -178,7 +178,7 @@ When any AWS cloud binding is declared, or `entra.enabled` is set, the compositi
 - The sidecar keeps a raw SPIFFE SVID fresh in an `entra-identity` emptyDir volume, mounted at `/entra-identity/token` - it does not exchange this token itself.
 - `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_FEDERATED_TOKEN_FILE=/entra-identity/token` env vars in the app container. The app's own Azure SDK (`WorkloadIdentityCredential`) reads these and does the exchange on demand - the same contract Azure Kubernetes Service (AKS) uses natively.
 - Egress to `login.microsoftonline.com`, since that is where the exchange happens. Declaring `entra.enabled` is what registers it, so it never goes in `consumes`.
-- A stable identifier, `api://<tenant-id>/platform-<namespace>-<name>`, so a caller can name this Api as an audience without looking up the client ID Entra generated for it. The tenant ID is required by Entra's default tenant policy, not decoration.
+- A stable identifier, `api://<tenant-id>/platform-<namespace>-<name>`, so a caller can name this Api as an audience without looking up the client ID Entra generated for it. The tenant ID is required by Entra's default tenant policy, not decoration. A v2 token still arrives audienced to the client ID, which the Api already has as `AZURE_CLIENT_ID`.
 - Tokens issued at v2, so their issuer is `login.microsoftonline.com/<tenant>/v2.0` rather than the v1 `sts.windows.net`.
 
 When `entra.roles` is set, the composition also creates each role and one grant per allowed caller. Checking the role is the app's job - see [Platform Connections → Entra](../../docs/platform-connections.md#entra-a-second-gate-that-answers-to-someone-else).
