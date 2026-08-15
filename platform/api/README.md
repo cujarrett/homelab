@@ -34,6 +34,8 @@ The namespace is owned by the tenant - created by `namespace.yaml` in the tenant
 | `readinessCheckPath` | no | `/healthz` | HTTP path the readiness probe hits. Set to `/readyz` for apps that gate readiness on external dependencies. |
 | `cache.enabled` | no | `false` | Provision a cache cluster owned by this Api. |
 | `cache.backend` | no | `private-cloud` | `private-cloud`=in-cluster Redis, `public-cloud`=AWS ElastiCache. |
+| `entra.enabled` | no | `false` | Give this Api an Entra identity. Grants nothing on its own - it only makes the Api something roles can be granted to. |
+| `entra.roles` | no | - | Roles this Api grants to other Apis calling it. Each entry requires `name` and `allowedCallers`; each caller requires `app` and `namespace` and must set `entra.enabled` itself. The Api reads the role from the caller's token and decides for itself - the platform does not check it. |
 | `objectStorageRefs` | no | - | Array of references to existing `ObjectStorage` instances. Each creates an IAM Role and binding Secret. |
 | `sqlRef.name` | no | - | Name of an existing `Sql` instance to bind. |
 | `sqlRef.backend` | no | `private-cloud` | Must match the `Sql` instance's backend. When `public-cloud`, the sidecar exchanges the SVID for STS credentials for RDS IAM DB auth. |
@@ -175,6 +177,10 @@ When any AWS cloud binding is declared, or `entra.enabled` is set, the compositi
 **Entra** (`entra.enabled: true`):
 - The sidecar keeps a raw SPIFFE SVID fresh in an `entra-identity` emptyDir volume, mounted at `/entra-identity/token` - it does not exchange this token itself.
 - `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_FEDERATED_TOKEN_FILE=/entra-identity/token` env vars in the app container. The app's own Azure SDK (`WorkloadIdentityCredential`) reads these and does the exchange on demand - the same contract Azure Kubernetes Service (AKS) uses natively.
+- Egress to `login.microsoftonline.com`, since that is where the exchange happens. Declaring `entra.enabled` is what registers it, so it never goes in `consumes`.
+- A stable identifier, `api://platform-<namespace>-<name>`, so a caller can name this Api as an audience without looking up the client ID Entra generated for it.
+
+When `entra.roles` is set, the composition also creates each role and one grant per allowed caller. Checking the role is the app's job - see [Platform Connections → Entra](../../docs/platform-connections.md#entra-a-second-gate-that-answers-to-someone-else).
 
 For the full workload identity design: [Platform Workload Identity](../../docs/platform-workload-identity.md)
 

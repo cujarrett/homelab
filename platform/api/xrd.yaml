@@ -75,11 +75,51 @@ spec:
                           description: "Cache backend: private-cloud=in-cluster Redis, public-cloud=AWS ElastiCache."
                     entra:
                       type: object
-                      description: "Entra workload identity. When enabled, the platform creates an Entra app registration, service principal and federated credential for this Api — no manual registration in the Entra portal. If omitted, this Api has no Entra identity."
+                      description: "Entra identity for this Api. The platform registers it, so nothing is created by hand in the portal. An identity grants nothing on its own."
+                      x-kubernetes-validations:
+                        # Roles hang off the identity, so without one they render nothing.
+                        - rule: "!has(self.roles) || self.enabled"
+                          message: "entra.roles needs entra.enabled: true"
                       properties:
                         enabled:
                           type: boolean
                           default: false
+                        roles:
+                          type: array
+                          maxItems: 20
+                          description: "Roles this Api grants to its callers. Same shape as provides one layer up - provides decides who may reach this Api, this decides what they may do once they have."
+                          x-kubernetes-validations:
+                            # Role names become object names, which are lowercase and
+                            # treat . _ and - alike. Two roles that only differ that way
+                            # would collapse onto one object and one would vanish.
+                            - rule: "self.all(a, self.exists_one(b, b.name.lowerAscii().replace('.','-').replace('_','-') == a.name.lowerAscii().replace('.','-').replace('_','-')))"
+                              message: "role names must differ by more than case, dots, underscores or dashes"
+                          items:
+                            type: object
+                            required: [name, allowedCallers]
+                            properties:
+                              name:
+                                type: string
+                                description: "Role name as it reaches the caller's token. Renaming replaces the role and drops its grants."
+                                pattern: "^[A-Za-z][A-Za-z0-9._-]*$"
+                                maxLength: 120
+                              allowedCallers:
+                                type: array
+                                description: "Apis granted this role. Everything else is refused. Each must set entra.enabled itself."
+                                items:
+                                  type: object
+                                  required: [app, namespace]
+                                  properties:
+                                    app:
+                                      type: string
+                                      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                                      maxLength: 63
+                                      description: "The calling Api's metadata.name."
+                                    namespace:
+                                      type: string
+                                      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                                      maxLength: 63
+                                      description: "Namespace the calling Api runs in."
                     image:
                       type: string
                       description: >-

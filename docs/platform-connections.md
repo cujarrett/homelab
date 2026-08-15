@@ -87,6 +87,8 @@ The rule underneath: **you declare what you need, not where it lives.** An addre
 
 **Grug:** a call passes four checkpoints. Two on the way out of the caller, two on the way in to the callee. Miss any one and the call dies.
 
+This is **authorization** - deciding what an identity may do. It only makes sense on top of [the identity it rests on](#the-identity-it-rests-on-authentication), which answers who is calling in the first place. Authentication first, then this. The same two-step runs again one layer up, in [Entra](#entra-a-second-gate-that-answers-to-someone-else).
+
 Four objects per workload, all derived from those two fields, all enforced by the Envoy sidecar. No app code changes, ever.
 
 ```mermaid
@@ -122,6 +124,7 @@ Gates 1 and 2 come from the caller's `consumes` (and, for a `Spa`, its `apiProxi
 | You see | Gate | Meaning |
 |---|---|---|
 | RBAC 403 | 4 | Caller reached the callee and was refused by name. Its principal is not in `allowedCallers` |
+| 403 naming a missing role | 5 | The call passed every mesh gate and the app refused it. The Entra identity is real; this API never granted it the role. Looks identical to gate 4 from outside, and has a completely different fix - the grant is `entra.roles.allowedCallers`, not `provides` |
 | Connection reset | 3 | Caller arrived in plaintext. It is unmeshed, or its sidecar never started |
 | 502 through nginx | 1 | Destination missing from the caller's `Sidecar` egress list, so its own proxy blackholed it |
 | Timeout to a public host | 2 | No `ServiceEntry`, so the host was never registered as a destination |
@@ -138,9 +141,11 @@ Off-platform hosts therefore have no gate 3 or 4 - there is nothing out there to
 
 **Proxied requests must carry the upstream's name as `Host`.** Envoy routes outbound HTTP by `:authority` - effectively the `Host` header. Forward the browser's hostname instead and Envoy looks it up in the mesh registry, finds nothing, and `REGISTRY_ONLY` blackholes it - drops it with no route, so the destination never sees a connection at all. The `Spa` composition sets `Host` to the upstream service and keeps the original as `X-Forwarded-Host`.
 
-## The identity it rests on
+## The identity it rests on (authentication)
 
 **Grug:** every pod gets a certificate saying who it is. It cannot be faked. That is the whole foundation.
+
+This is **authentication** - proving who is calling, and nothing more. It grants nothing on its own. Every rule in [what gets rendered](#what-gets-rendered) is only worth anything because this holds first.
 
 Istio issues each meshed pod an X.509 **SVID** - ~24h lifetime, auto-rotated, carrying a SPIFFE URI SAN:
 
@@ -152,6 +157,57 @@ spiffe://cluster.local/ns/my-vinyl/sa/my-vinyl-spa
 That string is the workload's **principal** - the name a rule grants access to. It is bound to a private key that never leaves the pod, so holding the name is not enough to claim it. This is the only identity here that survives an attacker already inside the cluster network; an IP or a header proves nothing.
 
 **Hard rule: every workload gets its own ServiceAccount.** The compositions do this. The moment two apps share one they are the same identity, and every grant between them is meaningless.
+
+## Entra: a second gate that answers to someone else
+
+**Grug:** the mesh decides whether the call gets through the wire. Entra decides, separately, whether the caller may do this particular thing once it is already through.
+
+Everything above is enforced by proxies this platform runs, against identities this cluster issues. Entra is neither. It sits outside the cluster and answers to the tenant, so a grant made there does not depend on this cluster existing, and would still hold if the workload moved to another one.
+
+That independence is the reason to reach for an identity provider at all: at Fortune 100 scale it is one place to grant from, across clusters and teams that never coordinate directly. Here it is one tenant and one operator, so nothing is being coordinated - the same caveat as [what it costs](#what-it-costs) below. What is being practised is the shape.
+
+**The same two steps, one layer up.** That is the whole reason it reads as familiar rather than as a second system to learn.
+
+| | Authentication - who is this | Authorization - what may it do |
+|---|---|---|
+| Mesh | X.509 SVID, issued by Istio | `provides.allowedCallers`, enforced by Envoy |
+| Entra | `entra.enabled`, federated from the pod's SPIFFE identity | `entra.roles.allowedCallers`, checked by the app |
+
+**Turning on `entra.enabled` grants nothing.** It gets a workload an identity Entra recognises, and that is all. A caller with an identity and no role arrives holding a real, signed, unexpired token that names no roles - which is exactly what being refused looks like here.
+
+```yaml
+# upstream-api.yaml - the callee declares the role and who holds it
+entra:
+  enabled: true
+  roles:
+    - name: Data.Read
+      allowedCallers:
+        - { namespace: platform-connections-demo, app: authorized-api }
+```
+
+Entra identifies a role by GUID rather than by name, and expects the same GUID for the life of that role. The platform derives one from the namespace, app and role name, so it is stable without anyone having to invent it, store it, or know it exists. Rename the role and the GUID changes with it - which is right, because a renamed permission is a different permission.
+
+The grant lives on the callee, next to `provides`, for the same reason `provides` does - the API being called is the only one that gets to say who may call it. A caller cannot grant itself anything by editing its own file.
+
+**It composes with the mesh; it does not replace it.** A call still passes all four gates before the token is ever read. Gate 5 only ever removes reach, never adds it, so an app not named in `provides` is refused at gate 4 whatever its token says.
+
+```mermaid
+flowchart LR
+    G4{"4 · AuthorizationPolicy<br/><i>mesh - is that workload granted?</i>"}
+    G5{"5 · roles claim<br/><i>Entra - was that identity granted this role?</i>"}
+    G4 -->|yes| G5
+    G4 -->|no| D4["RBAC 403<br/>refused at the proxy<br/>app never runs"]
+    G5 -->|yes| OK["allowed"]
+    G5 -->|no| D5["403 missing_role<br/>refused by the app<br/>after a valid token"]
+```
+
+**Where the platform stops.** It creates the app registration, the service principal, the federated credential, the role and the grant, and injects `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_FEDERATED_TOKEN_FILE`. It does not check the token. The `roles` claim is read by app code, because only the app knows which of its own routes needs which role - the same reason `provides.paths` exists rather than the platform guessing.
+
+**The exchange needs no secret.** The pod's SPIFFE JWT-SVID is presented to Entra as a `client_assertion` and comes back as an access token. See [Platform Workload Identity](./platform-workload-identity.md) for how the federation is set up, and [Entra](./learning/entra.md) for what the claims mean.
+
+**Two clocks, not one.** The SVID is refreshed every few minutes; the Entra token it buys lasts about an hour. Cache the token and refresh it early - re-running the exchange per request works and would be the wrong thing to copy anywhere real.
+
+**Still workload-to-workload.** Entra is best known for signing people in, and this is not that. Nothing here reads a user. Whether a *person* may see a record is the same out-of-scope layer named in [Known limits](#known-limits), no closer than it was.
 
 ## What it costs
 
@@ -223,5 +279,8 @@ Only the kernel can stop that. A Cilium `NetworkPolicy` is enforced at the pod's
 | ServiceEntry | L7 | [egress control](https://istio.io/latest/docs/tasks/traffic-management/egress/egress-control/) | registers a host; alone it gates nothing |
 | Sidecar + `REGISTRY_ONLY` | L7 | [ref](https://istio.io/latest/docs/reference/config/networking/sidecar/) | this is what makes egress default-deny |
 | Cilium NetworkPolicy | L3/L4 | [policy](https://docs.cilium.io/en/stable/security/policy/) | the containment layer the mesh cannot be |
+| Entra app role | above L7 | [app roles](https://learn.microsoft.com/en-us/entra/identity-platform/howto-add-app-roles-in-apps) | `allowedMemberTypes` must include `Application`, or the role never reaches an app-only token |
+| Entra federated credential | above L7 | [workload identity federation](https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation) | issuer, subject and audience are matched literally, with no wildcards |
+| Token validation | above L7 | [validating tokens](https://learn.microsoft.com/en-us/entra/identity-platform/access-tokens#validate-tokens) | keys are fetched once from the discovery document; every later check is local |
 
 > **Note - splitting a requirement widens it.** Istio ORs ALLOW policies and rules together, so two rules are two ways in, not two conditions. Anything that must all hold goes in one rule: `from` + `to` + `when` together.
