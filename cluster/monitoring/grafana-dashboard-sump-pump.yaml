@@ -824,7 +824,7 @@ data:
             "type": "loki",
             "uid": "P8E80F9AEF21F6940"
           },
-          "description": "Share of wall-clock time the pump was running. 18 s of runtime in a minute is 30%. Sustained high values mean the pump is barely keeping ahead of the water.",
+          "description": "Share of wall-clock time the pump was running, averaged over 5 minute windows. Sustained high values mean the pump is barely keeping ahead of the water.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -936,7 +936,8 @@ data:
             }
           ],
           "title": "Duty Cycle",
-          "type": "timeseries"
+          "type": "timeseries",
+          "interval": "5m"
         },
         {
           "datasource": {
