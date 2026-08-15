@@ -186,9 +186,10 @@ if [ -s "$TMP/all-rendered.yaml" ]; then
 import sys, yaml
 
 # Groups Crossplane grants itself elsewhere: the XRs are covered by the generated
-# composite roles, and AWS managed resources by each provider's own edit role.
+# composite roles, and provider-managed resources (AWS, Azure AD) by each
+# provider's own edit role.
 def skip(group):
-    return group == 'platform.local.lab' or group.endswith('aws.upbound.io')
+    return group == 'platform.local.lab' or group.endswith('aws.upbound.io') or group.endswith('azuread.upbound.io')
 
 def plural(kind):
     k = kind.lower()
