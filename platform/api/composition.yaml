@@ -43,6 +43,7 @@ spec:
             {{- $oidcProviderArn := printf "arn:aws:iam::%s:oidc-provider/%s" $awsAccountId $oidcIssuerHost }}
             {{- $entra := $xr.spec.parameters.entra | default dict }}
             {{- $entraEnabled := $entra.enabled | default false }}
+            {{- $entraRoles := $entra.roles | default list }}
             {{- /* crossplane-entra's own service principal object ID - set as owner on   */ -}}
             {{- /* everything it creates, or it can create but never delete/update again.  */ -}}
             {{- /* See cluster/crossplane/azuread-permissions.md.                          */ -}}
@@ -101,23 +102,31 @@ spec:
               {{- $awsBindings = append $awsBindings (printf "cache-binding:/bindings/cache:cache") }}
               {{- $sidecarBindingParts = append $sidecarBindingParts "/bindings/cache:cache" }}
             {{- end }}
-            {{- /* AWS endpoints this pod must reach. The mesh has no idea these exist    */ -}}
-            {{- /* otherwise, so under REGISTRY_ONLY every one of them is a blackhole.    */ -}}
-            {{- $awsHosts := list }}
+            {{- /* Endpoints this pod must reach because of what it bound, not because    */ -}}
+            {{- /* it asked. The mesh has no idea these exist otherwise, so under         */ -}}
+            {{- /* REGISTRY_ONLY every one of them is a blackhole. Add to this list in    */ -}}
+            {{- /* this block only - it is read further down and never rebuilt.           */ -}}
+            {{- $derivedHosts := list }}
             {{- if gt (len $awsBindings) 0 }}
               {{- /* The credential sidecar calls this to turn its SVID into AWS keys.    */ -}}
               {{- /* Without it nothing else here works - no credentials, no calls.       */ -}}
-              {{- $awsHosts = append $awsHosts "sts.us-east-1.amazonaws.com" }}
+              {{- $derivedHosts = append $derivedHosts "sts.us-east-1.amazonaws.com" }}
             {{- end }}
             {{- range $ref := $objectStorageRefs }}
               {{- /* Virtual-hosted style is the AWS SDK default, so SNI carries the      */ -}}
               {{- /* bucket name - one host per bucket, not one regional endpoint.        */ -}}
-              {{- $awsHosts = append $awsHosts (printf "platform-%s-%s.s3.us-east-1.amazonaws.com" $ns $ref.name) }}
+              {{- $derivedHosts = append $derivedHosts (printf "platform-%s-%s.s3.us-east-1.amazonaws.com" $ns $ref.name) }}
             {{- end }}
             {{- if $nosqlRefName }}
               {{- /* Every table in a region shares this endpoint - the table name is in */ -}}
               {{- /* the request body, not the hostname, so IAM is what scopes access.   */ -}}
-              {{- $awsHosts = append $awsHosts "dynamodb.us-east-1.amazonaws.com" }}
+              {{- $derivedHosts = append $derivedHosts "dynamodb.us-east-1.amazonaws.com" }}
+            {{- end }}
+            {{- if $entraEnabled }}
+              {{- /* Where an SVID is traded for an Entra token. Same reasoning as STS   */ -}}
+              {{- /* above - opting into Entra is what declares this, so the app never   */ -}}
+              {{- /* restates it and cannot forget to.                                   */ -}}
+              {{- $derivedHosts = append $derivedHosts "login.microsoftonline.com" }}
             {{- end }}
             {{- /* Nothing for public-cloud Sql or Cache - RDS and ElastiCache are VPC   */ -}}
             {{- /* only, so unreachable from this cluster. If that changes, the call     */ -}}
@@ -375,6 +384,11 @@ spec:
                           value: {{ $entraTenantId | quote }}
                         - name: AZURE_FEDERATED_TOKEN_FILE
                           value: /entra-identity/token
+                        # This Api's own name as an audience. An Api that checks tokens
+                        # compares against this, so it cannot be talked into accepting
+                        # one minted for something else.
+                        - name: ENTRA_AUDIENCE
+                          value: api://platform-{{ $ns }}-{{ $name }}
                       {{- end }}
                       {{- if $topicRefName }}
                         # Topic wiring: injected automatically from topicRef.
@@ -651,7 +665,7 @@ spec:
             apiVersion: applications.azuread.upbound.io/v1beta2
             kind: Application
             metadata:
-              name: {{ $name }}-entra
+              name: {{ $ns }}-{{ $name }}-entra
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: entra-application
                 gotemplating.fn.crossplane.io/ready: "True"
@@ -659,6 +673,12 @@ spec:
               deletionPolicy: Delete
               forProvider:
                 displayName: platform-{{ $ns }}-{{ $name }}
+                # A stable name for this Api as an audience. Entra generates the client
+                # ID, so a caller could only learn it by reading this Api's resources -
+                # this is derivable from namespace and name instead, the same trick the
+                # Sql composition uses to predict role ARNs rather than look them up.
+                identifierUris:
+                  - api://platform-{{ $ns }}-{{ $name }}
                 owners:
                   - {{ $crossplaneEntraSpId }}
             ---
@@ -667,7 +687,7 @@ spec:
             apiVersion: serviceprincipals.azuread.upbound.io/v1beta2
             kind: Principal
             metadata:
-              name: {{ $name }}-entra
+              name: {{ $ns }}-{{ $name }}-entra
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: entra-principal
                 gotemplating.fn.crossplane.io/ready: "True"
@@ -675,7 +695,7 @@ spec:
               deletionPolicy: Delete
               forProvider:
                 clientIdRef:
-                  name: {{ $name }}-entra
+                  name: {{ $ns }}-{{ $name }}-entra
                 owners:
                   - {{ $crossplaneEntraSpId }}
             ---
@@ -684,7 +704,7 @@ spec:
             apiVersion: applications.azuread.upbound.io/v1beta1
             kind: FederatedIdentityCredential
             metadata:
-              name: {{ $name }}-entra
+              name: {{ $ns }}-{{ $name }}-entra
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: entra-federated-credential
                 gotemplating.fn.crossplane.io/ready: "True"
@@ -692,12 +712,71 @@ spec:
               deletionPolicy: Delete
               forProvider:
                 applicationIdRef:
-                  name: {{ $name }}-entra
+                  name: {{ $ns }}-{{ $name }}-entra
                 displayName: workload-identity
                 issuer: https://{{ $oidcIssuerHost }}
                 subject: spiffe://homelab.local/ns/{{ $ns }}/sa/{{ $name }}
                 audiences:
                   - api://AzureADTokenExchange
+            {{- range $role := $entraRoles }}
+            {{- /* Entra role names are PascalCase with dots by convention (Data.Read);   */ -}}
+            {{- /* neither survives a Kubernetes object name, so sanitize for the name    */ -}}
+            {{- /* only. forProvider.value keeps the role exactly as the app declared it. */ -}}
+            {{- $roleSlug := $role.name | lower | replace "." "-" | replace "_" "-" }}
+            {{- /* Entra identifies a role by GUID, not by name, and wants the same GUID  */ -}}
+            {{- /* every reconcile. Deriving it from what already names this role means   */ -}}
+            {{- /* no one has to invent a UUID, paste it into a workspace file, or know   */ -}}
+            {{- /* that it must never change. uuidv4 would be a new value every render.   */ -}}
+            {{- $roleHash := printf "%s/%s/%s" $ns $name $role.name | sha256sum }}
+            {{- $roleId := printf "%s-%s-4%s-a%s-%s" (substr 0 8 $roleHash) (substr 8 12 $roleHash) (substr 13 16 $roleHash) (substr 17 20 $roleHash) (substr 20 32 $roleHash) }}
+            ---
+            # A role this Api offers. allowedMemberTypes must be Application - the portal
+            # defaults to User, which syncs green and then never shows up in the token of
+            # a caller that has no user behind it.
+            apiVersion: applications.azuread.upbound.io/v1beta1
+            kind: AppRole
+            metadata:
+              name: {{ $ns }}-{{ $name }}-entra-role-{{ $roleSlug }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: entra-role-{{ $roleSlug }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                applicationIdRef:
+                  name: {{ $ns }}-{{ $name }}-entra
+                roleId: {{ $roleId }}
+                value: {{ $role.name | quote }}
+                displayName: {{ $role.name | quote }}
+                description: {{ printf "%s on %s" $role.name $name | quote }}
+                allowedMemberTypes:
+                  - Application
+            {{- range $caller := ($role.allowedCallers | default list) }}
+            ---
+            # The grant itself. Expect this one to sit red for its first ~30s with
+            # "Permission being assigned was not found on application" - the role above
+            # has to replicate from the app registration to its service principal, and
+            # the grant is checked against the service principal. It self-heals.
+            apiVersion: app.azuread.upbound.io/v1beta1
+            kind: RoleAssignment
+            metadata:
+              name: {{ $ns }}-{{ $name }}-entra-grant-{{ $roleSlug }}-{{ $caller.namespace }}-{{ $caller.app }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: entra-grant-{{ $roleSlug }}-{{ $caller.namespace }}-{{ $caller.app }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                appRoleId: {{ $roleId }}
+                # The caller's own Principal, created by that Api's own composition run.
+                # Resolves by name across XRs - if the caller has not reconciled yet, this
+                # stays unresolved and retries rather than rendering something wrong.
+                principalObjectIdRef:
+                  name: {{ $caller.namespace }}-{{ $caller.app }}-entra
+                resourceObjectIdRef:
+                  name: {{ $ns }}-{{ $name }}-entra
+            {{- end }}
+            {{- end }}
             {{- end }}{{- /* end entraEnabled */}}
             {{- if $cacheEnabled }}
             ---
@@ -947,8 +1026,8 @@ spec:
                     # the other half of that. Unmeshed, so there is no inbound gate.
                     - "nats/nats.nats.svc.cluster.local"
                     {{- end }}
-                    {{- range $h := $awsHosts }}
-                    # Bound by this XR, so the app never declares it.
+                    {{- range $h := $derivedHosts }}
+                    # Implied by a binding on this XR, so the app never declares it.
                     - "./{{ $h }}"
                     {{- end }}
                     {{- range $c := $consumes }}
@@ -959,10 +1038,10 @@ spec:
                     - "{{ $c.namespace }}/{{ $c.app }}.{{ $c.namespace }}.svc.cluster.local"
                     {{- end }}
                     {{- end }}
-            {{- range $h := $awsHosts }}
+            {{- range $h := $derivedHosts }}
             ---
-            # {{ $h }} - an AWS binding implies this endpoint, so the platform registers
-            # it rather than making the app restate it in consumes.
+            # {{ $h }} - a binding on this XR implies this endpoint, so the platform
+            # registers it rather than making the app restate it in consumes.
             apiVersion: networking.istio.io/v1
             kind: ServiceEntry
             metadata:
