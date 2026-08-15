@@ -388,7 +388,7 @@ spec:
                         # compares against this, so it cannot be talked into accepting
                         # one minted for something else.
                         - name: ENTRA_AUDIENCE
-                          value: api://platform-{{ $ns }}-{{ $name }}
+                          value: api://{{ $entraTenantId }}/platform-{{ $ns }}-{{ $name }}
                       {{- end }}
                       {{- if $topicRefName }}
                         # Topic wiring: injected automatically from topicRef.
@@ -673,12 +673,19 @@ spec:
               deletionPolicy: Delete
               forProvider:
                 displayName: platform-{{ $ns }}-{{ $name }}
+                api:
+                  # Without this Entra mints v1 tokens, issued by sts.windows.net rather
+                  # than login.microsoftonline.com/<tenant>/v2.0. An API validating the
+                  # v2 issuer rejects every one of them, and the token looks fine.
+                  requestedAccessTokenVersion: 2
                 # A stable name for this Api as an audience. Entra generates the client
                 # ID, so a caller could only learn it by reading this Api's resources -
-                # this is derivable from namespace and name instead, the same trick the
-                # Sql composition uses to predict role ARNs rather than look them up.
+                # this is derivable instead, the same trick the Sql composition uses to
+                # predict role ARNs rather than look them up. The tenant ID is not
+                # decoration: a bare api://name is refused by the default tenant policy,
+                # which requires a verified domain, the tenant ID or the app ID.
                 identifierUris:
-                  - api://platform-{{ $ns }}-{{ $name }}
+                  - api://{{ $entraTenantId }}/platform-{{ $ns }}-{{ $name }}
                 owners:
                   - {{ $crossplaneEntraSpId }}
             ---
