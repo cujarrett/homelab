@@ -27,6 +27,17 @@ rules:
   - apiGroups: ["s3.aws.upbound.io"]
     resources: ["buckets"]
     verbs: ["get", "list", "watch"]
+  # Entra, read-only. Only status conditions are read - no spec, which is where an
+  # Application can carry a password.
+  - apiGroups: ["applications.azuread.upbound.io"]
+    resources: ["applications", "federatedidentitycredentials", "approles"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["serviceprincipals.azuread.upbound.io"]
+    resources: ["principals"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["app.azuread.upbound.io"]
+    resources: ["roleassignments"]
+    verbs: ["get", "list", "watch"]
   - apiGroups: ["jetstream.nats.io"]
     resources: ["streams", "consumers"]
     verbs: ["get", "list", "watch"]
