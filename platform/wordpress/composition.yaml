@@ -434,6 +434,13 @@ spec:
                             # -f turns a 5xx into a non-zero exit, so a broken cron surfaces as a
                             # failed Job instead of succeeding quietly and never running cron.
                             - -fsS
+                            # A pod that starts before its node has the Service programmed gets
+                            # an instant connection refusal - retry instead of failing the Job.
+                            - --retry
+                            - "3"
+                            - --retry-connrefused
+                            - --retry-delay
+                            - "5"
                             - --max-time
                             - "120"
                             - -o
@@ -621,8 +628,9 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               rateLimit:
-                average: 5
-                burst: 10
+                # A human login is two requests - anything sustained above this is a bot.
+                average: 3
+                burst: 6
                 period: 1m
                 sourceCriterion:
                   requestHeaderName: CF-Connecting-IP
