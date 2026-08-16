@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: secret-mirror-controller
+  namespace: secret-mirror-controller
+---
+# Cluster-wide grants, deliberately without Secrets. Namespaces are read to
+# evaluate a mirror's selector - nothing here can read or write Secret data.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: secret-mirror-controller
+rules:
+  - apiGroups: ["platform.local.lab"]
+    resources: ["secretmirrors"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: ["platform.local.lab"]
+    resources: ["secretmirrors/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["platform.local.lab"]
+    resources: ["secretmirrors/finalizers"]
+    verbs: ["update"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: secret-mirror-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: secret-mirror-controller
+subjects:
+  - kind: ServiceAccount
+    name: secret-mirror-controller
+    namespace: secret-mirror-controller
+---
+# Secret access lives in its own ClusterRole that is never bound cluster-wide.
+# launchpad-api renders a RoleBinding to it beside each sandbox namespace, so the
+# grant appears when the sandbox is created and disappears when it is deleted.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: secret-mirror-writer
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+# Read-only, because the source certs are the thing worth protecting - they are
+# long-lived and re-issuing them runs into Let's Encrypt rate limits.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: secret-mirror-reader
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+---
+# The one binding held in Git. Sandbox bindings are rendered per namespace by
+# launchpad-api and are not part of this Application.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: secret-mirror-source-reader
+  namespace: demo-certs
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: secret-mirror-reader
+subjects:
+  - kind: ServiceAccount
+    name: secret-mirror-controller
+    namespace: secret-mirror-controller

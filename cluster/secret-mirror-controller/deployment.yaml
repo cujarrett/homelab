@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secret-mirror-controller
+  namespace: secret-mirror-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: secret-mirror-controller
+  template:
+    metadata:
+      labels:
+        app: secret-mirror-controller
+    spec:
+      serviceAccountName: secret-mirror-controller
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: manager
+          image: ghcr.io/cujarrett/secret-mirror-controller:main
+          args:
+            # The only namespace whose Secrets are watched. Sandbox namespaces are
+            # named by guests, so their Secrets are read directly instead.
+            - --source-namespace=demo-certs
+            - --health-probe-bind-address=:8081
+            - --leader-elect
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
