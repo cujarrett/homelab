@@ -919,10 +919,10 @@ data:
         },
         {
           "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
+            "type": "prometheus",
+            "uid": "sump-pump-archive"
           },
-          "description": "Share of wall-clock time the pump was running, averaged over 5 minute windows. Sustained high values mean the pump is barely keeping ahead of the water.",
+          "description": "Share of wall-clock time the pump was running, sampled from the run gauge and averaged over each graph step. Sustained high values mean the pump is barely keeping ahead of the water.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -995,7 +995,7 @@ data:
             "y": 3
           },
           "id": 31,
-          "interval": "5m",
+          "interval": "30m",
           "options": {
             "annotations": {
               "clustering": -1,
@@ -1022,14 +1022,13 @@ data:
           "targets": [
             {
               "datasource": {
-                "type": "loki",
-                "uid": "P8E80F9AEF21F6940"
+                "type": "prometheus",
+                "uid": "sump-pump-archive"
               },
-              "direction": "backward",
               "editorMode": "code",
-              "expr": "sum(sum_over_time({namespace=\"sump-pump\"} |= \"run_complete\" | logfmt | duration_s != \"\" | unwrap duration_s [$__interval])) / ($__interval_ms / 1000) * 100",
+              "expr": "avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[$__interval:30s]) * 100",
               "legendFormat": "duty cycle",
-              "queryType": "range",
+              "range": true,
               "refId": "A"
             }
           ],
