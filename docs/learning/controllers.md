@@ -20,6 +20,8 @@ Every section links to the code that does the thing.
 | [Status](#status) | How an object explains itself |
 | [RBAC and the cache have to agree](#rbac-and-the-cache-have-to-agree) | The first-controller wall |
 | [Testing](#testing) | Fake client versus envtest |
+| [What to do next](#what-to-do-next) | The ordered plan from here |
+| [Still to learn](#still-to-learn) | Topics not covered, each a session |
 
 ## A CRD is a registration form
 
@@ -173,6 +175,27 @@ mechanics.
 
 Start with the fake client for reconcile logic. Reach for envtest when you are testing
 Kubernetes, not your code.
+
+## What to do next
+
+In order. The first two matter most - Go is the tax paid on every other item here, and `Owns()`
+is the one pattern the worked example above cannot demonstrate.
+
+1. **Go fundamentals, on their own.** Pointers and when a value needs `&`, slices and maps,
+   interfaces, error wrapping, reading a method signature cold. Write small programs and break
+   them deliberately; the compiler is the best tutor available. Doing this before the next
+   controller makes the framework the only new thing.
+2. **Build a controller that uses `Owns()`.** A CR that creates and owns children in its own
+   namespace, re-reconciling when someone edits a child - which is what most real controllers
+   are. A `Dashboard` CR rendering a Grafana dashboard ConfigMap fits: small, visible in a
+   browser, RBAC limited to one namespace.
+3. **Read a real operator's reconcile loop.** cert-manager or External Secrets, both already
+   running in this cluster. `Reconcile` and `SetupWithManager` only, not the whole repository.
+4. **Break things on purpose.** Remove an RBAC rule and read the failure. Drop a finalizer and
+   watch copies get stranded. Return the wrong `ctrl.Result` and watch a hot loop. Every lesson
+   that stuck from building secret-mirror-controller came from something failing in the cluster:
+   a missing leader election lease, a prune forbidden in namespaces it could not read, a wedged
+   garbage collector.
 
 ## Still to learn
 
