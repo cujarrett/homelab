@@ -52,6 +52,33 @@ rules:
     resources: ["secrets"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 ---
+# Leader election. With --leader-elect the manager holds a Lease in its own
+# namespace, and without this it starts, fails to acquire the lock, and never
+# reconciles anything - a running pod that does nothing.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: secret-mirror-leader-election
+  namespace: secret-mirror-controller
+rules:
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: secret-mirror-leader-election
+  namespace: secret-mirror-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: secret-mirror-leader-election
+subjects:
+  - kind: ServiceAccount
+    name: secret-mirror-controller
+    namespace: secret-mirror-controller
+---
 # Read-only, because the source certs are the thing worth protecting - they are
 # long-lived and re-issuing them runs into Let's Encrypt rate limits.
 apiVersion: rbac.authorization.k8s.io/v1
