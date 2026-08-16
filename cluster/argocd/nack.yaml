@@ -11,6 +11,14 @@ spec:
     targetRevision: 0.34.0
     helm:
       releaseName: nack
+      # The chart ships streamtemplates.jetstream.nats.io with its only version
+      # marked served=false, which wedges the garbage collector - discovery
+      # advertises the type, the API server refuses to serve it, and every
+      # namespace in the cluster then hangs in Terminating. Skipping chart CRDs
+      # lets that one stay deleted. The five CRDs actually in use are already
+      # installed, so a nack upgrade now needs its CRDs applied by hand from
+      # the chart's crds/crds.yml.
+      skipCrds: true
       values: |
         jetstream:
           nats:
