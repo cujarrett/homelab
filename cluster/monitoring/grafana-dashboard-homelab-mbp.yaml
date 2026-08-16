@@ -2478,7 +2478,7 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
+            "w": 3,
             "x": 0,
             "y": 25
           },
@@ -2610,8 +2610,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 4,
+            "w": 3,
+            "x": 3,
             "y": 25
           },
           "id": 104,
@@ -2721,8 +2721,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 8,
+            "w": 3,
+            "x": 6,
             "y": 25
           },
           "id": 352,
@@ -3889,6 +3889,72 @@ data:
           ],
           "title": "Memory by Pod \u00b7 All Nodes",
           "type": "marcusolsson-treemap-panel"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 3,
+            "x": 9,
+            "y": 25
+          },
+          "id": 354,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.1.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(kube_namespace_status_phase{phase=\"Terminating\"})",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Namespaces Terminating",
+          "type": "stat",
+          "description": "Above zero for more than a few minutes means a stuck finalizer, or a garbage collector wedged on a resource type the API server will not serve."
         }
       ],
       "preload": false,

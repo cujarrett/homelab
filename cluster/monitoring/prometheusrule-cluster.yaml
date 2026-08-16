@@ -1,0 +1,33 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cluster
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: cluster
+      interval: 5m
+      rules:
+        # A namespace normally terminates in seconds. Stuck means either a
+        # finalizer nobody will remove, or the garbage collector wedged on a
+        # resource type that discovery advertises but the API server will not
+        # serve - a CRD with no served version does exactly that, and it stops
+        # every namespace deletion in the cluster, not just this one.
+        - alert: NamespaceStuckTerminating
+          expr: |
+            kube_namespace_status_phase{phase="Terminating"} == 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-mbp/homelab"
+            summary: "Namespace {{ $labels.namespace }} has been Terminating for 15m"
+            description: >-
+              Check for a stuck finalizer with
+              kubectl get namespace {{ $labels.namespace }} -o json | jq .spec.finalizers
+              and for a CRD the API server cannot serve with
+              kubectl get crd -o json | jq -r '.items[] | select([.spec.versions[].served] | index(true) | not) | .metadata.name'.
+              If a namespace unrelated to any recent work is also stuck, suspect
+              the garbage collector rather than the namespace.
