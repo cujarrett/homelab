@@ -4,15 +4,17 @@ Tracks calibrated level per topic and the next grill question, so a session can 
 
 ## Sequence
 
-1. Controllers - **in progress**, via [secret-mirror-controller-lab.md](./secret-mirror-controller-lab.md)
+1. Controllers - **in progress**, via [Controllers](./controllers.md)
 2. Crossplane - not started, blocked on (1)
 3. Entra / authz - not started, no dependency
 
 ## Controllers
 
-Level: understands the GitOps flow (git → Argo → cluster → controller) and the declarative-vs-Terraform distinction. Gap: the actual reconcile trigger - explained it as "Argo applies it" rather than watch/informer → work queue → reconcile.
+Level: built and deployed one. Wrote a CRD from Go structs, a reconcile loop with drift correction, ownership labels, pruning, a finalizer, watches with map functions, status conditions and events, namespaced RBAC with a matching cache scope, and tests against the fake client. Comfortable with the reconcile-as-a-loop model and why a watch is a cluster-wide list.
 
-Next question: after building the SecretMirror lab, ask what specifically put the reconcile request on the queue when you deleted a copy by hand - not "the controller watches for changes," but which object's watch fired and what got queued.
+Gap: Go itself is still the friction - pointers, when a value needs `&`, and reading a method signature cold. Also untouched: `Owns()` and ownerReference garbage collection, since the mirror deliberately cannot use them.
+
+Next question: point at a controller that creates a Deployment in its own namespace and ask what `Owns()` buys that a manual `Watches` plus map function would not.
 
 ## Crossplane
 
