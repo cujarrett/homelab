@@ -16,9 +16,11 @@ Everything written down about this cluster. Start with [Cluster](./cluster.md) f
 |---|---|
 | [Platform Connections](./platform-connections.md) | Who may call whom, and how the mesh enforces it |
 | [Platform Binding](./platform-service-binding.md) | How an app gets wired to the infrastructure it asks for |
+| [Workload Identity](./workload-identity.md) | How SPIRE, Crossplane, AWS and Entra combine into one identity, end to end |
 | [Platform Workload Identity](./platform-workload-identity.md) | SPIFFE identity, and what proves a workload is who it claims |
 | [SPIRE OIDC Federation](./spire-oidc-federation.md) | Publishing SPIRE's signing keys so AWS and Entra will trust a pod |
 | [External Secrets](./external-secrets.md) | Grafana's admin login out of AWS Secrets Manager, and why only that one |
+| [GitHub Tokens](./github-tokens.md) | The three fine-grained PATs behind GitOps, what each grants, and how to rotate them |
 
 ## Operate it
 
