@@ -3966,7 +3966,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "palette-classic"
+                "mode": "thresholds"
               },
               "custom": {
                 "axisBorderShow": false,
@@ -3999,7 +3999,20 @@ data:
                   "mode": "none"
                 },
                 "thresholdsStyle": {
-                  "mode": "off"
+                  "mode": "line",
+                  "steps": [
+                    {
+                      "color": "transparent"
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 99
+                    },
+                    {
+                      "color": "green",
+                      "value": 99.9
+                    }
+                  ]
                 }
               },
               "max": 100,
@@ -4008,8 +4021,16 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "red",
                     "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 99
+                  },
+                  {
+                    "color": "green",
+                    "value": 99.9
                   }
                 ]
               },
