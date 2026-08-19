@@ -4047,8 +4047,8 @@ data:
                 "type": "prometheus",
                 "uid": "cluster-availability-archive"
               },
-              "expr": "avg_over_time(((min(up{job=\"node-exporter\"}) == bool 1) * (min(probe_success{probe_group=\"internet\"}) == bool 1))[1d:30s]) * 100",
-              "legendFormat": "Daily Availability",
+              "expr": "avg_over_time(((min(up{job=\"node-exporter\"}) == bool 1) * (min(probe_success{probe_group=\"internet\"}) == bool 1))[30d:30s]) * 100",
+              "legendFormat": "30d Rolling Availability",
               "range": true,
               "refId": "A"
             }
