@@ -31,6 +31,32 @@ subjects:
     name: prometheus-cluster-availability
     namespace: monitoring
 ---
+# The shared node-exporter ServiceMonitor scrapes its full metric set (~8000+
+# series across 4 nodes). This one targets the same Service but drops every
+# scraped metric via metricRelabelings - only the synthetic `up` series (added
+# by Prometheus itself, unaffected by metric_relabel_configs) survives. That's
+# the only thing the availability archive needs.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: node-exporter-cluster-availability
+  namespace: monitoring
+  labels:
+    archive: cluster-availability
+spec:
+  jobLabel: jobLabel
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: monitoring
+      app.kubernetes.io/name: prometheus-node-exporter
+  endpoints:
+    - port: http-metrics
+      scheme: http
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: ".*"
+          action: drop
+---
 apiVersion: monitoring.coreos.com/v1
 kind: Prometheus
 metadata:
@@ -45,7 +71,7 @@ spec:
   # the blackbox Probe is the internet signal. Nothing else - keep this archive small.
   serviceMonitorSelector:
     matchLabels:
-      app.kubernetes.io/name: prometheus-node-exporter
+      archive: cluster-availability
   serviceMonitorNamespaceSelector:
     matchLabels:
       kubernetes.io/metadata.name: monitoring
