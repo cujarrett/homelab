@@ -1,0 +1,98 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-cluster-availability
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-cluster-availability
+rules:
+  - apiGroups: [""]
+    resources: [nodes, "nodes/metrics", services, endpoints, pods]
+    verbs: [get, list, watch]
+  - apiGroups: [discovery.k8s.io]
+    resources: [endpointslices]
+    verbs: [get, list, watch]
+  - nonResourceURLs: ["/metrics"]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-cluster-availability
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-cluster-availability
+subjects:
+  - kind: ServiceAccount
+    name: prometheus-cluster-availability
+    namespace: monitoring
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: cluster-availability
+  namespace: monitoring
+spec:
+  serviceAccountName: prometheus-cluster-availability
+  retention: 1825d
+  scrapeInterval: 30s
+  evaluationInterval: 30s
+  # node-exporter's `up` is the power signal (target unreachable == node down);
+  # the blackbox Probe is the internet signal. Nothing else - keep this archive small.
+  serviceMonitorSelector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus-node-exporter
+  serviceMonitorNamespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: monitoring
+  probeSelector:
+    matchLabels:
+      release: monitoring
+  probeNamespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: monitoring
+  # Don't match any PodMonitors or PrometheusRules.
+  podMonitorSelector:
+    matchLabels:
+      prometheus: cluster-availability
+  ruleSelector:
+    matchLabels:
+      prometheus: cluster-availability
+  securityContext:
+    fsGroup: 2000
+    runAsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+  resources:
+    requests:
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+  storage:
+    volumeClaimTemplate:
+      spec:
+        storageClassName: longhorn-retain
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
+---
+# Service so Grafana can reach the archive Prometheus at a stable DNS name.
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-cluster-availability
+  namespace: monitoring
+spec:
+  selector:
+    app.kubernetes.io/name: prometheus
+    prometheus: cluster-availability
+  ports:
+    - name: web
+      port: 9090
+      targetPort: 9090

@@ -131,6 +131,12 @@ spec:
               url: http://prometheus-sump-pump.monitoring.svc.cluster.local:9090
               access: proxy
               isDefault: false
+            - name: Cluster Availability Archive
+              uid: cluster-availability-archive
+              type: prometheus
+              url: http://prometheus-cluster-availability.monitoring.svc.cluster.local:9090
+              access: proxy
+              isDefault: false
           resources:
             requests:
               memory: 1024Mi
