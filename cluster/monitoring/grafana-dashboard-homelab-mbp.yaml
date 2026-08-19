@@ -874,7 +874,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "avg_over_time(((sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"}) == bool count(kube_node_info)) * max(probe_success{probe_group=\"internet\"}))[30d:30s]) * 100",
+              "expr": "avg_over_time(((min(up{job=\"node-exporter\"}) == bool 1) * (min(probe_success{probe_group=\"internet\"}) == bool 1))[30d:30s]) * 100",
               "instant": true,
               "legendFormat": "30d Availability",
               "refId": "A"
@@ -1515,7 +1515,7 @@ data:
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 6
+            "y": 11
           },
           "id": 11,
           "options": {
@@ -1645,7 +1645,7 @@ data:
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 6
+            "y": 11
           },
           "id": 12,
           "options": {
@@ -1774,7 +1774,7 @@ data:
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 11
+            "y": 16
           },
           "id": 324,
           "options": {
@@ -1876,7 +1876,7 @@ data:
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 11
+            "y": 16
           },
           "id": 325,
           "options": {
@@ -1977,7 +1977,7 @@ data:
             "h": 4,
             "w": 8,
             "x": 0,
-            "y": 16
+            "y": 21
           },
           "id": 14,
           "options": {
@@ -2105,7 +2105,7 @@ data:
             "h": 4,
             "w": 8,
             "x": 8,
-            "y": 16
+            "y": 21
           },
           "id": 15,
           "options": {
@@ -2233,7 +2233,7 @@ data:
             "h": 4,
             "w": 8,
             "x": 16,
-            "y": 16
+            "y": 21
           },
           "id": 13,
           "options": {
@@ -2355,7 +2355,7 @@ data:
             "h": 5,
             "w": 24,
             "x": 0,
-            "y": 20
+            "y": 25
           },
           "id": 353,
           "options": {
@@ -2480,7 +2480,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 0,
-            "y": 25
+            "y": 30
           },
           "id": 103,
           "options": {
@@ -2612,7 +2612,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 3,
-            "y": 25
+            "y": 30
           },
           "id": 104,
           "options": {
@@ -2723,7 +2723,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 6,
-            "y": 25
+            "y": 30
           },
           "id": 352,
           "options": {
@@ -2792,7 +2792,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 12,
-            "y": 25
+            "y": 30
           },
           "id": 301,
           "options": {
@@ -2847,7 +2847,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 15,
-            "y": 25
+            "y": 30
           },
           "id": 302,
           "options": {
@@ -2914,7 +2914,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 18,
-            "y": 25
+            "y": 30
           },
           "id": 303,
           "options": {
@@ -3008,7 +3008,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 21,
-            "y": 25
+            "y": 30
           },
           "id": 304,
           "options": {
@@ -3115,7 +3115,7 @@ data:
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 28
+            "y": 33
           },
           "id": 17,
           "options": {
@@ -3256,7 +3256,7 @@ data:
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 28
+            "y": 33
           },
           "id": 331,
           "options": {
@@ -3359,7 +3359,7 @@ data:
             "h": 6,
             "w": 12,
             "x": 0,
-            "y": 33
+            "y": 38
           },
           "id": 326,
           "options": {
@@ -3461,7 +3461,7 @@ data:
             "h": 6,
             "w": 12,
             "x": 12,
-            "y": 33
+            "y": 38
           },
           "id": 327,
           "options": {
@@ -3520,7 +3520,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 0,
-            "y": 39
+            "y": 44
           },
           "id": 105,
           "options": {
@@ -3574,7 +3574,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 3,
-            "y": 39
+            "y": 44
           },
           "id": 106,
           "options": {
@@ -3628,7 +3628,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 6,
-            "y": 39
+            "y": 44
           },
           "id": 107,
           "options": {
@@ -3682,7 +3682,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 9,
-            "y": 39
+            "y": 44
           },
           "id": 108,
           "options": {
@@ -3737,7 +3737,7 @@ data:
             "h": 3,
             "w": 6,
             "x": 12,
-            "y": 39
+            "y": 44
           },
           "id": 350,
           "options": {
@@ -3793,7 +3793,7 @@ data:
             "h": 3,
             "w": 6,
             "x": 18,
-            "y": 39
+            "y": 44
           },
           "id": 351,
           "options": {
@@ -3861,7 +3861,7 @@ data:
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 42
+            "y": 47
           },
           "id": 323,
           "options": {
@@ -3920,7 +3920,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 9,
-            "y": 25
+            "y": 30
           },
           "id": 354,
           "options": {
@@ -3955,6 +3955,104 @@ data:
           "title": "Namespaces Terminating",
           "type": "stat",
           "description": "Above zero for more than a few minutes means a stuck finalizer, or a garbage collector wedged on a resource type the API server will not serve."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "cluster-availability-archive"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "max": 100,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "percent"
+            }
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 24,
+            "x": 0,
+            "y": 6
+          },
+          "id": 360,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "min",
+                "lastNotNull"
+              ],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "13.1.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "cluster-availability-archive"
+              },
+              "expr": "avg_over_time(((min(up{job=\"node-exporter\"}) == bool 1) * (min(probe_success{probe_group=\"internet\"}) == bool 1))[1d:30s]) * 100",
+              "legendFormat": "Daily Availability",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Availability Over Time (5y archive)",
+          "type": "timeseries"
         }
       ],
       "preload": false,
