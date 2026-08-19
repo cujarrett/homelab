@@ -3977,8 +3977,8 @@ data:
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
                 "drawStyle": "line",
-                "fillOpacity": 10,
-                "gradientMode": "none",
+                "fillOpacity": 25,
+                "gradientMode": "opacity",
                 "hideFrom": {
                   "legend": false,
                   "tooltip": false,
@@ -4016,7 +4016,7 @@ data:
                 }
               },
               "max": 100,
-              "min": 0,
+              "min": 90,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -4071,11 +4071,13 @@ data:
               "expr": "avg_over_time(((min(up{job=\"node-exporter\"}) == bool 1) * (min(probe_success{probe_group=\"internet\"}) == bool 1))[30d:30s]) * 100",
               "legendFormat": "30d Rolling Availability",
               "range": true,
-              "refId": "A"
+              "refId": "A",
+              "interval": "1d"
             }
           ],
-          "title": "Availability Over Time (5y archive)",
-          "type": "timeseries"
+          "title": "Availability Over Time (last 35d)",
+          "type": "timeseries",
+          "timeFrom": "35d"
         }
       ],
       "preload": false,
