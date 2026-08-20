@@ -334,7 +334,7 @@ if $INFLATE_OK; then
   else
     record contract "private deploy has NATS env vars" FAIL "NATS_STREAM/NATS_CONSUMER missing"
   fi
-  if grep -q 'aws-credentials-sidecar' <<< "$PRIV_DEPLOY"; then
+  if grep -q 'workload-identity-sidecar' <<< "$PRIV_DEPLOY"; then
     record contract "private deploy has no AWS sidecar" FAIL "sidecar present without AWS bindings"
   else
     record contract "private deploy has no AWS sidecar" PASS ""
@@ -347,10 +347,10 @@ if $INFLATE_OK; then
     check_secret "cache public binding has role-arn" e2e-api-public-cache role-arn ""
 
     PUB_DEPLOY=$(kubectl get deployment e2e-api-public -n "$NS" -o json 2>/dev/null)
-    if grep -q 'aws-credentials-sidecar' <<< "$PUB_DEPLOY"; then
+    if grep -q 'workload-identity-sidecar' <<< "$PUB_DEPLOY"; then
       record contract "public deploy has AWS sidecar" PASS ""
     else
-      record contract "public deploy has AWS sidecar" FAIL "aws-credentials-sidecar missing"
+      record contract "public deploy has AWS sidecar" FAIL "workload-identity-sidecar missing"
     fi
     for var in AWS_PROFILE_E2E_ASSETS AWS_PROFILE_NOSQL AWS_PROFILE_SQL AWS_PROFILE_CACHE; do
       if grep -q "\"name\": \"$var\"" <<< "$PUB_DEPLOY"; then
