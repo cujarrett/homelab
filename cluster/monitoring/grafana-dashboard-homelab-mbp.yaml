@@ -21,6 +21,48 @@ data:
             "iconColor": "rgba(0, 211, 255, 1)",
             "name": "Annotations & Alerts",
             "type": "dashboard"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "cluster-availability-archive"
+            },
+            "enable": true,
+            "iconColor": "red",
+            "name": "Power Outage",
+            "filter": {
+              "exclude": false,
+              "ids": [
+                360
+              ]
+            },
+            "target": {
+              "expr": "up{job=\"node-exporter\"} == 0",
+              "refId": "Anno"
+            },
+            "titleFormat": "Power Outage",
+            "textFormat": "{{instance}}"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "cluster-availability-archive"
+            },
+            "enable": true,
+            "iconColor": "orange",
+            "name": "Internet Outage",
+            "filter": {
+              "exclude": false,
+              "ids": [
+                360
+              ]
+            },
+            "target": {
+              "expr": "probe_success{probe_group=\"internet\"} == 0",
+              "refId": "Anno"
+            },
+            "titleFormat": "Internet Outage",
+            "textFormat": "{{instance}}"
           }
         ]
       },
