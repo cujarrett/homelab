@@ -36,12 +36,9 @@ data:
                 360
               ]
             },
-            "target": {
-              "expr": "up{job=\"node-exporter\"} == 0",
-              "refId": "Anno"
-            },
             "titleFormat": "Power Outage",
-            "textFormat": "{{instance}}"
+            "textFormat": "{{instance}}",
+            "expr": "up{job=\"node-exporter\"} == 0"
           },
           {
             "datasource": {
@@ -57,12 +54,9 @@ data:
                 360
               ]
             },
-            "target": {
-              "expr": "probe_success{probe_group=\"internet\"} == 0",
-              "refId": "Anno"
-            },
             "titleFormat": "Internet Outage",
-            "textFormat": "{{instance}}"
+            "textFormat": "{{instance}}",
+            "expr": "probe_success{probe_group=\"internet\"} == 0"
           }
         ]
       },
