@@ -726,7 +726,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "°F"
+                  "options": "\u00b0F"
                 },
                 "properties": [
                   {
@@ -850,8 +850,8 @@ data:
             ]
           },
           "gridPos": {
-            "h": 15,
-            "w": 12,
+            "h": 10,
+            "w": 24,
             "x": 0,
             "y": 3
           },
@@ -902,7 +902,7 @@ data:
                 "uid": "sump-pump-archive"
               },
               "expr": "max(weather_temperature_fahrenheit{job=\"weather-exporter\"})",
-              "legendFormat": "°F",
+              "legendFormat": "\u00b0F",
               "refId": "C"
             },
             {
@@ -946,7 +946,7 @@ data:
                   "viz": false
                 },
                 "insertNulls": false,
-                "lineInterpolation": "linear",
+                "lineInterpolation": "smooth",
                 "lineStyle": {
                   "fill": "solid"
                 },
@@ -967,8 +967,6 @@ data:
                 }
               },
               "decimals": 1,
-              "max": 100,
-              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -990,10 +988,10 @@ data:
             }
           },
           "gridPos": {
-            "h": 15,
-            "w": 12,
-            "x": 12,
-            "y": 3
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 13
           },
           "id": 31,
           "interval": "30m",
@@ -1175,7 +1173,7 @@ data:
             "h": 10,
             "w": 12,
             "x": 0,
-            "y": 18
+            "y": 20
           },
           "id": 25,
           "options": {
@@ -1247,7 +1245,7 @@ data:
             "type": "prometheus",
             "uid": "sump-pump-archive"
           },
-          "description": "Distribution of wattage readings over time. Shows motor load variation — wider spread or drift upward can indicate pump wear.",
+          "description": "Distribution of wattage readings over time. Shows motor load variation \u2014 wider spread or drift upward can indicate pump wear.",
           "fieldConfig": {
             "defaults": {
               "custom": {
@@ -1266,7 +1264,7 @@ data:
             "h": 10,
             "w": 12,
             "x": 12,
-            "y": 18
+            "y": 20
           },
           "id": 30,
           "options": {
