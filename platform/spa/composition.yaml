@@ -298,6 +298,13 @@ spec:
                         return 404;
                     }
 
+                    # SSRF / open-proxy probe paths (fetch-relay, cloud metadata, dev-server file
+                    # read) - SPAs never implement a server-side fetch proxy, so these are always
+                    # scanner probes; none have a dotted extension for the default-deny rule to catch.
+                    location ~* ^/(fetch|read|redirect|proxy|aws/metadata|api/v1/status/flags|@fs)(/|\?|$) {
+                        return 404;
+                    }
+
                     # Bare credential/debug/health probe paths with no extension for the
                     # default-deny rule to catch
                     location ~* ^/(private-key|__debug__|info|health|api/v[0-9]+/(config|env))(/|$) {
