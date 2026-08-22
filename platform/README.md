@@ -5,10 +5,12 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 ## Philosophy
 
 - **Declare resources, not steps.** An `Api` with a `sqlRef` is a statement of intent. The composition figures out IAM roles, init containers, volume mounts, credential rotation - none of that is the app's problem.
-- **Credentials reach the pod as files, not env vars.** The [servicebinding.io](https://servicebinding.io) convention makes bindings portable and predictable. The app reads `/bindings/sql/host`. It doesn't care whether that's in-cluster Postgres or RDS.
-- **Choose your backend, keep your app the same.** Some resources offer both in-cluster and cloud-managed variants: Postgres or RDS, Redis or ElastiCache. The `sqlRef` works for both. The app reads `/bindings/sql/host`. It doesn't care where the database lives.
+- **Credentials reach the pod as files, not env vars.** The [servicebinding.io](https://servicebinding.io) convention makes bindings portable. The app reads `/bindings/sql/host` whether that is Postgres on Longhorn or RDS, so switching backends changes the XR and not the app.
 - **Data resources outlive APIs.** `Sql`, `NoSql`, `ObjectStorage` have lifecycles independent of any one `Api`. Create them once, reference them by name.
-- **No static credentials for AWS.** Every AWS binding uses workload identity: a short-lived SVID exchanged for temporary STS credentials via OIDC federation. No access keys in Secrets or config files.
+- **No app holds a static credential.** Every AWS and Entra identity is federated from the pod's short-lived SVID. No access keys, no client secrets, nothing to rotate or expire.
+- **Nothing is reachable without being declared.** Sitting in the same cluster, or the same namespace, grants nothing on its own.
+- **Apps never see Istio.** No Istio kinds, no SPIFFE strings, no Envoy in any workspace file.
+- **Nobody invents an `aud`, `iss`, scope, redirect URI, or role GUID.** The platform derives every value for a registration it owns. For one it does not own, the values come from whoever does.
 
 ---
 
@@ -123,7 +125,7 @@ cfg, _ := config.LoadDefaultConfig(ctx,
 s3 := s3.NewFromConfig(cfg)
 ```
 
-For the full design: [Platform Workload Identity](../docs/platform-workload-identity.md)
+For the full design: [Platform Workload Identity](./docs/workload-identity.md)
 
 ---
 

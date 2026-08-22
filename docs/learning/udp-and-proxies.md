@@ -18,7 +18,7 @@ Don't memorise definitions. Trace one UDP packet and one TCP request through thi
 
 - Terminating means ending one connection and starting another, copying the semantics across - method, path, headers, body. That only works because HTTP defines those semantics on top of TCP's reliable stream.
 - UDP has no request to copy. A reverse proxy fronting a UDP service can pass bytes through at best (NAT-style forwarding) but can't do what Traefik does for HTTP - route by path, rewrite a header, terminate TLS and re-issue it, apply a `Host`-based rule. There's no `Host` header in a datagram.
-- This is why Cloudflare Tunnel and Traefik can front `blog.mattjarrett.dev` but not a Bedrock server - see [Platform Connections → Complications outside HTTP](../platform-connections.md#complications-outside-http) for what that costs a UDP workload on this platform specifically.
+- This is why Cloudflare Tunnel and Traefik can front `blog.mattjarrett.dev` but not a Bedrock server - see [Platform Connections → Complications outside HTTP](../../platform/docs/connections.md#complications-outside-http) for what that costs a UDP workload on this platform specifically.
 
 **Wrinkle worth knowing** - cloudflared's own uplink to the Cloudflare edge runs over QUIC, which is UDP underneath. So the tunnel is a reverse proxy for UDP transport but only for HTTP *payloads* - it never becomes a generic UDP relay for whatever's inside.
 

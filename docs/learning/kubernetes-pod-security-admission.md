@@ -99,7 +99,7 @@ Two findings, neither of which was visible from reading manifests.
 
 What identified it was a comparison the dry-run made cheap: `launchpad` is the one namespace deliberately left out of the mesh, and it passed `restricted` on the first attempt. One namespace differing in exactly one way is a better diagnostic than any amount of reading.
 
-The fix was to stop injecting that container rather than to lower the level. The `istio-cni` DaemonSet does the same iptables work from the node, and the injected init container becomes `istio-validation` - uid 1337, all capabilities dropped, read-only root. See [Platform Connections](../platform-connections.md) for how the mesh is put together.
+The fix was to stop injecting that container rather than to lower the level. The `istio-cni` DaemonSet does the same iptables work from the node, and the injected init container becomes `istio-validation` - uid 1337, all capabilities dropped, read-only root. See [Platform Connections](../../platform/docs/connections.md) for how the mesh is put together.
 
 **A composition nobody had revisited.** With the mesh fixed, one namespace still failed: a redis pod from the Cache composition, running as root with no securityContext at all. The Api, Spa and WordPress compositions had all been hardened; Cache had been quietly missed, and no one would have noticed by reading them, because you do not go looking in the file you already believe is fine.
 

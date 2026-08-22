@@ -2,7 +2,7 @@
 
 A pod proves who it is with a token it did not choose and cannot forge, and trades that token for real credentials in AWS and Entra. Nothing long-lived is stored anywhere. SPIRE issues the identity, the cluster publishes the keys that verify it, each cloud is configured to trust exactly one subject per role, and Crossplane builds all of it from a single declaration in an app's manifest.
 
-[Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](./nothing-novel.md)
+[Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](../../docs/nothing-novel.md)
 
 ## The shape of it
 
@@ -48,7 +48,7 @@ flowchart LR
 
 **The agent** does the attestation. It verifies with the node's own kubelet that the pod requesting a token is genuinely running with the namespace and service account it claims, before signing anything. This is why a stolen manifest is not an identity.
 
-**The [OIDC discovery provider](./spire-oidc-federation.md)** publishes SPIRE's JWT signing keys at `oidc.mattjarrett.dev`. It accepts no input and issues nothing. Both clouds fetch from it to check a signature themselves, which is why no secret is shared with either.
+**The [OIDC discovery provider](../../docs/spire-oidc-federation.md)** publishes SPIRE's JWT signing keys at `oidc.mattjarrett.dev`. It accepts no input and issues nothing. Both clouds fetch from it to check a signature themselves, which is why no secret is shared with either.
 
 **[`workload-identity-sidecar`](https://github.com/cujarrett/workload-identity-sidecar)** turns identity into credentials. It fetches SVIDs over the CSI-mounted Workload API socket and writes credential files the app reads. The app never sees a token.
 
@@ -180,11 +180,11 @@ sequenceDiagram
 
 **Two clocks, not one.** The SVID refreshes every few minutes; the Entra access token it buys lasts about an hour. Cache the access token and refresh it early. Re-running the exchange per request works and is the wrong thing to copy anywhere real.
 
-**The platform stops at the token.** It creates the registration, the principal, the federated credential, the role and the grant, and injects `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_FEDERATED_TOKEN_FILE` and one `ENTRA_SCOPE_<APP>` per declared callee. It does not check the token. The `roles` claim is read by app code, because only the app knows which of its own routes needs which role. This runs after the mesh, not instead of it - see [Platform Connections](./platform-connections.md) for where Entra's gate sits relative to the mesh's.
+**The platform stops at the token.** It creates the registration, the principal, the federated credential, the role and the grant, and injects `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_FEDERATED_TOKEN_FILE` and one `ENTRA_SCOPE_<APP>` per declared callee. It does not check the token. The `roles` claim is read by app code, because only the app knows which of its own routes needs which role. This runs after the mesh, not instead of it - see [Platform Connections](./connections.md) for where Entra's gate sits relative to the mesh's.
 
 ## What the app writes
 
-The declaration, in the app's own [Api XR](../platform/api/README.md):
+The declaration, in the app's own [Api XR](../api/README.md):
 
 ```yaml
 spec:
@@ -258,7 +258,7 @@ cred, _ := azidentity.NewWorkloadIdentityCredential(nil)
 
 | Doc | What it adds |
 |---|---|
-| [SPIRE OIDC Federation](./spire-oidc-federation.md) | The discovery endpoint, the Cloudflare `/.well-known` rewrite, and registering a cloud |
-| [Platform Connections](./platform-connections.md) | The mesh gates a call passes before any token is read |
-| [Entra](./learning/entra.md) | What the claims mean, and what the error codes are actually telling you |
-| [AzureAD Permissions](../cluster/crossplane/azuread-permissions.md) | Bootstrapping Crossplane's own Entra registration |
+| [SPIRE OIDC Federation](../../docs/spire-oidc-federation.md) | The discovery endpoint, the Cloudflare `/.well-known` rewrite, and registering a cloud |
+| [Platform Connections](./connections.md) | The mesh gates a call passes before any token is read |
+| [Entra](../../docs/learning/entra.md) | What the claims mean, and what the error codes are actually telling you |
+| [AzureAD Permissions](../../cluster/crossplane/azuread-permissions.md) | Bootstrapping Crossplane's own Entra registration |

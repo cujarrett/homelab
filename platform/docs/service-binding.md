@@ -6,7 +6,7 @@ But there's still a gap in the experience: getting those provisioned credentials
 
 [Platform Binding](https://servicebinding.io) closes that gap by standardizing how credentials are delivered to workloads-consistently, predictably, as files mounted into the container where the app already lives.
 
-[Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](./nothing-novel.md)
+[Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](../../docs/nothing-novel.md)
 
 ## The servicebinding.io Convention
 
