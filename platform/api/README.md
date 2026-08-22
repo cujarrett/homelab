@@ -10,7 +10,7 @@ Crossplane composition that deploys an API server (Go, Node, GraphQL, etc.) with
 - **ServiceMonitor** - Prometheus scrape target on the metrics port
 - **Ingress** *(optional)* - Traefik `websecure` with TLS; only created when `host` is set. cert-manager issues a certificate via `tlsIssuer` unless `tlsSecret` points to a pre-existing Secret, in which case issuance is skipped.
 - **Cache** *(optional)* - short-lived cache cluster owned by this Api; created and deleted alongside it
-- **Connection policy** *(optional)* - only when `connectionPosture` is `enforce`. Refuses any call this API makes to a destination it has not declared, and any inbound call whose workload identity is not named in `provides`. Metrics scraping and, when `host` is set, ingress traffic stay reachable - neither carries a workload identity to match on. See [Platform Connections](../../docs/platform-connections.md).
+- **Connection policy** *(optional)* - only when `connectionPosture` is `enforce`. Refuses any call this API makes to a destination it has not declared, and any inbound call whose workload identity is not named in `provides`. Metrics scraping and, when `host` is set, ingress traffic stay reachable - neither carries a workload identity to match on. See [Platform Connections](../docs/connections.md).
 
 `ObjectStorage`, `Sql`, and `NoSql` are created independently and bound via refs. They outlive any one Api. For `ObjectStorage` and `NoSql`, this composition creates the IAM Role and binding Secret when the ref is declared - their binding secrets only contain names, region, and ARNs, which Api can compute. For `Sql`, those are created by the Sql composition itself, because its binding secret contains RDS connection details (host, port, username) that are only known after RDS provisioning. The tenant lists consuming Api names in `consumerServiceAccounts` on the Sql - each gets its own IAM role and binding secret scoped to its SA.
 
@@ -181,9 +181,9 @@ When any AWS cloud binding is declared, or `entra.enabled` is set, the compositi
 - A stable identifier, `api://<tenant-id>/platform-<namespace>-<name>`, so a caller can name this Api as an audience without looking up the client ID Entra generated for it. The tenant ID is required by Entra's default tenant policy, not decoration. A v2 token still arrives audienced to the client ID, which the Api already has as `AZURE_CLIENT_ID`.
 - Tokens issued at v2, so their issuer is `login.microsoftonline.com/<tenant>/v2.0` rather than the v1 `sts.windows.net`.
 
-When `entra.roles` is set, the composition also creates each role and one grant per allowed caller. Checking the role is the app's job - see [Platform Connections → Entra](../../docs/platform-connections.md#entra-a-second-gate-that-answers-to-someone-else).
+When `entra.roles` is set, the composition also creates each role and one grant per allowed caller. Checking the role is the app's job - see [App Configuration → Entra](../docs/app-configuration.md#entra).
 
-For the full workload identity design: [Platform Workload Identity](../../docs/platform-workload-identity.md)
+For the full workload identity design: [Platform Workload Identity](../docs/workload-identity.md)
 
 ## Operations
 

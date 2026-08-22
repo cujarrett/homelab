@@ -65,4 +65,4 @@ aws iam put-user-policy \
 ## What is NOT managed here
 
 - The `aws-creds` Secret in `crossplane-system` - created manually, never stored in Git. Same bootstrap pattern as `aws-eso-creds` (described in [External Secrets](../../docs/external-secrets.md)) and `azuread-creds` (described in [azuread-permissions.md](./azuread-permissions.md))
-- The IAM OIDC identity provider (`oidc.mattjarrett.dev`) that workload identity trust policies condition on - see [Platform Workload Identity](../../docs/platform-workload-identity.md)
+- The IAM OIDC identity provider (`oidc.mattjarrett.dev`) that workload identity trust policies condition on - see [Platform Workload Identity](../../platform/docs/workload-identity.md)

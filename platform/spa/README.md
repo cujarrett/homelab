@@ -8,7 +8,7 @@ Crossplane composition that hosts an Angular (or any static) SPA on nginx.
 - **Service** - ClusterIP on port 80
 - **Middleware** - Traefik rate limiter: 60 requests/min average, burst of 20, keyed per client IP (`CF-Connecting-IP` header)
 - **Ingress** - Traefik `websecure` entrypoint with cert-manager TLS; rate limit middleware applied
-- **Connection policy** *(optional)* - only when `connectionPosture` is `enforce`. Refuses any call this app makes to a destination it has not declared, and any inbound call that does not carry a workload identity the platform issued. See [Platform Connections](../../docs/platform-connections.md).
+- **Connection policy** *(optional)* - only when `connectionPosture` is `enforce`. Refuses any call this app makes to a destination it has not declared, and any inbound call that does not carry a workload identity the platform issued. See [Platform Connections](../docs/connections.md).
 
 The namespace is owned by the tenant - created by `namespace.yaml` in the tenant directory, not by this composition.
 
