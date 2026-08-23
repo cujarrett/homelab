@@ -174,7 +174,6 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
                 crossplane.io/external-name: {{ $userId }}
             spec:
-              deletionPolicy: Delete
               forProvider:
                 region: {{ $region }}
                 userName: {{ $userId }}
@@ -196,7 +195,6 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
                 crossplane.io/external-name: {{ $userGroupId }}
             spec:
-              deletionPolicy: Delete
               forProvider:
                 region: {{ $region }}
                 engine: Redis
@@ -217,7 +215,6 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
                 crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}
             spec:
-              deletionPolicy: Delete
               forProvider:
                 path: /crossplane/
                 tags:

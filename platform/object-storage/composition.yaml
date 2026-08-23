@@ -25,12 +25,12 @@ spec:
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.dataRetention
-                toFieldPath: spec.deletionPolicy
+                toFieldPath: spec.managementPolicies
                 transforms:
                   - type: map
                     map:
-                      delete: Delete
-                      retain: Orphan
+                      delete: ["*"]
+                      retain: ["Observe", "Create", "Update", "LateInitialize"]
               # forceDestroy only for dataRetention=delete - AWS refuses DeleteBucket
               # on a non-empty bucket otherwise, which stalls sandbox teardown forever.
               - type: FromCompositeFieldPath

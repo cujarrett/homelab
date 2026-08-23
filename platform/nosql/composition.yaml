@@ -30,12 +30,12 @@ spec:
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.dataRetention
-                toFieldPath: spec.deletionPolicy
+                toFieldPath: spec.managementPolicies
                 transforms:
                   - type: map
                     map:
-                      delete: Delete
-                      retain: Orphan
+                      delete: ["*"]
+                      retain: ["Observe", "Create", "Update", "LateInitialize"]
               # External name = table name; deterministic so IAM inline policy
               # can scope to the exact table ARN without wildcards.
               - type: FromCompositeFieldPath
