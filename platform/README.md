@@ -7,7 +7,7 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 - **Declare resources, not steps.** An `Api` with a `sqlRef` is a statement of intent. The composition figures out IAM roles, init containers, volume mounts, credential rotation - none of that is the app's problem.
 - **Credentials reach the pod as files, not env vars.** The [servicebinding.io](https://servicebinding.io) convention makes bindings portable. The app reads `/bindings/sql/host` whether that is Postgres on Longhorn or RDS, so switching backends changes the XR and not the app.
 - **Data resources outlive APIs.** `Sql`, `NoSql`, `ObjectStorage` have lifecycles independent of any one `Api`. Create them once, reference them by name.
-- **No app holds a static credential.** Every AWS and Entra identity is federated from the pod's short-lived SVID. No access keys, no client secrets, nothing to rotate or expire.
+- **No app holds a static identity credential.** Every AWS and Entra identity is federated from the pod's short-lived SVID. No access keys, no client secrets, nothing to rotate or expire. A third-party API key is a value, not an identity, and lives in a Secret.
 - **Nothing is reachable without being declared.** Sitting in the same cluster, or the same namespace, grants nothing on its own.
 - **Apps never see Istio.** No Istio kinds, no SPIFFE strings, no Envoy in any workspace file.
 - **Nobody invents an `aud`, `iss`, scope, redirect URI, or role GUID.** The platform derives every value for a registration it owns. For one it does not own, the values come from whoever does.
