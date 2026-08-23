@@ -20,7 +20,7 @@ Owned by `Api` - created and deleted with it when `cache.enabled: true`. Not int
 
 ## Binding secret
 
-Secret name equals the Cache's `metadata.name`; namespace comes from the `namespace` parameter.
+Secret name equals the Cache's `metadata.name`, in the Cache's own namespace.
 
 **For `private-cloud`:** Written automatically by the composition once the Redis Deployment is ready.
 
