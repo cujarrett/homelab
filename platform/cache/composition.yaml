@@ -179,7 +179,7 @@ spec:
                 userName: {{ $userId }}
                 accessString: "on ~* &* +@all"
                 authenticationMode:
-                  - type: iam
+                  type: iam
                 engine: redis
                 tags:
                   App: {{ $name }}
