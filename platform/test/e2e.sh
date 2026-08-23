@@ -66,11 +66,11 @@ wait_ready() { # kind name timeout_seconds -> 0 if Ready=True
   start=$(date +%s)
   while true; do
     local status
-    status=$(kubectl get "$kind" "$name" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null)
+    status=$(kubectl get "$kind" "$name" -n "$NS" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null)
     [[ "$status" == "True" ]] && return 0
     if (( $(date +%s) - start > timeout )); then
       echo "  --- $kind/$name conditions on timeout:"
-      kubectl get "$kind" "$name" -o jsonpath='{.status.conditions}' 2>/dev/null | python3 -m json.tool 2>/dev/null || true
+      kubectl get "$kind" "$name" -n "$NS" -o jsonpath='{.status.conditions}' 2>/dev/null | python3 -m json.tool 2>/dev/null || true
       return 1
     fi
     sleep 10
@@ -80,7 +80,7 @@ wait_ready() { # kind name timeout_seconds -> 0 if Ready=True
 wait_gone() { # kind name timeout_seconds -> 0 if the object no longer exists
   local kind=$1 name=$2 timeout=$3 start
   start=$(date +%s)
-  while kubectl get "$kind" "$name" >/dev/null 2>&1; do
+  while kubectl get "$kind" "$name" -n "$NS" >/dev/null 2>&1; do
     (( $(date +%s) - start > timeout )) && return 1
     sleep 10
   done
@@ -394,8 +394,8 @@ fi
 
 echo "== Phase 4: teardown (RDS/ElastiCache deletion takes several minutes)"
 # Apis first - deleting them cascades the owned Cache (and ElastiCache).
-kubectl delete apis.platform.local.lab e2e-api-private --ignore-not-found >/dev/null 2>&1
-kubectl delete apis.platform.local.lab e2e-api-public --ignore-not-found >/dev/null 2>&1
+kubectl delete apis.platform.local.lab e2e-api-private -n "$NS" --ignore-not-found >/dev/null 2>&1
+kubectl delete apis.platform.local.lab e2e-api-public -n "$NS" --ignore-not-found >/dev/null 2>&1
 wait_gone apis.platform.local.lab e2e-api-private 300 || record teardown "api/e2e-api-private deleted" FAIL "still present after 300s"
 wait_gone apis.platform.local.lab e2e-api-public 900 || record teardown "api/e2e-api-public deleted" FAIL "still present after 900s"
 # The owned Caches outlive their Api briefly - the ElastiCache replication
