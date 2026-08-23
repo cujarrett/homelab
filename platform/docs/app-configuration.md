@@ -16,6 +16,9 @@ Reachability is a separate concern, in [Platform Connections](./connections.md).
 
 ```yaml
 kind: Api
+metadata:
+  name: orders
+  namespace: team-b
 spec:
   image: ghcr.io/example/orders:sha-...
   size: md
@@ -57,6 +60,9 @@ Off-platform is the opposite, because there is no second party in git. A caller 
 
 ```yaml
 kind: Spa
+metadata:
+  name: storefront
+  namespace: team-b
 spec:
   image: ghcr.io/example/storefront:sha-...
   host: app.example.com
@@ -128,13 +134,17 @@ A `consumes` or `apiProxies` entry naming a host renders egress immediately. The
 
 Shutting one off will be two steps once Kyverno lands: a `ClusterPolicy` rejecting any app that declares the host, and a sweep removing the ones that already do. The denied hosts live in the policy, so a takedown is a pull request against one file rather than a new resource type. Today it is only the sweep, and nothing stops the host being declared again.
 
+## Admission checks
+
+Two `ClusterPolicy` objects catch what CEL cannot, because both have to read an object other than the one being admitted. `platform-reference-integrity` refuses an `app` named in `consumes` or `apiProxies` that is not a real Api in the namespace the reference claims. `platform-egress-denials` refuses a host on the denial list, which is empty until someone puts one there.
+
+Both ship as `Audit` rather than `Enforce`. A policy matching every `Api` and `Spa` that is subtly wrong would reject every XR update, which is worse than the silent failure it exists to catch, so the reports get read before the switch is flipped.
+
 ## Not built yet
 
-Kyverno, plus two `ClusterPolicy` objects: reject an `app` reference that resolves to nothing, and reject a denied egress host. Both checks read other objects to decide, which CEL cannot do, and admission is the right moment because a denied host must never render egress at all.
+`userAuth` and `auth: user` are implemented but no app uses either, so neither has run against a real sign-in.
 
-Until then a reference to an app that does not exist renders and enforces nothing, and shutting off a third-party host means editing every app that declares it.
-
-`userAuth` and `auth: user` are implemented but no app uses either yet, so neither has run against a real sign-in.
+Until the policies move to `Enforce`, a reference to an app that does not exist still renders and enforces nothing. It shows up in a `PolicyReport` rather than being refused.
 
 ## Not offered
 
