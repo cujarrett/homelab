@@ -617,7 +617,6 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
                 crossplane.io/external-name: {{ $roleExternalName }}
             spec:
-              deletionPolicy: Delete
               forProvider:
                 path: /crossplane/
                 maxSessionDuration: 3600
@@ -665,7 +664,6 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
                 crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}-nosql
             spec:
-              deletionPolicy: Delete
               forProvider:
                 path: /crossplane/
                 maxSessionDuration: 3600
@@ -710,7 +708,6 @@ spec:
                 gotemplating.fn.crossplane.io/composition-resource-name: entra-application
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
-              deletionPolicy: Delete
               forProvider:
                 displayName: platform-{{ $ns }}-{{ $name }}
                 api:
@@ -755,7 +752,6 @@ spec:
                 gotemplating.fn.crossplane.io/composition-resource-name: entra-principal
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
-              deletionPolicy: Delete
               forProvider:
                 clientIdRef:
                   name: {{ $ns }}-{{ $name }}-entra
@@ -772,7 +768,6 @@ spec:
                 gotemplating.fn.crossplane.io/composition-resource-name: entra-federated-credential
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
-              deletionPolicy: Delete
               forProvider:
                 applicationIdRef:
                   name: {{ $ns }}-{{ $name }}-entra
@@ -804,7 +799,6 @@ spec:
                 gotemplating.fn.crossplane.io/composition-resource-name: entra-role-{{ $roleSlug }}
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
-              deletionPolicy: Delete
               forProvider:
                 applicationIdRef:
                   name: {{ $ns }}-{{ $name }}-entra
@@ -828,7 +822,6 @@ spec:
                 gotemplating.fn.crossplane.io/composition-resource-name: entra-grant-{{ $roleSlug }}-{{ $caller.namespace }}-{{ $caller.app }}
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
-              deletionPolicy: Delete
               forProvider:
                 appRoleId: {{ $roleId }}
                 # The caller's own Principal, created by that Api's own composition run.
@@ -855,7 +848,6 @@ spec:
                 gotemplating.fn.crossplane.io/composition-resource-name: entra-scope-grant-{{ $scopeSlug }}-{{ $caller.namespace }}-{{ $caller.app }}
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
-              deletionPolicy: Delete
               forProvider:
                 claimValues:
                   - {{ $scope.name | quote }}

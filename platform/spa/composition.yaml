@@ -716,7 +716,6 @@ spec:
                 gotemplating.fn.crossplane.io/composition-resource-name: signin-application
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
-              deletionPolicy: Delete
               forProvider:
                 displayName: platform-{{ $namespace }}-{{ $name }}-signin
                 signInAudience: AzureADMyOrg
@@ -742,7 +741,6 @@ spec:
                 gotemplating.fn.crossplane.io/composition-resource-name: signin-principal
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
-              deletionPolicy: Delete
               forProvider:
                 clientIdRef:
                   name: {{ $namespace }}-{{ $name }}-signin
@@ -759,7 +757,6 @@ spec:
                 gotemplating.fn.crossplane.io/composition-resource-name: signin-federated-credential
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
-              deletionPolicy: Delete
               forProvider:
                 applicationIdRef:
                   name: {{ $namespace }}-{{ $name }}-signin

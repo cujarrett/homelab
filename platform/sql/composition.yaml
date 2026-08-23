@@ -250,7 +250,6 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
                 crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}-{{ $consumer }}-sql
             spec:
-              deletionPolicy: Delete
               forProvider:
                 path: /crossplane/
                 tags:
