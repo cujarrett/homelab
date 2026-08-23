@@ -61,7 +61,7 @@ kubectl create secret generic azuread-creds -n crossplane-system \
 
 `crossplane-entra` can create Entra apps but not delete or update them, unless each one
 is created with an explicit owner. The API — CLI or Crossplane, doesn't matter who's
-driving — never assigns an owner on its own; only the interactive Entra portal does
+driving, never assigns an owner on its own; only the Entra web UI does
 that, as something the web page adds, not the API itself. So every `Application` the
 future composition creates needs:
 
