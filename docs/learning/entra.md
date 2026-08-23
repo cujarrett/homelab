@@ -25,7 +25,7 @@ One registration can be both, and for a single app calling only itself it works 
 | Client | Redirect URIs, and the permissions it wants | A browser app is registered as platform type **SPA**, which turns on PKCE and makes Entra refuse to issue it a secret |
 | Resource | An App ID URI, the scopes it exposes, the app roles it defines | The strings here must match what the API code checks, character for character |
 
-**A SPA holds no secret.** Everything shipped to a browser is public. Instead it proves itself with PKCE: it invents a random `code_verifier`, sends only its SHA-256 hash up front, and produces the raw value when redeeming the code. Someone who steals the authorization code has nothing to send.
+**A SPA holds no secret.** Everything shipped to a browser is public. Instead it proves itself with PKCE: it invents a random `code_verifier`, sends only its SHA-256 hash up front, and produces the raw value when redeeming the code. Someone who steals the authorization code has nothing to send. [PKCE](./pkce.md) has the mechanism and what it does not cover.
 
 ## What is secret, and what is not
 
