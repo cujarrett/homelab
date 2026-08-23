@@ -14,7 +14,6 @@ The IAM Role and binding Secret are **not** created by ObjectStorage. They are c
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `namespace` | yes | - | Namespace of the owning workload. Used to construct the bucket name (`platform-{namespace}-{name}`) and the Namespace cost-allocation tag. |
 | `dataRetention` | no | `delete` | AWS resource reclaim on XR deletion: `delete`=bucket is deleted (data unrecoverable); `retain`=bucket is orphaned in AWS (data recoverable). |
 
 ## Binding secret
@@ -38,9 +37,9 @@ apiVersion: platform.local.lab/v1alpha1
 kind: ObjectStorage
 metadata:
   name: foo-assets
+  namespace: foo
 spec:
   parameters:
-    namespace: foo
 # Bucket "platform-foo-foo-assets" is created in AWS.
 # Binding Secret "{api-name}-foo-assets" is written to namespace "foo" by the referencing Api.
 ```
@@ -63,7 +62,7 @@ Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 kubectl get objectstorages foo-assets
 
 # Detailed conditions - shows exactly WHY something is not ready
-kubectl get objectstorage foo-assets -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get objectstorage foo-assets -n foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
 # Binding secret - confirm all keys are present (written by Api, not ObjectStorage)
 # Secret is named {api-name}-{ref-name}, e.g. foo-foo-assets for Api "foo" + ref "foo-assets"

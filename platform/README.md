@@ -131,7 +131,7 @@ For the full design: [Platform Workload Identity](./docs/workload-identity.md)
 
 ## Environments and feature branches
 
-**The namespace is the environment boundary.** Every AWS resource name embeds both namespace and XR name - `crossplane-{ns}-{name}-*` for IAM roles, `platform-{ns}-{name}` for S3 buckets. Within a namespace, Api names must be unique (standard Kubernetes). Across namespaces, names are independent - `foo-api` in `ns-alice` and `foo-api` in `ns-bob` produce completely separate IAM roles, secrets, and buckets.
+**The namespace is the environment boundary.** Every XR is namespaced, so a name only has to be unique within its own namespace and `foo-api` can exist in `ns-alice` and `ns-bob` at once. Every AWS resource name embeds both - `crossplane-{ns}-{name}-*` for IAM roles, `platform-{ns}-{name}` for S3 buckets - so the two produce completely separate roles, secrets, and buckets.
 
 ### Feature branch pattern
 

@@ -4,7 +4,7 @@ metadata:
   name: apis.platform.local.lab
 spec:
   group: platform.local.lab
-  scope: Cluster
+  scope: Namespaced
   names:
     kind: Api
     plural: apis
@@ -138,9 +138,6 @@ spec:
                         streamName:
                           type: string
                           description: "NATS stream name as defined in the Topic's spec.parameters.streamName. Defaults to topicRef.name uppercased when omitted. Set explicitly when the Topic's streamName differs from its metadata.name."
-                    namespace:
-                      type: string
-                      description: "Namespace to deploy into. Must already exist (created by the tenant's namespace.yaml)."
                     subscriptionRef:
                       type: object
                       description: "Optional reference to a Subscription instance this API consumes from. When set, the platform wires the consumer binding automatically."
@@ -200,7 +197,7 @@ spec:
                             description: "Workloads granted this interface. Everything else is denied."
                             items:
                               type: object
-                              required: [namespace, app]
+                              required: [app]
                               properties:
                                 namespace:
                                   type: string
@@ -258,7 +255,7 @@ spec:
                               host:
                                 type: string
                                 description: "Hostname the request actually goes to. Separate from appIdUri, which names the token audience rather than an address."
-                  required: [image, namespace]
+                  required: [image]
               required:
                 - parameters
             status:

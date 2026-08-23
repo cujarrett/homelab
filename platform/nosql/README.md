@@ -30,7 +30,6 @@ The `workload-identity-sidecar` (injected by Api) exchanges the pod's SVID for s
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `namespace` | yes | - | Namespace of the owning workload. Used for the Namespace cost-allocation tag; the binding Secret is written by the referencing `Api`. |
 | `partitionKey` | no | `id` | Partition key attribute name. |
 | `partitionKeyType` | no | `S` | Partition key type: `S`=string, `N`=number, `B`=binary. |
 | `dataRetention` | no | `delete` | AWS resource reclaim on XR deletion: `delete`=table is deleted (data unrecoverable); `retain`=table is orphaned in AWS (data recoverable). |
@@ -42,9 +41,9 @@ apiVersion: platform.local.lab/v1alpha1
 kind: NoSql
 metadata:
   name: foo-events
+  namespace: foo
 spec:
   parameters:
-    namespace: foo
     # partitionKey defaults to id; partitionKeyType defaults to S
 ```
 
@@ -53,9 +52,9 @@ apiVersion: platform.local.lab/v1alpha1
 kind: NoSql
 metadata:
   name: foo-events
+  namespace: foo
 spec:
   parameters:
-    namespace: foo
     partitionKey: userId
     partitionKeyType: S
     dataRetention: retain
@@ -83,7 +82,7 @@ When `Api` declares `nosqlRef`, it creates an IAM Role whose trust policy is loc
 kubectl get nosqls foo-events
 
 # Detailed conditions - shows exactly WHY something is not ready
-kubectl get nosql foo-events -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get nosql foo-events -n foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
 # Binding secret - confirm all keys are present (written by Api, not NoSql)
 # Secret is named {api-name}-nosql, e.g. foo-nosql for an Api named "foo"

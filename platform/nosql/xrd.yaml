@@ -4,7 +4,7 @@ metadata:
   name: nosqls.platform.local.lab
 spec:
   group: platform.local.lab
-  scope: Cluster
+  scope: Namespaced
   names:
     kind: NoSql
     plural: nosqls
@@ -22,7 +22,7 @@ spec:
               properties:
                 parameters:
                   type: object
-                  required: [namespace]
+                  required: []
                   properties:
                     partitionKey:
                       type: string
@@ -33,9 +33,6 @@ spec:
                       default: S
                       enum: [S, N, B]
                       description: "Partition key type. S=string, N=number, B=binary."
-                    namespace:
-                      type: string
-                      description: "Namespace of the owning workload. Used for the Namespace cost-allocation tag. The binding Secret itself is written by the referencing Api into its own namespace."
                     dataRetention:
                       type: string
                       default: delete

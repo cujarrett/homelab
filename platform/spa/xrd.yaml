@@ -4,7 +4,7 @@ metadata:
   name: spas.platform.local.lab
 spec:
   group: platform.local.lab
-  scope: Cluster
+  scope: Namespaced
   names:
     kind: Spa
     plural: spas
@@ -61,9 +61,6 @@ spec:
                       default: sm
                       enum: [xs, sm, md, lg]
                       description: "Compute tier for the container. Choose based on expected traffic — Extra Small suits low-traffic or background services; Large suits high-throughput workloads."
-                    namespace:
-                      type: string
-                      description: "Namespace to deploy into. Must already exist (created by the tenant's namespace.yaml)."
                     publicConfig:
                       type: object
                       additionalProperties:
@@ -164,9 +161,7 @@ spec:
                             type: string
                             description: "Namespace of app. Required when app is set."
                   required:
-                    - image
-                    - host
-                    - namespace
+                    - image                    - host
               required:
                 - parameters
             status:

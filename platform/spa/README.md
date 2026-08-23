@@ -18,7 +18,6 @@ The namespace is owned by the tenant - created by `namespace.yaml` in the tenant
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `namespace` | yes | - | Tenant namespace to deploy into. Must already exist. |
 | `image` | yes | - | Container image (`ghcr.io/owner/app:sha-abc123`). CI builds on merge to main and commits the new tag back to trigger sync. |
 | `host` | yes | - | Ingress hostname (e.g. `myapp.local.lab` or `myapp.example.com`) |
 | `repo` | no | - | GitHub repository URL for this app's source code. |
@@ -44,9 +43,9 @@ apiVersion: platform.local.lab/v1alpha1
 kind: Spa
 metadata:
   name: foo
+  namespace: foo
 spec:
   parameters:
-    namespace: foo
     image: ghcr.io/owner/foo:sha-abc123
     host: foo.local.lab
     apiProxies:
@@ -79,10 +78,10 @@ EXPOSE 80
 
 ```bash
 # XR status - SYNCED=composition ran, READY=all children healthy
-kubectl get spa foo
+kubectl get spa foo -n foo
 
 # Detailed conditions
-kubectl get spa foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get spa foo -n foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
 # Pod status
 kubectl get pods -n foo

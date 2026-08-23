@@ -25,6 +25,7 @@ apiVersion: platform.local.lab/v1alpha1
 kind: Topic
 metadata:
   name: foo-topic
+  namespace: foo
 spec:
   parameters:
     streamName: FOO-TOPIC
@@ -54,5 +55,5 @@ Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 kubectl get topics
 
 # Describe a specific topic XR
-kubectl describe topic foo-topic
+kubectl describe topic foo-topic -n foo
 ```

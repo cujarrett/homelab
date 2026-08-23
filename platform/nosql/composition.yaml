@@ -57,5 +57,5 @@ spec:
                 fromFieldPath: metadata.name
                 toFieldPath: spec.forProvider.tags.App
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.namespace
+                fromFieldPath: metadata.namespace
                 toFieldPath: spec.forProvider.tags.Namespace

@@ -48,7 +48,7 @@ spec:
             {{- else if eq $dataRetention "delete" }}
             {{-   $storageClass = "longhorn-delete" }}
             {{- end }}
-            {{- $ns := $xr.spec.parameters.namespace }}
+            {{- $ns := $xr.metadata.namespace }}
             {{- $consumerServiceAccounts := $xr.spec.parameters.consumerServiceAccounts | default list }}
             {{- $region := "us-east-1" }}
             {{- $size := $xr.spec.parameters.size | default "sm" }}
