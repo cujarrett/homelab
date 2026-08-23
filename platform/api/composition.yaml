@@ -1062,6 +1062,10 @@ spec:
                     - operation: { ports: ["{{ $appPort }}"] }
                 {{- end }}
                 {{- range $iface := $provides }}
+                {{- /* An interface nobody holds renders no rule. An empty principals list  */ -}}
+                {{- /* is not "deny everyone" to Istio, it is a source clause with nothing  */ -}}
+                {{- /* to match on, and the surrounding ALLOW rule then lets anyone in.     */ -}}
+                {{- if $iface.allowedCallers }}
                 # provides: {{ $iface.name }}
                 - from:
                     - source:
@@ -1081,6 +1085,7 @@ spec:
                         paths: [{{ range $i, $v := $p }}{{ if $i }}, {{ end }}{{ $v | quote }}{{ end }}]
                         {{- end }}
                   {{- end }}
+                {{- end }}
                 {{- end }}
             ---
             # REGISTRY_ONLY: only the control plane, what this XR composed, and what it
