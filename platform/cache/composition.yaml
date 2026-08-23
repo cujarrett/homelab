@@ -165,7 +165,7 @@ spec:
             {{- $cacheInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" "elasticache:Connect" "Resource" (list (printf "arn:aws:elasticache:%s:*:replicationgroup:%s" $region $rgId) (printf "arn:aws:elasticache:%s:*:user:%s" $region $userId)))) | toJson }}
             ---
             # ElastiCache IAM User. Must exist before the UserGroup and ReplicationGroup.
-            apiVersion: elasticache.aws.upbound.io/v1beta1
+            apiVersion: elasticache.aws.m.upbound.io/v1beta1
             kind: User
             metadata:
               name: {{ $name }}-user
@@ -187,7 +187,7 @@ spec:
                   Namespace: {{ $ns }}
             ---
             # ElastiCache UserGroup. Rendered immediately; Crossplane retries until User propagates to AWS.
-            apiVersion: elasticache.aws.upbound.io/v1beta1
+            apiVersion: elasticache.aws.m.upbound.io/v1beta1
             kind: UserGroup
             metadata:
               name: {{ $name }}-user-group
@@ -208,7 +208,7 @@ spec:
                   Namespace: {{ $ns }}
             ---
             # IAM Role for ElastiCache IAM auth. Trust scoped to the exact Api service account.
-            apiVersion: iam.aws.upbound.io/v1beta1
+            apiVersion: iam.aws.m.upbound.io/v1beta1
             kind: Role
             metadata:
               name: {{ $name }}
@@ -230,7 +230,7 @@ spec:
             ---
             # ReplicationGroup. Rendered immediately; Crossplane retries until UserGroup propagates to AWS.
             # Provider writes connection details to a connection secret in crossplane-system once ElastiCache is up.
-            apiVersion: elasticache.aws.upbound.io/v1beta2
+            apiVersion: elasticache.aws.m.upbound.io/v1beta1
             kind: ReplicationGroup
             metadata:
               name: {{ $name }}

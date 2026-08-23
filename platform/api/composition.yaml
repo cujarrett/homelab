@@ -608,7 +608,7 @@ spec:
             {{- $inlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "s3:GetObject" "s3:PutObject" "s3:DeleteObject" "s3:ListBucket") "Resource" (list (printf "arn:aws:s3:::%s" $bucketName) (printf "arn:aws:s3:::%s/*" $bucketName)))) | toJson }}
             ---
             # IAM Role for objectStorageRef {{ $refName }}. Trust scoped to this Api's service account.
-            apiVersion: iam.aws.upbound.io/v1beta1
+            apiVersion: iam.aws.m.upbound.io/v1beta1
             kind: Role
             metadata:
               name: {{ $name }}-objstorage-{{ $refName }}
@@ -656,7 +656,7 @@ spec:
             {{- $nosqlInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "dynamodb:GetItem" "dynamodb:PutItem" "dynamodb:UpdateItem" "dynamodb:DeleteItem" "dynamodb:Query" "dynamodb:Scan" "dynamodb:BatchGetItem" "dynamodb:BatchWriteItem") "Resource" (list (printf "arn:aws:dynamodb:us-east-1:*:table/%s" $tableName) (printf "arn:aws:dynamodb:us-east-1:*:table/%s/index/*" $tableName)))) | toJson }}
             ---
             # IAM Role for nosqlRef {{ $nosqlRefName }}. Trust scoped to this Api's service account.
-            apiVersion: iam.aws.upbound.io/v1beta1
+            apiVersion: iam.aws.m.upbound.io/v1beta1
             kind: Role
             metadata:
               name: {{ $name }}-nosql
@@ -702,7 +702,7 @@ spec:
             # through the API (CLI or Crossplane, doesn't matter) is never auto-owned;
             # only the interactive portal does that. Without it, crossplane-entra can
             # create this but never delete or update it. See azuread-permissions.md.
-            apiVersion: applications.azuread.upbound.io/v1beta2
+            apiVersion: applications.azuread.m.upbound.io/v1beta1
             kind: Application
             metadata:
               name: {{ $ns }}-{{ $name }}-entra
@@ -747,7 +747,7 @@ spec:
             ---
             # Service principal - required before a federated credential can attach,
             # and before the app can be assigned any app role on another Api later.
-            apiVersion: serviceprincipals.azuread.upbound.io/v1beta2
+            apiVersion: serviceprincipals.azuread.m.upbound.io/v1beta1
             kind: Principal
             metadata:
               name: {{ $ns }}-{{ $name }}-entra
@@ -764,7 +764,7 @@ spec:
             ---
             # Trusts a JWT-SVID for this exact pod identity, traded for a real Entra
             # token via client_assertion - no client secret anywhere.
-            apiVersion: applications.azuread.upbound.io/v1beta1
+            apiVersion: applications.azuread.m.upbound.io/v1beta1
             kind: FederatedIdentityCredential
             metadata:
               name: {{ $ns }}-{{ $name }}-entra
@@ -796,7 +796,7 @@ spec:
             # A role this Api offers. allowedMemberTypes must be Application - the portal
             # defaults to User, which syncs green and then never shows up in the token of
             # a caller that has no user behind it.
-            apiVersion: applications.azuread.upbound.io/v1beta1
+            apiVersion: applications.azuread.m.upbound.io/v1beta1
             kind: AppRole
             metadata:
               name: {{ $ns }}-{{ $name }}-entra-role-{{ $roleSlug }}
@@ -820,7 +820,7 @@ spec:
             # "Permission being assigned was not found on application" - the role above
             # has to replicate from the app registration to its service principal, and
             # the grant is checked against the service principal. It self-heals.
-            apiVersion: app.azuread.upbound.io/v1beta1
+            apiVersion: app.azuread.m.upbound.io/v1beta1
             kind: RoleAssignment
             metadata:
               name: {{ $ns }}-{{ $name }}-entra-grant-{{ $roleSlug }}-{{ $caller.namespace }}-{{ $caller.app }}
@@ -847,7 +847,7 @@ spec:
             # The delegated equivalent of a RoleAssignment. Consent is recorded against the
             # caller's service principal, so a token minted through on-behalf-of carries
             # this scope in scp rather than the roles claim an app-only call would get.
-            apiVersion: serviceprincipaldelegated.azuread.upbound.io/v1beta1
+            apiVersion: serviceprincipaldelegated.azuread.m.upbound.io/v1beta1
             kind: PermissionGrant
             metadata:
               name: {{ $ns }}-{{ $name }}-entra-scope-{{ $scopeSlug }}-{{ $caller.namespace }}-{{ $caller.app }}
@@ -874,13 +874,13 @@ spec:
             kind: Cache
             metadata:
               name: {{ $name }}-cache
+              namespace: {{ $ns }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: cache
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               parameters:
                 backend: {{ $cacheBackend }}
-                namespace: {{ $ns }}
                 consumerServiceAccount: {{ $name }}
             {{- end }}
             ---

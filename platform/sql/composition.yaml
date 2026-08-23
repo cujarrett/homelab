@@ -202,7 +202,7 @@ spec:
               password: "{{ printf "%s-master" $uid | sha256sum | trunc 32 }}"
             ---
             # Provider writes endpoint/username/password to a connection secret in crossplane-system once RDS is up
-            apiVersion: rds.aws.upbound.io/v1beta3
+            apiVersion: rds.aws.m.upbound.io/v1beta1
             kind: Instance
             metadata:
               name: {{ $name }}
@@ -241,7 +241,7 @@ spec:
             {{- $sqlTrustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Federated" $oidcProviderArn) "Action" "sts:AssumeRoleWithWebIdentity" "Condition" (dict "StringEquals" (dict (printf "%s:aud" $oidcIssuerHost) "sts.amazonaws.com" (printf "%s:sub" $oidcIssuerHost) (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $consumer))))) | toJson }}
             ---
             # IAM Role for RDS IAM DB Auth. Trust scoped to consumer {{ $consumer }}.
-            apiVersion: iam.aws.upbound.io/v1beta1
+            apiVersion: iam.aws.m.upbound.io/v1beta1
             kind: Role
             metadata:
               name: {{ $name }}-{{ $consumer }}-sql
