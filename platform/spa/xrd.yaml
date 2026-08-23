@@ -99,7 +99,7 @@ spec:
                             type: string
                             pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
                             maxLength: 63
-                            description: "metadata.name of an Api on the platform. Its address is derived, so no FQDN is typed and a name that resolves to nothing is rejected."
+                            description: "metadata.name of an Api on the platform. Its address is derived, so no FQDN is typed. A name that resolves to nothing is not rejected yet - that needs an admission policy."
                           namespace:
                             type: string
                             pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
