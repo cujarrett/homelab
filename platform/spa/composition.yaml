@@ -8,6 +8,17 @@ spec:
     kind: Spa
   mode: Pipeline
   pipeline:
+    - step: load-environment-configs
+      functionRef:
+        name: function-environment-configs
+      input:
+        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+        kind: Input
+        spec:
+          environmentConfigs:
+            - type: Reference
+              ref:
+                name: aws-platform-config
     - step: render-all-resources
       functionRef:
         name: function-go-templating
@@ -20,6 +31,11 @@ spec:
             {{- $name := .observed.composite.resource.metadata.name }}
             {{- $params := .observed.composite.resource.spec.parameters }}
             {{- $namespace := $params.namespace }}
+            {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
+            {{- $entraTenantId := index $envCtx "entraTenantId" | default "" }}
+            {{- $crossplaneEntraSpId := index $envCtx "crossplaneEntraServicePrincipalId" | default "" }}
+            {{- $userAuth := $params.userAuth | default dict }}
+            {{- $signIn := $userAuth.client | default "" }}
             {{- $apiProxies := $params.apiProxies | default list }}
             {{- /* An entry names an app or a host, never both. The app form derives the   */ -}}
             {{- /* address so nobody types an FQDN, and upstreamPath puts back a prefix    */ -}}
@@ -683,4 +699,100 @@ spec:
                   name: {{ $c.protocol | default "TLS" | lower }}
                   protocol: {{ $c.protocol | default "TLS" }}
             {{- end }}
+            {{- end }}
+            {{- if $signIn }}
+            {{- $redirects := list (printf "https://%s/auth/callback" $params.host) }}
+            {{- range $u := ($userAuth.extraRedirectUris | default list) }}{{- $redirects = append $redirects $u }}{{- end }}
+            ---
+            # The sign-in client for this SPA. Separate from the backend's own workload
+            # identity on purpose: this registration exists for the browser flow and dies
+            # with the SPA, while the backend's identity outlives it. Registered as a web
+            # client because the backend redeems the code, so the browser holds no token.
+            apiVersion: applications.azuread.upbound.io/v1beta2
+            kind: Application
+            metadata:
+              name: {{ $namespace }}-{{ $name }}-signin
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: signin-application
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                displayName: platform-{{ $namespace }}-{{ $name }}-signin
+                signInAudience: AzureADMyOrg
+                web:
+                  # Derived from host, so nobody types a redirect URI. A wrong one is not a
+                  # typo, it is where a stolen authorization code gets delivered.
+                  redirectUris:
+                  {{- range $u := $redirects }}
+                    - {{ $u | quote }}
+                  {{- end }}
+                  implicitGrant:
+                    # The browser never receives a token, so neither of these is ever on.
+                    accessTokenIssuanceEnabled: false
+                    idTokenIssuanceEnabled: false
+                owners:
+                  - {{ $crossplaneEntraSpId }}
+            ---
+            apiVersion: serviceprincipals.azuread.upbound.io/v1beta2
+            kind: Principal
+            metadata:
+              name: {{ $namespace }}-{{ $name }}-signin
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: signin-principal
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                clientIdRef:
+                  name: {{ $namespace }}-{{ $name }}-signin
+                owners:
+                  - {{ $crossplaneEntraSpId }}
+            ---
+            # The backend authenticates as this client with its own SPIFFE identity, so the
+            # sign-in client needs no secret either.
+            apiVersion: applications.azuread.upbound.io/v1beta1
+            kind: FederatedIdentityCredential
+            metadata:
+              name: {{ $namespace }}-{{ $name }}-signin
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: signin-federated-credential
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                applicationIdRef:
+                  name: {{ $namespace }}-{{ $name }}-signin
+                displayName: signin-client
+                issuer: https://oidc.mattjarrett.dev
+                subject: spiffe://homelab.local/ns/{{ $namespace }}/sa/{{ $signIn }}
+                audiences:
+                  - api://AzureADTokenExchange
+            ---
+            # A composition cannot write env into another XR's Deployment, so the client id
+            # is published here and the backend names this in its own configFrom.
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{ $name }}-signin
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: signin-config
+                gotemplating.fn.crossplane.io/ready: "True"
+            data:
+              ENTRA_SIGNIN_TENANT_ID: {{ $entraTenantId | quote }}
+              ENTRA_SIGNIN_REDIRECT_URI: {{ (first $redirects) | quote }}
+              {{- if $userAuth.scopes }}
+              ENTRA_SIGNIN_SCOPES: {{ join " " $userAuth.scopes | quote }}
+              {{- end }}
+            ---
+            apiVersion: platform.local.lab/v1alpha1
+            kind: Spa
+            status:
+              entra:
+                issuer: {{ printf "https://login.microsoftonline.com/%s/v2.0" $entraTenantId | quote }}
+                redirectUris:
+                {{- range $u := $redirects }}
+                  - {{ $u | quote }}
+                {{- end }}
             {{- end }}

@@ -170,7 +170,7 @@ spec:
                       description: "Named interfaces this API exposes to other workloads. Anything not listed here cannot call this API."
                       items:
                         type: object
-                        required: [name, allowedCallers]
+                        required: [name, auth, allowedCallers]
                         properties:
                           name:
                             type: string
@@ -179,9 +179,12 @@ spec:
                             description: "Interface name (e.g. collection-write). Groups a set of routes under one grant, and becomes the Entra object a caller is granted."
                           auth:
                             type: string
-                            default: mesh
+                            # Required rather than defaulted. This decides whether a caller
+                            # must carry a token at all, so it is worth stating on every
+                            # interface. Requiring it also keeps the API server from writing
+                            # a value git does not have, which holds an app OutOfSync.
                             enum: [mesh, workload, user]
-                            description: "What a caller must prove to use this interface. mesh means its workload identity is enough and no token is involved, which is the default and needs no Entra object at all. workload means it must also carry an Entra app role, checked through the roles claim. user means it must carry a delegated scope, checked through scp, which is what on-behalf-of produces."
+                            description: "What a caller must prove to use this interface. mesh means its workload identity is enough, no token is involved, and no Entra object is created. workload means it must also carry an Entra app role, checked through the roles claim. user means it must carry a delegated scope, checked through scp, which is what on-behalf-of produces."
                           methods:
                             type: array
                             description: "HTTP methods this interface allows. Omit for all methods - the coarsest, lowest-upkeep default. Narrow only if this API genuinely has more than one trust boundary."
@@ -210,6 +213,13 @@ spec:
                       description: "Every destination this workload calls, including apps in its own namespace. Anything this XR creates itself (e.g. its own cache) is allowed automatically - do not list it. Set exactly one of host (off-platform), app plus namespace (on-platform), or entraApp (a registration the platform does not own)."
                       items:
                         type: object
+                        x-kubernetes-validations:
+                          # An entry names one destination. Two would be two answers to one
+                          # question, and the composition would render both.
+                          - rule: "[has(self.host), has(self.address), has(self.app), has(self.entraApp)].filter(x, x).size() == 1"
+                            message: "each consumes entry sets exactly one of host, address, app, or entraApp"
+                          - rule: "!has(self.app) || has(self.namespace)"
+                            message: "consumes app requires namespace"
                         properties:
                           host:
                             type: string
@@ -248,10 +258,6 @@ spec:
                               host:
                                 type: string
                                 description: "Hostname the request actually goes to. Separate from appIdUri, which names the token audience rather than an address."
-                    audience:
-                      type: string
-                      maxLength: 255
-                      description: "Overrides the derived Application ID URI. Set only for an app arriving with an existing registration other systems already point at; otherwise the platform derives api://<namespace>-<name>."
                   required: [image, namespace]
               required:
                 - parameters
@@ -271,22 +277,6 @@ spec:
                     issuer:
                       type: string
                       description: "Token issuer for this tenant. Identical for every app in it."
-                    appRoles:
-                      type: array
-                      description: "One per provides entry with auth: workload."
-                      items:
-                        type: object
-                        properties:
-                          name: { type: string }
-                          id: { type: string }
-                    scopes:
-                      type: array
-                      description: "One per provides entry with auth: user."
-                      items:
-                        type: object
-                        properties:
-                          name: { type: string }
-                          id: { type: string }
                 consumes:
                   type: array
                   description: "The scope requested for each on-platform destination, and the env var carrying it."
