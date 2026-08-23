@@ -44,7 +44,7 @@ spec:
 - `workload` is a service calling as itself, checked through the Entra `roles` claim.
 - `user` is a service calling for a signed-in person, checked through the Entra `scp`.
 
-A `consumes` entry naming an app names only the app. Which interfaces it may use is already stated by that app's `allowedCallers`, so the platform reads both sides and injects one scope per granted interface. A caller never has to read another team's file to find an interface name.
+A `consumes` entry naming an app names only the app. Which interfaces it may use is already stated by that app's `allowedCallers`, and the injected scope ends in `/.default`, which asks Entra for every role this caller already holds there. A caller never has to read another team's file to find an interface name.
 
 Off-platform is the opposite, because there is no second party in git. A caller reaching a registration the platform does not own supplies the audience, the role, and the host itself, since nothing else knows them. That form is at the end of this document.
 
@@ -81,13 +81,13 @@ An app gets a registration the first time something needs one, with an Applicati
 
 Each `provides` entry becomes an app role when `auth: workload` and a delegated scope when `auth: user`. Each `allowedCallers` entry becomes the matching role assignment or permission grant. Redirect URIs derive from the Spa's `host`.
 
-Every derived value lands in the XR's `status`: client ID, audience, issuer, role and scope GUIDs, redirect URIs, and the resolved scope for each `consumes` entry. Spec is what you asked for, status is what you got, so `kubectl get api orders -o yaml` answers what an app expects without opening a composition or the Azure portal.
+Every derived value lands in the XR's `status`: client ID, audience, issuer, role and scope GUIDs, redirect URIs, and the scope requested for each `consumes` entry. Spec is what you asked for, status is what you got, so `kubectl get api orders -o yaml` answers what an app expects without opening a composition or the Azure portal.
 
 Two of those are overridable in spec, because derivation is only usually right. `extraRedirectUris` adds a localhost callback for local development or a second domain during a migration. `audience` overrides the derived URI for an app arriving with an existing registration other systems already point at.
 
 ## The flows
 
-**Service to service.** The caller gets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_FEDERATED_TOKEN_FILE`, and one `ENTRA_SCOPE_<TARGET>_<INTERFACE>` for each interface it has been granted on an app it consumes. Its Azure SDK trades the SPIFFE token for an Entra access token with no secret at any step. The receiving app validates the token and decides what `collection-write` permits on this route.
+**Service to service.** The caller gets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_FEDERATED_TOKEN_FILE`, and one `ENTRA_SCOPE_<TARGET>` for each app it consumes, holding that app's audience with `/.default`, which asks for every role the caller already holds there. Its Azure SDK trades the SPIFFE token for an Entra access token with no secret at any step. The receiving app validates the token and decides what `collection-write` permits on this route.
 
 **User sign-in.** Authorization Code with PKCE, the only correct choice because a browser cannot keep a secret. The app named in `userAuth.client` completes the code exchange, keeps the tokens, and sets an httpOnly session cookie, so the browser never holds an access token.
 

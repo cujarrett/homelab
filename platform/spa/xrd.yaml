@@ -77,26 +77,69 @@ spec:
                         there is no boundary protecting this file from anyone.
                     apiProxies:
                       type: array
-                      description: "Use when this SPA has companion Apis. Each entry routes one path prefix to one in-cluster service; the prefix is stripped before proxying. The Apis need no hostname or Cloudflare Tunnel entry of their own — only the SPA is exposed, and how far depends on its tlsIssuer."
+                      description: "Use when this SPA has companion backends. Each entry routes one path prefix to one destination; the prefix is stripped before proxying. An on-platform backend needs no hostname or Cloudflare Tunnel entry of its own — only the SPA is exposed, and how far depends on its tlsIssuer."
                       items:
                         type: object
-                        required: [path, upstream]
+                        required: [path]
+                        x-kubernetes-validations:
+                          # An entry names what it reaches exactly once. Both would be two
+                          # answers to one question; neither renders nothing at all.
+                          - rule: "has(self.app) != has(self.host)"
+                            message: "each apiProxies entry sets exactly one of app or host"
                         properties:
                           path:
                             type: string
+                            # Rendered into the nginx config, so the charset is bounded to
+                            # what a path can hold. A ; or } here would close the location
+                            # block and let a workspace file write nginx directives.
+                            pattern: "^/[A-Za-z0-9._~/-]*/$"
+                            maxLength: 253
                             description: "URL path prefix to route (e.g. /foo/). Must start and end with /."
-                            pattern: "^/.*/$"
-                          upstream:
+                          app:
                             type: string
-                            description: "FQDN of the upstream service (e.g. foo.foo-ns.svc.cluster.local). nginx proxies <path>* → http://<upstream>/*."
-                    connectionPosture:
-                      type: string
-                      default: "off"
-                      enum: ["off", "enforce"]
-                      description: "Connection policy for this workload. off renders nothing. enforce blocks calls out unless the destination is same-namespace, already named in apiProxies, or declared in consumes."
+                            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                            maxLength: 63
+                            description: "metadata.name of an Api on the platform. Its address is derived, so no FQDN is typed and a name that resolves to nothing is rejected."
+                          namespace:
+                            type: string
+                            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                            maxLength: 63
+                            description: "Namespace of app. Defaults to this SPA's own namespace when omitted."
+                          host:
+                            type: string
+                            pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+                            maxLength: 253
+                            description: "Off-platform destination, taken verbatim (e.g. api.weather.com)."
+                          upstreamPath:
+                            type: string
+                            pattern: "^/[A-Za-z0-9._~/-]*[A-Za-z0-9._~-]$"
+                            maxLength: 253
+                            description: "Path prefix to prepend on the upstream side. nginx strips path before forwarding, so set this when the backend expects it back (e.g. /api)."
+                    userAuth:
+                      type: object
+                      description: "Sign-in for this SPA. Omit for an app with no user login. Tokens never reach the browser: the backend completes the code exchange and the browser holds a session cookie."
+                      required: [client]
+                      properties:
+                        client:
+                          type: string
+                          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                          maxLength: 63
+                          description: "metadata.name of the Api that completes sign-in and holds the tokens. Must be one this SPA proxies to. Exactly one, because only one backend owns the session."
+                        scopes:
+                          type: array
+                          maxItems: 20
+                          description: "Scopes the signed-in user needs, named as interfaces on the apps being called."
+                          items:
+                            type: string
+                        extraRedirectUris:
+                          type: array
+                          maxItems: 10
+                          description: "Redirect URIs beyond the one derived from host. For a localhost callback during local development, or a second domain during a migration."
+                          items:
+                            type: string
                     consumes:
                       type: array
-                      description: "Every destination this SPA calls, including apps in its own namespace. Anything already named in apiProxies is allowed automatically — do not list it. Set either host (off-platform) or app+namespace (any app on the platform)."
+                      description: "Every destination this SPA calls that apiProxies does not already name. Anything in apiProxies is allowed automatically — do not list it. Set either host (off-platform) or app+namespace (any app on the platform)."
                       items:
                         type: object
                         properties:
@@ -110,6 +153,10 @@ spec:
                             type: string
                             enum: [TLS, HTTP]
                             description: "Wire protocol for host. TLS for any https:// destination — the app terminates its own TLS. HTTP only for plaintext destinations."
+                          address:
+                            type: string
+                            pattern: "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                            description: "Bare IPv4 address of an off-platform destination that has no DNS name, such as a device on the LAN. Renders a ServiceEntry with static resolution rather than a DNS lookup. Use with port."
                           app:
                             type: string
                             description: "metadata.name of an Api in another namespace this calls. Use with namespace."
@@ -122,5 +169,23 @@ spec:
                     - namespace
               required:
                 - parameters
+            status:
+              type: object
+              description: "What the platform derived. Spec is what you asked for, this is what you got."
+              properties:
+                entra:
+                  type: object
+                  properties:
+                    clientId:
+                      type: string
+                      description: "Application (client) ID of the sign-in client registration."
+                    issuer:
+                      type: string
+                      description: "Token issuer for this tenant."
+                    redirectUris:
+                      type: array
+                      description: "Derived from host, plus anything in userAuth.extraRedirectUris."
+                      items:
+                        type: string
           required:
             - spec

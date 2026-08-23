@@ -41,12 +41,30 @@ spec:
             {{- /* injected. Must match the IAM OIDC provider registered in AWS.          */ -}}
             {{- $oidcIssuerHost := "oidc.mattjarrett.dev" }}
             {{- $oidcProviderArn := printf "arn:aws:iam::%s:oidc-provider/%s" $awsAccountId $oidcIssuerHost }}
-            {{- $entra := $xr.spec.parameters.entra | default dict }}
-            {{- $entraEnabled := $entra.enabled | default false }}
-            {{- $entraRoles := $entra.roles | default list }}
+            {{- $provides := $xr.spec.parameters.provides | default list }}
+            {{- /* Interfaces carry their own auth mode, so the two claim types split here */ -}}
+            {{- /* once and every Entra object below reads one of these lists.            */ -}}
+            {{- $appRoles := list }}
+            {{- $delegatedScopes := list }}
+            {{- range $iface := $provides }}
+            {{- $mode := $iface.auth | default "mesh" }}
+            {{- if eq $mode "user" }}
+            {{- $delegatedScopes = append $delegatedScopes $iface }}
+            {{- else if eq $mode "workload" }}
+            {{- $appRoles = append $appRoles $iface }}
+            {{- end }}
+            {{- end }}
             {{- /* Declared once here, read by both the mesh rules far below and the      */ -}}
             {{- /* Entra scope env vars above them.                                       */ -}}
             {{- $consumes := $xr.spec.parameters.consumes | default list }}
+            {{- /* An app that offers an interface, or calls one, needs an identity.       */ -}}
+            {{- /* Nothing declares it, because the declaration already exists.            */ -}}
+            {{- /* A mesh-only interface needs no Entra object, so offering one is not     */ -}}
+            {{- /* enough. An identity appears when a token is actually in play.           */ -}}
+            {{- $entraNeeded := or (gt (len $appRoles) 0) (gt (len $delegatedScopes) 0) }}
+            {{- range $c := $consumes }}
+            {{- if or $c.app $c.entraApp }}{{- $entraNeeded = true }}{{- end }}
+            {{- end }}
             {{- /* crossplane-entra's own service principal object ID - set as owner on   */ -}}
             {{- /* everything it creates, or it can create but never delete/update again.  */ -}}
             {{- /* See cluster/crossplane/azuread-permissions.md.                          */ -}}
@@ -73,8 +91,8 @@ spec:
             {{- $sizeResourceMap := dict "xs" (dict "cpuReq" "25m" "cpuLim" "100m" "memReq" "32Mi" "memLim" "64Mi") "sm" (dict "cpuReq" "50m" "cpuLim" "200m" "memReq" "64Mi" "memLim" "128Mi") "md" (dict "cpuReq" "100m" "cpuLim" "500m" "memReq" "128Mi" "memLim" "256Mi") "lg" (dict "cpuReq" "250m" "cpuLim" "1000m" "memReq" "256Mi" "memLim" "512Mi") }}
             {{- $sizeKey := $xr.spec.parameters.size | default "sm" }}
             {{- $sizeResources := get $sizeResourceMap $sizeKey | default (get $sizeResourceMap "sm") }}
-            {{- $secretRefName := "" }}
-            {{- if $xr.spec.parameters.secretRef }}{{- $secretRefName = $xr.spec.parameters.secretRef.name }}{{- end }}
+            {{- $secretsFrom := $xr.spec.parameters.secretsFrom | default list }}
+            {{- $configFrom := $xr.spec.parameters.configFrom | default list }}
             {{- $topicRefName := "" }}
             {{- $topicStreamName := "" }}
             {{- if $xr.spec.parameters.topicRef }}
@@ -125,7 +143,7 @@ spec:
               {{- /* the request body, not the hostname, so IAM is what scopes access.   */ -}}
               {{- $derivedHosts = append $derivedHosts "dynamodb.us-east-1.amazonaws.com" }}
             {{- end }}
-            {{- if $entraEnabled }}
+            {{- if $entraNeeded }}
               {{- /* Where an SVID is traded for an Entra token. Same reasoning as STS   */ -}}
               {{- /* above - opting into Entra is what declares this, so the app never   */ -}}
               {{- /* restates it and cannot forget to.                                   */ -}}
@@ -178,7 +196,7 @@ spec:
             {{- end }}
             {{- if $nosqlRefName }}{{- $boundSecrets = append $boundSecrets (printf "%s-nosql" $name) }}{{- end }}
             {{- if $cacheEnabled }}{{- $boundSecrets = append $boundSecrets (printf "%s-cache" $name) }}{{- end }}
-            {{- if $secretRefName }}{{- $boundSecrets = append $boundSecrets $secretRefName }}{{- end }}
+            {{- range $s := $secretsFrom }}{{- $boundSecrets = append $boundSecrets $s }}{{- end }}
             {{- if $boundSecrets }}
             ---
             # --- Role ---
@@ -377,7 +395,7 @@ spec:
                           value: cache
                         {{- end }}
                       {{- end }}
-                      {{- if $entraEnabled }}
+                      {{- if $entraNeeded }}
                         # Read by the Azure SDK's WorkloadIdentityCredential - it does the
                         # client_assertion exchange itself, not this sidecar. See
                         # workload-identity-sidecar's README for the split.
@@ -394,6 +412,13 @@ spec:
                         # would be guessing at a convention it cannot see.
                         - name: ENTRA_SCOPE_{{ $c.app | upper | replace "-" "_" }}
                           value: api://{{ $entraTenantId }}/platform-{{ $c.namespace }}-{{ $c.app }}/.default
+                        {{- end }}
+                        {{- if $c.entraApp }}
+                        # A registration the platform does not own, so its owner supplied
+                        # the URI. Injected for the same reason as the derived ones: the
+                        # app should never assemble an audience string by hand.
+                        - name: ENTRA_SCOPE_{{ $c.entraApp.role | upper | replace "." "_" | replace "-" "_" }}
+                          value: {{ printf "%s/.default" $c.entraApp.appIdUri | quote }}
                         {{- end }}
                         {{- end }}
                       {{- end }}
@@ -415,10 +440,16 @@ spec:
                         - name: NATS_CONSUMER
                           value: {{ $subscriptionRefName | quote }}
                       {{- end }}
-                      {{- if $secretRefName }}
+                      {{- if or $configFrom $secretsFrom }}
                       envFrom:
+                        {{- range $cm := $configFrom }}
+                        - configMapRef:
+                            name: {{ $cm }}
+                        {{- end }}
+                        {{- range $s := $secretsFrom }}
                         - secretRef:
-                            name: {{ $secretRefName }}
+                            name: {{ $s }}
+                        {{- end }}
                       {{- end }}
                       volumeMounts:
                         - name: tmp
@@ -449,12 +480,12 @@ spec:
                           mountPath: /bindings/cache
                           readOnly: true
                         {{- end }}
-                        {{- if $entraEnabled }}
+                        {{- if $entraNeeded }}
                         - name: entra-identity
                           mountPath: /entra-identity
                           readOnly: true
                         {{- end }}
-                    {{- if or (gt (len $awsBindings) 0) $entraEnabled }}
+                    {{- if or (gt (len $awsBindings) 0) $entraNeeded }}
                     - name: workload-identity-sidecar
                       image: ghcr.io/cujarrett/workload-identity-sidecar:main
                       imagePullPolicy: Always
@@ -470,7 +501,7 @@ spec:
                         - name: CREDS_FILE
                           value: /aws-credentials/credentials
                         {{- end }}
-                        {{- if $entraEnabled }}
+                        {{- if $entraNeeded }}
                         - name: ENTRA_FEDERATED_TOKEN_FILE
                           value: /entra-identity/token
                         {{- end }}
@@ -484,7 +515,7 @@ spec:
                         - name: aws-credentials
                           mountPath: /aws-credentials
                         {{- end }}
-                        {{- if $entraEnabled }}
+                        {{- if $entraNeeded }}
                         - name: entra-identity
                           mountPath: /entra-identity
                         {{- end }}
@@ -513,7 +544,7 @@ spec:
                   volumes:
                     - name: tmp
                       emptyDir: {}
-                    {{- if or (gt (len $awsBindings) 0) $entraEnabled }}
+                    {{- if or (gt (len $awsBindings) 0) $entraNeeded }}
                     - name: spiffe-bundle
                       csi:
                         driver: csi.spiffe.io
@@ -523,7 +554,7 @@ spec:
                     - name: aws-credentials
                       emptyDir: {}
                     {{- end }}
-                    {{- if $entraEnabled }}
+                    {{- if $entraNeeded }}
                     - name: entra-identity
                       emptyDir: {}
                     {{- end }}
@@ -663,7 +694,7 @@ spec:
               role-arn: {{ $nosqlPredictedRoleArn }}
             {{- end }}{{- /* end nosqlRefName */}}
             {{- end }}{{- /* end hasAwsCloudBindings */}}
-            {{- if $entraEnabled }}
+            {{- if $entraNeeded }}
             ---
             # Entra app registration for this Api. owners is required - an app created
             # through the API (CLI or Crossplane, doesn't matter) is never auto-owned;
@@ -732,7 +763,7 @@ spec:
                 subject: spiffe://homelab.local/ns/{{ $ns }}/sa/{{ $name }}
                 audiences:
                   - api://AzureADTokenExchange
-            {{- range $role := $entraRoles }}
+            {{- range $role := $appRoles }}
             {{- /* Entra role names are PascalCase with dots by convention (Data.Read);   */ -}}
             {{- /* neither survives a Kubernetes object name, so sanitize for the name    */ -}}
             {{- /* only. forProvider.value keeps the role exactly as the app declared it. */ -}}
@@ -791,7 +822,7 @@ spec:
                   name: {{ $ns }}-{{ $name }}-entra
             {{- end }}
             {{- end }}
-            {{- end }}{{- /* end entraEnabled */}}
+            {{- end }}{{- /* end entraNeeded */}}
             {{- if $cacheEnabled }}
             ---
             apiVersion: platform.local.lab/v1alpha1
@@ -930,10 +961,8 @@ spec:
             {{- /* Deny by default, allow by declaration. AuthorizationPolicy is the     */ -}}
             {{- /* control on the way in, Sidecar the control on the way out. Both are   */ -}}
             {{- /* rendered onto this workload, from this workload's own declarations.   */ -}}
-            {{- $posture := $xr.spec.parameters.connectionPosture | default "off" }}
+            {{- /* Deny-by-default is not a toggle. A toggle defaulting to off stays off. */ -}}
             {{- $appPort := $xr.spec.parameters.port | default 8080 }}
-            {{- $provides := $xr.spec.parameters.provides | default list }}
-            {{- if eq $posture "enforce" }}
             ---
             # Callers must prove a real mesh identity. Two exceptions, both for unmeshed
             # infrastructure that has no identity to present, Prometheus scraping metrics,
@@ -1047,6 +1076,12 @@ spec:
                     {{- if $c.host }}
                     - "./{{ $c.host }}"
                     {{- end }}
+                    {{- if $c.address }}
+                    - "./{{ $c.address | replace "." "-" }}.address.declared"
+                    {{- end }}
+                    {{- if $c.entraApp }}
+                    - "./{{ $c.entraApp.host }}"
+                    {{- end }}
                     {{- if and $c.app $c.namespace }}
                     - "{{ $c.namespace }}/{{ $c.app }}.{{ $c.namespace }}.svc.cluster.local"
                     {{- end }}
@@ -1099,5 +1134,55 @@ spec:
                   name: {{ $c.protocol | default "TLS" | lower }}
                   protocol: {{ $c.protocol | default "TLS" }}
             {{- end }}
+            {{- if $c.address }}
+            ---
+            # consumes {{ $c.address }} - a destination with no DNS name, such as a device
+            # on the LAN. Static resolution names the endpoint directly, because a DNS
+            # ServiceEntry has nothing to look up.
+            apiVersion: networking.istio.io/v1
+            kind: ServiceEntry
+            metadata:
+              name: {{ $name }}-{{ $c.address | replace "." "-" }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-se-{{ $c.address | replace "." "-" }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              hosts:
+                - {{ printf "%s.address.declared" ($c.address | replace "." "-") | quote }}
+              addresses:
+                - {{ printf "%s/32" $c.address | quote }}
+              location: MESH_EXTERNAL
+              resolution: STATIC
+              exportTo: ["."]
+              endpoints:
+                - address: {{ $c.address | quote }}
+              ports:
+                - number: {{ $c.port | default 443 }}
+                  name: {{ $c.protocol | default "TLS" | lower }}
+                  protocol: {{ $c.protocol | default "TLS" }}
+            {{- end }}
+            {{- if $c.entraApp }}
+            ---
+            # consumes {{ $c.entraApp.host }} - an API registered in Entra outside the
+            # platform. Its owner grants the role; the platform only opens the path.
+            apiVersion: networking.istio.io/v1
+            kind: ServiceEntry
+            metadata:
+              name: {{ $name }}-{{ $c.entraApp.host | replace "." "-" }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-se-{{ $c.entraApp.host | replace "." "-" }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              hosts:
+                - {{ $c.entraApp.host | quote }}
+              location: MESH_EXTERNAL
+              resolution: DNS
+              exportTo: ["."]
+              ports:
+                - number: 443
+                  name: tls
+                  protocol: TLS
             {{- end }}
             {{- end }}

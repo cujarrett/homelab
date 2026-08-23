@@ -10,7 +10,7 @@ Server-side and incremental static regeneration are not supported, those run a r
 - **Service** - ClusterIP on port 80
 - **Middleware** - Traefik rate limiter: 60 requests/min average, burst of 20, keyed per client IP (`CF-Connecting-IP` header)
 - **Ingress** - Traefik `websecure` entrypoint with cert-manager TLS; rate limit middleware applied
-- **Connection policy** *(optional)* - only when `connectionPosture` is `enforce`. Refuses any call this app makes to a destination it has not declared, and any inbound call that does not carry a workload identity the platform issued. See [Platform Connections](../docs/connections.md).
+- **Connection policy** - always. Refuses any call this app makes to a destination it has not declared, and any inbound call that does not carry a workload identity the platform issued. See [Platform Connections](../docs/connections.md).
 
 The namespace is owned by the tenant - created by `namespace.yaml` in the tenant directory, not by this composition.
 
@@ -27,11 +27,11 @@ The namespace is owned by the tenant - created by `namespace.yaml` in the tenant
 | `tlsSecret` | no | - | Name of a pre-existing TLS Secret in the app namespace. When set, the Ingress references it directly and cert-manager issuance is skipped. Used by sandbox slots to reuse long-lived demo certs. |
 | `contentSecurityPolicy` | no | `default-src 'self'; frame-ancestors 'none'; base-uri 'self';` | CSP header value. Override with app-specific origins (Google Fonts, external APIs, etc.). |
 | `replicas` | no | `1` | Number of nginx replicas. Stateless - safe to scale freely. |
-| `apiProxies` | no | - | Array of path prefixes to proxy to in-cluster services, keeping those APIs off the public internet. Each entry requires `path` and `upstream`; the prefix is stripped before proxying. |
-| `connectionPosture` | no | `off` | `off` = this app may call anything it can reach, and anything may call it. `enforce` = only declared calls work - everything else is refused. |
-| `consumes` | no | - | Every destination this app calls, including apps in its own namespace: off-platform hostnames, and any app on the platform. Only read when `connectionPosture` is `enforce`. Entries take `host`, and optionally `port`, `protocol`, `app`, `namespace`. |
+| `apiProxies` | no | - | Array of path prefixes to proxy to a backend, keeping on-platform APIs off the public internet. Each entry requires `path` and exactly one of `app` (on-platform, address derived) or `host` (off-platform, verbatim). `namespace` defaults to this SPA's own. The prefix is stripped before proxying, so set `upstreamPath` when the backend registered its routes under one. |
+| `userAuth` | no | - | Sign-in for this SPA. `client` names the proxied app that completes the code exchange and holds the tokens, and there can be only one because only one backend owns the session. `scopes` lists what the signed-in user needs. `extraRedirectUris` adds a localhost callback for local development or a second domain during a migration. Tokens never reach the browser. |
+| `consumes` | no | - | Every destination this app calls that `apiProxies` does not already name. Each entry sets exactly one of `host`, `address` (a bare IPv4), or `app` plus `namespace`. |
 
-`apiProxies` doubles as a connection declaration - under `enforce` the composition allows those upstreams without you restating them in `consumes`. Nothing else is automatic: an app in the same namespace still needs a `consumes` entry, and is still gated by whatever the callee itself declares.
+`apiProxies` doubles as a connection declaration - the composition allows those backends without you restating them in `consumes`. Nothing else is automatic: an app in the same namespace still needs a `consumes` entry, and is still gated by whatever the callee itself declares.
 
 What this means for the API on the other end - stripped prefixes, forwarded client headers, and why it needs no hostname of its own - is in [Api → Being called through a Spa](../api/README.md#being-called-through-a-spa).
 
@@ -49,10 +49,9 @@ spec:
     namespace: foo
     image: ghcr.io/owner/foo:sha-abc123
     host: foo.local.lab
-    connectionPosture: enforce
     apiProxies:
       - path: /api/
-        upstream: bar.foo.svc.cluster.local
+        app: bar
 ```
 
 Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
