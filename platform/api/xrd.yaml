@@ -164,6 +164,7 @@ spec:
                       description: "Compute tier for the container. Choose based on expected traffic - Extra Small suits low-traffic or background services; Large suits high-throughput workloads."
                     provides:
                       type: array
+                      maxItems: 10
                       description: "Named interfaces this API exposes to other workloads. Anything not listed here cannot call this API."
                       items:
                         type: object
@@ -207,13 +208,14 @@ spec:
                                   description: "The calling Api/Spa's metadata.name - also its ServiceAccount name."
                     consumes:
                       type: array
+                      maxItems: 10
                       description: "Every destination this workload calls, including apps in its own namespace. Anything this XR creates itself (e.g. its own cache) is allowed automatically - do not list it. Set exactly one of host (off-platform), app plus namespace (on-platform), or entraApp (a registration the platform does not own)."
                       items:
                         type: object
                         x-kubernetes-validations:
                           # An entry names one destination. Two would be two answers to one
                           # question, and the composition would render both.
-                          - rule: "[has(self.host), has(self.address), has(self.app), has(self.entraApp)].filter(x, x).size() == 1"
+                          - rule: "(has(self.host) ? 1 : 0) + (has(self.address) ? 1 : 0) + (has(self.app) ? 1 : 0) + (has(self.entraApp) ? 1 : 0) == 1"
                             message: "each consumes entry sets exactly one of host, address, app, or entraApp"
                           - rule: "!has(self.app) || has(self.namespace)"
                             message: "consumes app requires namespace"
