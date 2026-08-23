@@ -2,6 +2,8 @@
 
 Crossplane composition that hosts an Angular (or any static) SPA on nginx.
 
+Server-side and incremental static regeneration are not supported, those run a real process at request time, which nginx serving pre-built files cannot host, so Next.js and Nuxt in those modes have no offering here yet.
+
 ## What it provisions
 - **ConfigMap** - nginx config with SPA routing (`try_files` → `index.html`), security headers, asset caching, probe path, and extensive scanner/credential-probe blocking rules
 - **Deployment** - nginx container running the pre-built SPA image
