@@ -22,9 +22,13 @@ spec:
   image: ghcr.io/example/orders:sha-...
   size: md
   host: orders.example.com
-  configFrom: orders-config              # ConfigMap
-  secretsFrom: orders-credentials        # Secret
+  configFrom: [orders-config]            # ConfigMaps
+  secretsFrom: [orders-credentials]      # Secrets
   provides:
+    - name: browse
+      auth: mesh
+      allowedCallers:
+        - { namespace: team-b, app: storefront }
     - name: collection-write
       auth: workload
       allowedCallers:
@@ -40,9 +44,12 @@ spec:
 
 `provides` is what this API offers and who holds it. `consumes` is everything it calls, naming either an on-platform app or an off-platform host. Both live in the app's own file, and an `allowedCallers` line is the grant.
 
-`auth` has two values that decide which Entra object exists, which claim arrives, and what a caller must be granted.
-- `workload` is a service calling as itself, checked through the Entra `roles` claim.
-- `user` is a service calling for a signed-in person, checked through the Entra `scp`.
+`auth` says what a caller must prove, and decides which Entra object exists and which claim arrives. It is required on every interface rather than defaulted, because whether a call needs a token is worth stating.
+- `mesh` means the caller's workload identity is enough. No token, no Entra object.
+- `workload` is a service calling as itself, carrying an Entra app role, checked through the `roles` claim.
+- `user` is a service calling for a signed-in person, carrying a delegated scope, checked through `scp`.
+
+Most interfaces are `mesh`. An app gets an Entra registration only when it offers an interface that needs a token, or calls an app that might.
 
 A `consumes` entry naming an app names only the app. Which interfaces it may use is already stated by that app's `allowedCallers`, and the injected scope ends in `/.default`, which asks Entra for every role this caller already holds there. A caller never has to read another team's file to find an interface name.
 
@@ -73,13 +80,17 @@ Each `apiProxies` entry names exactly one of `app` or `host`. `app` means the pl
 
 `userAuth.client` names which proxied app completes sign-in and holds the tokens. There can only be one, because only one backend owns the session. A SPA with no user auth omits the block and proxies to as many backends as it likes.
 
+The sign-in client is its own Entra registration, separate from the backend's workload identity. It exists for the browser flow and dies with the SPA, while the backend's identity outlives it. The backend authenticates as that client using its own SPIFFE identity, so this registration has no secret either.
+
+A composition cannot write environment into another XR's Deployment, so the SPA publishes a ConfigMap named `<spa>-signin` carrying the tenant, the redirect URI, and the scopes. The backend names it in its own `configFrom`. That handoff is explicit rather than magic, which is what keeps each composition rendering only its own resources.
+
 ## Entra
 
 The platform creates and owns every Entra object. None is made by hand.
 
-An app gets a registration the first time something needs one, with an Application ID URI of `api://<namespace>-<app>`. Its credential is a federated identity credential whose subject is the pod's SPIFFE ID, so no client secret exists. There is no `enabled` flag: an app that offers an interface or calls one gets an identity, the same way it already gets a SPIFFE ID.
+An app gets a registration the first time something needs one, with an Application ID URI of `api://<namespace>-<app>`. Its credential is a federated identity credential whose subject is the pod's SPIFFE ID, so no client secret exists. There is no `enabled` flag: an identity appears when a token is actually in play, the same way a SPIFFE ID appears for every pod without anyone asking.
 
-Each `provides` entry becomes an app role when `auth: workload` and a delegated scope when `auth: user`. Each `allowedCallers` entry becomes the matching role assignment or permission grant. Redirect URIs derive from the Spa's `host`.
+A `provides` entry becomes an app role when `auth: workload` and a delegated scope when `auth: user`. A `mesh` entry becomes nothing in Entra, which is why most apps have no registration. Each `allowedCallers` entry becomes the matching role assignment or permission grant. Redirect URIs derive from the Spa's `host`.
 
 Every derived value lands in the XR's `status`: client ID, audience, issuer, role and scope GUIDs, redirect URIs, and the scope requested for each `consumes` entry. Spec is what you asked for, status is what you got, so `kubectl get api orders -o yaml` answers what an app expects without opening a composition or the Azure portal.
 
@@ -99,11 +110,11 @@ No secret is needed here either. A client assertion is accepted anywhere a clien
 
 ## Config and secrets
 
-`configFrom` names a ConfigMap and `secretsFrom` names a Secret. The composition mounts both as environment.
+`configFrom` names ConfigMaps and `secretsFrom` names Secrets. The composition mounts them as environment, in order. Both are lists, because a `Secret` XR produces one Secret and an app may want two vendors' credentials on separate lifecycles.
 
 The team owns the ConfigMap. It is a plain Kubernetes object in the workspace directory alongside the app, applied by ArgoCD. Changing a value touches that file and nothing else, so the app is never re-reconciled and no image is rebuilt.
 
-`secretsFrom` names a Secret and says nothing about where it came from. Hand-create it and the app mounts it. Declare a `Secret` XR and the platform creates an AWS Secrets Manager entry plus the ExternalSecret that syncs it, with the app owner setting the value in AWS. Either way the app reads env vars and nothing about it changes, which is what makes moving from one to the other a change to one file.
+`secretsFrom` says nothing about where a Secret came from. Hand-create it and the app mounts it. Declare a `Secret` XR and the platform creates an AWS Secrets Manager entry plus the ExternalSecret that syncs it, with the app owner setting the value in AWS. Either way the app reads env vars and nothing about it changes, which is what makes moving from one to the other a change to one file.
 
 No secret value reaches git on either path.
 
