@@ -698,7 +698,7 @@ spec:
             ---
             # Entra app registration for this Api. owners is required - an app created
             # through the API (CLI or Crossplane, doesn't matter) is never auto-owned;
-            # only the interactive portal does that. Without it, crossplane-entra can
+            # only the Azure web UI does that. Without it, crossplane-entra can
             # create this but never delete or update it. See azuread-permissions.md.
             apiVersion: applications.azuread.m.upbound.io/v1beta1
             kind: Application
@@ -788,7 +788,7 @@ spec:
             {{- $roleHash := printf "%s/%s/%s" $ns $name $role.name | sha256sum }}
             {{- $roleId := printf "%s-%s-4%s-a%s-%s" (substr 0 8 $roleHash) (substr 8 12 $roleHash) (substr 13 16 $roleHash) (substr 17 20 $roleHash) (substr 20 32 $roleHash) }}
             ---
-            # A role this Api offers. allowedMemberTypes must be Application - the portal
+            # A role this Api offers. allowedMemberTypes must be Application - the Azure web UI
             # defaults to User, which syncs green and then never shows up in the token of
             # a caller that has no user behind it.
             apiVersion: applications.azuread.m.upbound.io/v1beta1
@@ -1229,7 +1229,7 @@ spec:
             {{- end }}
             {{- end }}
             {{- /* Derived values written back so kubectl get api <name> -o yaml answers   */ -}}
-            {{- /* what an app expects, without opening a composition or the Azure portal.  */ -}}
+            {{- /* what an app expects, without opening a composition or the Azure web UI.  */ -}}
             {{- $scopeRows := list }}
             {{- range $c := $consumes }}
             {{- if and $c.app $c.namespace }}

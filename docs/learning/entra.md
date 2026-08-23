@@ -69,7 +69,7 @@ which is most of the confusion.
 | Granted by | Consent | Assignment |
 | Answers | What may this app do while acting for someone | What is this identity to me |
 
-**Where to look in the portal.** Scopes and roles are both defined on the API's own
+**Where to look in the Azure web UI.** Scopes and roles are both defined on the API's own
 registration, one left-nav item apart. Everything about *who was granted* them lives
 somewhere else, under Enterprise apps.
 
