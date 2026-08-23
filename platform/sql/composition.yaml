@@ -189,11 +189,12 @@ spec:
             apiVersion: v1
             kind: Secret
             metadata:
-              # Implementation secret - kept out of the tenant namespace so only the
-              # platform can read the RDS master password. Name is namespace-qualified
-              # to avoid collisions between same-named Sqls in different namespaces.
+              # rds.aws.m.upbound.io/v1beta1 Instance is namespaced, and its
+              # passwordSecretRef/writeConnectionSecretToRef no longer accept a
+              # namespace - the secret must live alongside the Instance. Name is
+              # namespace-qualified to avoid collisions between same-named Sqls.
               name: {{ $ns }}-{{ $name }}-master-secret
-              namespace: crossplane-system
+              namespace: {{ $ns }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: master-password-secret
                 gotemplating.fn.crossplane.io/ready: "True"
@@ -201,7 +202,7 @@ spec:
             stringData:
               password: "{{ printf "%s-master" $uid | sha256sum | trunc 32 }}"
             ---
-            # Provider writes endpoint/username/password to a connection secret in crossplane-system once RDS is up
+            # Provider writes endpoint/username/password to a connection secret in $ns once RDS is up
             apiVersion: rds.aws.m.upbound.io/v1beta1
             kind: Instance
             metadata:
@@ -225,14 +226,11 @@ spec:
                 passwordSecretRef:
                   name: {{ $ns }}-{{ $name }}-master-secret
                   key: password
-                  namespace: crossplane-system
                 # IAM DB Auth: the sidecar exchanges the SVID for STS credentials, then the app
                 # calls rds generate-db-auth-token using those credentials as its password.
                 iamDatabaseAuthenticationEnabled: true
               writeConnectionSecretToRef:
-                # Implementation secret - tenants only need the binding secret
                 name: {{ $ns }}-{{ $name }}-rds-conn
-                namespace: crossplane-system
             {{- $sqlInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" "rds-db:connect" "Resource" (printf "arn:aws:rds-db:%s:%s:dbuser/*/app" $region $awsAccountId))) | toJson }}
             {{- range $consumerServiceAccounts }}
             {{- $consumer := . }}

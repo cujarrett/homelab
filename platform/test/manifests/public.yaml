@@ -5,11 +5,11 @@ apiVersion: platform.local.lab/v1alpha1
 kind: Sql
 metadata:
   name: e2e-sql-public
+  namespace: platform-e2e
 spec:
   parameters:
     backend: public-cloud
     size: xs
-    namespace: platform-e2e
     consumerServiceAccounts:
       - e2e-api-public
 ---
@@ -17,25 +17,25 @@ apiVersion: platform.local.lab/v1alpha1
 kind: NoSql
 metadata:
   name: e2e-nosql
+  namespace: platform-e2e
 spec:
-  parameters:
-    namespace: platform-e2e
+  parameters: {}
 ---
 apiVersion: platform.local.lab/v1alpha1
 kind: ObjectStorage
 metadata:
   name: e2e-assets
+  namespace: platform-e2e
 spec:
-  parameters:
-    namespace: platform-e2e
+  parameters: {}
 ---
 apiVersion: platform.local.lab/v1alpha1
 kind: Api
 metadata:
   name: e2e-api-public
+  namespace: platform-e2e
 spec:
   parameters:
-    namespace: platform-e2e
     image: ghcr.io/cujarrett/hello-world-api:latest
     port: 8080
     metricsPort: 8080
