@@ -12,7 +12,7 @@ Five systems, each with one job. None of them shares a secret with any other.
 %%{init: {'flowchart': {'nodeSpacing': 40, 'rankSpacing': 55}}}%%
 flowchart LR
     subgraph git["Declaration"]
-        xr["Api XR<br/>objectStorageRefs, entra.roles"]
+        xr["Api XR<br/>objectStorageRefs, provides"]
     end
 
     subgraph cp["Control plane"]

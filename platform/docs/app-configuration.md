@@ -1,7 +1,5 @@
 # App Configuration
 
-The target design. What is deployed today is in the [Api](../api/README.md) and [Spa](../spa/README.md) READMEs and in [Platform Workload Identity](./workload-identity.md), which still describe `connectionPosture`, `entra.enabled`, and `entra.roles`.
-
 ## Requirements
 
 1. An app declares its callers and its dependencies in its own file.
@@ -76,7 +74,7 @@ spec:
 
 `publicConfig` is served as JSON at `/config.json` and fetched on load, so one image deploys everywhere unchanged. Everything in it reaches any browser that asks, so nothing in it is a secret.
 
-Each `apiProxies` entry names exactly one of `app` or `host`. `app` means the platform derives the address, validates the target exists, and declares the connection. `host` is an off-platform destination taken verbatim. This is the same shape `consumes` uses.
+Each `apiProxies` entry names exactly one of `app` or `host`. `app` means the platform derives the address and declares the connection, so no FQDN is typed. Checking that the target exists needs Kyverno and is not in place yet. `host` is an off-platform destination taken verbatim. This is the same shape `consumes` uses.
 
 `userAuth.client` names which proxied app completes sign-in and holds the tokens. There can only be one, because only one backend owns the session. A SPA with no user auth omits the block and proxies to as many backends as it likes.
 
@@ -128,21 +126,15 @@ The exception is a grant the platform did not create, in the collapsed section b
 
 A `consumes` or `apiProxies` entry naming a host renders egress immediately. The mesh refuses anything undeclared, so every external destination any workload reaches is visible in git.
 
-Shutting one off is two steps. A Kyverno `ClusterPolicy` rejects any app declaring that host, which stops re-adds, and a sweep over existing apps removes the ones already declaring it. The denied hosts live in the policy, so a takedown is a pull request against one file rather than a new resource type.
+Shutting one off will be two steps once Kyverno lands: a `ClusterPolicy` rejecting any app that declares the host, and a sweep removing the ones that already do. The denied hosts live in the policy, so a takedown is a pull request against one file rather than a new resource type. Today it is only the sweep, and nothing stops the host being declared again.
 
-## What to build
+## Not built yet
 
-1. `auth: workload | user` on each `provides` entry, replacing `entra.roles`.
-2. Entra identity derived from `provides` and `consumes`, and `entra.enabled` deleted.
-3. `status` on `Api` and `Spa` carrying every derived Entra value, plus `extraRedirectUris` and `audience` as spec overrides.
-4. `apiProxies` entries take `app` or `host` instead of an FQDN, with CEL enforcing exactly one. `consumes` gains an `entraApp` form carrying `appIdUri`, `role`, and `host` for a registration the platform does not own.
-5. `userAuth` on `Spa`, with redirect URIs derived from `host`.
-6. `configFrom` and `secretsFrom` on `Api`, both naming a plain Kubernetes object. Managed secrets are a separate `Secret` XR, tracked in #158.
-7. Kyverno, plus two `ClusterPolicy` objects: reject an `app` reference that resolves to nothing, and reject a denied egress host.
+Kyverno, plus two `ClusterPolicy` objects: reject an `app` reference that resolves to nothing, and reject a denied egress host. Both checks read other objects to decide, which CEL cannot do, and admission is the right moment because a denied host must never render egress at all.
 
-Everything above the last item is a composition or XRD change. Kyverno is the one new cluster component, and it earns its place because both of its checks read other objects to decide, which CEL cannot do. Admission is the right moment for them, since a denied host must never render egress at all.
+Until then a reference to an app that does not exist renders and enforces nothing, and shutting off a third-party host means editing every app that declares it.
 
-`connectionPosture` goes away with all of it. Deny-by-default is not a per-app toggle, because a toggle defaulting to `off` stays `off`.
+`userAuth` and `auth: user` are implemented but no app uses either yet, so neither has run against a real sign-in.
 
 ## Not offered
 
