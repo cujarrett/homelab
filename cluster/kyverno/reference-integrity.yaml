@@ -1,0 +1,82 @@
+# An app naming another app that does not exist renders fine, reports Synced, and
+# enforces nothing. Catching that means reading an object other than the one being
+# admitted, which a CEL rule on the XRD cannot do.
+# See platform/docs/app-configuration.md.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: platform-reference-integrity
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform reference integrity
+    policies.kyverno.io/description: >-
+      Every app named in consumes or apiProxies must be an Api that exists, deployed
+      into the namespace the reference claims.
+spec:
+  # Audit until the reports are seen to be correct. A wrong Enforce policy matching
+  # every Api and Spa rejects every XR update, which is worse than the silent failure
+  # it exists to catch. Flip to Enforce once the PolicyReports look right.
+  validationFailureAction: Audit
+  background: false
+  rules:
+    - name: consumes-names-a-real-api
+      match:
+        any:
+          - resources:
+              kinds:
+                - platform.local.lab/v1alpha1/Api
+                - platform.local.lab/v1alpha1/Spa
+      context:
+        # Apis are namespaced, so the key is namespace and name together. A
+        # reference names both because it may cross namespaces.
+        - name: apis
+          apiCall:
+            urlPath: /apis/platform.local.lab/v1alpha1/apis
+            jmesPath: "items[].join('/', [metadata.namespace, metadata.name])"
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: AnyIn
+            value: [CREATE, UPDATE]
+      validate:
+        message: >-
+          consumes names {{ element.namespace }}/{{ element.app }}, which is not an Api
+          on this platform. Existing: {{ apis }}
+        foreach:
+          - list: "request.object.spec.parameters.consumes[?app]"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.namespace }}/{{ element.app }}"
+                    operator: AnyNotIn
+                    value: "{{ apis }}"
+
+    - name: apiproxies-names-a-real-api
+      match:
+        any:
+          - resources:
+              kinds:
+                - platform.local.lab/v1alpha1/Spa
+      context:
+        - name: apis
+          apiCall:
+            urlPath: /apis/platform.local.lab/v1alpha1/apis
+            jmesPath: "items[].join('/', [metadata.namespace, metadata.name])"
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: AnyIn
+            value: [CREATE, UPDATE]
+      validate:
+        message: >-
+          apiProxies names an app that is not an Api on this platform. Existing: {{ apis }}
+        foreach:
+          # namespace is optional on an apiProxies entry and defaults to the Spa's own.
+          - list: "request.object.spec.parameters.apiProxies[?app]"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.namespace || request.object.metadata.namespace }}/{{ element.app }}"
+                    operator: AnyNotIn
+                    value: "{{ apis }}"
