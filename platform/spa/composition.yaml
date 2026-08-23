@@ -30,7 +30,7 @@ spec:
           template: | # yaml
             {{- $name := .observed.composite.resource.metadata.name }}
             {{- $params := .observed.composite.resource.spec.parameters }}
-            {{- $namespace := $params.namespace }}
+            {{- $namespace := .observed.composite.resource.metadata.namespace }}
             {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
             {{- $entraTenantId := index $envCtx "entraTenantId" | default "" }}
             {{- $crossplaneEntraSpId := index $envCtx "crossplaneEntraServicePrincipalId" | default "" }}
@@ -44,7 +44,7 @@ spec:
             {{- range $pr := $apiProxies }}
             {{- $target := "" }}
             {{- if $pr.app }}
-            {{- $pns := $pr.namespace | default $params.namespace }}
+            {{- $pns := $pr.namespace | default $namespace }}
             {{- $target = printf "%s.%s.svc.cluster.local" $pr.app $pns }}
             {{- else }}
             {{- $target = $pr.host }}

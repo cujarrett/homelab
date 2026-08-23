@@ -4,7 +4,7 @@ metadata:
   name: sqls.platform.local.lab
 spec:
   group: platform.local.lab
-  scope: Cluster
+  scope: Namespaced
   names:
     kind: Sql
     plural: sqls
@@ -22,7 +22,7 @@ spec:
               properties:
                 parameters:
                   type: object
-                  required: [namespace]
+                  required: []
                   properties:
                     size:
                       type: string
@@ -34,9 +34,6 @@ spec:
                       default: private-cloud
                       enum: [private-cloud, public-cloud]
                       description: "Backend to provision. public-cloud provisions AWS RDS Postgres; private-cloud provisions in-cluster Postgres."
-                    namespace:
-                      type: string
-                      description: "Namespace to deploy the database into and write binding Secrets to. Must already exist (created by the tenant's namespace.yaml)."
                     dataRetention:
                       type: string
                       default: delete

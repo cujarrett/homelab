@@ -27,6 +27,7 @@ apiVersion: platform.local.lab/v1alpha1
 kind: Subscription
 metadata:
   name: foo-consumer
+  namespace: foo
 spec:
   parameters:
     topicRef:
@@ -41,9 +42,9 @@ apiVersion: platform.local.lab/v1alpha1
 kind: Api
 metadata:
   name: foo-consumer
+  namespace: foo
 spec:
   parameters:
-    namespace: foo
     image: ghcr.io/example/foo-consumer:sha-abc123
     subscriptionRef:
       name: foo-consumer
@@ -53,7 +54,7 @@ spec:
 
 ```bash
 # Check readiness
-kubectl get subscription foo-consumer
+kubectl get subscription foo-consumer -n foo
 
 # Check pod (deployed by the paired Api)
 kubectl get pods -n foo

@@ -32,7 +32,7 @@ spec:
             {{- $xr := .observed.composite.resource }}
             {{- $name := $xr.metadata.name }}
             {{- $env := $xr.spec.parameters.backend | default "private-cloud" }}
-            {{- $ns := $xr.spec.parameters.namespace }}
+            {{- $ns := $xr.metadata.namespace }}
             {{- $region := "us-east-1" }}
             {{- $size := $xr.spec.parameters.size | default "sm" }}
             {{- $nodeTypeMap := dict "xs" "cache.t4g.micro" "sm" "cache.t4g.small" "md" "cache.t4g.medium" "lg" "cache.t4g.medium" }}

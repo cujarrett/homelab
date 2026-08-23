@@ -30,7 +30,7 @@ spec:
           template: | # yaml
             {{- $xr := .observed.composite.resource }}
             {{- $name := $xr.metadata.name }}
-            {{- $ns := $xr.spec.parameters.namespace }}
+            {{- $ns := $xr.metadata.namespace }}
             {{- $cacheBackend := ($xr.spec.parameters.cache | default dict).backend | default "private-cloud" }}
             {{- /* Refs point to standalone resources created outside this Api. */ -}}
             {{- /* The binding Secret already exists in $ns - just mount it.    */ -}}

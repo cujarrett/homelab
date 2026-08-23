@@ -39,7 +39,6 @@ Multiple consumers' secrets coexist in the same namespace but each Api's RBAC Ro
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `namespace` | yes | - | Namespace to deploy the database into and write binding Secrets to. |
 | `backend` | no | `private-cloud` | `public-cloud` provisions AWS RDS Postgres; `private-cloud` provisions in-cluster Postgres. |
 | `size` | no | `sm` | T-shirt size for the RDS instance (public-cloud only): `xs=db.t4g.micro`, `sm=db.t4g.small`, `md=db.t4g.medium`, `lg=db.t4g.large` |
 | `dataRetention` | no | `delete` | Longhorn PVC reclaim (private-cloud only): `retain` (PVC survives XR deletion, data recoverable) or `delete` (PVC wiped on deletion, data unrecoverable). |
@@ -52,10 +51,10 @@ apiVersion: platform.local.lab/v1alpha1
 kind: Sql
 metadata:
   name: foo-db
+  namespace: foo
 spec:
   parameters:
     backend: private-cloud   # in-cluster Postgres - no AWS resources provisioned
-    namespace: foo
 ```
 
 ```yaml
@@ -63,11 +62,11 @@ apiVersion: platform.local.lab/v1alpha1
 kind: Sql
 metadata:
   name: foo-db
+  namespace: foo
 spec:
   parameters:
     backend: public-cloud   # provisions AWS RDS Postgres
     size: sm   # xs=db.t4g.micro | sm=db.t4g.small | md=db.t4g.medium | lg=db.t4g.large
-    namespace: foo
     consumerServiceAccounts:
       - foo-api   # each entry gets its own IAM role and binding secret
 ```
@@ -116,7 +115,7 @@ For the full workload identity design: [Platform Workload Identity](../docs/work
 kubectl get sqls foo-db
 
 # Detailed conditions - shows exactly WHY something is not ready
-kubectl get sql foo-db -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get sql foo-db -n foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
 # Binding secrets - one per consumer, named {consumer}-sql
 kubectl get secret foo-api-sql -n foo \

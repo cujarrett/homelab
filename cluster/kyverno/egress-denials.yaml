@@ -1,0 +1,56 @@
+# Third-party egress is declared, not approved. Anyone may reach a new host by saying
+# so, and the record of who reaches what is the declaration itself. This is the other
+# half: a host listed here is refused everywhere, so a takedown is one pull request
+# rather than an edit to every app that named it.
+#
+# Adding a host here stops new declarations. Existing ones keep working until swept,
+# because Kyverno only runs at admission - see platform/docs/app-configuration.md.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: platform-egress-denials
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform egress denials
+    policies.kyverno.io/description: >-
+      Hosts no workload may declare. Empty by design; add one only to shut a
+      destination off across the whole platform.
+spec:
+  # Audit until the reports are seen to be correct. A wrong Enforce policy matching
+  # every Api and Spa rejects every XR update, which is worse than the silent failure
+  # it exists to catch. Flip to Enforce once the PolicyReports look right.
+  validationFailureAction: Audit
+  background: false
+  rules:
+    - name: host-is-not-denied
+      match:
+        any:
+          - resources:
+              kinds:
+                - platform.local.lab/v1alpha1/Api
+                - platform.local.lab/v1alpha1/Spa
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: AnyIn
+            value: [CREATE, UPDATE]
+      validate:
+        message: >-
+          {{ element.host }} is on the platform egress denial list. Remove the
+          declaration, or open a pull request against cluster/kyverno/egress-denials.yaml
+          if the block is wrong.
+        foreach:
+          - list: "request.object.spec.parameters.consumes[?host]"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.host }}"
+                    operator: AnyIn
+                    value: []  # add a host here to shut it off platform-wide
+          - list: "request.object.spec.parameters.apiProxies[?host]"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.host }}"
+                    operator: AnyIn
+                    value: []  # add a host here to shut it off platform-wide

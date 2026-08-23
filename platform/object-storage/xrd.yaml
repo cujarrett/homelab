@@ -4,7 +4,7 @@ metadata:
   name: objectstorages.platform.local.lab
 spec:
   group: platform.local.lab
-  scope: Cluster
+  scope: Namespaced
   names:
     kind: ObjectStorage
     plural: objectstorages
@@ -21,11 +21,8 @@ spec:
               properties:
                 parameters:
                   type: object
-                  required: [namespace]
+                  required: []
                   properties:
-                    namespace:
-                      type: string
-                      description: "Namespace of the owning workload. Used to construct the bucket name (platform-{namespace}-{name}) and the Namespace cost-allocation tag."
                     dataRetention:
                       type: string
                       default: delete

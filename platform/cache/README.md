@@ -14,7 +14,6 @@ Owned by `Api` - created and deleted with it when `cache.enabled: true`. Not int
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `namespace` | yes | - | Namespace to write the binding Secret into. Passed automatically by `Api`. |
 | `backend` | no | `private-cloud` | `private-cloud` uses in-cluster Redis; `public-cloud` uses AWS ElastiCache with IAM auth. |
 | `size` | no | `sm` | T-shirt size for the cache cluster (public-cloud only): `xs=cache.t4g.micro`, `sm=cache.t4g.small`, `md=cache.t4g.medium`, `lg=cache.t4g.medium`. |
 | `consumerServiceAccount` | set by Api | - | Name of the Api service account. Used to scope the IAM trust policy to the pod's exact SPIFFE ID. Set automatically by the Api composition - not a tenant concern. |
@@ -42,9 +41,9 @@ apiVersion: platform.local.lab/v1alpha1
 kind: Cache
 metadata:
   name: foo-cache
+  namespace: foo
 spec:
   parameters:
-    namespace: foo
     backend: private-cloud   # in-cluster Redis - no AWS resources provisioned
 ```
 
@@ -53,9 +52,9 @@ apiVersion: platform.local.lab/v1alpha1
 kind: Cache
 metadata:
   name: foo-cache
+  namespace: foo
 spec:
   parameters:
-    namespace: foo
     backend: public-cloud   # AWS ElastiCache with IAM auth
     size: sm
 ```
@@ -83,8 +82,8 @@ The `workload-identity-sidecar` exchanges the pod's SVID for short-lived STS cre
 ## Operations
 
 ```bash
-# XR status (XRs are cluster-scoped - no -n flag)
-kubectl get cache foo-cache
+# XR status
+kubectl get cache foo-cache -n foo
 
 # Binding secret - confirm all keys are present
 kubectl get secret foo-cache -n foo \
@@ -94,5 +93,5 @@ kubectl get secret foo-cache -n foo \
 kubectl get replicationgroup -o jsonpath='{.items[*].status.atProvider | {engine, status, primaryEndpoint}}'
 
 # Detailed conditions - shows exactly WHY something is not ready
-kubectl get cache foo-cache -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get cache foo-cache -n foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
 ```

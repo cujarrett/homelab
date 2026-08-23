@@ -21,7 +21,6 @@ The namespace is owned by the tenant - created by `namespace.yaml` in the tenant
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `namespace` | yes | - | Tenant namespace to deploy into. Must already exist. |
 | `image` | yes | - | Container image (`ghcr.io/owner/api:sha-abc123`). CI builds on merge to main and commits the new tag back to trigger sync. |
 | `repo` | no | - | GitHub repository URL for this app's source code. |
 | `port` | no | `8080` | Port the container listens on. Service always exposes port 80 → this targetPort. |
@@ -57,9 +56,9 @@ apiVersion: platform.local.lab/v1alpha1
 kind: Api
 metadata:
   name: foo
+  namespace: foo
 spec:
   parameters:
-    namespace: foo
     image: ghcr.io/owner/foo:main
     port: 8080
     host: foo.local.lab
@@ -188,10 +187,10 @@ For the full workload identity design: [Platform Workload Identity](../docs/work
 
 ```bash
 # XR status - SYNCED=composition ran, READY=all children healthy
-kubectl get api foo
+kubectl get api foo -n foo
 
 # Detailed conditions - shows exactly WHY something is not ready
-kubectl get api foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get api foo -n foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
 # Pod status - init containers block startup until each binding Secret is ready
 kubectl get pods -n foo

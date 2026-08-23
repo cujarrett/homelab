@@ -1,0 +1,57 @@
+# Kyverno - admission validation for platform XRs. It exists for the two checks CEL
+# cannot do, because both have to read an object other than the one being admitted:
+# does the app a consumes entry names actually exist, and is this egress host denied.
+# See platform/docs/app-configuration.md.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kyverno
+  namespace: argocd
+spec:
+  project: cluster
+  source:
+    repoURL: https://kyverno.github.io/kyverno/
+    chart: kyverno
+    targetRevision: 3.9.0
+    helm:
+      releaseName: kyverno
+      values: |
+        # Four Raspberry Pis, and only the admission controller is on the hot path.
+        # One replica each: a second would need leader election for no gain here, and
+        # the chart defaults to three for the admission controller.
+        admissionController:
+          replicas: 1
+          serviceMonitor:
+            enabled: true
+            additionalLabels:
+              release: monitoring
+          resources:
+            requests:
+              cpu: 50m
+              memory: 192Mi
+            limits:
+              memory: 384Mi
+        backgroundController:
+          replicas: 1
+          resources:
+            requests:
+              cpu: 25m
+              memory: 96Mi
+            limits:
+              memory: 192Mi
+        # Nothing here generates or cleans up resources, so both are off. Turning one on
+        # later is a values change, not a reinstall.
+        cleanupController:
+          enabled: false
+        reportsController:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kyverno
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
