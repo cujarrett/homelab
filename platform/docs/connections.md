@@ -4,285 +4,130 @@
 
 Istio puts a proxy beside every pod. Nothing reaches a workload without passing that proxy, and nothing leaves without passing its own.
 
-There is a live walkthrough at [connections.mattjarrett.dev](https://connections.mattjarrett.dev) - seven real calls against this cluster, three of them refused.
+By default anything in the cluster can call anything else, so *can this app call that app* already has an answer and nobody chose it. A few thousand services across a few hundred teams cannot keep that in someone's head. Declaring it means a breach stops at one app, access is provable from a line in git rather than a claim about private networks, and a team asks the team it wants to call instead of a central queue.
 
-By default, anything running in the cluster can call anything else. So *can this app call that app* already has an answer - yes, always - and nobody chose it.
+Live walkthrough at [connections.mattjarrett.dev](https://connections.mattjarrett.dev): seven real calls, three refused.
 
-**Why internal developer platforms do this.** A small system can keep its connections in someone's head. A few thousand services across a few hundred teams cannot, and every fix that relies on people remembering breaks at that size. A platform's job is to make the right thing the automatic thing, and three things follow from that. None of them are about Kubernetes.
+## Requirements
 
-- **A breach stops at one app.** Attacker gets into the weakest app. From there they reach only what that app could already reach.
-- **Nobody waits on the security team.** The team writes the dependency in its own file. No ticket, no rule to approve.
-- **You can prove it.** "It is on a private network" is not proof. A line in git is.
+1. Nothing is reachable without being declared. Same cluster or same namespace grants nothing.
+2. The team that owns an interface decides who may call it.
+3. Third-party egress is declared but not approved. It stays visible and can be shut off centrally.
+4. Every workload has an identity of its own that cannot be forged or shared.
+5. A refused call is legible. The reason is discoverable, never a silent allow.
+6. Apps never see Istio. No Istio kinds, no SPIFFE strings, no Envoy in any workspace file.
 
-**Scope: workloads talking to workloads.** Whether a *person* may see a particular record is user authorization. That is a different question, answered in a different layer, and it is deliberately not this design's job.
-
-Platform's [`Api`](../platform/api/) and [`Spa`](../platform/spa/) compositions generate every Istio object. Nothing in a workspace file names an Istio kind, mentions Envoy, or contains a SPIFFE string.
-
-[Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](./nothing-novel.md)
-
-## Design principles
-
-**Grug:** six rules. When a new question comes up, answer it from these instead of case by case.
-
-| # | Principle | Why |
-|---|---|---|
-| 1 | **Nothing is reachable without being declared** | Sitting in the same cluster, or the same namespace, grants nothing on its own |
-| 2 | **Each pod's proxy is configured from its own app's definition** | Inbound rules come from the app being called, outbound from the app calling. One fact each, not one fact stored twice |
-| 3 | **Read what already exists** | Where a field already states a dependency, the composition uses it rather than asking again |
-| 4 | **Fail loud, never silent-permissive** | A missing entry surfaces as a refused connection or a 403 - never a quiet allow |
-| 5 | **Apps never see Istio** | No Istio kinds, no SPIFFE strings, no Envoy in any workspace file |
-| 6 | **The mesh is governance, not containment** | A compromised pod can step around the sidecar. Say so plainly rather than overselling |
-
-## What you set on an app
-
-Two fields, on the app's own definition, beside everything else it already configures.
-
-```yaml
-# my-vinyl-api.yaml - who may call me, and what I call
-spec:
-  parameters:
-    connectionPosture: enforce
-    provides:
-      - name: collection
-        allowedCallers:
-          - { namespace: my-vinyl, app: my-vinyl }
-        # methods/paths optional - omitted means the whole API.
-        # Narrow only when one API has more than one trust boundary.
-    consumes:
-      - { host: api.discogs.com }
-```
-
-```yaml
-# my-vinyl.yaml - the SPA declares nothing new
-spec:
-  parameters:
-    connectionPosture: enforce
-    apiProxies:
-      - path: /api/
-        upstream: my-vinyl-api.my-vinyl.svc.cluster.local
-```
-
-**The SPA needs no new field.** Principle 3 - `apiProxies` already states the dependency, so the composition reads it.
-
-`consumes` carries every destination nothing else already states - off-platform hosts, and any other app, including one in the same namespace. Sitting next to something grants no reach toward it.
-
-The one thing it never carries is what the app already asked the platform for. A `Cache` it creates, a bucket or table it binds - the composition provisioned those, so it renders their egress entries too. Principle 3 again: never ask for a fact the platform already holds.
-
-**Asking for a resource is declaring the connection to it.** A cloud binding resolves to endpoints nobody should hand-write - the bucket's own hostname, and the two the credential sidecar calls to exchange this pod's identity for temporary keys. Miss that last pair and the pod starts clean and then fails every call, so the platform derives all of them from the binding rather than trusting anyone to remember.
-
-| Declared by | Renders |
-|---|---|
-| `consumes` host | one `ServiceEntry` and one egress entry for that host |
-| `consumes` app + namespace | one egress entry toward that app |
-| `apiProxies.upstream` (`Spa`) | one egress entry toward that upstream |
-| `objectStorageRefs` entry | that bucket's endpoint, plus the credential endpoints |
-| `nosqlRef` | the database endpoint, plus the credential endpoints |
-| `cache` (in-cluster) | that cache's Service |
-
-The rule underneath: **you declare what you need, not where it lives.** An address the platform can derive is one it should never ask for.
-
-**`connectionPosture` has two values.** `off` renders nothing, `enforce` renders everything below. There is no intermediate rung: Istio has a dry-run mode worth adding if a namespace ever has callers nobody can enumerate, but every namespace here has a small, knowable caller set, and a wrong guess surfaces as a loud 403 rather than an outage.
+What a team writes is in [App Configuration](./app-configuration.md). This is how the mesh enforces it.
 
 ## What gets rendered
 
-**Grug:** a call passes four checkpoints. Two on the way out of the caller, two on the way in to the callee. Miss any one and the call dies.
+**Grug:** a call passes five checkpoints. Two leaving the caller, two arriving at the callee, one in the app. Miss any and the call dies.
 
-This is **authorization** - deciding what an identity may do. It only makes sense on top of [the identity it rests on](#the-identity-it-rests-on-authentication), which answers who is calling in the first place. Authentication first, then this. The same two-step runs again one layer up, in [Entra](#entra-a-second-gate-that-answers-to-someone-else).
-
-Four objects per workload, all derived from those two fields, all enforced by the Envoy sidecar. No app code changes, ever.
+Each app's composition renders its own `Sidecar` and `AuthorizationPolicy` from that app's `consumes` and `provides`. Nothing aggregates across resources, so no controller writes these objects and Kyverno only rejects a bad declaration at admission. A field that already states a dependency is not asked for twice: a `Spa` naming an `apiProxies` entry, or an `Api` binding a cache, declares nothing further.
 
 ```mermaid
 flowchart LR
-    APP["downstream app<br/>plain HTTP<br/>knows nothing"] --> G1
+    APP["caller<br/>plain HTTP"] --> G1
 
-    subgraph OUT["downstream's sidecar - OUTBOUND"]
-      G1{"1 · Sidecar egress list<br/>REGISTRY_ONLY<br/><i>may I leave toward this?</i>"}
-      G2{"2 · ServiceEntry<br/><i>off-platform host - registered?</i>"}
+    subgraph OUT["caller's sidecar - OUTBOUND"]
+      G1{"1 · Sidecar egress<br/>REGISTRY_ONLY<br/><i>may I leave toward this?</i>"}
+      G2{"2 · ServiceEntry<br/><i>host registered?</i>"}
     end
 
-    subgraph IN["upstream's sidecar - INBOUND<br/>only exists if the upstream is on-platform"]
+    subgraph IN["callee's sidecar - INBOUND<br/>on-platform callees only"]
       G3{"3 · PeerAuthentication<br/><i>real mTLS identity?</i>"}
-      G4{"4 · AuthorizationPolicy<br/><i>is that identity granted?</i>"}
+      G4{"4 · AuthorizationPolicy<br/><i>is that workload granted?</i>"}
       G3 -->|yes| G4
     end
 
-    G1 -->|"yes, on-platform dest"| G3
-    G1 -->|"yes, off-platform dest"| G2
-    G2 -->|yes| NET["allowed - host on the internet<br/>no sidecar, gates 3-4 don't exist"]
-    G4 -->|yes| DST["allowed - upstream app<br/>plain HTTP<br/>knows nothing"]
+    G1 -->|"on-platform"| G3
+    G1 -->|"off-platform"| G2
+    G2 -->|yes| NET["allowed - internet host<br/>gates 3-4 don't exist"]
+    G4 -->|yes| G5{"5 · app code<br/><i>token valid? what does it permit?</i>"}
+    G5 -->|yes| DST["allowed"]
 
-    G1 -->|no| D1["blocked at source<br/>REGISTRY_ONLY"]
-    G2 -->|no| D2["blocked<br/>unregistered host"]
-    G3 -->|no| D3["connection reset<br/>plaintext refused"]
+    G1 -->|no| D1["blocked at source"]
+    G2 -->|no| D2["unregistered host"]
+    G3 -->|no| D3["connection reset"]
     G4 -->|no| D4["RBAC 403"]
+    G5 -->|no| D5["401 or 403 from the app"]
 ```
 
-Gates 1 and 2 come from the caller's `consumes` (and, for a `Spa`, its `apiProxies`). Gates 3 and 4 come from the callee's `provides` - `AuthorizationPolicy` gets one rule per declared interface, and the first ALLOW makes that workload deny-by-default, so an unnamed caller gets 403.
+Gates 1 and 2 come from the caller's `consumes`. Gates 3 and 4 come from the callee's `provides`.
 
-**The symptom tells you the gate.** This is the fastest way to place a fault, and worth memorising before you need it.
+**The token is the app's business.** The mesh proves which workload is calling and refuses the ones that should not reach you, but it never reads the Entra token. Validating it and deciding what a `roles` or `scp` claim permits both happen in app code, which keeps one boundary instead of two. An app that authorizes on a claim needs the claim anyway, so proxy validation would only leave it trusting a header it cannot verify.
+
+**The symptom tells you the gate.**
 
 | You see | Gate | Meaning |
 |---|---|---|
-| RBAC 403 | 4 | Caller reached the callee and was refused by name. Its principal is not in `allowedCallers` |
-| 403 naming a missing role | 5 | The call passed every mesh gate and the app refused it. The Entra identity is real; this API never granted it the role. Looks identical to gate 4 from outside, and has a completely different fix - the grant is `entra.roles.allowedCallers`, not `provides` |
-| Connection reset | 3 | Caller arrived in plaintext. It is unmeshed, or its sidecar never started |
-| 502 through nginx | 1 | Destination missing from the caller's `Sidecar` egress list, so its own proxy blackholed it |
-| Timeout to a public host | 2 | No `ServiceEntry`, so the host was never registered as a destination |
+| 502 through nginx | 1 | Destination missing from the caller's `Sidecar` egress, so its own proxy blackholed it |
+| Timeout to a public host | 2 | No `ServiceEntry`, so the host was never registered |
+| Connection reset | 3 | Caller arrived in plaintext. Unmeshed, or its sidecar never started |
+| RBAC 403 | 4 | Caller reached the callee and was refused by name. Not in `allowedCallers` |
+| 401 or 403 from the app | 5 | The call passed every mesh gate and the app refused the token. Missing, expired, wrong audience, or lacking the role the route wants |
 
-**Registered is not permitted.** Gates 1 and 2 read as one check but are two objects doing different jobs. A `ServiceEntry` puts a hostname in the mesh registry, so Envoy knows the name exists and how to resolve it. The `Sidecar` egress entry says *this particular workload* may send traffic there. Under `REGISTRY_ONLY` a call needs both, and the phonebook does not grant permission to dial.
+**Registered is not permitted.** A `ServiceEntry` puts a hostname in the mesh registry so Envoy knows it exists. The `Sidecar` egress entry says *this workload* may send traffic there. `REGISTRY_ONLY` needs both, and the phonebook does not grant permission to dial. That split matters because a `ServiceEntry` is namespace-wide: if registering alone granted reach, every app in the namespace would inherit every host any other app declared.
 
-That split is what keeps a declaration private to the app that made it. A `ServiceEntry` is registered namespace-wide, so if registering alone granted reach, every app in the namespace would silently inherit every host any other app declared. The per-workload egress line is what stops that.
+**A policy can only attach to a pod that exists.** Off-platform hosts have no gates 3 and 4, so the caller-side declaration is the only gate they get. Same for shared in-cluster stores that run no policy of their own.
 
-**A policy can only attach to a pod that exists.** That is why the two directions sit at opposite ends of the path.
+**Two unmeshed exceptions**, both infrastructure with no identity to match on. Prometheus scrapes the metrics port, Traefik forwards ingress to the app port. The Traefik one applies only when a workload sets `host`, and [Known limits](#known-limits) says what it costs.
 
-Off-platform hosts therefore have no gate 3 or 4 - there is nothing out there to hold a rule. So `consumes` cannot be dropped as redundant; for those calls it is the only gate there is. The same shape covers shared in-cluster stores that run no policy of their own, such as NATS - enforced caller-side only, needing no special field.
+**Proxied requests must carry the upstream's name as `Host`.** Envoy routes outbound by `:authority`. Forward the browser's hostname and Envoy finds nothing in the registry, then `REGISTRY_ONLY` blackholes it, so the destination never sees a connection. The `Spa` composition sets `Host` to the upstream service and keeps the original as `X-Forwarded-Host`.
 
-**Two exceptions, both for unmeshed infrastructure with no identity to match on.** Prometheus scrapes the metrics port; Traefik forwards ingress to the app port. The Traefik exception applies only when a workload sets `host` - see [Known limits](#known-limits) for what it costs.
+## The identity it rests on
 
-**Proxied requests must carry the upstream's name as `Host`.** Envoy routes outbound HTTP by `:authority` - effectively the `Host` header. Forward the browser's hostname instead and Envoy looks it up in the mesh registry, finds nothing, and `REGISTRY_ONLY` blackholes it - drops it with no route, so the destination never sees a connection at all. The `Spa` composition sets `Host` to the upstream service and keeps the original as `X-Forwarded-Host`.
-
-## The identity it rests on (authentication)
-
-**Grug:** every pod gets a certificate saying who it is. It cannot be faked. That is the whole foundation.
-
-This is **authentication** - proving who is calling, and nothing more. It grants nothing on its own. Every rule in [what gets rendered](#what-gets-rendered) is only worth anything because this holds first.
-
-Istio issues each meshed pod an X.509 **SVID** - ~24h lifetime, auto-rotated, carrying a SPIFFE URI SAN:
+**Grug:** every pod gets a certificate saying who it is, and it cannot be faked. Istio issues each meshed pod an X.509 SVID carrying a SPIFFE URI SAN:
 
 ```
-spiffe://cluster.local/ns/my-vinyl/sa/my-vinyl-spa
+spiffe://cluster.local/ns/team-b/sa/orders
          └ trust domain   └ namespace └ service account
 ```
 
-That string is the workload's **principal** - the name a rule grants access to. It is bound to a private key that never leaves the pod, so holding the name is not enough to claim it. This is the only identity here that survives an attacker already inside the cluster network; an IP or a header proves nothing.
+That string is the workload's principal, the name a rule grants access to. It is bound to a private key that never leaves the pod, so holding the name is not enough to claim it, and it is the only identity that survives an attacker already inside the cluster network.
 
-**Hard rule: every workload gets its own ServiceAccount.** The compositions do this. The moment two apps share one they are the same identity, and every grant between them is meaningless.
+**Every workload gets its own ServiceAccount.** The moment two apps share one they are the same identity and every grant between them is meaningless.
 
-## Entra: a second gate that answers to someone else
-
-**Grug:** the mesh decides whether the call gets through the wire. Entra decides, separately, whether the caller may do this particular thing once it is already through.
-
-Everything above is enforced by proxies this platform runs, against identities this cluster issues. Entra is neither. It sits outside the cluster and answers to the tenant, so a grant made there does not depend on this cluster existing, and would still hold if the workload moved to another one.
-
-That independence is the reason to reach for an identity provider at all: at Fortune 100 scale it is one place to grant from, across clusters and teams that never coordinate directly. Here it is one tenant and one operator, so nothing is being coordinated - the same caveat as [what it costs](#what-it-costs) below. What is being practised is the shape.
-
-**The same two steps, one layer up.** That is the whole reason it reads as familiar rather than as a second system to learn.
-
-| | Authentication - who is this | Authorization - what may it do |
-|---|---|---|
-| Mesh | X.509 SVID, issued by Istio | `provides.allowedCallers`, enforced by Envoy |
-| Entra | `entra.enabled`, federated from the pod's SPIFFE identity | `entra.roles.allowedCallers`, checked by the app |
-
-**Turning on `entra.enabled` grants nothing.** It gets a workload an identity Entra recognises, and that is all. A refused caller still arrives holding a real, signed, unexpired token - it simply does not name the role this route wants, either because it holds none or because it holds a different one.
-
-**A grant is per role, not per caller.** One workload can hold `Data.Read` and be refused `Data.Admin` on the next route of the same API, without anything about it changing. The mesh cannot express that: it answers once, at the door, for the whole workload. Splitting it there would take a second app and a second entry in `provides`.
-
-```yaml
-# upstream-api.yaml - the callee declares the role and who holds it
-entra:
-  enabled: true
-  roles:
-    - name: Data.Read
-      allowedCallers:
-        - { namespace: platform-connections-demo, app: authorized-api }
-```
-
-Entra identifies a role by GUID rather than by name, and expects the same GUID for the life of that role. The platform derives one from the namespace, app and role name, so it is stable without anyone having to invent it, store it, or know it exists. Rename the role and the GUID changes with it - which is right, because a renamed permission is a different permission.
-
-The grant lives on the callee, next to `provides`, for the same reason `provides` does - the API being called is the only one that gets to say who may call it. A caller cannot grant itself anything by editing its own file.
-
-**It composes with the mesh; it does not replace it.** A call still passes all four gates before the token is ever read. Gate 5 only ever removes reach, never adds it, so an app not named in `provides` is refused at gate 4 whatever its token says.
-
-```mermaid
-flowchart LR
-    G4{"4 · AuthorizationPolicy<br/><i>mesh - is that workload granted?</i>"}
-    G5{"5 · roles claim<br/><i>Entra - was that identity granted this role?</i>"}
-    G4 -->|yes| G5
-    G4 -->|no| D4["RBAC 403<br/>refused at the proxy<br/>app never runs"]
-    G5 -->|yes| OK["allowed"]
-    G5 -->|no| D5["403 missing_role<br/>refused by the app<br/>after a valid token"]
-```
-
-**Where the platform stops.** It creates the app registration, the service principal, the federated credential, the role and the grant. It injects `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_FEDERATED_TOKEN_FILE` so the identity works without app code, and one `ENTRA_SCOPE_<APP>` for every app already named in `consumes`, so a caller never has to build an audience string out of a naming convention it cannot see. It does not check the token. The `roles` claim is read by app code, because only the app knows which of its own routes needs which role - the same reason `provides.paths` exists rather than the platform guessing.
-
-**The exchange needs no secret.** The pod's SPIFFE JWT-SVID is presented to Entra as a `client_assertion` and comes back as an access token. See [Platform Workload Identity](./platform-workload-identity.md) for how the federation is set up, and [Entra](./learning/entra.md) for what the claims mean.
-
-**Two clocks, not one.** The SVID is refreshed every few minutes; the Entra token it buys lasts about an hour. Cache the token and refresh it early - re-running the exchange per request works and would be the wrong thing to copy anywhere real.
-
-**Still workload-to-workload.** Entra is best known for signing people in, and this is not that. Nothing here reads a user. Whether a *person* may see a record is the same out-of-scope layer named in [Known limits](#known-limits), no closer than it was.
-
-## What it costs
-
-**Grug:** a couple of fields on an app, once. In return the proxy refuses anything not listed, and the refusal is legible.
-
-The real cost is not the fields - it is that a failed call now has several explanations instead of one. A 403, an mTLS reset and blocked egress all used to be "can it reach the IP", and telling them apart is a skill to build. That is the honest price of moving reachability out of the network and into policy, and the gate list above is the map for paying it.
-
-**On scale.** In an organisation this shape carries a second cost - a grant becomes a cross-team wait, and someone has to own approving it. Here there is one operator and two files, so that cost does not exist. Worth naming, so the design is not mistaken for solving a coordination problem it has never faced.
+Entra federates against this same identity, so a pod holds no secret for either system. [Platform Workload Identity](./workload-identity.md) has the rotation and federation detail.
 
 ## Known limits
 
-**Grug:** the mesh sits in the middle of a stack. It does its own job. It does not do the job of the layer below it or the layer above it, and neither of those is built.
+**Grug:** the mesh does its own job, not the layer below it or above it. Below is packets, could a hostile pod send this at all, which is not built. Above is the app deciding what a claim permits, and past that whether a person may see a record, which is out of scope rather than pending.
 
-Below is packets - could a hostile pod send this at all. That layer is not built. Above is people - may this *user* do this. That layer is out of scope, not pending.
+**The mesh is governance, not containment.** Istio enforces its rules with iptables rules written inside the pod. Traffic is redirected to Envoy, Envoy applies the policy, and code in that pod is on the same side of the fence as the rules deciding what it may do.
 
-```mermaid
-flowchart TB
-    subgraph L34["L3/L4 - packets"]
-      A["Cilium NetworkPolicy<br/><i>may this IP reach that IP:port?</i><br/><b>not built</b>"]
-    end
-    subgraph L56["L5/L6 - session"]
-      B["Istio PeerAuthentication - mTLS<br/><i>is the caller a real mesh workload?</i>"]
-    end
-    subgraph L7a["L7 - workload authz"]
-      C["Istio AuthorizationPolicy · source.principals<br/><i>is THAT workload allowed on this route?</i>"]
-    end
-    A -.-> B --> C -.-> D["user authorization<br/><i>may this person do this?</i><br/><b>out of scope</b>"] --> E["app code<br/>knows none of this"]
+The clearest way past them is to run as UID 1337. Istio skips that UID when redirecting, because it is the UID Envoy itself runs as and redirecting Envoy into Envoy would loop forever. Anything else running as 1337 gets the same free pass, and its packets leave without Envoy ever seeing them.
 
-    style A stroke-dasharray: 5 5
-    style D stroke-dasharray: 5 5
-```
+Stopping that takes a rule the pod cannot reach. Every pod is wired to the node by a virtual cable, and the node holds one end of it. A Cilium `NetworkPolicy` is enforced at that end, outside the pod, so nothing running inside can skip it.
 
-**The mesh is governance, not containment.** Istio's rules live *inside* the pod - injection writes iptables in the pod's own network namespace to push traffic through Envoy. Anything running in that pod is on the same side of the fence as the rules.
+**That layer is deliberately not built** and it is not a one-way door. The policy generates from the same `consumes` the mesh already uses, so adding it changes no schema and no app. Two questions decide it: whether off-platform egress uses FQDN or CIDR rules, and whether a compromised pod is in the threat model, since only that case needs it. Cilium's DNS proxy is already on by default, which `toFQDNs` depends on because it learns addresses by watching lookups.
 
-The clearest way out is UID 1337. Istio excludes it from the iptables redirect, because that is the UID Envoy itself runs as and it would otherwise redirect into itself forever. A process running as 1337 walks straight past, and Envoy never sees the packet.
+**An app with an Ingress is reachable from the ingress controller** whatever its grants, because Traefik is unmeshed and presents no identity. How far that reaches depends on `tlsIssuer`.
 
-Only the kernel can stop that. A Cilium `NetworkPolicy` is enforced at the pod's veth - the virtual cable's host-side end, outside the pod, where nothing inside it can reach.
+**Nothing tests that an app can reach its backend.** Rendering is checked, behaviour is not. A workload can serve its page, report `2/2`, sync green, and still fail every call to its own API. This has already caused one outage and closing it is the most valuable work left.
 
-**That layer is deliberately not built**, and it is not a one-way door. The policy would be generated from the same `consumes` declarations the mesh already uses, so adding it later is additive - no XRD change, no app change, nothing re-declared. Three questions decide it:
+**Long-lived apiserver watches do not survive a sidecar.** The proxy severs streaming watch connections, so anything watching the apiserver is outside the design.
 
-1. Is Cilium's DNS proxy enabled? `toFQDNs` silently never matches without it.
-2. Would off-platform egress use FQDN rules, or CIDR? FQDN is the expensive path, and the declared-host list already bounds how many exist.
-3. Is a compromised pod inside the threat model, or is the control there to prove only declared calls happen? Only the first needs it.
+**`Api` and `Spa` label pods differently**, `app.kubernetes.io/instance` versus `instance`. A selector copied between them matches nothing and fails silently: the policy renders, ArgoCD reports Synced, enforcement never happens.
 
-**An app with an Ingress is reachable from the ingress controller** regardless of its grants, because Traefik is unmeshed and presents no identity to match on. How far that reaches depends on `tlsIssuer` - `letsencrypt-prod` means the internet, `local-lab-ca-issuer` means the homelab network.
-
-**Nothing tests that an app can actually reach its backend.** Rendering is checked; behaviour is not. A workload can serve its page, report `2/2`, sync green, and still be unable to call its own API. This gap has already caused one outage, and closing it is the most valuable work left.
-
-**Long-lived apiserver watches do not survive a sidecar.** A workload holding streaming watch connections to the Kubernetes API has them severed by the proxy. `launchpad` is left unmeshed for this reason rather than papered over with timeouts, so anything that watches the apiserver is currently outside the design.
-
-**`Api` and `Spa` label pods differently** - `app.kubernetes.io/instance` versus `instance`. A selector copied between the two matches nothing and fails silently: the policy renders, ArgoCD reports Synced, enforcement never happens. Converging on one label would remove the trap.
+**The cost is diagnosis.** A 403, an mTLS reset, and blocked egress used to all be "can it reach the IP". The symptom table above is the map for telling them apart.
 
 ## Complications outside HTTP
 
-**Grug:** everything above assumes HTTP. Two things break that assumption - UDP traffic, and the reverse proxies sitting in front of the mesh - and neither is exotic at scale. Syslog ingestion, RTP/media relays, telemetry collectors, DNS, and anything speaking QUIC ahead of HTTP/3 support all land outside this design the same way.
+**UDP has no gates 3 and 4, because it has no principal to check.** The scheme above reads mTLS off an X.509 SAN and authorization off an HTTP route, both TCP and L7 constructs. Envoy passes UDP through, but there is no `Host` header and nothing for an `AuthorizationPolicy` to match. Reachability collapses back to L3/L4, the layer not built. Syslog, RTP, telemetry collectors, DNS, and QUIC all land here.
 
-**UDP has no gates 3 and 4, because it has no principal to check.** The scheme in [What gets rendered](#what-gets-rendered) reads mTLS off an X.509 SAN and authorization off an HTTP route - both are TCP/L7 constructs. A UDP workload never gets the same sidecar relationship an `Api` does; Envoy can pass UDP through, but there is no `Host` header, no `:authority`, nothing for an `AuthorizationPolicy` to match a caller identity against. Reachability for a UDP service collapses back to L3/L4 - the layer marked **not built** in [Known limits](#known-limits).
-
-**A reverse proxy only carries what it terminates.** Cloudflare Tunnel and Traefik both work by speaking HTTP/TCP to the origin and HTTP/TCP (or TLS) to the client - every public and internal hostname in this cluster exists because of that. A UDP-only service has no HTTP request for either hop to terminate, so it cannot get a hostname the way `blog.mattjarrett.dev` does. The one Traefik exception already in this doc - unmeshed ingress forwarding straight to an app's port - was built for HTTP; Traefik does not listen on UDP at all, so a UDP workload was never a candidate for it.
+**A reverse proxy only carries what it terminates.** Cloudflare Tunnel and Traefik speak HTTP or TCP to the origin, which is why every public hostname here exists. A UDP-only service has no HTTP request to terminate, so it cannot get a hostname at all, and Traefik does not listen on UDP anyway.
 
 ## Reference
 
-| Concept | Layer | Doc | Watch for |
-|---|---|---|---|
-| Sidecar injection | - | [injection](https://istio.io/latest/docs/setup/additional-setup/sidecar-injection/) | meshed pods show 2 containers |
-| SPIFFE identity | L5/L6 | [identity](https://istio.io/latest/docs/concepts/security/#istio-identity) | the principal string *is* the grant key |
-| PeerAuthentication | L5/L6 | [mutual TLS](https://istio.io/latest/docs/concepts/security/#peer-authentication) | STRICT has no dry-run |
-| AuthorizationPolicy | L7 | [concept](https://istio.io/latest/docs/concepts/security/#authorization) · [ref](https://istio.io/latest/docs/reference/config/security/authorization-policy/) | the first ALLOW makes that workload deny-by-default |
-| ServiceEntry | L7 | [egress control](https://istio.io/latest/docs/tasks/traffic-management/egress/egress-control/) | registers a host; alone it gates nothing |
-| Sidecar + `REGISTRY_ONLY` | L7 | [ref](https://istio.io/latest/docs/reference/config/networking/sidecar/) | this is what makes egress default-deny |
-| Cilium NetworkPolicy | L3/L4 | [policy](https://docs.cilium.io/en/stable/security/policy/) | the containment layer the mesh cannot be |
-| Entra app role | above L7 | [app roles](https://learn.microsoft.com/en-us/entra/identity-platform/howto-add-app-roles-in-apps) | `allowedMemberTypes` must include `Application`, or the role never reaches an app-only token |
-| Entra federated credential | above L7 | [workload identity federation](https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation) | issuer, subject and audience are matched literally, with no wildcards |
-| Token validation | above L7 | [validating tokens](https://learn.microsoft.com/en-us/entra/identity-platform/access-tokens#validate-tokens) | keys are fetched once from the discovery document; every later check is local |
+| Concept | Doc | Watch for |
+|---|---|---|
+| Sidecar injection | [injection](https://istio.io/latest/docs/setup/additional-setup/sidecar-injection/) | meshed pods show 2 containers |
+| SPIFFE identity | [identity](https://istio.io/latest/docs/concepts/security/#istio-identity) | the principal string *is* the grant key |
+| PeerAuthentication | [mutual TLS](https://istio.io/latest/docs/concepts/security/#peer-authentication) | STRICT has no dry-run |
+| AuthorizationPolicy | [ref](https://istio.io/latest/docs/reference/config/security/authorization-policy/) | the first ALLOW makes that workload deny-by-default |
+| ServiceEntry | [egress control](https://istio.io/latest/docs/tasks/traffic-management/egress/egress-control/) | registers a host; alone it gates nothing |
+| Sidecar + `REGISTRY_ONLY` | [ref](https://istio.io/latest/docs/reference/config/networking/sidecar/) | this is what makes egress default-deny |
+| Cilium NetworkPolicy | [policy](https://docs.cilium.io/en/stable/security/policy/) | the containment layer the mesh cannot be |
 
-> **Note - splitting a requirement widens it.** Istio ORs ALLOW policies and rules together, so two rules are two ways in, not two conditions. Anything that must all hold goes in one rule: `from` + `to` + `when` together.
+> **Splitting a requirement widens it.** Istio ORs ALLOW policies and rules together, so two rules are two ways in, not two conditions. Anything that must all hold goes in one rule: `from` + `to` + `when`.

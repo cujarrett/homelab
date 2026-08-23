@@ -9,7 +9,7 @@ The target design. What is deployed today is in the [Api](../api/README.md) and 
 3. No secret reaches git.
 4. Workload identity is a federated credential. No client secrets exist.
 5. Every auth flow works: service to service, browser sign-in, browser to its own backend, and downstream as the signed-in user.
-6. The platform validates tokens and passes the claims to the app as headers. What they permit is the app's decision.
+6. The token is the app's business. The platform issues the identity and grants the role; the app validates the token and decides what a claim permits.
 7. Nobody invents an `aud`, `iss`, scope, redirect URI, or role GUID. Values for a registration the platform does not own come from whoever does.
 
 Reachability is a separate concern, in [Platform Connections](./connections.md).
@@ -87,7 +87,7 @@ Two of those are overridable in spec, because derivation is only usually right. 
 
 ## The flows
 
-**Service to service.** The caller gets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_FEDERATED_TOKEN_FILE`, and one `ENTRA_SCOPE_<TARGET>_<INTERFACE>` for each interface it has been granted on an app it consumes. Its Azure SDK trades the SPIFFE token for an Entra access token with no secret at any step. The receiving sidecar validates the token and forwards the claims; the app decides what `collection-write` permits on this route.
+**Service to service.** The caller gets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_FEDERATED_TOKEN_FILE`, and one `ENTRA_SCOPE_<TARGET>_<INTERFACE>` for each interface it has been granted on an app it consumes. Its Azure SDK trades the SPIFFE token for an Entra access token with no secret at any step. The receiving app validates the token and decides what `collection-write` permits on this route.
 
 **User sign-in.** Authorization Code with PKCE, the only correct choice because a browser cannot keep a secret. The app named in `userAuth.client` completes the code exchange, keeps the tokens, and sets an httpOnly session cookie, so the browser never holds an access token.
 
@@ -124,11 +124,10 @@ Shutting one off is two steps. A Kyverno `ClusterPolicy` rejects any app declari
 1. `auth: workload | user` on each `provides` entry, replacing `entra.roles`.
 2. Entra identity derived from `provides` and `consumes`, and `entra.enabled` deleted.
 3. `status` on `Api` and `Spa` carrying every derived Entra value, plus `extraRedirectUris` and `audience` as spec overrides.
-4. `RequestAuthentication` per interface with claim-to-header forwarding, so no app parses a token. Authorization on those claims stays in app code.
-5. `apiProxies` entries take `app` or `host` instead of an FQDN, with CEL enforcing exactly one. `consumes` gains an `entraApp` form carrying `appIdUri`, `role`, and `host` for a registration the platform does not own.
-6. `userAuth` on `Spa`, with redirect URIs derived from `host`.
-7. `configFrom` and `secretsFrom` on `Api`, both naming a plain Kubernetes object. Managed secrets are a separate `Secret` XR, tracked in #158.
-8. Kyverno, plus two `ClusterPolicy` objects: reject an `app` reference that resolves to nothing, and reject a denied egress host.
+4. `apiProxies` entries take `app` or `host` instead of an FQDN, with CEL enforcing exactly one. `consumes` gains an `entraApp` form carrying `appIdUri`, `role`, and `host` for a registration the platform does not own.
+5. `userAuth` on `Spa`, with redirect URIs derived from `host`.
+6. `configFrom` and `secretsFrom` on `Api`, both naming a plain Kubernetes object. Managed secrets are a separate `Secret` XR, tracked in #158.
+7. Kyverno, plus two `ClusterPolicy` objects: reject an `app` reference that resolves to nothing, and reject a denied egress host.
 
 Everything above the last item is a composition or XRD change. Kyverno is the one new cluster component, and it earns its place because both of its checks read other objects to decide, which CEL cannot do. Admission is the right moment for them, since a denied host must never render egress at all.
 
