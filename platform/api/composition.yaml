@@ -41,13 +41,17 @@ spec:
             {{- /* injected. Must match the IAM OIDC provider registered in AWS.          */ -}}
             {{- $oidcIssuerHost := "oidc.mattjarrett.dev" }}
             {{- $oidcProviderArn := printf "arn:aws:iam::%s:oidc-provider/%s" $awsAccountId $oidcIssuerHost }}
+            {{- /* Every AWS role this Api gets trusts the same one subject: this pod's SPIFFE  */ -}}
+            {{- /* ID. Built once here rather than per binding, because a second copy is a   */ -}}
+            {{- /* second thing to keep in step.                                            */ -}}
+            {{- $trustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Federated" $oidcProviderArn) "Action" "sts:AssumeRoleWithWebIdentity" "Condition" (dict "StringEquals" (dict (printf "%s:aud" $oidcIssuerHost) "sts.amazonaws.com" (printf "%s:sub" $oidcIssuerHost) (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $name))))) | toJson }}
             {{- $provides := $xr.spec.parameters.provides | default list }}
             {{- /* Interfaces carry their own auth mode, so the two claim types split here */ -}}
             {{- /* once and every Entra object below reads one of these lists.            */ -}}
             {{- $appRoles := list }}
             {{- $delegatedScopes := list }}
             {{- range $iface := $provides }}
-            {{- $mode := $iface.auth | default "mesh" }}
+            {{- $mode := $iface.auth }}
             {{- if eq $mode "user" }}
             {{- $delegatedScopes = append $delegatedScopes $iface }}
             {{- else if eq $mode "workload" }}
@@ -601,7 +605,6 @@ spec:
             {{- $roleExternalName = printf "xp-%s" ($rawRoleExternalName | sha256sum | trunc 61) }}
             {{- end }}
             {{- $predictedRoleArn := printf "arn:aws:iam::%s:role/crossplane/%s" $awsAccountId $roleExternalName }}
-            {{- $trustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Federated" $oidcProviderArn) "Action" "sts:AssumeRoleWithWebIdentity" "Condition" (dict "StringEquals" (dict (printf "%s:aud" $oidcIssuerHost) "sts.amazonaws.com" (printf "%s:sub" $oidcIssuerHost) (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $name))))) | toJson }}
             {{- $inlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "s3:GetObject" "s3:PutObject" "s3:DeleteObject" "s3:ListBucket") "Resource" (list (printf "arn:aws:s3:::%s" $bucketName) (printf "arn:aws:s3:::%s/*" $bucketName)))) | toJson }}
             ---
             # IAM Role for objectStorageRef {{ $refName }}. Trust scoped to this Api's service account.
@@ -650,7 +653,6 @@ spec:
             {{- $nosqlRoleKey := "role-nosql" }}
             {{- $tableName := $nosqlRefName }}
             {{- $nosqlPredictedRoleArn := printf "arn:aws:iam::%s:role/crossplane/crossplane-%s-%s-nosql" $awsAccountId $ns $name }}
-            {{- $nosqlTrustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Federated" $oidcProviderArn) "Action" "sts:AssumeRoleWithWebIdentity" "Condition" (dict "StringEquals" (dict (printf "%s:aud" $oidcIssuerHost) "sts.amazonaws.com" (printf "%s:sub" $oidcIssuerHost) (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $name))))) | toJson }}
             {{- $nosqlInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "dynamodb:GetItem" "dynamodb:PutItem" "dynamodb:UpdateItem" "dynamodb:DeleteItem" "dynamodb:Query" "dynamodb:Scan" "dynamodb:BatchGetItem" "dynamodb:BatchWriteItem") "Resource" (list (printf "arn:aws:dynamodb:us-east-1:*:table/%s" $tableName) (printf "arn:aws:dynamodb:us-east-1:*:table/%s/index/*" $tableName)))) | toJson }}
             ---
             # IAM Role for nosqlRef {{ $nosqlRefName }}. Trust scoped to this Api's service account.
@@ -671,7 +673,7 @@ spec:
                   App: {{ $name }}
                   Namespace: {{ $ns }}
                   NoSqlRef: {{ $nosqlRefName }}
-                assumeRolePolicy: {{ $nosqlTrustPolicy | quote }}
+                assumeRolePolicy: {{ $trustPolicy | quote }}
                 inlinePolicy:
                   - name: platform-nosql-{{ $ns }}-{{ $nosqlRefName }}
                     policy: {{ $nosqlInlinePolicy | quote }}
@@ -716,6 +718,22 @@ spec:
                   # than login.microsoftonline.com/<tenant>/v2.0. An API validating the
                   # v2 issuer rejects every one of them, and the token looks fine.
                   requestedAccessTokenVersion: 2
+                  {{- if $delegatedScopes }}
+                  # auth: user interfaces. A delegated scope is a field on the application
+                  # rather than its own object, which is why these are inline and app roles
+                  # are not. type Admin keeps consent with an administrator - User would let
+                  # any signed-in person consent on their own behalf.
+                  oauth2PermissionScope:
+                  {{- range $scope := $delegatedScopes }}
+                  {{- $scopeHash := printf "%s/%s/%s/scope" $ns $name $scope.name | sha256sum }}
+                    - id: {{ printf "%s-%s-4%s-a%s-%s" (substr 0 8 $scopeHash) (substr 8 12 $scopeHash) (substr 13 16 $scopeHash) (substr 17 20 $scopeHash) (substr 20 32 $scopeHash) }}
+                      value: {{ $scope.name | quote }}
+                      type: Admin
+                      enabled: true
+                      adminConsentDisplayName: {{ $scope.name | quote }}
+                      adminConsentDescription: {{ printf "%s on %s, on behalf of a signed-in user" $scope.name $name | quote }}
+                  {{- end }}
+                  {{- end }}
                 # A stable name for this Api as an audience. Entra generates the client
                 # ID, so a caller could only learn it by reading this Api's resources -
                 # this is derivable instead, the same trick the Sql composition uses to
@@ -820,6 +838,33 @@ spec:
                   name: {{ $caller.namespace }}-{{ $caller.app }}-entra
                 resourceObjectIdRef:
                   name: {{ $ns }}-{{ $name }}-entra
+            {{- end }}
+            {{- end }}
+            {{- range $scope := $delegatedScopes }}
+            {{- $scopeSlug := $scope.name | lower | replace "." "-" | replace "_" "-" }}
+            {{- range $caller := ($scope.allowedCallers | default list) }}
+            ---
+            # The delegated equivalent of a RoleAssignment. Consent is recorded against the
+            # caller's service principal, so a token minted through on-behalf-of carries
+            # this scope in scp rather than the roles claim an app-only call would get.
+            apiVersion: serviceprincipaldelegated.azuread.upbound.io/v1beta1
+            kind: PermissionGrant
+            metadata:
+              name: {{ $ns }}-{{ $name }}-entra-scope-{{ $scopeSlug }}-{{ $caller.namespace }}-{{ $caller.app }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: entra-scope-grant-{{ $scopeSlug }}-{{ $caller.namespace }}-{{ $caller.app }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              deletionPolicy: Delete
+              forProvider:
+                claimValues:
+                  - {{ $scope.name | quote }}
+                # The API being called, so the scope is one this app actually exposes.
+                resourceServicePrincipalObjectIdRef:
+                  name: {{ $ns }}-{{ $name }}-entra
+                # The caller, created by its own composition run.
+                servicePrincipalObjectIdRef:
+                  name: {{ $caller.namespace }}-{{ $caller.app }}-entra
             {{- end }}
             {{- end }}
             {{- end }}{{- /* end entraNeeded */}}
@@ -1185,4 +1230,37 @@ spec:
                   name: tls
                   protocol: TLS
             {{- end }}
+            {{- end }}
+            {{- /* Derived values written back so kubectl get api <name> -o yaml answers   */ -}}
+            {{- /* what an app expects, without opening a composition or the Azure portal.  */ -}}
+            {{- $scopeRows := list }}
+            {{- range $c := $consumes }}
+            {{- if and $c.app $c.namespace }}
+            {{- $scopeRows = append $scopeRows (dict "target" (printf "%s/%s" $c.namespace $c.app) "scope" (printf "api://%s/platform-%s-%s/.default" $entraTenantId $c.namespace $c.app) "envVar" (printf "ENTRA_SCOPE_%s" ($c.app | upper | replace "-" "_"))) }}
+            {{- end }}
+            {{- if $c.entraApp }}
+            {{- $scopeRows = append $scopeRows (dict "target" $c.entraApp.host "scope" (printf "%s/.default" $c.entraApp.appIdUri) "envVar" (printf "ENTRA_SCOPE_%s" ($c.entraApp.role | upper | replace "." "_" | replace "-" "_"))) }}
+            {{- end }}
+            {{- end }}
+            {{- if or $entraNeeded $scopeRows }}
+            ---
+            apiVersion: platform.local.lab/v1alpha1
+            kind: Api
+            status:
+              {{- if $entraNeeded }}
+              entra:
+                {{- if $entraClientId }}
+                clientId: {{ $entraClientId | quote }}
+                {{- end }}
+                audience: {{ printf "api://%s/platform-%s-%s" $entraTenantId $ns $name | quote }}
+                issuer: {{ printf "https://login.microsoftonline.com/%s/v2.0" $entraTenantId | quote }}
+              {{- end }}
+              {{- if $scopeRows }}
+              consumes:
+              {{- range $r := $scopeRows }}
+                - target: {{ $r.target | quote }}
+                  scope: {{ $r.scope | quote }}
+                  envVar: {{ $r.envVar | quote }}
+              {{- end }}
+              {{- end }}
             {{- end }}
