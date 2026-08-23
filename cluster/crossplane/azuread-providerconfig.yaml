@@ -1,7 +1,7 @@
-# See cluster/crossplane/azuread-permissions.md for what the referenced Secret must
-# contain and what Entra permissions the credential behind it needs.
-apiVersion: azuread.upbound.io/v1beta1
-kind: ProviderConfig
+# ClusterProviderConfig rather than ProviderConfig so one credential serves every
+# namespace. Namespaced managed resources default to this exact kind and name.
+apiVersion: azuread.m.upbound.io/v1beta1
+kind: ClusterProviderConfig
 metadata:
   name: default
 spec:

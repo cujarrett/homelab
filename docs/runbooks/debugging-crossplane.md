@@ -5,7 +5,7 @@ A layered workflow for diagnosing why an XR isn't syncing or ready. Work top-dow
 ## 1. Start at the top - check the XR
 
 ```bash
-kubectl get api <name>
+kubectl get apis.platform.local.lab <name> -n <namespace>
 ```
 
 | Column | What it means |
@@ -18,7 +18,7 @@ kubectl get api <name>
 ## 2. Read the XR conditions
 
 ```bash
-kubectl get api <name> -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get apis.platform.local.lab <name> -n <namespace> -o jsonpath='{.status.conditions}' | python3 -m json.tool
 ```
 
 Look for `"reason"` and `"message"` on any condition where `"status": "False"`. This is usually the most direct error message.
@@ -40,8 +40,8 @@ Example output for a composition pipeline error:
 Api composes an `ObjectStorage` sub-XR. Check it directly:
 
 ```bash
-kubectl get objectstorage <name>-object-storage
-kubectl get objectstorage <name>-object-storage \
+kubectl get objectstorage <name>-object-storage -n <namespace>
+kubectl get objectstorage <name>-object-storage -n <namespace> \
   -o jsonpath='{.status.conditions}' | python3 -m json.tool
 ```
 
@@ -50,23 +50,23 @@ kubectl get objectstorage <name>-object-storage \
 Managed resources (MRs) are the actual AWS objects. List everything owned by the XR:
 
 ```bash
-kubectl get managed | grep <name>
+kubectl get managed -A | grep <name>
 ```
 
 Look for `SYNCED=False` or `READY=False` on any row. Then drill in:
 
 ```bash
 # Describe gives you Events at the bottom - often has the AWS API error
-kubectl describe bucket.s3.aws.upbound.io <mr-name>
-kubectl describe user.iam.aws.upbound.io <mr-name>
-kubectl describe accesskey.iam.aws.upbound.io <mr-name>
-kubectl describe userpolicyattachment.iam.aws.upbound.io <mr-name>
+kubectl describe bucket.s3.aws.m.upbound.io <mr-name> -n <namespace>
+kubectl describe user.iam.aws.m.upbound.io <mr-name> -n <namespace>
+kubectl describe accesskey.iam.aws.m.upbound.io <mr-name> -n <namespace>
+kubectl describe userpolicyattachment.iam.aws.m.upbound.io <mr-name> -n <namespace>
 ```
 
 Or get just the conditions on a specific MR type:
 
 ```bash
-kubectl get bucket.s3.aws.upbound.io <mr-name> \
+kubectl get bucket.s3.aws.m.upbound.io <mr-name> -n <namespace> \
   -o jsonpath='{.status.conditions}' | python3 -m json.tool
 ```
 
@@ -123,7 +123,7 @@ kubectl logs -n <name> <pod-name> -c init-object-storage   # init container logs
 | `SYNCED=False` on XR | Composition pipeline error | XR conditions (step 2) |
 | `SYNCED=False` on MR | AWS API error (permissions, quota, invalid config) | MR describe events (step 4) |
 | `READY=False` on MR | AWS resource not yet in desired state | MR conditions (step 4) |
-| `READY=<blank>` on XR | Children still provisioning | `kubectl get managed \| grep <name>` |
+| `READY=<blank>` on XR | Children still provisioning | `kubectl get managed -A \| grep <name>` |
 | Pod stuck in `Init` | Binding secret missing or incomplete | Step 7 + step 8 init container logs |
 | Pod `CrashLoopBackOff` | App error, not a platform error | `kubectl logs` on the main container |
 | ArgoCD `SyncError: auto-sync will wipe out all resources` | Would delete all resources - add `allowEmpty=true` to syncOptions | ArgoCD app details |

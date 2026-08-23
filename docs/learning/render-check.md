@@ -36,14 +36,14 @@ The rbac gate's skip list exists because two very different kinds of composed re
 - **Kubernetes-native kinds** (`Secret`, `Deployment`, `Ingress`, and so on) are things Crossplane's core has no inherent reason to be allowed to touch. Each one needs an explicit grant in [`cluster/crossplane/rbac.yaml`](../../cluster/crossplane/rbac.yaml), aggregated to Crossplane's ClusterRole by label.
 - **Provider-managed kinds** (anything a Crossplane provider owns - `Role`, `Bucket`, `Application`, `Principal`) ship with their own edit ClusterRole from the provider itself, aggregated the same way. Crossplane's core already has access the moment the provider is installed - a second, hand-written grant would just be redundant.
 
-The gate's `skip()` function encodes that distinction by matching provider API groups (`aws.upbound.io`, `azuread.upbound.io`) and treating anything in them as already covered. That list has to be updated by hand every time a new provider is added - it was written before `provider-azuread` existed, and adding the Entra composition surfaced the gap: three new kinds, real grants already present, and a `FAIL` anyway because nothing had told the gate this provider's groups were self-granting too.
+The gate's `skip()` function encodes that distinction by matching the `upbound.io` suffix and treating anything under it as already covered. An earlier version listed each provider's group by hand, which meant a new provider failed the gate until someone remembered to add it: adding the Entra composition produced three new kinds, real grants already present, and a `FAIL` anyway because nothing had told the gate that provider's groups were self-granting too.
 
 ## Telling a real gap from a skip-list gap
 
 Don't guess. Ask the cluster directly whether Crossplane's own ServiceAccount can already do it:
 
 ```bash
-kubectl auth can-i create applications.applications.azuread.upbound.io \
+kubectl auth can-i create applications.applications.azuread.m.upbound.io \
   --as=system:serviceaccount:crossplane-system:crossplane
 ```
 

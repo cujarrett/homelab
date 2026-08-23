@@ -96,7 +96,7 @@ An app gets a registration the first time something needs one, with an Applicati
 
 A `provides` entry becomes an app role when `auth: workload` and a delegated scope when `auth: user`. A `mesh` entry becomes nothing in Entra, which is why most apps have no registration. Each `allowedCallers` entry becomes the matching role assignment or permission grant. Redirect URIs derive from the Spa's `host`.
 
-Every derived value lands in the XR's `status`: client ID, audience, issuer, role and scope GUIDs, redirect URIs, and the scope requested for each `consumes` entry. Spec is what you asked for, status is what you got, so `kubectl get api orders -o yaml` answers what an app expects without opening a composition or the Azure portal.
+Every derived value lands in the XR's `status`: client ID, audience, issuer, role and scope GUIDs, redirect URIs, and the scope requested for each `consumes` entry. Spec is what you asked for, status is what you got, so `kubectl get apis.platform.local.lab orders -n orders -o yaml` answers what an app expects without opening a composition or the Azure portal.
 
 Two of those are overridable in spec, because derivation is only usually right. `extraRedirectUris` adds a localhost callback for local development or a second domain during a migration. `audience` overrides the derived URI for an app arriving with an existing registration other systems already point at.
 

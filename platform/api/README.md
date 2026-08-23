@@ -187,10 +187,10 @@ For the full workload identity design: [Platform Workload Identity](../docs/work
 
 ```bash
 # XR status - SYNCED=composition ran, READY=all children healthy
-kubectl get api foo -n foo
+kubectl get apis.platform.local.lab foo -n foo
 
 # Detailed conditions - shows exactly WHY something is not ready
-kubectl get api foo -n foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
+kubectl get apis.platform.local.lab foo -n foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
 # Pod status - init containers block startup until each binding Secret is ready
 kubectl get pods -n foo

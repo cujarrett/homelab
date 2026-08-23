@@ -1,5 +1,7 @@
-apiVersion: aws.upbound.io/v1beta1
-kind: ProviderConfig
+# ClusterProviderConfig rather than ProviderConfig so one credential serves every
+# namespace. Namespaced managed resources default to this exact kind and name.
+apiVersion: aws.m.upbound.io/v1beta1
+kind: ClusterProviderConfig
 metadata:
   name: default
 spec:
