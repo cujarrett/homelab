@@ -16,7 +16,7 @@ Secret name:
 - `public-cloud` → one secret per consumer: `{consumer}-sql` (e.g. `foo-api-sql`, `bar-api-sql`)
 - `private-cloud` → `{sql-name}`
 
-Namespace comes from the `namespace` parameter. Mounted at `/bindings/sql/` inside the container.
+Lands in the Sql's own namespace. Mounted at `/bindings/sql/` inside the container.
 
 Multiple consumers' secrets coexist in the same namespace but each Api's RBAC Role grants `get` only on its own named secrets - `foo-api`'s ServiceAccount cannot read `bar-api-sql`.
 
