@@ -13,6 +13,7 @@ apiVersion: platform.local.lab/v1alpha1
 kind: Topic
 metadata:
   name: e2e-topic
+  namespace: platform-e2e
 spec:
   parameters:
     streamName: E2E-TOPIC
@@ -23,6 +24,7 @@ apiVersion: platform.local.lab/v1alpha1
 kind: Subscription
 metadata:
   name: e2e-sub
+  namespace: platform-e2e
 spec:
   parameters:
     topicRef:
