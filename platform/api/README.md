@@ -10,7 +10,8 @@ Crossplane composition that deploys an API server (Go, Node, GraphQL, etc.) with
 - **ServiceMonitor** - Prometheus scrape target on the metrics port
 - **Ingress** *(optional)* - Traefik `websecure` with TLS; only created when `host` is set. cert-manager issues a certificate via `tlsIssuer` unless `tlsSecret` points to a pre-existing Secret, in which case issuance is skipped.
 - **Cache** *(optional)* - short-lived cache cluster owned by this Api; created and deleted alongside it
-- **Connection policy** *(optional)* - only when `connectionPosture` is `enforce`. Refuses any call this API makes to a destination it has not declared, and any inbound call whose workload identity is not named in `provides`. Metrics scraping and, when `host` is set, ingress traffic stay reachable - neither carries a workload identity to match on. See [Platform Connections](../docs/connections.md).
+- **Connection policy** - always. Refuses any call this API makes to a destination it has not declared, and any inbound call whose workload identity is not named in `provides`. Metrics scraping and, when `host` is set, ingress traffic stay reachable - neither carries a workload identity to match on. See [Platform Connections](../docs/connections.md).
+- **Entra identity** *(optional)* - only when an interface sets `auth: workload` or `auth: user`, or this API consumes another app. See [App Configuration](../docs/app-configuration.md).
 
 `ObjectStorage`, `Sql`, and `NoSql` are created independently and bound via refs. They outlive any one Api. For `ObjectStorage` and `NoSql`, this composition creates the IAM Role and binding Secret when the ref is declared - their binding secrets only contain names, region, and ARNs, which Api can compute. For `Sql`, those are created by the Sql composition itself, because its binding secret contains RDS connection details (host, port, username) that are only known after RDS provisioning. The tenant lists consuming Api names in `consumerServiceAccounts` on the Sql - each gets its own IAM role and binding secret scoped to its SA.
 
@@ -34,21 +35,20 @@ The namespace is owned by the tenant - created by `namespace.yaml` in the tenant
 | `readinessCheckPath` | no | `/healthz` | HTTP path the readiness probe hits. Set to `/readyz` for apps that gate readiness on external dependencies. |
 | `cache.enabled` | no | `false` | Provision a cache cluster owned by this Api. |
 | `cache.backend` | no | `private-cloud` | `private-cloud`=in-cluster Redis, `public-cloud`=AWS ElastiCache. |
-| `entra.enabled` | no | `false` | Give this Api an Entra identity. Grants nothing on its own - it only makes the Api something roles can be granted to. |
-| `entra.roles` | no | - | Roles this Api grants to other Apis calling it. Each entry requires `name` and `allowedCallers`; each caller requires `app` and `namespace` and must set `entra.enabled` itself. The Api reads the role from the caller's token and decides for itself - the platform does not check it. |
 | `objectStorageRefs` | no | - | Array of references to existing `ObjectStorage` instances. Each creates an IAM Role and binding Secret. |
 | `sqlRef.name` | no | - | Name of an existing `Sql` instance to bind. |
 | `sqlRef.backend` | no | `private-cloud` | Must match the `Sql` instance's backend. When `public-cloud`, the sidecar exchanges the SVID for STS credentials for RDS IAM DB auth. |
 | `nosqlRef.name` | no | - | Name of an existing `NoSql` instance to bind. Creates an IAM Role and binding Secret. |
-| `secretRef.name` | no | - | Name of a pre-existing Secret to inject into the container via `envFrom`. |
+| `configFrom` | no | - | ConfigMaps in this namespace, mounted as environment in order. The team owns each, so changing a value never re-reconciles this Api. |
+| `secretsFrom` | no | - | Secrets in this namespace, mounted as environment in order. Hand-create one, or declare a `Secret` XR that fills it. A list, so two vendors' credentials can have separate lifecycles. |
 | `topicRef.name` | no | - | Name of an `Topic` this API publishes to. Injects `NATS_URL` and `NATS_STREAM` env vars. |
 | `topicRef.streamName` | no | - | NATS stream name from the Topic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the Topic's streamName differs from its metadata.name. |
 | `subscriptionRef.name` | no | - | Name of an `Subscription` this API consumes from. Injects `NATS_URL` and `NATS_CONSUMER` env vars. |
-| `connectionPosture` | no | `off` | `off` = this API may call anything it can reach, and anything may call it. `enforce` = only declared calls work - everything else is refused. |
-| `provides` | no | - | Interfaces this API exposes, and which apps may call each one. Required to accept any call once `connectionPosture` is `enforce`. Each entry requires `name` and `allowedCallers`; each caller requires `namespace` and `app`. |
+| `provides` | no | - | Interfaces this API exposes, and which apps may call each one. Required to accept any call at all. Each entry requires `name` and `allowedCallers`; each caller requires `namespace` and `app`. |
+| `provides[].auth` | no | `mesh` | What a caller must prove. `mesh` = its workload identity is enough, no token, no Entra object. `workload` = it must also carry an Entra app role, read from the `roles` claim. `user` = it must carry a delegated scope, read from `scp`, which is what on-behalf-of produces. |
 | `provides[].methods` | no | - | HTTP methods this interface accepts. Omit to accept all. |
 | `provides[].paths` | no | - | Path prefixes this interface covers. Omit to cover the whole API. |
-| `consumes` | no | - | Every destination this API calls, including apps in its own namespace: off-platform hostnames, and any app on the platform. A `Cache` this API creates itself is allowed automatically - do not list it. Only read when `connectionPosture` is `enforce`. Entries take `host`, and optionally `port`, `protocol`, `app`, `namespace`. |
+| `consumes` | no | - | Every destination this API calls, including apps in its own namespace. A `Cache` this API creates itself is allowed automatically - do not list it. Each entry sets exactly one of `host` (off-platform DNS name), `address` (a bare IPv4 with no DNS name, such as a device on the LAN), `app` plus `namespace` (on-platform), or `entraApp` (a registration the platform does not own, carrying `appIdUri`, `role`, and `host`). `port` and `protocol` apply to `host` and `address`. |
 
 ## Example
 
@@ -73,7 +73,6 @@ spec:
     cache:
       enabled: true
       backend: private-cloud   # private-cloud=in-cluster Redis, public-cloud=AWS ElastiCache
-    connectionPosture: enforce
     provides:
       - name: bar
         allowedCallers:
@@ -166,7 +165,7 @@ For `public-cloud`, the sidecar writes a `cache` named profile to the credential
 
 ## Workload identity credential injection
 
-When any AWS cloud binding is declared, or `entra.enabled` is set, the composition adds a `workload-identity-sidecar` container running [`workload-identity-sidecar`](https://github.com/cujarrett/workload-identity-sidecar) and a `spiffe-bundle` CSI volume (read-only SPIRE agent socket). What else gets added depends on which is enabled - an Api can declare both, and both run independently in the same sidecar.
+When any AWS cloud binding is declared, or this Api needs an Entra identity, the composition adds a `workload-identity-sidecar` container running [`workload-identity-sidecar`](https://github.com/cujarrett/workload-identity-sidecar) and a `spiffe-bundle` CSI volume (read-only SPIRE agent socket). What else gets added depends on which is enabled - an Api can declare both, and both run independently in the same sidecar.
 
 **AWS** (any `objectStorageRefs`, `nosqlRef`, or `public-cloud` `sqlRef` cache):
 - The sidecar exchanges the pod's SVID for STS credentials, once per binding, every 50 minutes.
@@ -174,14 +173,14 @@ When any AWS cloud binding is declared, or `entra.enabled` is set, the compositi
 - `AWS_SHARED_CREDENTIALS_FILE=/aws-credentials/credentials` env var in the app container.
 - `AWS_PROFILE_*` env vars for every AWS binding: `AWS_PROFILE_{REF_NAME_UPPER_SNAKE_CASE}` per object storage ref, `AWS_PROFILE_NOSQL`, `AWS_PROFILE_SQL` (public-cloud sql), and `AWS_PROFILE_CACHE` (public-cloud cache).
 
-**Entra** (`entra.enabled: true`):
+**Entra** (an interface sets `auth: workload` or `auth: user`, or this Api consumes another app):
 - The sidecar keeps a raw SPIFFE SVID fresh in an `entra-identity` emptyDir volume, mounted at `/entra-identity/token` - it does not exchange this token itself.
 - `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_FEDERATED_TOKEN_FILE=/entra-identity/token` env vars in the app container. The app's own Azure SDK (`WorkloadIdentityCredential`) reads these and does the exchange on demand - the same contract Azure Kubernetes Service (AKS) uses natively.
-- Egress to `login.microsoftonline.com`, since that is where the exchange happens. Declaring `entra.enabled` is what registers it, so it never goes in `consumes`.
+- Egress to `login.microsoftonline.com`, since that is where the exchange happens. Needing an identity is what registers it, so it never goes in `consumes`.
 - A stable identifier, `api://<tenant-id>/platform-<namespace>-<name>`, so a caller can name this Api as an audience without looking up the client ID Entra generated for it. The tenant ID is required by Entra's default tenant policy, not decoration. A v2 token still arrives audienced to the client ID, which the Api already has as `AZURE_CLIENT_ID`.
 - Tokens issued at v2, so their issuer is `login.microsoftonline.com/<tenant>/v2.0` rather than the v1 `sts.windows.net`.
 
-When `entra.roles` is set, the composition also creates each role and one grant per allowed caller. Checking the role is the app's job - see [App Configuration → Entra](../docs/app-configuration.md#entra).
+For each interface with `auth: workload` the composition creates an app role and one assignment per allowed caller; `auth: user` creates a delegated scope and a permission grant instead. Validating the token and checking the claim are both the app's job - see [App Configuration → Entra](../docs/app-configuration.md#entra).
 
 For the full workload identity design: [Platform Workload Identity](../docs/workload-identity.md)
 

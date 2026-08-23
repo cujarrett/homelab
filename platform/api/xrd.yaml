@@ -73,53 +73,6 @@ spec:
                           default: private-cloud
                           enum: [private-cloud, public-cloud]
                           description: "Cache backend: private-cloud=in-cluster Redis, public-cloud=AWS ElastiCache."
-                    entra:
-                      type: object
-                      description: "Entra identity for this Api. The platform registers it, so nothing is created by hand in the portal. An identity grants nothing on its own."
-                      x-kubernetes-validations:
-                        # Roles hang off the identity, so without one they render nothing.
-                        - rule: "!has(self.roles) || self.enabled"
-                          message: "entra.roles needs entra.enabled: true"
-                      properties:
-                        enabled:
-                          type: boolean
-                          default: false
-                        roles:
-                          type: array
-                          maxItems: 20
-                          description: "Roles this Api grants to its callers. Same shape as provides one layer up - provides decides who may reach this Api, this decides what they may do once they have."
-                          x-kubernetes-validations:
-                            # Role names become object names, which are lowercase and
-                            # treat . _ and - alike. Two roles that only differ that way
-                            # would collapse onto one object and one would vanish.
-                            - rule: "self.all(a, self.exists_one(b, b.name.lowerAscii().replace('.','-').replace('_','-') == a.name.lowerAscii().replace('.','-').replace('_','-')))"
-                              message: "role names must differ by more than case, dots, underscores or dashes"
-                          items:
-                            type: object
-                            required: [name, allowedCallers]
-                            properties:
-                              name:
-                                type: string
-                                description: "Role name as it reaches the caller's token. Renaming replaces the role and drops its grants."
-                                pattern: "^[A-Za-z][A-Za-z0-9._-]*$"
-                                maxLength: 120
-                              allowedCallers:
-                                type: array
-                                description: "Apis granted this role. Everything else is refused. Each must set entra.enabled itself."
-                                items:
-                                  type: object
-                                  required: [app, namespace]
-                                  properties:
-                                    app:
-                                      type: string
-                                      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
-                                      maxLength: 63
-                                      description: "The calling Api's metadata.name."
-                                    namespace:
-                                      type: string
-                                      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
-                                      maxLength: 63
-                                      description: "Namespace the calling Api runs in."
                     image:
                       type: string
                       description: >-
@@ -156,13 +109,22 @@ spec:
                     tlsSecret:
                       type: string
                       description: "Name of a pre-existing TLS Secret in the app namespace. When set, the Ingress references it directly and cert-manager issuance is skipped."
-                    secretRef:
-                      type: object
-                      description: "Optional reference to a pre-existing Secret in the app namespace to inject into the API container via envFrom."
-                      properties:
-                        name:
-                          type: string
-                          description: "Name of the Secret."
+                    configFrom:
+                      type: array
+                      maxItems: 10
+                      description: "ConfigMaps in this namespace, mounted into the container as environment in order. The team owns each object, so changing a value touches that file and never re-reconciles this Api."
+                      items:
+                        type: string
+                        pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+                        maxLength: 253
+                    secretsFrom:
+                      type: array
+                      maxItems: 10
+                      description: "Secrets in this namespace, mounted into the container as environment in order. Hand-create one, or declare a Secret XR that fills it - this field does not care which, and two vendors' credentials can have separate lifecycles."
+                      items:
+                        type: string
+                        pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+                        maxLength: 253
                     topicRef:
                       type: object
                       description: "Optional reference to a Topic instance this API publishes to. When set, the platform wires the connection automatically."
@@ -203,21 +165,23 @@ spec:
                       default: sm
                       enum: [xs, sm, md, lg]
                       description: "Compute tier for the container. Choose based on expected traffic - Extra Small suits low-traffic or background services; Large suits high-throughput workloads."
-                    connectionPosture:
-                      type: string
-                      default: "off"
-                      enum: ["off", "enforce"]
-                      description: "Connection policy for this workload. off renders nothing. enforce means calls in are denied unless this API declared the caller in provides, and calls out are blocked unless the destination is same-namespace or declared in consumes."
                     provides:
                       type: array
-                      description: "Named interfaces this API exposes to other workloads. Anything not listed here cannot call this API once connectionPosture is enforce."
+                      description: "Named interfaces this API exposes to other workloads. Anything not listed here cannot call this API."
                       items:
                         type: object
                         required: [name, allowedCallers]
                         properties:
                           name:
                             type: string
-                            description: "Interface name (e.g. collection). Groups a set of routes under one grant."
+                            pattern: "^[A-Za-z][A-Za-z0-9._-]*$"
+                            maxLength: 120
+                            description: "Interface name (e.g. collection-write). Groups a set of routes under one grant, and becomes the Entra object a caller is granted."
+                          auth:
+                            type: string
+                            default: mesh
+                            enum: [mesh, workload, user]
+                            description: "What a caller must prove to use this interface. mesh means its workload identity is enough and no token is involved, which is the default and needs no Entra object at all. workload means it must also carry an Entra app role, checked through the roles claim. user means it must carry a delegated scope, checked through scp, which is what on-behalf-of produces."
                           methods:
                             type: array
                             description: "HTTP methods this interface allows. Omit for all methods - the coarsest, lowest-upkeep default. Narrow only if this API genuinely has more than one trust boundary."
@@ -243,7 +207,7 @@ spec:
                                   description: "The calling Api/Spa's metadata.name - also its ServiceAccount name."
                     consumes:
                       type: array
-                      description: "Every destination this workload calls, including apps in its own namespace. Anything this XR creates itself (e.g. its own cache) is allowed automatically - do not list it. Set either host (off-platform) or app+namespace (any app on the platform)."
+                      description: "Every destination this workload calls, including apps in its own namespace. Anything this XR creates itself (e.g. its own cache) is allowed automatically - do not list it. Set exactly one of host (off-platform), app plus namespace (on-platform), or entraApp (a registration the platform does not own)."
                       items:
                         type: object
                         properties:
@@ -257,12 +221,78 @@ spec:
                             type: string
                             enum: [TLS, HTTP]
                             description: "Wire protocol for host. TLS for any https:// destination - the app terminates its own TLS. HTTP only for plaintext destinations."
+                          address:
+                            type: string
+                            pattern: "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                            description: "Bare IPv4 address of an off-platform destination that has no DNS name, such as a device on the LAN. Renders a ServiceEntry with static resolution rather than a DNS lookup. Use with port."
                           app:
                             type: string
                             description: "metadata.name of an Api in another namespace this calls. Use with namespace."
                           namespace:
                             type: string
                             description: "Namespace of app. Required when app is set."
+                          entraApp:
+                            type: object
+                            description: "An API registered in Entra outside the platform. Its owner supplies every value here, because nothing on the platform knows them."
+                            required: [appIdUri, role, host]
+                            properties:
+                              appIdUri:
+                                type: string
+                                maxLength: 255
+                                description: "The target's Application ID URI (e.g. api://legacy-billing). Becomes the audience of the requested token. An identifier, not a URL."
+                              role:
+                                type: string
+                                pattern: "^[A-Za-z][A-Za-z0-9._-]*$"
+                                maxLength: 120
+                                description: "App role to request on that registration."
+                              host:
+                                type: string
+                                description: "Hostname the request actually goes to. Separate from appIdUri, which names the token audience rather than an address."
+                    audience:
+                      type: string
+                      maxLength: 255
+                      description: "Overrides the derived Application ID URI. Set only for an app arriving with an existing registration other systems already point at; otherwise the platform derives api://<namespace>-<name>."
                   required: [image, namespace]
               required:
                 - parameters
+            status:
+              type: object
+              description: "What the platform derived. Spec is what you asked for, this is what you got."
+              properties:
+                entra:
+                  type: object
+                  properties:
+                    clientId:
+                      type: string
+                      description: "Application (client) ID of this app's registration."
+                    audience:
+                      type: string
+                      description: "Application ID URI other apps request a token for."
+                    issuer:
+                      type: string
+                      description: "Token issuer for this tenant. Identical for every app in it."
+                    appRoles:
+                      type: array
+                      description: "One per provides entry with auth: workload."
+                      items:
+                        type: object
+                        properties:
+                          name: { type: string }
+                          id: { type: string }
+                    scopes:
+                      type: array
+                      description: "One per provides entry with auth: user."
+                      items:
+                        type: object
+                        properties:
+                          name: { type: string }
+                          id: { type: string }
+                consumes:
+                  type: array
+                  description: "The scope requested for each on-platform destination, and the env var carrying it."
+                  items:
+                    type: object
+                    properties:
+                      target: { type: string }
+                      scope: { type: string }
+                      envVar: { type: string }

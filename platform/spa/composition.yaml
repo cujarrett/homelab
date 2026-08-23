@@ -21,6 +21,20 @@ spec:
             {{- $params := .observed.composite.resource.spec.parameters }}
             {{- $namespace := $params.namespace }}
             {{- $apiProxies := $params.apiProxies | default list }}
+            {{- /* An entry names an app or a host, never both. The app form derives the   */ -}}
+            {{- /* address so nobody types an FQDN, and upstreamPath puts back a prefix    */ -}}
+            {{- /* nginx strips when the backend registered its routes under one.          */ -}}
+            {{- $proxies := list }}
+            {{- range $pr := $apiProxies }}
+            {{- $target := "" }}
+            {{- if $pr.app }}
+            {{- $pns := $pr.namespace | default $params.namespace }}
+            {{- $target = printf "%s.%s.svc.cluster.local" $pr.app $pns }}
+            {{- else }}
+            {{- $target = $pr.host }}
+            {{- end }}
+            {{- $proxies = append $proxies (dict "path" $pr.path "authority" $target "upstream" (printf "%s%s" $target ($pr.upstreamPath | default "")) "onPlatform" (ne ($pr.app | default "") "")) }}
+            {{- end }}
             {{- $publicConfig := $params.publicConfig | default dict }}
             {{- $sizeResourceMap := dict "xs" (dict "cpuReq" "25m" "cpuLim" "100m" "memReq" "32Mi" "memLim" "64Mi") "sm" (dict "cpuReq" "50m" "cpuLim" "200m" "memReq" "64Mi" "memLim" "128Mi") "md" (dict "cpuReq" "100m" "cpuLim" "500m" "memReq" "128Mi" "memLim" "256Mi") "lg" (dict "cpuReq" "250m" "cpuLim" "1000m" "memReq" "256Mi" "memLim" "512Mi") }}
             {{- $sizeKey := $params.size | default "sm" }}
@@ -179,8 +193,8 @@ spec:
                         return 404;
                     }
 
-                    {{- range $apiProxies }}
-                    # API proxy: routes {{ .path }}* to an in-cluster service (no public exposure needed)
+                    {{- range $proxies }}
+                    # API proxy: routes {{ .path }}* to its declared backend (no public exposure needed)
                     location {{ .path }} {
                         access_log /var/log/nginx/access.log api_proxy;
                         proxy_pass http://{{ .upstream }}/;
@@ -188,7 +202,7 @@ spec:
                         # outbound HTTP by :authority, so forwarding the original Host makes it
                         # look up a name that is not in the mesh registry — under REGISTRY_ONLY
                         # that is a blackhole, and nginx reports it as a 502 upstream reset.
-                        proxy_set_header Host {{ (splitList "/" .upstream) | first }};
+                        proxy_set_header Host {{ .authority }};
                         proxy_set_header X-Forwarded-Host $host;
                         # Use Traefik's forwarded header — $remote_addr is Traefik's pod IP, not the client.
                         proxy_set_header X-Real-IP $http_x_real_ip;
@@ -546,9 +560,8 @@ spec:
             {{- /* apiProxies already states this SPA's dependencies, so they become     */ -}}
             {{- /* egress entries here rather than being declared a second time.         */ -}}
             {{- /* No provides field — nothing calls a SPA workload-to-workload.         */ -}}
-            {{- $posture := $params.connectionPosture | default "off" }}
+
             {{- $consumes := $params.consumes | default list }}
-            {{- if eq $posture "enforce" }}
             ---
             # Every Spa has an Ingress, and Traefik is unmeshed, so port 8080 cannot be
             # restricted by identity. How far that reaches depends on tlsIssuer —
@@ -606,9 +619,13 @@ spec:
               egress:
                 - hosts:
                     - "istio-system/*"
-                    {{- range $apiProxies }}
-                    {{- $parts := splitList "." .upstream }}
-                    - "{{ if gt (len $parts) 1 }}{{ index $parts 1 }}{{ else }}*{{ end }}/{{ .upstream }}"
+                    {{- range $proxies }}
+                    {{- if .onPlatform }}
+                    {{- $parts := splitList "." .authority }}
+                    - "{{ index $parts 1 }}/{{ .authority }}"
+                    {{- else }}
+                    - "./{{ .authority }}"
+                    {{- end }}
                     {{- end }}
                     {{- range $c := $consumes }}
                     {{- if $c.host }}
@@ -618,6 +635,31 @@ spec:
                     - "{{ $c.namespace }}/{{ $c.app }}.{{ $c.namespace }}.svc.cluster.local"
                     {{- end }}
                     {{- end }}
+            {{- range $pr := $proxies }}
+            {{- if not $pr.onPlatform }}
+            ---
+            # apiProxies: {{ $pr.authority }} — an off-platform backend still needs
+            # registering, the same as anything named in consumes.
+            apiVersion: networking.istio.io/v1
+            kind: ServiceEntry
+            metadata:
+              name: {{ $name }}-{{ $pr.authority | replace "." "-" }}
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: proxy-se-{{ $pr.authority | replace "." "-" }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              hosts:
+                - {{ $pr.authority | quote }}
+              location: MESH_EXTERNAL
+              resolution: DNS
+              exportTo: ["."]
+              ports:
+                - number: 443
+                  name: tls
+                  protocol: TLS
+            {{- end }}
+            {{- end }}
             {{- range $c := $consumes }}
             {{- if $c.host }}
             ---
@@ -640,6 +682,5 @@ spec:
                 - number: {{ $c.port | default 443 }}
                   name: {{ $c.protocol | default "TLS" | lower }}
                   protocol: {{ $c.protocol | default "TLS" }}
-            {{- end }}
             {{- end }}
             {{- end }}
