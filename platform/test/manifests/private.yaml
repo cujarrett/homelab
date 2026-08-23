@@ -4,10 +4,10 @@ apiVersion: platform.local.lab/v1alpha1
 kind: Sql
 metadata:
   name: e2e-sql-private
+  namespace: platform-e2e
 spec:
   parameters:
     backend: private-cloud
-    namespace: platform-e2e
 ---
 apiVersion: platform.local.lab/v1alpha1
 kind: Topic
@@ -33,9 +33,9 @@ apiVersion: platform.local.lab/v1alpha1
 kind: Api
 metadata:
   name: e2e-api-private
+  namespace: platform-e2e
 spec:
   parameters:
-    namespace: platform-e2e
     image: ghcr.io/cujarrett/hello-world-api:latest
     port: 8080
     metricsPort: 8080
