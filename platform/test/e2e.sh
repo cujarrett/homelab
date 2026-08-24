@@ -430,9 +430,11 @@ fi
 # ---------------------------------------------------------------------------
 echo "== Phase 5: verify teardown"
 
-# Composed resources cascade-delete asynchronously after the XR is gone, so
-# give the namespace up to 2 min to empty out before calling anything an orphan.
-EMPTY_DEADLINE=$(( $(date +%s) + 120 ))
+# The XR waits above only confirm the XR itself is gone; writeConnectionSecretToRef
+# secrets are owned by the underlying provider MR (Instance/ReplicationGroup), not
+# the XR, and that MR's finalizer can lag AWS-side deletion by several more minutes.
+# Give the namespace up to 10 min to empty out before calling anything an orphan.
+EMPTY_DEADLINE=$(( $(date +%s) + 600 ))
 while true; do
   LEFTOVER=$(kubectl get deployments,secrets,pvc -n "$NS" --no-headers 2>/dev/null)
   [[ -z "$LEFTOVER" ]] && break
@@ -453,7 +455,7 @@ else
 fi
 
 kubectl delete namespace "$NS" >/dev/null 2>&1
-if wait_gone namespace "$NS" 180; then
+if wait_gone namespace "$NS" 600; then
   record teardown-verify "namespace terminated" PASS ""
 else
   record teardown-verify "namespace terminated" FAIL "stuck terminating"
