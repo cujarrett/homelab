@@ -80,7 +80,7 @@ spec:
 
 `publicConfig` is served as JSON at `/config.json` and fetched on load, so one image deploys everywhere unchanged. Everything in it reaches any browser that asks, so nothing in it is a secret.
 
-Each `apiProxies` entry names exactly one of `app` or `host`. `app` means the platform derives the address and declares the connection, so no FQDN is typed. Checking that the target exists needs Kyverno and is not in place yet. `host` is an off-platform destination taken verbatim. This is the same shape `consumes` uses.
+Each `apiProxies` entry names exactly one of `app` or `host`. `app` means the platform derives the address and declares the connection, so no FQDN is typed. `platform-reference-integrity` (below) checks the target exists. `host` is an off-platform destination taken verbatim. This is the same shape `consumes` uses.
 
 `userAuth.client` names which proxied app completes sign-in and holds the tokens. There can only be one, because only one backend owns the session. A SPA with no user auth omits the block and proxies to as many backends as it likes.
 
@@ -102,7 +102,7 @@ Two of those are overridable in spec, because derivation is only usually right. 
 
 ## The flows
 
-**Service to service.** The caller gets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_FEDERATED_TOKEN_FILE`, and one `ENTRA_SCOPE_<TARGET>` for each app it consumes, holding that app's audience with `/.default`, which asks for every role the caller already holds there. Its Azure SDK trades the SPIFFE token for an Entra access token with no secret at any step. The receiving app validates the token and decides what `collection-write` permits on this route.
+**Service to service.** The caller gets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_FEDERATED_TOKEN_FILE`, and one `ENTRA_SCOPE_<APP>` for each app it consumes, holding that app's audience with `/.default`, which asks for every role the caller already holds there. Its Azure SDK trades the SPIFFE token for an Entra access token with no secret at any step. The receiving app validates the token and decides what `collection-write` permits on this route.
 
 **User sign-in.** Authorization Code with PKCE, the only correct choice because a browser cannot keep a secret. The app named in `userAuth.client` completes the code exchange, keeps the tokens, and sets an httpOnly session cookie, so the browser never holds an access token.
 
@@ -114,11 +114,11 @@ No secret is needed here either. A client assertion is accepted anywhere a clien
 
 ## Config and secrets
 
-`configFrom` names ConfigMaps and `secretsFrom` names Secrets. The composition mounts them as environment, in order. Both are lists, because a `Secret` XR produces one Secret and an app may want two vendors' credentials on separate lifecycles.
+`configFrom` names ConfigMaps and `secretsFrom` names Secrets. The composition mounts them as environment, in order. Both are lists, because an app may want two vendors' credentials on separate lifecycles.
 
-The team owns the ConfigMap. It is a plain Kubernetes object in the workspace directory alongside the app, applied by ArgoCD. Changing a value touches that file and nothing else, so the app is never re-reconciled and no image is rebuilt.
+The team owns both objects. Each is a plain Kubernetes object in the workspace directory alongside the app, applied by ArgoCD. Changing a value touches that file and nothing else, so the app is never re-reconciled and no image is rebuilt.
 
-`secretsFrom` says nothing about where a Secret came from. Hand-create it and the app mounts it. Declare a `Secret` XR and the platform creates an AWS Secrets Manager entry plus the ExternalSecret that syncs it, with the app owner setting the value in AWS. Either way the app reads env vars and nothing about it changes, which is what makes moving from one to the other a change to one file.
+`secretsFrom` says nothing about where a Secret came from - only that one exists in the app's namespace under that name. Hand-create it, or point it at a Secret an External Secrets Operator `ExternalSecret` already syncs from AWS Secrets Manager, the way `grafana-admin-secret` does today. Either way the app reads env vars and nothing about it changes.
 
 No secret value reaches git on either path.
 
@@ -132,7 +132,7 @@ The exception is a grant the platform did not create, in the collapsed section b
 
 A `consumes` or `apiProxies` entry naming a host renders egress immediately. The mesh refuses anything undeclared, so every external destination any workload reaches is visible in git.
 
-Shutting one off will be two steps once Kyverno lands: a `ClusterPolicy` rejecting any app that declares the host, and a sweep removing the ones that already do. The denied hosts live in the policy, so a takedown is a pull request against one file rather than a new resource type. Today it is only the sweep, and nothing stops the host being declared again.
+Shutting one off is a pull request against `platform-egress-denials` (below) plus a sweep of any app that already declares the host - Kyverno only checks admission, so an existing declaration keeps working until it is re-applied or removed by hand.
 
 ## Admission checks
 

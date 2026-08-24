@@ -23,7 +23,7 @@ What a team writes is in [App Configuration](./app-configuration.md). This is ho
 
 **Grug:** a call passes five checkpoints. Two leaving the caller, two arriving at the callee, one in the app. Miss any and the call dies.
 
-Each app's composition renders its own `Sidecar` and `AuthorizationPolicy` from that app's `consumes` and `provides`. Nothing aggregates across resources, so no controller writes these objects. Admission validation is a separate job and belongs to Kyverno, which is not installed yet. A field that already states a dependency is not asked for twice: a `Spa` naming an `apiProxies` entry, or an `Api` binding a cache, declares nothing further.
+Each app's composition renders its own `Sidecar` and `AuthorizationPolicy` from that app's `consumes` and `provides`. Nothing aggregates across resources, so no controller writes these objects. Admission validation is a separate job and belongs to Kyverno - see [App Configuration → Admission checks](./app-configuration.md#admission-checks). A field that already states a dependency is not asked for twice: a `Spa` naming an `apiProxies` entry, or an `Api` binding a cache, declares nothing further.
 
 ```mermaid
 flowchart LR
