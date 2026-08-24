@@ -2,9 +2,15 @@
 description: Verify docs against each other and against the live schema, before asking anyone to read them
 ---
 
-Docs in this repo drift in eight predictable ways. Every one of them has bitten a real review.
+Docs in this repo drift in nine predictable ways. Every one of them has bitten a real review.
 Run this after editing anything under `docs/`, `platform/docs/`, or a `README.md`, and before
 telling the user a doc is ready.
+
+Checks 1-8 are grep. They catch a broken link or a term you already knew to search for, and
+they are fast, so run them first. They cannot tell you a claim is stale, because nothing about
+"Kyverno is not installed yet" is syntactically wrong once Kyverno ships - the words are still
+valid, they are just no longer true. Check 9 is the one that catches that, and it is not
+optional: a doc that passes 1-8 and skips 9 is not checked, it is spell-checked.
 
 Do not report a doc as ready until every check below passes. Report failures as a list, fix
 them, then re-run.
@@ -177,6 +183,20 @@ for term in connectionPosture entra.enabled apiProxies allowedCallers; do
 done
 ```
 
+That list only finds a term you already suspect changed. Also grep for the phrases people write
+when something is not built yet - these are the sentences that go stale the moment the thing
+ships, and nobody remembers to come back and delete them:
+
+```bash
+cd "$(git rev-parse --show-toplevel)"
+grep -rniE "not (currently |yet )?(in place|installed|built|shipped|implemented)|not yet|will be (added|built)|once [a-z-]+ lands|is not (in place|built)" \
+  --include="*.md" docs/ platform/ 2>/dev/null
+```
+
+For every hit, check whether the thing it says isn't built actually exists in the repo now - a
+`ClusterPolicy` file, a controller in `cluster/argocd/`, a live resource. If it exists, the
+sentence is a defect, not a hedge.
+
 A hit inside a "what to build" list is fine, because it names something being removed. So is a
 hit in a README describing what is actually deployed, when the change is designed but not
 shipped yet.
@@ -199,3 +219,32 @@ When two docs cover adjacent ground, one gets updated and the other does not.
 
 If a fact appears in two of them, delete it from one and link instead. If a doc has grown a
 section belonging to another's subject, move it rather than cross-referencing both ways.
+
+## 9. Full read against live state - mandatory, not a grep
+
+Every check above is a pattern match. None of them can tell you a doc is wrong, only that it is
+structurally inconsistent - a broken link, a field the schema doesn't have, a term that used to
+mean something else. A sentence can be perfectly well-formed, pass every check 1-8, and still be
+false, because the system it describes moved and the sentence didn't.
+
+This check is a read, not a command. For every doc touched this session, and every doc it links
+to under [8](#8-one-subject-per-doc), read it start to finish - not the diff, the whole file -
+and for each factual claim it makes, verify it against the thing that actually governs it:
+
+- "X is not built / not installed / lands later" - does the file, `ClusterPolicy`, or Application
+  it's talking about already exist in the repo?
+- "the field is called Y" - grep the XRD or composition, not memory. A rename three sessions ago
+  is exactly the kind of thing that survives in a doc's prose after the schema moved.
+- "the flow works this way" - open the composition template and read the actual `range`,
+  `if`, or patch that produces it.
+- A YAML example - every key in it exists in the XRD it claims to describe, not just the keys
+  check 3 happened to test.
+
+This is slow on purpose. It is also the only check that has ever caught the expensive kind of
+defect in this repo: a doc describing a schema that was replaced (`entra.enabled` after `provides`
+shipped), a whole doc describing a design that was never built the way it says
+(`service-binding.md`'s raw-credential model after the sidecar shipped), and a doc naming an XR
+type that doesn't exist. None of checks 1-8 found any of those. Only reading the file did.
+
+Do not skip this because 1-8 passed. Passing 1-8 means the doc is not obviously broken. It says
+nothing about whether it is still true.
