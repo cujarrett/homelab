@@ -16,14 +16,16 @@ spec:
     helm:
       releaseName: kyverno
       values: |
-        # kyverno-api.labels defaults to {}, which the chart renders literally as an
-        # empty map on every CRD. Kubernetes drops an empty label map on write, so the
-        # live CRD ends up with no labels key at all - desired says "empty map
-        # present", live says "absent", and neither ignoreDifferences nor a reinstall
-        # can reconcile that gap. Giving it a real value makes both sides agree.
+        # kyverno-api.labels and .annotations both default to {}, which the chart
+        # renders literally as an empty map on every CRD. Kubernetes drops an empty
+        # map on write, so the live CRD has no such key at all - desired says "empty
+        # map present", live says "absent", and neither ignoreDifferences nor a
+        # reinstall can reconcile that gap. Real values make both sides agree.
         kyverno-api:
           labels:
             platform.local.lab/managed-by: argocd
+          annotations:
+            platform.local.lab/chart: kyverno
         # Four Raspberry Pis, and only the admission controller is on the hot path.
         # One replica each: a second would need leader election for no gain here, and
         # the chart defaults to three for the admission controller.
