@@ -48,22 +48,14 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: kyverno
-  # The chart's CRDs come back from the API server with an empty metadata.labels: {}
-  # the rendered manifest never sets, and the post-install migration Job is a Helm
-  # hook ArgoCD applies once and never re-renders identically. Both are permanent,
-  # harmless drift rather than something worth resyncing over.
-  ignoreDifferences:
-    - group: apiextensions.k8s.io
-      kind: CustomResourceDefinition
-      jqPathExpressions:
-        - .metadata.labels
-    - kind: Job
-      name: kyverno-migrate-resources
-      jsonPointers:
-        - /spec
   syncPolicy:
     automated:
-      prune: true
+      # The chart's post-upgrade migration Job carries a plain helm.sh/hook annotation
+      # rather than one ArgoCD's Helm-hook translation recognizes, so it never leaves
+      # the resource tree and is flagged for pruning on every compare. Prune=false
+      # below stops that flag; nothing else in this vendor chart gets removed in
+      # practice, so losing auto-prune elsewhere costs nothing real.
+      prune: false
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
