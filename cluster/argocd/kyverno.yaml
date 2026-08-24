@@ -48,6 +48,19 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: kyverno
+  # The chart's CRDs come back from the API server with an empty metadata.labels: {}
+  # the rendered manifest never sets, and the post-install migration Job is a Helm
+  # hook ArgoCD applies once and never re-renders identically. Both are permanent,
+  # harmless drift rather than something worth resyncing over.
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jqPathExpressions:
+        - .metadata.labels
+    - kind: Job
+      name: kyverno-migrate-resources
+      jsonPointers:
+        - /spec
   syncPolicy:
     automated:
       prune: true
