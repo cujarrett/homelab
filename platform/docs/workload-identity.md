@@ -191,13 +191,11 @@ spec:
   parameters:
     objectStorageRefs:
       - name: foo-assets
-    entra:
-      enabled: true
-      roles:
-        - name: Data.Read
-          allowedCallers:
-            - namespace: bar
-              app: bar-api
+    provides:
+      - name: assets
+        auth: workload
+        allowedCallers:
+          - { namespace: bar, app: bar-api }
 ```
 
 The AWS consumption, using the profile whose env var name is derived from the ref name:
