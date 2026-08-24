@@ -69,6 +69,12 @@ spec:
             resource.customizations.ignoreDifferences.core_PersistentVolumeClaim: |
               jsonPointers:
               - /spec/volumeName
+            # Kyverno's CRDs come back from the API server with an empty metadata.labels: {}
+            # the rendered manifest never sets. Per-Application ignoreDifferences didn't clear
+            # this; the global form does, matching the pattern above for PVC/Deployment.
+            resource.customizations.ignoreDifferences.apiextensions.k8s.io_CustomResourceDefinition: |
+              jqPathExpressions:
+              - .metadata.labels
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
