@@ -74,15 +74,25 @@ kubectl get ingressroute <name>-wp-security -n <namespace> -o jsonpath='{.spec.r
 
 ## Output format
 
-Give a TLDR first: a tight bullet list, one line per namespace/finding, verdict-first (what's wrong or "clean") - no preamble. Follow with **Action needed** items only as the detail section (skip restating "Clean"/"Informational" namespaces in detail - the TLDR already covered them). Use these verdict labels:
+**Five or six bullets, nothing else.** No detail section, no per-namespace roll call, no preamble. Bullets only, verdict-first.
 
-- **Clean** - nothing to act on
-- **Informational** - expected scanner noise, all blocked correctly
-- **Action needed** - a path returned 200 that should be blocked, brute-force volume is high, or a rate limit isn't binding
+Write one bullet per thing that is actually true of the whole review, not one per namespace:
 
-For any stale-config finding, include the `kubectl rollout restart` command inline in the TLDR line itself, not just in the detail section - it's the whole action.
+1. A single line covering every namespace with nothing to act on, plus the real log coverage in hours (pod age, not the requested 7 days).
+2. One line per **Action needed** item, with the fix commands inline in that same bullet.
+3. One line for any brute-force volume worth watching - counts, peak rate, and whether anything succeeded.
+4. One line confirming the rate limit binds (or does not), with the observed status sequence.
+5. One closing line for everything else, e.g. "the rest is 404'd scanner noise".
 
-If new nginx hardening is needed (i.e., the block doesn't exist in source at all, not just a stale-pod issue), propose the specific `location` block to add to [platform/spa/composition.yaml](../../platform/spa/composition.yaml) and remind to sync `platform-definitions` after pushing:
+Rules:
+
+- Never spend a bullet on a clean namespace by name. Fold them into the coverage line.
+- Never restate a finding in a detail section - if it needs a command, the command goes in the bullet.
+- Only widen past six bullets when a finding is a live compromise.
+- Say "no leaks, no compromise" when that is the answer, and let it stand without justification.
+
+If new nginx hardening is needed (the block does not exist in source at all, not a stale-pod issue), fix it/ them, followed by the sync and restart commands:
 ```bash
 argocd app sync platform-definitions --grpc-web
+kubectl rollout restart deployment/<name> -n <namespace>
 ```
