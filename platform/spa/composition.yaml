@@ -258,7 +258,7 @@ spec:
 
                     # WordPress/CMS directory probes — return 404 instead of 200 via SPA catch-all
                     # Prevents scanners from treating 200 as "WordPress is here, keep probing"
-                    location ~* ^/(wp-admin|wp-includes|wp-content|wp-login|wp-cron|wordpress|wp|backup|old|new|web|cms|sito|site|admin)(/|$) {
+                    location ~* ^/(wp-admin|wp-includes|wp-content|wp-login|wp-cron|wp-config|wordpress|wp|backup|old|new|web|cms|sito|site|admin|administrator)(/|$) {
                         return 404;
                     }
 
