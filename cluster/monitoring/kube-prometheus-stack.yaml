@@ -15,23 +15,17 @@ spec:
         kubeApiServer:
           enabled: false
         # kube-proxy, scheduler, and controller-manager aren't separately reachable on k3s -
-        # kube-proxy is replaced entirely by Cilium's kubeProxyReplacement, and the other two
-        # are embedded in the k3s binary rather than run as scrapeable pods. Left enabled, these
-        # ServiceMonitors scrape nothing and fire KubeProxyDown/KubeSchedulerDown/
-        # KubeControllerManagerDown permanently. See docs/postmortem-kubelet-probe-outage.md.
+        # proxy is replaced by Cilium, the other two are embedded in the k3s binary. Left
+        # enabled these ServiceMonitors scrape nothing and fire *Down alerts permanently.
         kubeProxy:
           enabled: false
         kubeScheduler:
           enabled: false
         kubeControllerManager:
           enabled: false
-        # Merged into every default alert's annotations, so a chart-bundled
-        # rule (KubePodCrashLooping, NodeFilesystemSpaceFillingUp, etc.) is
-        # never just a title with nowhere to look - namespace-scoped alerts
-        # deep link filtered to that namespace, everything else falls back
-        # to the general cluster dashboard. Custom rules under
-        # prometheusrule-*.yaml set their own dashboard_url instead, since
-        # a specific dashboard beats this generic fallback.
+        # Merged into every default alert's annotations so a chart-bundled rule is never
+        # just a title with nowhere to look - namespace-scoped alerts deep link filtered,
+        # everything else falls back to the cluster dashboard. Custom rules set their own.
         defaultRules:
           additionalRuleAnnotations:
             dashboard_url: '{{ if $labels.namespace }}https://grafana.local.lab/d/homelab-namespace-overview/namespace-overview?var-namespace={{ $labels.namespace }}{{ else }}https://grafana.local.lab/d/homelab-mbp/homelab{{ end }}'
@@ -47,15 +41,9 @@ spec:
           admissionWebhooks:
             patch: {}
         alertmanager:
-          # Redefines the built-in discord.default.* templates - later definition
-          # wins. Lives here because operator v0.92.1 drops title/message from the
-          # AlertmanagerConfig CRD, and templateFiles skips Helm's tpl so Go
-          # syntax survives. Severity is per alert: a namespace group can mix.
-          # summary says what happened, description says what to do about it -
-          # the old template dropped the description whenever a summary existed,
-          # so every rule's diagnostic guidance was written and never delivered.
-          # Labels and links are here because an alert naming only its rule
-          # cannot be acted on from a phone.
+          # Redefines discord.default.* here because operator v0.92.1 drops title/message
+          # from the AlertmanagerConfig CRD, and templateFiles skips Helm's tpl so Go syntax
+          # survives. Keeps description alongside summary, unlike the old template.
           templateFiles:
             discord.tmpl: |
               {{ define "discord.default.title" }}{{ if eq .Status "firing" }}🔴 FIRING{{ else }}✅ RESOLVED{{ end }}{{ if .GroupLabels.namespace }} · {{ .GroupLabels.namespace }}{{ end }} ({{ .Alerts | len }}){{ end }}

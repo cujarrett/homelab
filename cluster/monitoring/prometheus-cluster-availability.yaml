@@ -31,11 +31,9 @@ subjects:
     name: prometheus-cluster-availability
     namespace: monitoring
 ---
-# The shared node-exporter ServiceMonitor scrapes its full metric set (~8000+
-# series across 4 nodes). This one targets the same Service but drops every
-# scraped metric via metricRelabelings - only the synthetic `up` series (added
-# by Prometheus itself, unaffected by metric_relabel_configs) survives. That's
-# the only thing the availability archive needs.
+# Targets the same Service as the shared node-exporter ServiceMonitor but drops
+# every scraped metric via metricRelabelings - only the synthetic `up` series
+# (added by Prometheus itself) survives, which is all the availability archive needs.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

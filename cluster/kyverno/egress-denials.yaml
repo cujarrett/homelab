@@ -1,10 +1,7 @@
-# Third-party egress is declared, not approved. Anyone may reach a new host by saying
-# so, and the record of who reaches what is the declaration itself. This is the other
-# half: a host listed here is refused everywhere, so a takedown is one pull request
-# rather than an edit to every app that named it.
-#
-# Adding a host here stops new declarations. Existing ones keep working until swept,
-# because Kyverno only runs at admission - see platform/docs/app-configuration.md.
+# Third-party egress is declared, not approved - anyone may reach a new host by saying
+# so. This is the other half: a host listed here is refused everywhere, so a takedown
+# is one pull request. Adding a host stops new declarations only - existing ones keep
+# working until swept, since Kyverno only runs at admission.
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:

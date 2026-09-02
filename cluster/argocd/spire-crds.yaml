@@ -1,7 +1,6 @@
-# CRDs for spire-controller-manager, plus the JWKS ingress rewrite. The CRDs are not
-# shipped inside the Helm chart; they must exist before the controller-manager starts.
-# Pin the CRD files in cluster/spire/ to the controller-manager image tag in cluster/argocd/spire.yaml
-# (controllerManager.image.tag). Update both together when the chart is bumped.
+# CRDs for spire-controller-manager, plus the JWKS ingress rewrite. Not shipped
+# inside the Helm chart, so they must exist before the controller-manager starts.
+# Pin these to the controllerManager.image.tag in cluster/argocd/spire.yaml.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

@@ -10,11 +10,9 @@ spec:
     - name: cluster
       interval: 5m
       rules:
-        # A namespace normally terminates in seconds. Stuck means either a
-        # finalizer nobody will remove, or the garbage collector wedged on a
-        # resource type that discovery advertises but the API server will not
-        # serve - a CRD with no served version does exactly that, and it stops
-        # every namespace deletion in the cluster, not just this one.
+        # A namespace normally terminates in seconds. Stuck means a finalizer nobody
+        # will remove, or the garbage collector wedged on a type discovery advertises
+        # but the API server won't serve - which stops every namespace deletion, not just this one.
         - alert: NamespaceStuckTerminating
           expr: |
             kube_namespace_status_phase{phase="Terminating"} == 1

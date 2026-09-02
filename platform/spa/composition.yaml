@@ -56,11 +56,9 @@ spec:
             {{- $sizeKey := $params.size | default "sm" }}
             {{- $sizeRes := get $sizeResourceMap $sizeKey | default (get $sizeResourceMap "sm") }}
             {{- $observedResources := .observed.resources | default dict }}
-            # Checksum of the nginx ConfigMap, which is mounted with subPath. subPath mounts
-            # never receive ConfigMap updates, so without this a changed nginx.conf updates the
-            # ConfigMap and is silently ignored by the running pod — the pod keeps serving the
-            # old rules until something else happens to restart it. Feeding the hash to a pod
-            # annotation makes the change roll the Deployment instead.
+            # subPath mounts never receive ConfigMap updates, so a changed nginx.conf is
+            # silently ignored by the running pod until something restarts it. Feeding the
+            # hash into a pod annotation makes the change roll the Deployment instead.
             {{- $configChecksum := "" }}
             {{- $observedNginxConfig := index $observedResources "nginx-config" }}
             {{- if $observedNginxConfig }}
@@ -83,10 +81,8 @@ spec:
               default.conf: |
                 {{- if gt (len $apiProxies) 0 }}
                 # Redact sensitive query-string params before they hit the access log.
-                # Proxied API calls (e.g. SSE watch endpoints) sometimes carry bearer
-                # tokens or auth tickets as ?token=/?ticket=... because EventSource
-                # can't set custom headers — without this, the value is logged in
-                # full and retained in logs.
+                # Proxied SSE endpoints carry bearer tokens as ?token=/?ticket=... since
+                # EventSource can't set custom headers, so it lands in the URL instead.
                 map $args $safe_args {
                     default                                                                       $args;
                     "~*(^|&)(token|access_token|ticket|api[_-]?key|secret|password|authorization)=" "redacted";
@@ -106,17 +102,10 @@ spec:
                     root /usr/share/nginx/html;
                     index index.html;
 
-                    # Block known vulnerability scanners — return 403 and close cheaply.
-                    # curl: raw curl without browser UA (legitimate tools usually identify themselves)
-                    # python-requests: generic scraper/scanner (no legit browser sends this UA raw)
-                    # TLM-Audit-Scanner: bulk credential/config scanner
-                    # nmap, nikto, sqlmap, nessus, qualys, burp, zaproxy: common security scanners
-                    # pathscan: automated path-probing scanner seen sweeping credential/config paths
-                    # l9scan: LeakIX internet-wide scanner (leakix.net) — swept all Spa instances for
-                    # credential/config files in one pass; largest source of catch-all 200s seen in logs
-                    # YUTAA-SCANNER-DEFUNCT: self-identifying canary/recon scanner
-                    # Go-http-client: default Go UA — seen exclusively hitting FrontPage/SVN artifact and
-                    # canary-token probes (.svn, _vti_pvt, zzcanary-*) in the same sweep as l9scan
+                    # Block known vulnerability scanners - return 403 and close cheaply.
+                    # curl/python-requests/Go-http-client catch raw non-browser UAs; the named
+                    # tools are common scanners. l9scan (LeakIX) is the largest source of
+                    # catch-all 200s seen in logs, sweeping all Spa instances for creds/config.
                     if ($http_user_agent ~* "^curl/|python-requests/|TLM-Audit-Scanner|nmap|nikto|sqlmap|nessus|qualys|burp|zaproxy|masscan|wpscan|nuclei|pathscan|l9scan|YUTAA-SCANNER-DEFUNCT|^Go-http-client/") {
                         return 403;
                     }
@@ -135,14 +124,14 @@ spec:
                     }
 
                     {{- if gt (len $publicConfig) 0 }}
-                    # Fetched by the app on load — never baked into the JS bundle at build
+                    # Fetched by the app on load, never baked into the JS bundle at build
                     # time, so one image stays deployable unchanged across environments.
                     # Mounted whole (not subPath), so kubelet syncs edits without a restart.
                     location = /config.json {
                         alias /etc/spa-public-config/config.json;
                         # .json isn't in nginx's default mime.types, so without this it would
-                        # serve as application/octet-stream. add_header can't fix a Content-Type
-                        # nginx computes internally — default_type is the directive that does.
+                        # serve as application/octet-stream. add_header can't override a Content-Type
+                        # nginx computes internally - default_type is the directive that does.
                         default_type application/json;
                         add_header Cache-Control "no-cache" always;
                         add_header X-Content-Type-Options "nosniff" always;
@@ -150,7 +139,7 @@ spec:
                     {{- end }}
 
                     # no-cache: browser always refetches the entry point
-                    # All security headers repeated — nginx drops server-level add_header
+                    # All security headers repeated - nginx drops server-level add_header
                     # directives for any location that defines its own add_header.
                     location = /index.html {
                         add_header Cache-Control                "no-cache"                                  always;
@@ -160,10 +149,9 @@ spec:
                         add_header X-XSS-Protection             "0"                                         always;
                         add_header Referrer-Policy              "strict-origin-when-cross-origin"           always;
                         add_header Permissions-Policy           "camera=(), microphone=(), geolocation=()"  always;
-                        # Angular production builds use media="print" onload="this.media='all'" on
-                        # stylesheet links as a render-performance trick. The onload attribute is an
-                        # inline event handler blocked by strict script-src CSP. Strip it at serve
-                        # time so the link becomes a plain <link rel="stylesheet"> — no unsafe-inline needed.
+                        # Angular's media="print" onload="..." render trick is an inline event
+                        # handler, blocked by strict script-src CSP. Strip it at serve time so
+                        # the link becomes a plain <link rel="stylesheet"> - no unsafe-inline needed.
                         sub_filter " media=\"print\" onload=\"this.media='all'\"" "";
                         sub_filter_once off;
                     }
@@ -190,11 +178,9 @@ spec:
                         add_header Permissions-Policy           "camera=(), microphone=(), geolocation=()"  always;
                     }
 
-                    # Real static files the Angular CLI copies verbatim from each app's public/ dir
-                    # (robots.txt, PWA manifest) — without these, the default-deny rule below would
-                    # 404 them before the catch-all's try_files ever checks whether they exist on disk.
-                    # robots.txt is fetched by convention by crawlers regardless of HTML references;
-                    # site.webmanifest is explicitly linked via <link rel="manifest"> in several apps.
+                    # Real static files the Angular CLI copies verbatim from public/ (robots.txt,
+                    # PWA manifest) - without these, the default-deny rule below would 404 them
+                    # before the catch-all's try_files ever checks whether they exist on disk.
                     location = /robots.txt {
                         add_header Cache-Control "no-cache" always;
                     }
@@ -215,16 +201,15 @@ spec:
                         access_log /var/log/nginx/access.log api_proxy;
                         proxy_pass http://{{ .upstream }}/;
                         # Host must name the upstream, not the browser's hostname. Envoy routes
-                        # outbound HTTP by :authority, so forwarding the original Host makes it
-                        # look up a name that is not in the mesh registry — under REGISTRY_ONLY
-                        # that is a blackhole, and nginx reports it as a 502 upstream reset.
+                        # outbound HTTP by :authority, so forwarding the original Host looks up a
+                        # name outside the mesh registry - a blackhole under REGISTRY_ONLY.
                         proxy_set_header Host {{ .authority }};
                         proxy_set_header X-Forwarded-Host $host;
-                        # Use Traefik's forwarded header — $remote_addr is Traefik's pod IP, not the client.
+                        # Use Traefik's forwarded header - $remote_addr is Traefik's pod IP, not the client.
                         proxy_set_header X-Real-IP $http_x_real_ip;
                         proxy_set_header X-Forwarded-For $http_x_forwarded_for;
                         proxy_set_header X-Forwarded-Proto $scheme;
-                        # SSE / long-poll support: disable buffering so streamed responses
+                        # SSE / long-poll support - disable buffering so streamed responses
                         # reach the client immediately (e.g. /api/status/watch).
                         proxy_buffering off;
                         proxy_cache off;
@@ -242,10 +227,9 @@ spec:
                         return 404;
                     }
 
-                    # Endpoint/framework probes (Spring Boot, Symfony, Magento, etc.)
-                    # Note: _profiler intentionally has no ^ anchor — matches nested paths like /symfony/public/_profiler/
-                    # ";" is included as a terminator alongside "/" — matrix-parameter paths like
-                    # /actuator;/env; otherwise slip past the "/" anchor and hit the SPA catch-all.
+                    # Endpoint/framework probes (Spring Boot, Symfony, Magento, etc.). _profiler
+                    # has no ^ anchor to match nested paths; ";" is a terminator alongside "/" so
+                    # matrix-parameter paths like /actuator;/env don't slip past to the catch-all.
                     location ~* "(^/actuator(/|;|$)|^/jolokia(/|;|$)|^/swagger(/|;|$)|^/openapi(/|;|$)|^/v2/_catalog(/|;|$)|^/v3/api-docs(/|;|$)|^/console(/|;|$)|^/telescope(/|;|$)|^/server-status$|/_profiler(/|;|$)|^/_environment(/|;|$)|^/rest/(V[0-9]+|default)(/|;|$))" {
                         return 404;
                     }
@@ -256,7 +240,7 @@ spec:
                         return 404;
                     }
 
-                    # WordPress/CMS directory probes — return 404 instead of 200 via SPA catch-all
+                    # WordPress/CMS directory probes - return 404 instead of 200 via SPA catch-all
                     # Prevents scanners from treating 200 as "WordPress is here, keep probing"
                     location ~* ^/(wp-admin|wp-includes|wp-content|wp-login|wp-cron|wp-config|wordpress|wp|backup|old|new|web|cms|sito|site|admin|administrator)(/|$) {
                         return 404;
@@ -288,7 +272,7 @@ spec:
                         return 404;
                     }
 
-                    # RSS/Atom feed probes — not served by SPAs, return 404 instead of 200 via catch-all
+                    # RSS/Atom feed probes - not served by SPAs, return 404 instead of 200 via catch-all
                     location ~* ^/feed(/|$) {
                         return 404;
                     }
@@ -298,7 +282,7 @@ spec:
                         return 404;
                     }
 
-                    # Generic setup/install/discovery path probes — return 404 instead of 200 via catch-all
+                    # Generic setup/install/discovery path probes - return 404 instead of 200 via catch-all
                     location ~* ^/(setup|install|installer|installation|wizard|admin/setup|api/user|api/v[0-9]+/user|_internal)(/|$) {
                         return 404;
                     }
@@ -318,12 +302,12 @@ spec:
                         return 404;
                     }
 
-                    # Symfony config package paths — /config/packages/, /app/config/
+                    # Symfony config package paths - /config/packages/, /app/config/
                     location ~* ^/(app/)?config/(packages|routes|services|security)(/|$) {
                         return 404;
                     }
 
-                    # MCP/SSE endpoint probes — SPAs don't serve these; prevent catch-all 200
+                    # MCP/SSE endpoint probes - SPAs don't serve these; prevent catch-all 200
                     location ~* ^/(sse|mcp)(/|$) {
                         return 404;
                     }
@@ -341,22 +325,16 @@ spec:
                         return 404;
                     }
 
-                    # ACME HTTP-01 tokens are base64url — never contain a dot. Matching the token
-                    # charset instead of the bare prefix means a probe like acme-challenge/file.php
-                    # falls through to the dotfile deny below and 404s, rather than reaching the
-                    # catch-all and answering 200 with index.html.
+                    # ACME HTTP-01 tokens are base64url - never contain a dot. Matching the token
+                    # charset means a probe like acme-challenge/file.php falls through to the
+                    # dotfile deny below and 404s instead of hitting the catch-all as a 200.
                     location ~ "^/\.well-known/acme-challenge/[A-Za-z0-9_-]+$" {
                         try_files $uri $uri/ /index.html;
                     }
 
-                    # Default-deny: assumes no Spa app's client-side router defines a route with a
-                    # dot in a path segment, so any request whose last segment looks like a filename
-                    # (has a `.ext` suffix) or starts with a dotfile is a probe, not real navigation.
-                    # This replaces enumerating every new credential/config filename scanners try — one
-                    # rule instead of one commit per signature. The specific extension/asset blocks
-                    # above still take priority since nginx picks the first matching regex location in
-                    # file order. When onboarding a new Spa instance, confirm its router doesn't use
-                    # dotted route segments before relying on this default.
+                    # Default-deny: assumes no Spa app's router uses a dotted path segment, so any
+                    # request that looks like a filename or dotfile is a probe. Replaces enumerating
+                    # every credential/config filename scanners try with one rule for all of them.
                     location ~ /\. {
                         return 404;
                     }
@@ -373,7 +351,7 @@ spec:
             {{- if gt (len $publicConfig) 0 }}
             ---
             # --- Public config ConfigMap ---
-            # Served as /config.json. Public by design — never put a secret in publicConfig.
+            # Served as /config.json. Public by design - never put a secret in publicConfig.
             apiVersion: v1
             kind: ConfigMap
             metadata:
@@ -388,7 +366,7 @@ spec:
             {{- end }}
             ---
             # --- ServiceAccount ---
-            # Dedicated SA per Spa instance — pods do not use the namespace default SA.
+            # Dedicated SA per Spa instance - pods do not use the namespace default SA.
             apiVersion: v1
             kind: ServiceAccount
             metadata:
@@ -424,7 +402,7 @@ spec:
                     checksum/config: "{{ $configChecksum }}"
                 spec:
                   automountServiceAccountToken: false
-                  # nginx never calls the apiserver — no token to steal from this pod.
+                  # nginx never calls the apiserver - no token to steal from this pod.
                   serviceAccountName: {{ $name }}
                   # The nginx images run as root and bind 80. Both had to go: 8080 is
                   # bindable unprivileged, and 65532 overrides the image's user the same
@@ -480,14 +458,14 @@ spec:
                       configMap:
                         name: {{ $name }}-nginx-config
                     {{- if gt (len $publicConfig) 0 }}
-                    # Whole-directory mount, not subPath — kubelet syncs ConfigMap edits into
+                    # Whole-directory mount, not subPath - kubelet syncs ConfigMap edits into
                     # this one on its own, so publicConfig changes reach the pod with no restart.
                     - name: public-config
                       configMap:
                         name: {{ $name }}-public-config
                     {{- end }}
                     # nginx writes its pid to /run and its proxy/client temp files to
-                    # /var/cache/nginx — both on a read-only root without these.
+                    # /var/cache/nginx - both on a read-only root without these.
                     - name: run
                       emptyDir: {}
                     - name: nginx-cache
@@ -515,13 +493,9 @@ spec:
                   targetPort: 8080
             ---
             # --- Rate limit Middleware ---
-            # Caps requests per client to 60/min with a burst of 20.
-            # Blocks credential-scanning bots (~8 req/s) while being transparent
-            # to real users (a full SPA page load is ~10-20 requests over 10-30s).
-            # Keyed on CF-Connecting-IP: public traffic all arrives from the two
-            # cloudflared pod IPs, so the default remote-address key would put every
-            # visitor in one shared bucket. Requests without the header (direct
-            # homelab-network access) share a single bucket.
+            # Caps to 60/min with a burst of 20 - blocks scanning bots (~8 req/s) while
+            # staying transparent to real users. Keyed on CF-Connecting-IP since public
+            # traffic all arrives from the two cloudflared pod IPs, not a real client address.
             apiVersion: traefik.io/v1alpha1
             kind: Middleware
             metadata:
@@ -575,12 +549,12 @@ spec:
             {{- /* ---------- Connections ---------- */ -}}
             {{- /* apiProxies already states this SPA's dependencies, so they become     */ -}}
             {{- /* egress entries here rather than being declared a second time.         */ -}}
-            {{- /* No provides field — nothing calls a SPA workload-to-workload.         */ -}}
+            {{- /* No provides field - nothing calls a SPA workload-to-workload.         */ -}}
 
             {{- $consumes := $params.consumes | default list }}
             ---
             # Every Spa has an Ingress, and Traefik is unmeshed, so port 8080 cannot be
-            # restricted by identity. How far that reaches depends on tlsIssuer —
+            # restricted by identity. How far that reaches depends on tlsIssuer -
             # letsencrypt-prod means the internet, local-lab-ca-issuer means the
             # homelab network. Either way it is wider than the mesh can narrow.
             apiVersion: security.istio.io/v1
@@ -654,7 +628,7 @@ spec:
             {{- range $pr := $proxies }}
             {{- if not $pr.onPlatform }}
             ---
-            # apiProxies: {{ $pr.authority }} — an off-platform backend still needs
+            # apiProxies: {{ $pr.authority }} - an off-platform backend still needs
             # registering, the same as anything named in consumes.
             apiVersion: networking.istio.io/v1
             kind: ServiceEntry
@@ -679,7 +653,7 @@ spec:
             {{- range $c := $consumes }}
             {{- if $c.host }}
             ---
-            # consumes: {{ $c.host }} — registering it is what makes it reachable.
+            # consumes: {{ $c.host }} - registering it is what makes it reachable.
             apiVersion: networking.istio.io/v1
             kind: ServiceEntry
             metadata:
@@ -704,10 +678,9 @@ spec:
             {{- $redirects := list (printf "https://%s/auth/callback" $params.host) }}
             {{- range $u := ($userAuth.extraRedirectUris | default list) }}{{- $redirects = append $redirects $u }}{{- end }}
             ---
-            # The sign-in client for this SPA. Separate from the backend's own workload
-            # identity on purpose: this registration exists for the browser flow and dies
-            # with the SPA, while the backend's identity outlives it. Registered as a web
-            # client because the backend redeems the code, so the browser holds no token.
+            # The sign-in client for this SPA, separate from the backend's own workload
+            # identity - this registration exists for the browser flow and dies with
+            # the SPA, while the backend's identity outlives it.
             apiVersion: applications.azuread.m.upbound.io/v1beta1
             kind: Application
             metadata:

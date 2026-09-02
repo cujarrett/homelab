@@ -42,10 +42,9 @@ spec:
             {{- else if eq $size "lg" }}
             {{-   $wpMaxWorkers = "32" }}
             {{- end }}
-            # Checksum of every ConfigMap mounted with subPath. subPath mounts never receive
-            # ConfigMap updates, so without this a changed mu-plugin updates the ConfigMap and
-            # is silently ignored by the running pod. Feeding the hash to a pod annotation makes
-            # the change roll the Deployment instead.
+            # subPath mounts never receive ConfigMap updates, so a changed mu-plugin is
+            # silently ignored by the running pod until something restarts it. Feeding the
+            # hash into a pod annotation makes the change roll the Deployment instead.
             {{- $configChecksum := "" }}
             {{- range $key := list "security-mu-plugin-configmap" "mpm-tuning-configmap" }}
             {{-   $cm := index $observedResources $key }}
@@ -57,10 +56,8 @@ spec:
             {{- end }}
             {{- $configChecksum = $configChecksum | sha256sum | trunc 16 }}
             # --- MariaDB credentials Secret ---
-            # Passwords are read back from the live Secret whenever it exists, and only
-            # derived from the XR UID on first creation. MariaDB applies MYSQL_*_PASSWORD
-            # only when the datadir is empty, so handing it a fresh value against a
-            # retained PVC locks the site out of its own database with no way back in.
+            # Read back from the live Secret when it exists, only derived from the XR UID
+            # on creation - MariaDB applies MYSQL_*_PASSWORD only on an empty datadir.
             {{- $dbPassword := printf "%s-db" $uid | sha256sum | trunc 32 }}
             {{- $rootPassword := printf "%s-root" $uid | sha256sum | trunc 32 }}
             {{- $observedSecret := index $observedResources "mariadb-secret" }}
@@ -161,10 +158,9 @@ spec:
                     node-role.kubernetes.io/worker: worker
                   # Neither WordPress nor MariaDB calls the apiserver.
                   automountServiceAccountToken: false
-                  # Neither image can run non-root: both entrypoints extract files and
-                  # chown them before dropping privileges, and MariaDB's datadir is
-                  # already owned by uid 999 on the existing volume. So the containment
-                  # here is capability-shaped instead - see the per-container drops.
+                  # Neither image can run non-root - both entrypoints extract files and
+                  # chown them before dropping privileges. Containment is capability-shaped
+                  # instead - see the per-container drops.
                   securityContext:
                     seccompProfile:
                       type: RuntimeDefault
@@ -242,10 +238,8 @@ spec:
                   name: mysql
             ---
             # --- WordPress Deployment ---
-            # initContainer seeds wp-content from the image on first run, leaving existing
-            # data untouched on subsequent starts (migration-safe). Tests for themes/ rather
-            # than emptiness - Longhorn formats ext4, so a fresh PVC already holds lost+found
-            # and an is-it-empty check would skip the seed on every new instance.
+            # initContainer seeds wp-content on first run only. Tests for themes/ rather
+            # than emptiness - a fresh Longhorn PVC already holds lost+found.
             apiVersion: apps/v1
             kind: Deployment
             metadata:
@@ -275,10 +269,9 @@ spec:
                     node-role.kubernetes.io/worker: worker
                   # Neither WordPress nor MariaDB calls the apiserver.
                   automountServiceAccountToken: false
-                  # Neither image can run non-root: both entrypoints extract files and
-                  # chown them before dropping privileges, and MariaDB's datadir is
-                  # already owned by uid 999 on the existing volume. So the containment
-                  # here is capability-shaped instead - see the per-container drops.
+                  # Neither image can run non-root - both entrypoints extract files and
+                  # chown them before dropping privileges. Containment is capability-shaped
+                  # instead - see the per-container drops.
                   securityContext:
                     seccompProfile:
                       type: RuntimeDefault
@@ -312,10 +305,9 @@ spec:
                         allowPrivilegeEscalation: false
                         capabilities:
                           drop: [ALL]
-                          # NET_BIND_SERVICE for port 80, SETUID/SETGID so Apache can
-                          # drop to www-data, and CHOWN/DAC_OVERRIDE/FOWNER for the
-                          # entrypoint's core extraction. Verified as the minimum - the
-                          # planned set without CHOWN and DAC_OVERRIDE exited on startup.
+                          # NET_BIND_SERVICE for port 80, SETUID/SETGID so Apache can drop
+                          # to www-data, CHOWN/DAC_OVERRIDE/FOWNER for core extraction -
+                          # verified minimum, dropping CHOWN or DAC_OVERRIDE exits on startup.
                           add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID, NET_BIND_SERVICE]
                       env:
                         - name: WORDPRESS_DB_HOST
@@ -333,11 +325,8 @@ spec:
                               name: {{ $name }}-mariadb
                               key: password
                         # Blocks the browser theme/plugin editor, not updates - DISALLOW_FILE_MODS
-                        # isn't set since that would also block plugin/core updates.
-                        # The official image skips many WordPress security releases, so the pinned
-                        # tag is a floor and WP_AUTO_UPDATE_CORE pulls the rest from wordpress.org.
-                        # DISABLE_WP_CRON hands the checks to the CronJob - a full-page cache
-                        # answers requests without entering PHP, so page-view cron never fires.
+                        # would also block those. WP_AUTO_UPDATE_CORE covers what the pinned tag
+                        # skips; DISABLE_WP_CRON defers to the CronJob since page-view cron never fires.
                         - name: WORDPRESS_CONFIG_EXTRA
                           value: |
                             define('DISALLOW_FILE_EDIT', true);
@@ -382,8 +371,7 @@ spec:
                         name: {{ $name }}-mpm-tuning
             ---
             # --- wp-cron CronJob ---
-            # Runs WordPress scheduled events now that DISABLE_WP_CRON stops page views doing it.
-            # Only executes events already due - the mu-plugin sets the hourly update cadence.
+            # Runs scheduled events now that DISABLE_WP_CRON stops page views doing it.
             # Hits the ClusterIP so the loop stays in-namespace instead of via Cloudflare.
             apiVersion: batch/v1
             kind: CronJob
@@ -502,13 +490,9 @@ spec:
                               number: 80
             ---
             # --- Apache worker recycling ConfigMap ---
-            # MaxConnectionsPerChild 0 (the image default) never recycles prefork workers,
-            # so long-lived workers accumulate memory over the container's lifetime and it's
-            # never returned to the OS. Recycling after 500 requests bounds that growth.
-            # MaxRequestWorkers defaults to 150, which lets Apache spawn far more workers than
-            # the container's memory limit can hold - a traffic bump OOMKills the pod long
-            # before per-worker recycling helps. Cap total workers to what the size's memory
-            # limit can actually fit.
+            # MaxConnectionsPerChild 0 (image default) never recycles workers, so memory
+            # accumulates - 500 bounds it. MaxRequestWorkers is capped to what the size's
+            # memory limit can fit, since the default 150 lets a traffic bump OOMKill the pod.
             apiVersion: v1
             kind: ConfigMap
             metadata:
@@ -526,11 +510,8 @@ spec:
                 </IfModule>
             ---
             # --- Security mu-plugin ConfigMap ---
-            # Mounts a must-use plugin that does four things
-            #   1. Disables XML-RPC (blocks brute-force via xmlrpc.php)
-            #   2. Removes /wp/v2/users + /wp/v2/users/me from the REST API (prevents username enumeration)
-            #   3. Disables Application Passwords (blocks REST API basic-auth credential stuffing)
-            #   4. Marks automated affiliate-referral comments as spam before they reach moderation
+            # Must-use plugin: disables XML-RPC and Application Passwords (brute-force and
+            # credential-stuffing vectors), removes /wp/v2/users, and spam-flags affiliate-referral comments.
             apiVersion: v1
             kind: ConfigMap
             metadata:
@@ -663,9 +644,8 @@ spec:
                 secretName: wordpress-tls
             ---
             # --- Security response headers Middleware ---
-            # Applied to all WordPress traffic via the Ingress annotation.
-            # Strips Server and X-Powered-By disclosure headers; adds standard
-            # browser security headers missing from Apache's default config.
+            # Strips Server and X-Powered-By disclosure headers; adds standard browser
+            # security headers missing from Apache's default config.
             apiVersion: traefik.io/v1alpha1
             kind: Middleware
             metadata:
@@ -689,9 +669,8 @@ spec:
                   Permissions-Policy: "camera=(), microphone=(), geolocation=(), payment=()"
             ---
             # --- xmlrpc.php block Middleware ---
-            # Rejects all external requests to xmlrpc.php at Traefik before they reach PHP.
-            # The mu-plugin also disables XML-RPC at the WordPress level; this adds a
-            # Traefik-layer block so bots get 403 without consuming a PHP worker.
+            # Rejects requests to xmlrpc.php at Traefik before they reach PHP - the mu-plugin
+            # also disables XML-RPC at the WordPress level, so bots get 403 either way without consuming a worker.
             apiVersion: traefik.io/v1alpha1
             kind: Middleware
             metadata:
@@ -731,13 +710,8 @@ spec:
                 secretName: wordpress-tls
             ---
             # --- WordPress NetworkPolicy ---
-            # Code execution inside this pod should reach the database, DNS and the public
-            # internet -- nothing else. The egress ipBlock subtracts every RFC1918 range, so
-            # a shell here cannot scan the LAN (192.168.10.0/24), the pod CIDR (10.42.0.0/16)
-            # or any other namespace's Services. Link-local is excluded too; it is where cloud
-            # metadata endpoints live and there is no reason for WordPress to reach it.
-            # Public egress stays open because WordPress needs it -- update checks and core
-            # auto-update downloads call out to wordpress.org.
+            # Code execution here should reach only the database, DNS and the public internet.
+            # egress ipBlock subtracts RFC1918 plus link-local (cloud metadata) so a shell can't scan the LAN.
             apiVersion: networking.k8s.io/v1
             kind: NetworkPolicy
             metadata:
@@ -771,11 +745,9 @@ spec:
                   ports:
                     - protocol: TCP
                       port: 80
-                # No rule for the kubelet readiness probe on purpose. It arrives from the
-                # node's cilium_host address with the reserved:host identity, which Cilium
-                # always admits to local pods while enable-host-firewall is false. Adding a
-                # node-CIDR ipBlock here would not match that source anyway, and would open
-                # port 80 to the whole LAN -- bypassing the Traefik rate limit and xmlrpc block.
+                # No rule for the kubelet readiness probe on purpose - it arrives with the
+                # reserved:host identity, which Cilium always admits while enable-host-firewall
+                # is false. A node-CIDR ipBlock would instead open port 80 to the whole LAN.
               egress:
                 - to:
                     - namespaceSelector:

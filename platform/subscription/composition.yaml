@@ -25,12 +25,9 @@ spec:
                  This handles Topics whose streamName differs from their metadata.name. */}}
             {{- $stream := ($params.topicRef.streamName | default ($params.topicRef.name | upper)) }}
             # --- Consumer ---
-            # Durable pull consumer - NATS remembers this cursor's position across
-            # pod restarts and redeployments. The Api that reads this subscription
-            # binds to $name as its consumer name and pulls messages explicitly.
-            #
-            # ackPolicy: explicit → app must ack each message; redelivered after ackWait
-            # deliverPolicy: all  → replay from stream start on first connect
+            # Durable pull consumer - NATS remembers this cursor's position across pod
+            # restarts. The reading Api binds to $name as its consumer name. ackPolicy
+            # explicit requires each message acked; deliverPolicy all replays from stream start.
             apiVersion: jetstream.nats.io/v1beta2
             kind: Consumer
             metadata:

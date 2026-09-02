@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Distributes a regenerated HOMELAB_PAT to every repo that already has one set,
 # except the repos that push straight to `homelab` - see homelab-deploy-token-rotate/.
-# Consumers are discovered via `gh secret list`, not hand-maintained, so a repo
-# that starts or stops using the secret is picked up automatically.
+# Consumers are discovered via `gh secret list`, not hand-maintained.
 set -euo pipefail
 
 owner="cujarrett"

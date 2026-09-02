@@ -7,10 +7,9 @@
 #   image    newest published image, i.e. what the pin could become
 #   release  newest WordPress release, i.e. the security floor
 #
-# Core lives in the container filesystem, not the wp-content PVC, so a version
-# WordPress applied to itself is lost on restart. That is why running and pinned
-# are reported separately -- a site can serve the latest release and still be one
-# restart away from a vulnerable version.
+# Core lives in the container filesystem, not the wp-content PVC, so a self-applied
+# update is lost on restart - running and pinned are reported separately because a
+# site can serve the latest release and still be one restart from a vulnerable one.
 #
 # Usage: ./docs/wordpress/status-wordpress.sh
 set -uo pipefail

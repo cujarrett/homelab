@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Distributes a regenerated homelab-deploy PAT to the two repos that push
 # straight to `homelab` instead of `homelab-workspaces`. Fixed list, not
-# discovered - only two repos, and grep-ing CI workflows for their push
-# target isn't worth the complexity at this size.
+# discovered - not worth the complexity at this size.
 set -euo pipefail
 
 owner="cujarrett"

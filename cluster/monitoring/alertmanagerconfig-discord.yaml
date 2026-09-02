@@ -31,18 +31,16 @@ spec:
           - name: alertname
             value: KubeControllerManagerDown|KubeProxyDown|KubeSchedulerDown
             matchType: =~
-      # Meta-alert kube-prometheus-stack fires whenever any severity="info"
-      # alert exists, meant to pair with inhibit_rules (not configured here)
-      # to suppress info alerts once something worse fires. Silence it too,
-      # otherwise it spams Discord for every info-level alert on every namespace.
+      # Meta-alert fired whenever any severity="info" alert exists, meant to pair
+      # with inhibit_rules (not configured here). Silenced too, otherwise it spams
+      # Discord for every info-level alert on every namespace.
       - receiver: "null"
         matchers:
           - name: alertname
             value: InfoInhibitor
-      # Ephemeral Launchpad sandboxes and the platform e2e test namespace -
-      # teardown deletes the workload before the ServiceMonitor is pruned, so
-      # Prometheus scrapes a dead target and TargetDown fires briefly.
-      # Expected noise, not a real outage.
+      # Ephemeral Launchpad sandboxes and the platform e2e test namespace - teardown
+      # deletes the workload before the ServiceMonitor is pruned, so Prometheus scrapes
+      # a dead target briefly. Expected noise, not a real outage.
       - receiver: "null"
         matchers:
           - name: alertname
