@@ -1,0 +1,34 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: http-errors
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: http-errors
+      interval: 1m
+      rules:
+        - alert: HighErrorRate
+          # exported_service mangles namespace and service name with no fixed
+          # separator, so the namespace is recovered by rebuilding that string
+          # from kube_service_info and joining on it - no hardcoded list.
+          expr: |
+            label_replace(
+              sum by (exported_service) (increase(traefik_service_requests_total{code=~"5.."}[5m])),
+              "service_prefix", "$1", "exported_service", "^(.+)-[0-9]+@kubernetes$"
+            )
+            * on(service_prefix) group_left(namespace)
+            label_join(kube_service_info, "service_prefix", "-", "namespace", "service")
+            > 0
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-namespace-overview/namespace-overview?from=now-1h&to=now&timezone=America%2FChicago&var-namespace={{ $labels.namespace }}&refresh=30s"
+            summary: "{{ $labels.exported_service }} is returning 5xx errors"
+            description: >-
+              Check recent logs with
+              kubectl logs -n <namespace> -l app=<app> --since=10m | grep -i error
+              and Traefik's error rate for this service in Grafana.
