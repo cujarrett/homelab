@@ -23,24 +23,30 @@ spec:
             {{- $params := .observed.composite.resource.spec.parameters }}
             {{- $observedResources := .observed.resources | default dict }}
             {{- $size := $params.size | default "sm" }}
-            {{- $wpCPUReq := "100m" }}{{- $wpCPULim := "500m" }}
-            {{- $wpMemReq := "256Mi" }}{{- $wpMemLim := "512Mi" }}
-            {{- $dbCPUReq := "100m" }}{{- $dbCPULim := "500m" }}
+            # CPU requests track measured steady state, which is tens of milli-cores even on
+            # the busier site. Limits stay generous because PHP is bursty and a limit reserves
+            # nothing, where an inflated request permanently blocks scheduling on that node.
+            {{- $wpCPUReq := "50m" }}{{- $wpCPULim := "1000m" }}
+            {{- $wpMemReq := "256Mi" }}{{- $wpMemLim := "768Mi" }}
+            {{- $dbCPUReq := "50m" }}{{- $dbCPULim := "500m" }}
             {{- $dbMemReq := "256Mi" }}{{- $dbMemLim := "512Mi" }}
             {{- if eq $size "md" }}
-            {{-   $wpCPUReq = "250m" }}{{- $wpCPULim = "1500m" }}
-            {{-   $wpMemReq = "512Mi" }}{{- $wpMemLim = "1024Mi" }}
+            {{-   $wpCPUReq = "100m" }}{{- $wpCPULim = "1500m" }}
+            {{-   $wpMemReq = "512Mi" }}{{- $wpMemLim = "1280Mi" }}
             {{- else if eq $size "lg" }}
-            {{-   $wpCPUReq = "500m" }}{{- $wpCPULim = "2000m" }}
+            {{-   $wpCPUReq = "150m" }}{{- $wpCPULim = "2000m" }}
             {{-   $wpMemReq = "1Gi" }}{{- $wpMemLim = "2Gi" }}
-            {{-   $dbCPUReq = "200m" }}{{- $dbCPULim = "1000m" }}
+            {{-   $dbCPUReq = "100m" }}{{- $dbCPULim = "1000m" }}
             {{-   $dbMemReq = "512Mi" }}{{- $dbMemLim = "1Gi" }}
             {{- end }}
-            {{- $wpMaxWorkers := "8" }}
+            # Each prefork child carries every active plugin, measured at roughly 128Mi on a
+            # plugin-heavy site. Workers are the memory limit divided by that, less headroom
+            # for the shared opcache and the parent, so a full worker pool cannot OOM the pod.
+            {{- $wpMaxWorkers := "4" }}
             {{- if eq $size "md" }}
-            {{-   $wpMaxWorkers = "16" }}
+            {{-   $wpMaxWorkers = "8" }}
             {{- else if eq $size "lg" }}
-            {{-   $wpMaxWorkers = "32" }}
+            {{-   $wpMaxWorkers = "12" }}
             {{- end }}
             # subPath mounts never receive ConfigMap updates, so a changed mu-plugin is
             # silently ignored by the running pod until something restarts it. Feeding the
@@ -491,8 +497,9 @@ spec:
             ---
             # --- Apache worker recycling ConfigMap ---
             # MaxConnectionsPerChild 0 (image default) never recycles workers, so memory
-            # accumulates - 500 bounds it. MaxRequestWorkers is capped to what the size's
-            # memory limit can fit, since the default 150 lets a traffic bump OOMKill the pod.
+            # accumulates - 500 bounds it. MaxSpareServers must stay well below
+            # MaxRequestWorkers, otherwise idle children are never reaped and memory only
+            # ever ratchets upward for the life of the pod.
             apiVersion: v1
             kind: ConfigMap
             metadata:
@@ -506,7 +513,8 @@ spec:
                 <IfModule mpm_prefork_module>
                     MaxConnectionsPerChild 500
                     MaxRequestWorkers {{ $wpMaxWorkers }}
-                    MaxSpareServers {{ $wpMaxWorkers }}
+                    MinSpareServers 1
+                    MaxSpareServers 3
                 </IfModule>
             ---
             # --- Security mu-plugin ConfigMap ---
