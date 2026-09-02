@@ -1,10 +1,6 @@
-# Functions for local `crossplane render` - see ../render-check.sh.
-# Versions must match cluster/crossplane/providers.yaml, which is what the cluster
-# actually runs; a drift here means render-check tests a different function than prod.
-# No runtimeConfigRef - render runs these as local Docker containers.
-# Safe to keep in Git only because platform-xrs.yaml excludes test/** from the
-# platform-definitions Application. Move this file up a level and ArgoCD adopts these
-# Function objects and fights cluster/crossplane/providers.yaml over them.
+# Functions for local `crossplane render` - see ../render-check.sh. Versions must
+# match cluster/crossplane/providers.yaml or render-check tests the wrong function.
+# Safe here only because platform-xrs.yaml excludes test/** from ArgoCD.
 apiVersion: pkg.crossplane.io/v1
 kind: Function
 metadata:

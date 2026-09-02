@@ -1,7 +1,6 @@
-# Kyverno - admission validation for platform XRs. It exists for the two checks CEL
-# cannot do, because both have to read an object other than the one being admitted:
-# does the app a consumes entry names actually exist, and is this egress host denied.
-# See platform/docs/app-configuration.md.
+# Kyverno - admission validation for platform XRs. Exists for the two checks CEL
+# can't do, since both must read an object other than the one being admitted -
+# does the app a consumes entry names exist, and is this egress host denied.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -16,11 +15,9 @@ spec:
     helm:
       releaseName: kyverno
       values: |
-        # kyverno-api.labels and .annotations both default to {}, which the chart
-        # renders literally as an empty map on every CRD. Kubernetes drops an empty
-        # map on write, so the live CRD has no such key at all - desired says "empty
-        # map present", live says "absent", and neither ignoreDifferences nor a
-        # reinstall can reconcile that gap. Real values make both sides agree.
+        # kyverno-api.labels/.annotations default to {}, which Kubernetes drops on write,
+        # so desired says "empty map present" and live says "absent" forever - neither
+        # ignoreDifferences nor a reinstall closes that gap. Real values fix it.
         kyverno-api:
           labels:
             platform.local.lab/managed-by: argocd
@@ -60,11 +57,9 @@ spec:
     namespace: kyverno
   syncPolicy:
     automated:
-      # The chart's post-upgrade migration Job carries a plain helm.sh/hook annotation
-      # rather than one ArgoCD's Helm-hook translation recognizes, so it never leaves
-      # the resource tree and is flagged for pruning on every compare. Prune=false
-      # below stops that flag; nothing else in this vendor chart gets removed in
-      # practice, so losing auto-prune elsewhere costs nothing real.
+      # The chart's migration Job carries a plain helm.sh/hook ArgoCD doesn't translate,
+      # so it never leaves the resource tree and gets flagged for pruning every compare.
+      # Prune=false stops that; nothing else in this vendor chart is ever removed.
       prune: false
       selfHeal: true
     syncOptions:

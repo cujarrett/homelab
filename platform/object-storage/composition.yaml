@@ -41,11 +41,9 @@ spec:
                     map:
                       delete: true
                       retain: false
-              # Bucket name: platform-{namespace}-{name}. The platform- prefix is a
-              # naming convention that lets IAM resource conditions scope to
-              # arn:aws:s3:::platform-* without relying on bucket tags (IAM cannot
-              # read S3 tags at auth time). This role's inline policy is scoped to
-              # the exact bucket ARN, not the wildcard.
+              # Bucket name: platform-{namespace}-{name}. The platform- prefix lets IAM
+              # resource conditions scope to arn:aws:s3:::platform-* without relying on
+              # bucket tags, which IAM cannot read at auth time.
               - type: CombineFromComposite
                 combine:
                   variables:

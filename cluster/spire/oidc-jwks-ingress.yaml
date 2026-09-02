@@ -1,7 +1,6 @@
-# Cloudflare's bot protection 403s datacenter callers on this zone, which stops AWS STS
-# and Entra from fetching the signing keys. Requests under /.well-known/ are let through,
-# so the JWKS is published there and rewritten back to the provider's real /keys path.
-# The discovery document advertises this URL via config.jwksUri in cluster/argocd/spire.yaml.
+# Cloudflare's bot protection 403s datacenter callers on this zone, blocking AWS STS
+# and Entra from fetching signing keys. /.well-known/ requests are let through, so
+# the JWKS is published there and rewritten back to the provider's real /keys path.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

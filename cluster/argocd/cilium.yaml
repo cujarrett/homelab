@@ -50,11 +50,9 @@ spec:
                 - port-distribution
                 - icmp
                 - httpV2
-          # Mutual auth DISABLED - Istio owns mTLS now.
-          # Cilium is demoted to CNI plumbing; connection policy/mutual auth belongs to Istio.
-          # SPIRE keeps running (Istio may use SPIFFE identity later); Cilium simply stops consuming it.
-          # NOTE: the chart's validate.yaml requires spire.enabled to match authentication.enabled -
-          # both must be false together, so the SPIRE integration block below is disabled too.
+          # Mutual auth DISABLED - Istio owns mTLS now, Cilium is demoted to CNI plumbing.
+          # SPIRE keeps running for Istio's future use; Cilium just stops consuming it.
+          # The chart's validate.yaml requires spire.enabled to match authentication.enabled.
           authentication:
             enabled: false
             mutual:

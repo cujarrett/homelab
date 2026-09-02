@@ -10,15 +10,9 @@ spec:
     - name: sump-pump
       interval: 5m
       rules:
-        # sump_pump_running is 0 or 1, so its hourly average is the fraction of the
-        # hour spent running - times 60 reads straight off as minutes per hour.
-        # Normal is ~6. Duty cycle is the primary "working hard" signal because it
-        # is the one tied to motor damage. Cycle count tracks it so closely that a
-        # separate rate alert only double-notified the same rain.
-        #
-        # Scoped to the consumer. Both apps export this gauge, but only the
-        # consumer is scraped every 10s - the bridge defaults to 60s, which cannot
-        # see an eleven second run and reads high enough to fire on its own.
+        # Hourly average of the 0/1 gauge times 60 reads as minutes per hour, normal
+        # ~6. Duty cycle is the primary signal since it ties to motor damage. Scoped
+        # to the consumer - it's scraped every 10s, the bridge's 60s misses short runs.
         - alert: SumpPumpRunningLongHours
           expr: |
             max(avg_over_time(sump_pump_running{job="sump-pump-consumer"}[1h])) * 60 > 12
@@ -46,17 +40,9 @@ spec:
               Sustained, that is how the motor burns out. Suspect a stuck float, or
               a discharge line blocked or frozen.
 
-        # Duty cycle divided by cycle count is the average seconds per run. It
-        # separates the two causes that a duty cycle number alone cannot - more
-        # water in, versus each run moving less of it. Rising at a normal cycle
-        # count is impeller wear or a partly blocked discharge, and it shows up
-        # here well before total runtime crosses a threshold.
-        #
-        # Normal is ~11.5s. Across the archive the busiest hours ran longest, so
-        # 30 sits about a third above the worst storm seen rather than just above
-        # p99. The run count guard is load bearing - every reading over 23s in the
-        # archive came from a near idle window where the denominator was tiny
-        # enough to make the ratio meaningless.
+        # Duty cycle / cycle count = avg seconds per run, separating more water in
+        # from each run moving less of it (impeller wear, blocked discharge). Normal
+        # ~11.5s; the run-count guard matters - low counts make the ratio meaningless.
         - alert: SumpPumpRunsGettingLonger
           expr: |
             (
@@ -111,15 +97,9 @@ spec:
               24 window across the whole archive. Worth confirming the pit is
               actually dry rather than the sensor being stuck.
 
-        # absent(sump_pump_running) cannot see this failure: the exporters stay up
-        # and keep publishing 0 with no device behind them, so the series is never
-        # absent. The bridge reconciles the meter's config on a timer instead, and
-        # a reconcile succeeding means the meter answered - that is the signal.
-        #
-        # Deliberately not based on webhook arrival rate. The meter only sends on
-        # change, so an idle pump legitimately goes quiet for long stretches, and
-        # any attempt to force a steady heartbeat throttles the events that make
-        # a twelve second run measurable.
+        # absent() can't see this - exporters stay up publishing 0 with no device
+        # behind them. The bridge reconciles the meter's config on a timer instead,
+        # so a successful reconcile is the real signal, not webhook arrival rate.
         - alert: SumpPumpNotReporting
           expr: |
             max(shelly_webhook_configured) == 0

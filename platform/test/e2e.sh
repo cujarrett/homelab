@@ -2,20 +2,18 @@
 #
 # Platform end-to-end test.
 #
-# Inflates an Api with every platform integration - private-cloud (in-cluster
-# Postgres, Redis, NATS) and public-cloud (AWS RDS, ElastiCache, DynamoDB, S3)
-# - verifies each one actually works from inside the pod, tears everything
-# down, and verifies the teardown left nothing behind in the cluster or AWS.
+# Inflates an Api with every platform integration - private-cloud (Postgres, Redis,
+# NATS) and public-cloud (RDS, ElastiCache, DynamoDB, S3) - verifies each works from
+# inside the pod, tears everything down, and verifies nothing was left behind.
 #
 # Usage:
 #   ./platform/test/e2e.sh                 # full run (~15-25 min, costs a few cents of AWS)
 #   ./platform/test/e2e.sh --private-only  # in-cluster only (~5 min, no AWS)
 #   ./platform/test/e2e.sh --keep          # skip teardown, leave resources for debugging
 #
-# XRs are applied directly with kubectl (never via ArgoCD), so GitOps state is
-# untouched. Public-cloud RDS/ElastiCache are VPC-internal and unreachable from
-# the cluster by design - for those the test verifies provisioning plus the full
-# SPIFFE -> OIDC -> STS identity chain, reported as "identity-only".
+# XRs are applied directly with kubectl (never via ArgoCD), so GitOps state stays
+# untouched. RDS/ElastiCache are VPC-internal and unreachable from the cluster by
+# design, so those check provisioning plus the SPIFFE -> OIDC -> STS chain only ("identity-only").
 
 set -uo pipefail
 
@@ -131,8 +129,7 @@ for i in d.get("integrations", []):
 
 # check_probes <api> <local_port> <expected names, comma-separated>
 # Retries until every expected integration reports ok, or the deadline passes.
-# The port-forward is restarted if it dies (kubectl drops it on transient
-# connection errors); its stderr is kept for the failure report.
+# Restarts the port-forward if it dies (kubectl drops it on transient errors).
 check_probes() {
   local api=$1 port=$2 expected=$3 deadline=$(( $(date +%s) + 360 )) statuses=""
   local pf_log pf_pid=""
@@ -430,10 +427,9 @@ fi
 # ---------------------------------------------------------------------------
 echo "== Phase 5: verify teardown"
 
-# The XR waits above only confirm the XR itself is gone; writeConnectionSecretToRef
-# secrets are owned by the underlying provider MR (Instance/ReplicationGroup), not
-# the XR, and that MR's finalizer can lag AWS-side deletion by several more minutes.
-# Give the namespace up to 10 min to empty out before calling anything an orphan.
+# writeConnectionSecretToRef secrets are owned by the provider MR, not the XR, and
+# that MR's finalizer can lag AWS-side deletion by minutes - give the namespace up
+# to 10 min to empty out before calling anything an orphan.
 EMPTY_DEADLINE=$(( $(date +%s) + 600 ))
 while true; do
   LEFTOVER=$(kubectl get deployments,secrets,pvc -n "$NS" --no-headers 2>/dev/null)

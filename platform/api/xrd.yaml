@@ -177,10 +177,9 @@ spec:
                             description: "Interface name (e.g. collection-write). Groups a set of routes under one grant, and becomes the Entra object a caller is granted."
                           auth:
                             type: string
-                            # Required rather than defaulted. This decides whether a caller
-                            # must carry a token at all, so it is worth stating on every
-                            # interface. Requiring it also keeps the API server from writing
-                            # a value git does not have, which holds an app OutOfSync.
+                            # Required rather than defaulted - worth stating explicitly on
+                            # every interface, and keeps the API server from writing a value
+                            # git doesn't have, which would hold an app OutOfSync.
                             enum: [mesh, workload, user]
                             description: "What a caller must prove to use this interface. mesh means its workload identity is enough, no token is involved, and no Entra object is created. workload means it must also carry an Entra app role, checked through the roles claim. user means it must carry a delegated scope, checked through scp, which is what on-behalf-of produces."
                           methods:

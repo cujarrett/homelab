@@ -268,10 +268,9 @@ spec:
                     app.kubernetes.io/instance: {{ $name }}
                 spec:
                   serviceAccountName: {{ $name }}
-                  # runAsUser overrides the image's own USER, which several app images
-                  # give as a name - and the kubelet refuses runAsNonRoot for a name it
-                  # cannot resolve. 65532 suits every image because the binaries are
-                  # root-owned 0755, so none needs to own the uid it runs as.
+                  # runAsUser overrides the image's own USER, since kubelet refuses
+                  # runAsNonRoot for a name it can't resolve. 65532 works everywhere -
+                  # the binaries are root-owned 0755, so none needs to own its uid.
                   securityContext:
                     runAsNonRoot: true
                     runAsUser: 65532
@@ -697,9 +696,8 @@ spec:
             {{- if $entraNeeded }}
             ---
             # Entra app registration for this Api. owners is required - an app created
-            # through the API (CLI or Crossplane, doesn't matter) is never auto-owned;
-            # only the Azure web UI does that. Without it, crossplane-entra can
-            # create this but never delete or update it. See azuread-permissions.md.
+            # through the API is never auto-owned, only the Azure web UI does that.
+            # Without it, crossplane-entra can create this but never delete or update it.
             apiVersion: applications.azuread.m.upbound.io/v1beta1
             kind: Application
             metadata:
@@ -716,10 +714,9 @@ spec:
                   # v2 issuer rejects every one of them, and the token looks fine.
                   requestedAccessTokenVersion: 2
                   {{- if $delegatedScopes }}
-                  # auth: user interfaces. A delegated scope is a field on the application
-                  # rather than its own object, which is why these are inline and app roles
-                  # are not. type Admin keeps consent with an administrator - User would let
-                  # any signed-in person consent on their own behalf.
+                  # auth: user interfaces. A delegated scope is a field on the application,
+                  # which is why these are inline and app roles are not. type Admin keeps
+                  # consent with an administrator - User would let anyone consent themselves.
                   oauth2PermissionScope:
                   {{- range $scope := $delegatedScopes }}
                   {{- $scopeHash := printf "%s/%s/%s/scope" $ns $name $scope.name | sha256sum }}
@@ -731,12 +728,9 @@ spec:
                       adminConsentDescription: {{ printf "%s on %s, on behalf of a signed-in user" $scope.name $name | quote }}
                   {{- end }}
                   {{- end }}
-                # A stable name for this Api as an audience. Entra generates the client
-                # ID, so a caller could only learn it by reading this Api's resources -
-                # this is derivable instead, the same trick the Sql composition uses to
-                # predict role ARNs rather than look them up. The tenant ID is not
-                # decoration: a bare api://name is refused by the default tenant policy,
-                # which requires a verified domain, the tenant ID or the app ID.
+                # A stable, derivable name for this Api as an audience, so a caller doesn't
+                # need to read this Api's resources to learn its client ID. The tenant ID
+                # is required - a bare api://name is refused by the default tenant policy.
                 identifierUris:
                   - api://{{ $entraTenantId }}/platform-{{ $ns }}-{{ $name }}
                 owners:
@@ -810,10 +804,9 @@ spec:
                   - Application
             {{- range $caller := ($role.allowedCallers | default list) }}
             ---
-            # The grant itself. Expect this one to sit red for its first ~30s with
-            # "Permission being assigned was not found on application" - the role above
-            # has to replicate from the app registration to its service principal, and
-            # the grant is checked against the service principal. It self-heals.
+            # The grant itself. Expect it to sit red for ~30s with "Permission being assigned
+            # was not found on application" while the role above replicates from the app
+            # registration to its service principal, which is what the grant checks against.
             apiVersion: app.azuread.m.upbound.io/v1beta1
             kind: RoleAssignment
             metadata:
@@ -906,9 +899,8 @@ spec:
             {{- $isPublic := or (eq $tlsIssuer "letsencrypt-prod") (ne $tlsSecret "") }}
             ---
             # --- Security response headers Middleware ---
-            # An Api serves its own responses with no nginx in front, so these have to come
-            # from Traefik. default-src 'none' because a JSON API should never be a document
-            # context - it makes a reflected-content bug unexploitable in a browser.
+            # An Api serves its own responses with no nginx in front, so these come from
+            # Traefik. default-src 'none' since a JSON API is never a document context.
             apiVersion: traefik.io/v1alpha1
             kind: Middleware
             metadata:
@@ -933,14 +925,9 @@ spec:
             {{- if $isPublic }}
             ---
             # --- Rate limit Middleware ---
-            # Public hosts only. Keyed on CF-Connecting-IP because public traffic all
-            # arrives from the two cloudflared pod IPs, so the default remote-address key
-            # would put every visitor in one shared bucket.
-            #
-            # That keying is exactly why internal hosts are excluded rather than given a
-            # different limit. A .local.lab request carries no CF-Connecting-IP, so every
-            # caller would fall into one shared bucket - and sump-pump-bridge.local.lab is
-            # IoT ingest, where a throttled POST is a lost reading, not a retried page load.
+            # Public hosts only, keyed on CF-Connecting-IP since public traffic all arrives
+            # from the two cloudflared pod IPs. Internal hosts are excluded rather than
+            # given a different limit because a .local.lab request carries no such header.
             apiVersion: traefik.io/v1alpha1
             kind: Middleware
             metadata:
@@ -1025,10 +1012,9 @@ spec:
                   mode: PERMISSIVE
                 {{- end }}
             ---
-            # The first ALLOW policy selecting this workload makes it default-deny, so
-            # every rule this workload needs lives in THIS object. Two ALLOW policies
-            # would OR together and widen access, and anything that must all hold goes
-            # in one rule rather than two.
+            # The first ALLOW policy selecting this workload makes it default-deny, so every
+            # rule it needs lives in THIS object - two ALLOW policies would OR together
+            # and widen access, so anything that must all hold goes in one rule.
             apiVersion: security.istio.io/v1
             kind: AuthorizationPolicy
             metadata:
@@ -1046,10 +1032,9 @@ spec:
                 - to:
                     - operation: { ports: ["{{ $metricsPort }}"] }
                 {{- if $host }}
-                # This Api has an Ingress, and Traefik is unmeshed, so this port cannot
-                # be restricted by identity. How far that reaches depends on tlsIssuer -
-                # letsencrypt-prod means the internet, local-lab-ca-issuer means the
-                # homelab network. Drop the host, or mesh Traefik, to close it.
+                # This Api has an Ingress, and Traefik is unmeshed, so this port can't be
+                # restricted by identity - tlsIssuer decides whether that reaches the
+                # internet (letsencrypt-prod) or just the homelab network.
                 - to:
                     - operation: { ports: ["{{ $appPort }}"] }
                 {{- end }}

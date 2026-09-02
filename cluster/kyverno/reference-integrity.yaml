@@ -1,7 +1,6 @@
 # An app naming another app that does not exist renders fine, reports Synced, and
 # enforces nothing. Catching that means reading an object other than the one being
 # admitted, which a CEL rule on the XRD cannot do.
-# See platform/docs/app-configuration.md.
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:

@@ -1,7 +1,6 @@
-# Scrapes Istio telemetry into the main Prometheus
-# - istio-sidecars: merged app+Envoy metrics from every istio-proxy (istio_requests_total, etc.)
-# - istiod: pilot control-plane metrics (xDS pushes, connected proxies, convergence)
-# release: monitoring so the kube-prometheus-stack Prometheus selects these.
+# Scrapes Istio telemetry into the main Prometheus - istio-sidecars for merged
+# app+Envoy metrics, istiod for pilot control-plane metrics. release: monitoring
+# so the kube-prometheus-stack Prometheus selects these.
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:

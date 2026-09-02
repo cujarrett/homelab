@@ -10,16 +10,9 @@ spec:
     - name: power
       interval: 5m
       rules:
-        # A whole-rack power loss cannot be caught while it happens - Prometheus
-        # dies with the nodes and records nothing, and comparing Ready nodes to
-        # total nodes yields no result when both sides go absent at once. Node
-        # boot time is read after recovery instead, so the evidence survives the
-        # event that produced it.
-        #
-        # All four nodes booting within five minutes of each other is the
-        # signature of lost mains power. A single node rebooting for maintenance
-        # leaves the others' boot times far behind, so the window stays wide and
-        # this stays quiet.
+        # A whole-rack outage can't be caught live - Prometheus dies with the nodes,
+        # so boot time is read after recovery instead. All four nodes booting within
+        # five minutes of each other is the signature of lost mains power.
         - alert: ClusterPowerLoss
           expr: |
             (max(node_boot_time_seconds) - min(node_boot_time_seconds)) < 300

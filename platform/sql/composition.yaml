@@ -189,10 +189,9 @@ spec:
             apiVersion: v1
             kind: Secret
             metadata:
-              # rds.aws.m.upbound.io/v1beta1 Instance is namespaced, and its
-              # passwordSecretRef/writeConnectionSecretToRef no longer accept a
-              # namespace - the secret must live alongside the Instance. Name is
-              # namespace-qualified to avoid collisions between same-named Sqls.
+              # passwordSecretRef/writeConnectionSecretToRef no longer accept a namespace,
+              # so the secret must live alongside the Instance. Name is namespace-qualified
+              # to avoid collisions between same-named Sqls.
               name: {{ $ns }}-{{ $name }}-master-secret
               namespace: {{ $ns }}
               annotations:

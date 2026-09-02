@@ -21,16 +21,9 @@ spec:
             {{- $name := $xr.metadata.name }}
             {{- $params := $xr.spec.parameters }}
             # --- NACK JetStream Stream ---
-            # NACK controller (running in nats namespace) watches this object and
-            # calls the NATS API to create/update the stream. This is the NATS
-            # equivalent of a Kafka Topic - a durable, persistent named channel.
-            #
-            # retention: limits  → like Kafka log retention (oldest msgs removed at limits)
-            # retention: interest → msgs removed when all consumers have read them
-            # retention: workqueue → msgs removed when any consumer acks (competing consumers)
-            #
-            # replicas: 3 → each message written to 3 NATS nodes (Raft consensus)
-            # Kafka equivalent: replication.factor=3
+            # The NACK controller (nats namespace) watches this object and calls the NATS
+            # API to create/update the stream - the NATS equivalent of a Kafka Topic.
+            # retention and replicas map to Kafka's log retention and replication.factor.
             apiVersion: jetstream.nats.io/v1beta2
             kind: Stream
             metadata:

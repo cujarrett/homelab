@@ -1,8 +1,6 @@
-# Long-lived TLS certificates for the 5 fixed demo slot hostnames.
-# These are permanent - they survive sandbox churn so we never re-issue
-# against Let's Encrypt's "5 certs per exact hostname per 168h" limit.
-# launchpad-api copies the resulting secrets into each sandbox namespace
-# at creation time so cert-manager skips issuance there.
+# Long-lived TLS certificates for the 5 fixed demo slot hostnames. Permanent -
+# they survive sandbox churn so we never re-issue against Let's Encrypt's "5
+# certs per exact hostname per 168h" limit. launchpad-api copies the secrets in.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

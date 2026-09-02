@@ -10,15 +10,9 @@ spec:
     - name: argocd
       interval: 5m
       rules:
-        # argocd_app_info carries pod/instance labels tied to the application-controller
-        # itself, so a controller restart alone creates a "new" series per app even
-        # when health never changed. Collapsing to (name, health_status, sync_status)
-        # first removes that noise before counting.
-        #
-        # Counts distinct (health_status, sync_status) combinations seen in the window,
-        # not the number of transitions - A -> B -> A -> B looks identical to a single
-        # A -> B here. Good enough to catch real instability at homelab scale; a normal
-        # single deploy (Progressing -> Healthy) is 2 states and stays under threshold.
+        # A controller restart alone creates a "new" argocd_app_info series per app, so
+        # collapsing to (name, health_status, sync_status) first removes that noise.
+        # Counts distinct state combos, not transitions - a normal deploy stays under threshold.
         - alert: ArgoCDAppFlapping
           expr: |
             count by (name) (

@@ -7,22 +7,16 @@
 #   ./platform/test/render-check.sh        # from anywhere
 #
 # Five gates, each catching a class of bug that reached the cluster at least once:
-#   1. schema    - XRDs pass a server-side dry-run. Catches invalid CRD schemas that
-#                  Kubernetes silently refuses, leaving the CRD at its old generation.
-#   2. render    - crossplane render exits 0.
-#   3. parse     - the output is valid YAML and every list is a list. crossplane render
-#                  exits 0 on a template whose whitespace trimming collapsed a block
-#                  sequence into one string, so exit code alone proves nothing.
-#   4. diff      - two comparisons against HEAD, one per repo. Holding the XR still
-#                  shows what a composition edit does to every app, since a shared
-#                  composition means one edit reaches all of them. Holding the
-#                  composition still shows what your own XR edit did, which catches an
-#                  edit the XRD silently dropped.
-#   5. rbac      - every composed kind is granted in cluster/crossplane/rbac.yaml.
-#                  Crossplane composes with its own ServiceAccount, so a kind the
-#                  platform has never composed before renders perfectly and is then
-#                  refused by the API server. The XR goes SYNCED=False while staying
-#                  READY=True, so the app keeps serving and nothing looks wrong.
+#   1. schema  - server-side dry-run catches invalid CRD schemas Kubernetes would
+#                otherwise silently refuse, leaving the CRD at its old generation.
+#   2. render  - crossplane render exits 0.
+#   3. parse   - output is valid YAML and every list is a list; render can exit 0
+#                even when whitespace trimming collapsed a block sequence to a string.
+#   4. diff    - compares against HEAD for both the XR and the composition, so a
+#                shared-composition edit and a lone XR edit are each caught.
+#   5. rbac    - every composed kind is granted in cluster/crossplane/rbac.yaml, or
+#                it renders fine but the API server refuses it - XR stays READY=True
+#                while SYNCED=False, so nothing looks wrong.
 set -uo pipefail
 
 # Every path below is repo-root-relative, so anchor to the repo root rather than cwd.
@@ -56,9 +50,8 @@ comp_for() {
 }
 
 # --- 1. XRD schemas -----------------------------------------------------------
-# A server-side dry-run does NOT catch this class of bug: the XRD is accepted, and
-# only Crossplane's later attempt to generate a CRD from it fails - silently, leaving
-# the CRD at its previous generation. So check the invariants directly.
+# A server-side dry-run accepts the XRD even when Crossplane's later CRD
+# generation from it fails silently, so check the invariants directly.
 echo "── schema"
 for xrd in platform/*/xrd.yaml; do
   if out=$(python3 - "$xrd" <<'PY'
@@ -185,10 +178,9 @@ if [ -s "$TMP/all-rendered.yaml" ]; then
   if out=$(python3 - "$TMP/all-rendered.yaml" cluster/crossplane/rbac.yaml <<'PY'
 import sys, yaml
 
-# Groups Crossplane grants itself elsewhere: the XRs are covered by the generated
-# composite roles, and provider-managed resources by each provider's own edit role.
-# Matching the whole upbound.io suffix covers both the cluster-scoped groups and the
-# namespaced .m. ones, so a new provider needs no edit here.
+# Skips groups Crossplane grants itself elsewhere - composite roles for XRs, each
+# provider's own edit role otherwise. Matching the whole upbound.io suffix covers
+# both cluster-scoped and namespaced .m. groups, so a new provider needs no edit here.
 def skip(group):
     return group == 'platform.local.lab' or group.endswith('upbound.io')
 
