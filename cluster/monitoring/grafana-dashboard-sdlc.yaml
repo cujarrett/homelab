@@ -652,6 +652,429 @@ data:
               "range": true
             }
           ]
+        },
+        {
+          "id": 30,
+          "type": "timeseries",
+          "title": "Daily",
+          "description": "Opened, currently open, and merged - by hand vs auto - each as a trailing 1 day count sampled every poll.",
+          "gridPos": {
+            "x": 0,
+            "y": 23,
+            "w": 24,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto"
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Opened"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "light-blue"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Open now"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "dark-blue"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Merged by hand"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "purple"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Merged auto"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "blue"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "sum(github_exporter_pr_opened{repo=~\"$repo\",window=\"1d\"})",
+              "legendFormat": "Opened",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "A",
+              "range": true
+            },
+            {
+              "expr": "sum(github_exporter_pr_open{repo=~\"$repo\"})",
+              "legendFormat": "Open now",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "B",
+              "range": true
+            },
+            {
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"1d\"})",
+              "legendFormat": "Merged by hand",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "C",
+              "range": true
+            },
+            {
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"auto\",window=\"1d\"})",
+              "legendFormat": "Merged auto",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "D",
+              "range": true
+            }
+          ]
+        },
+        {
+          "id": 31,
+          "type": "timeseries",
+          "title": "Weekly",
+          "description": "Same four series as Daily, each as a trailing 7 day count.",
+          "gridPos": {
+            "x": 0,
+            "y": 31,
+            "w": 24,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto"
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Opened"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "light-blue"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Open now"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "dark-blue"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Merged by hand"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "purple"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Merged auto"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "blue"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "sum(github_exporter_pr_opened{repo=~\"$repo\",window=\"7d\"})",
+              "legendFormat": "Opened",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "A",
+              "range": true
+            },
+            {
+              "expr": "sum(github_exporter_pr_open{repo=~\"$repo\"})",
+              "legendFormat": "Open now",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "B",
+              "range": true
+            },
+            {
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"7d\"})",
+              "legendFormat": "Merged by hand",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "C",
+              "range": true
+            },
+            {
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"auto\",window=\"7d\"})",
+              "legendFormat": "Merged auto",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "D",
+              "range": true
+            }
+          ]
+        },
+        {
+          "id": 32,
+          "type": "timeseries",
+          "title": "Yearly",
+          "description": "Same four series as Daily, each as a trailing 365 day count. Prometheus keeps 30 days of history, so the line only covers what is actually retained.",
+          "gridPos": {
+            "x": 0,
+            "y": 39,
+            "w": 24,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto"
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Opened"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "light-blue"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Open now"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "dark-blue"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Merged by hand"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "purple"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Merged auto"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "blue"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "sum(github_exporter_pr_opened{repo=~\"$repo\",window=\"365d\"})",
+              "legendFormat": "Opened",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "A",
+              "range": true
+            },
+            {
+              "expr": "sum(github_exporter_pr_open{repo=~\"$repo\"})",
+              "legendFormat": "Open now",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "B",
+              "range": true
+            },
+            {
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"365d\"})",
+              "legendFormat": "Merged by hand",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "C",
+              "range": true
+            },
+            {
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"auto\",window=\"365d\"})",
+              "legendFormat": "Merged auto",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "D",
+              "range": true
+            }
+          ]
         }
       ]
     }
