@@ -148,9 +148,9 @@ Shutting one off is a pull request against `platform-egress-denials` (below) plu
 
 ## Admission checks
 
-Three `ClusterPolicy` objects catch what CEL cannot, because each has to read an object other than the one being admitted. `platform-reference-integrity` refuses an `app` named in `consumes` or `apiProxies` that is not a real Api in the namespace the reference claims, and a `configFrom` entry that is not a ConfigMap in this namespace. `platform-egress-denials` refuses a host on the denial list, which is empty until someone puts one there. `platform-workload-ownership` refuses a workload in a platform namespace that no XR composed, since a pod the platform did not compose gets no Istio Sidecar.
+Four `ClusterPolicy` objects catch what CEL cannot, because each has to read an object other than the one being admitted, or a resource no XRD governs. `platform-reference-integrity` refuses an `app` named in `consumes` or `apiProxies` that is not a real Api in the namespace the reference claims, and a `configFrom` entry that is not a ConfigMap in this namespace. `platform-egress-denials` refuses a host on the denial list, which is empty until someone puts one there. `platform-workload-ownership` refuses a workload in a platform namespace that no XR composed, since a pod the platform did not compose gets no Istio Sidecar. `platform-namespace-posture` refuses a platform namespace that does not state whether its pods are meshed, so an unmeshed namespace is a choice rather than an omission.
 
-All three ship as `Audit` rather than `Enforce`. A policy matching every `Api` and `Spa` that is subtly wrong would reject every XR update, which is worse than the silent failure it exists to catch, so the reports get read before the switch is flipped.
+All four ship as `Audit` rather than `Enforce`. A policy matching every `Api` and `Spa` that is subtly wrong would reject every XR update, which is worse than the silent failure it exists to catch, so the reports get read before the switch is flipped.
 
 ## Not built yet
 
