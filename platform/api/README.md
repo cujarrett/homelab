@@ -38,8 +38,8 @@ The namespace is owned by the tenant - created by `namespace.yaml` in the tenant
 | `sqlRef.name` | no | - | Name of an existing `Sql` instance to bind. |
 | `sqlRef.backend` | no | `private-cloud` | Must match the `Sql` instance's backend. When `public-cloud`, the sidecar exchanges the SVID for STS credentials for RDS IAM DB auth. |
 | `nosqlRef.name` | no | - | Name of an existing `NoSql` instance to bind. Creates an IAM Role and binding Secret. |
-| `configFrom` | no | - | ConfigMaps in this namespace, mounted as environment in order. The team owns each, so changing a value never re-reconciles this Api. |
-| `secretsFrom` | no | - | Secrets in this namespace, mounted as environment in order. Hand-create one, or declare a `Secret` XR that fills it. A list, so two vendors' credentials can have separate lifecycles. |
+| `configFrom` | no | - | ConfigMaps in this namespace, mounted as environment in order, later entries winning. The team owns each, so changing a value never re-reconciles this Api. |
+| `secretsFrom` | no | - | Secrets in this namespace, mounted as files at `/secrets/<secret-name>/<key>`. Hand-create one, or declare a `Secret` XR that fills it. A list, so two vendors' credentials can have separate lifecycles. |
 | `topicRef.name` | no | - | Name of an `Topic` this API publishes to. Injects `NATS_URL` and `NATS_STREAM` env vars. |
 | `topicRef.streamName` | no | - | NATS stream name from the Topic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the Topic's streamName differs from its metadata.name. |
 | `subscriptionRef.name` | no | - | Name of an `Subscription` this API consumes from. Injects `NATS_URL` and `NATS_CONSUMER` env vars. |
@@ -93,13 +93,43 @@ A [`Spa`](../spa/) can proxy a path prefix to this API, so the browser only ever
 
 Streaming responses work unchanged - the proxy is configured for Server-Sent Events, with buffering off and a long read timeout.
 
+## Configuration
+
+Two ways in, and which one a value takes depends on whether it changes while the pod runs.
+
+`configFrom` names ConfigMaps, and every key in them becomes an environment variable. Later entries in the list win, so the order is a layering mechanism - a shared base first, an app-specific override after it.
+
+```yaml
+configFrom: [foo-base, foo-overrides]   # foo-overrides wins on any shared key
+```
+
+`secretsFrom` names Secrets, and each one is mounted as a directory of files, one file per key.
+
+```
+/secrets/<secret-name>/<key>
+```
+
+Read those files where the value is used rather than once at startup. A rotated Secret lands in the file within about a minute and the pod does not restart, so a value captured at startup goes stale silently. Put anything that never rotates in a ConfigMap instead, so it arrives as an environment variable and stays one.
+
+### What the platform injects
+
+On top of what the app declares, the composition sets variables named by its own rules. An AWS profile is `AWS_PROFILE_<KIND>_<REF>`, uppercased with `-` and `.` becoming `_`, so an `objectStorageRefs` entry named `foo-assets` gets `AWS_PROFILE_OBJECT_STORAGE_FOO_ASSETS`. `AWS_PROFILE_CACHE` is the exception, because an Api owns at most one cache. An `ENTRA_SCOPE_<APP>` carries the audience of each app in `consumes`.
+
+The XR reports the result, so nothing has to be derived by hand:
+
+```bash
+k get apis.platform.local.lab <app> -n <namespace> -o jsonpath='{.status.config}' | jq
+```
+
+`injectedEnv` names every variable the platform set, `bindings` the directories holding provisioned datastore details, and `files` every other mounted path, including the credentials refreshed for this pod.
+
 ## Binding secrets
 
 The platform mounts servicebinding.io-compliant Secrets at `/bindings/<binding>/`. Each file in that directory is one key. The app reads file contents at runtime.
 
-### `/bindings/object-storage/` (first ref) · `/bindings/object-storage-1/` (second) · etc.
+### `/bindings/object-storage-<ref-name>/`
 
-Multiple `objectStorageRefs` each get their own mount. The first ref mounts at `/bindings/object-storage/`; subsequent refs mount at `/bindings/object-storage-1/`, `/bindings/object-storage-2/`, and so on.
+Multiple `objectStorageRefs` each get their own mount, named after the ref. A ref named `foo-assets` mounts at `/bindings/object-storage-foo-assets/`.
 
 | File | Value |
 |---|---|
@@ -109,11 +139,11 @@ Multiple `objectStorageRefs` each get their own mount. The first ref mounts at `
 | `region` | `us-east-1` |
 | `role-arn` | IAM role ARN (scoped to this bucket, this pod's SPIFFE ID) |
 
-The composition injects one `AWS_PROFILE_*` env var per object storage ref into the app container, named after the ref: `AWS_PROFILE_{REF_NAME_UPPER_SNAKE_CASE}`. For example, a ref named `foo-assets` gets `AWS_PROFILE_FOO_ASSETS=object-storage`.
+The composition injects one `AWS_PROFILE_*` env var per object storage ref into the app container. The name is `AWS_PROFILE_<KIND>_<REF>`, so a ref named `foo-assets` gets `AWS_PROFILE_OBJECT_STORAGE_FOO_ASSETS=object-storage-foo-assets`.
 
 ```go
 cfg, _ := config.LoadDefaultConfig(ctx,
-    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_FOO_ASSETS")))
+    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_OBJECT_STORAGE_FOO_ASSETS")))
 s3Client := s3.NewFromConfig(cfg)
 ```
 
@@ -130,7 +160,7 @@ s3Client := s3.NewFromConfig(cfg)
 | `password` | Database password | `private-cloud` only |
 | `role-arn` | IAM role ARN | `public-cloud` only |
 
-For `public-cloud`, the sidecar writes a `sql` named profile to the credentials file and the composition injects `AWS_PROFILE_SQL=sql`. The app uses that profile's STS credentials to call `rds:GenerateDBAuthToken` and uses the resulting short-lived token as the database password.
+For `public-cloud`, the sidecar writes a `sql` named profile to the credentials file and the composition injects `AWS_PROFILE_SQL_<REF>=sql`. The app uses that profile's STS credentials to call `rds:GenerateDBAuthToken` and uses the resulting short-lived token as the database password.
 
 ### `/bindings/nosql/`
 
@@ -142,11 +172,11 @@ For `public-cloud`, the sidecar writes a `sql` named profile to the credentials 
 | `region` | `us-east-1` |
 | `role-arn` | IAM role ARN (scoped to this table, this pod's SPIFFE ID) |
 
-The composition injects `AWS_PROFILE_NOSQL=nosql` into the app container.
+The composition injects `AWS_PROFILE_NOSQL_<REF>=nosql` into the app container, so a ref named `foo` gets `AWS_PROFILE_NOSQL_FOO`.
 
 ```go
 cfg, _ := config.LoadDefaultConfig(ctx,
-    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_NOSQL")))
+    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_NOSQL_FOO")))
 ddbClient := dynamodb.NewFromConfig(cfg)
 ```
 
@@ -170,7 +200,7 @@ When any AWS cloud binding is declared, or this Api needs an Entra identity, the
 - The sidecar exchanges the pod's SVID for STS credentials, once per binding, every 50 minutes.
 - An `aws-credentials` emptyDir volume shared between the sidecar and the app container, mounted at `/aws-credentials/credentials`.
 - `AWS_SHARED_CREDENTIALS_FILE=/aws-credentials/credentials` env var in the app container.
-- `AWS_PROFILE_*` env vars for every AWS binding: `AWS_PROFILE_{REF_NAME_UPPER_SNAKE_CASE}` per object storage ref, `AWS_PROFILE_NOSQL`, `AWS_PROFILE_SQL` (public-cloud sql), and `AWS_PROFILE_CACHE` (public-cloud cache).
+- `AWS_PROFILE_*` env vars for every AWS binding, named `AWS_PROFILE_<KIND>_<REF>` with the ref uppercased and `-` becoming `_`. Cache is the exception at `AWS_PROFILE_CACHE`, because an Api owns at most one and there is no ref name to use.
 
 **Entra** (an interface sets `auth: workload` or `auth: user`, or this Api consumes another app):
 - The sidecar keeps a raw SPIFFE SVID fresh in an `entra-identity` emptyDir volume, mounted at `/entra-identity/token` - it does not exchange this token itself.

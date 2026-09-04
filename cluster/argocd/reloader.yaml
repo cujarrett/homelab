@@ -1,0 +1,48 @@
+# Stakater Reloader - rolls a workload when a ConfigMap it names changes. envFrom
+# copies values in at pod creation, so without this an edited ConfigMap leaves git
+# and the running process disagreeing with nothing reporting it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: reloader
+  namespace: argocd
+spec:
+  project: cluster
+  source:
+    repoURL: https://stakater.github.io/stakater-charts
+    chart: reloader
+    targetRevision: 2.2.16
+    helm:
+      releaseName: reloader
+      values: |
+        reloader:
+          # Only workloads carrying reloader.stakater.com/auto are watched. The Api
+          # composition sets that annotation, so nothing outside the platform is touched.
+          autoReloadAll: false
+          # Secrets reach an app as mounted files, which kubelet refreshes in place, so a
+          # restart on secret change would be a pointless outage.
+          ignoreSecrets: true
+          watchGlobally: true
+          readOnlyRootFileSystem: true
+          podMonitor:
+            enabled: true
+            labels:
+              release: monitoring
+          deployment:
+            # One watch loop over ConfigMaps across four Raspberry Pis. It idles.
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 128Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: reloader
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

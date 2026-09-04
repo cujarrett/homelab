@@ -111,7 +111,7 @@ spec:
             {{- /* mountPath:profile pairs (used for AWS_BINDINGS env var in sidecar)            */ -}}
             {{- $sidecarBindingParts := list }}
             {{- range $i, $ref := $objectStorageRefs }}
-              {{- $osMountName := "object-storage" }}{{- if gt $i 0 }}{{- $osMountName = printf "object-storage-%d" $i }}{{- end }}
+              {{- $osMountName := printf "object-storage-%s" $ref.name }}
               {{- $awsBindings = append $awsBindings (printf "object-storage-%s-binding:/bindings/%s:%s" $ref.name $osMountName $osMountName) }}
               {{- $sidecarBindingParts = append $sidecarBindingParts (printf "/bindings/%s:%s" $osMountName $osMountName) }}
             {{- end }}
@@ -255,6 +255,11 @@ spec:
                 app.kubernetes.io/instance: {{ $name }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: deployment
+                {{- if $configFrom }}
+                # envFrom copies ConfigMap values in at pod creation. Without this
+                # annotation an edited ConfigMap never reaches the running process.
+                reloader.stakater.com/auto: "true"
+                {{- end }}
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               replicas: {{ $replicas }}
@@ -280,7 +285,7 @@ spec:
                   {{- if or (gt (len $objectStorageRefs) 0) $sqlRefName $nosqlRefName $cacheEnabled }}
                   initContainers:
                     {{- range $i, $ref := $objectStorageRefs }}
-                    {{- $osMountName := "object-storage" }}{{- if gt $i 0 }}{{- $osMountName = printf "object-storage-%d" $i }}{{- end }}
+                    {{- $osMountName := printf "object-storage-%s" $ref.name }}
                     - name: wait-for-object-storage-{{ $ref.name }}-binding
                       image: busybox:1.36
                       securityContext:
@@ -381,16 +386,16 @@ spec:
                         - name: AWS_SHARED_CREDENTIALS_FILE
                           value: /aws-credentials/credentials
                         {{- range $i, $ref := $objectStorageRefs }}
-                        {{- $osMountNameEnv := "object-storage" }}{{- if gt $i 0 }}{{- $osMountNameEnv = printf "object-storage-%d" $i }}{{- end }}
-                        - name: AWS_PROFILE_{{ $ref.name | upper | replace "-" "_" }}
+                        {{- $osMountNameEnv := printf "object-storage-%s" $ref.name }}
+                        - name: AWS_PROFILE_OBJECT_STORAGE_{{ $ref.name | upper | replace "-" "_" }}
                           value: {{ $osMountNameEnv }}
                         {{- end }}
                         {{- if $nosqlRefName }}
-                        - name: AWS_PROFILE_NOSQL
+                        - name: AWS_PROFILE_NOSQL_{{ $nosqlRefName | upper | replace "-" "_" }}
                           value: nosql
                         {{- end }}
                         {{- if and $sqlRefName (eq $sqlBackend "public-cloud") }}
-                        - name: AWS_PROFILE_SQL
+                        - name: AWS_PROFILE_SQL_{{ $sqlRefName | upper | replace "-" "_" }}
                           value: sql
                         {{- end }}
                         {{- if and $cacheEnabled (eq $cacheBackend "public-cloud") }}
@@ -443,15 +448,11 @@ spec:
                         - name: NATS_CONSUMER
                           value: {{ $subscriptionRefName | quote }}
                       {{- end }}
-                      {{- if or $configFrom $secretsFrom }}
+                      {{- if $configFrom }}
                       envFrom:
                         {{- range $cm := $configFrom }}
                         - configMapRef:
                             name: {{ $cm }}
-                        {{- end }}
-                        {{- range $s := $secretsFrom }}
-                        - secretRef:
-                            name: {{ $s }}
                         {{- end }}
                       {{- end }}
                       volumeMounts:
@@ -463,7 +464,7 @@ spec:
                           readOnly: true
                         {{- end }}
                         {{- range $i, $ref := $objectStorageRefs }}
-                        {{- $osMountName := "object-storage" }}{{- if gt $i 0 }}{{- $osMountName = printf "object-storage-%d" $i }}{{- end }}
+                        {{- $osMountName := printf "object-storage-%s" $ref.name }}
                         - name: object-storage-{{ $ref.name }}-binding
                           mountPath: /bindings/{{ $osMountName }}
                           readOnly: true
@@ -486,6 +487,13 @@ spec:
                         {{- if $entraNeeded }}
                         - name: entra-identity
                           mountPath: /entra-identity
+                          readOnly: true
+                        {{- end }}
+                        {{- /* Kept out of /bindings, where a servicebinding.io scan       */ -}}
+                        {{- /* expects a type file per directory. A Secret has none.        */ -}}
+                        {{- range $s := $secretsFrom }}
+                        - name: secret-{{ $s }}
+                          mountPath: /secrets/{{ $s }}
                           readOnly: true
                         {{- end }}
                     {{- if or (gt (len $awsBindings) 0) $entraNeeded }}
@@ -523,7 +531,7 @@ spec:
                           mountPath: /entra-identity
                         {{- end }}
                         {{- range $i, $ref := $objectStorageRefs }}
-                        {{- $osMountName := "object-storage" }}{{- if gt $i 0 }}{{- $osMountName = printf "object-storage-%d" $i }}{{- end }}
+                        {{- $osMountName := printf "object-storage-%s" $ref.name }}
                         - name: object-storage-{{ $ref.name }}-binding
                           mountPath: /bindings/{{ $osMountName }}
                           readOnly: true
@@ -584,6 +592,14 @@ spec:
                       secret:
                         secretName: {{ $name }}-cache
                         optional: true
+                    {{- end }}
+                    {{- /* Not optional, unlike the binding volumes above. The app named   */ -}}
+                    {{- /* this Secret, so a missing one should stop the pod rather than    */ -}}
+                    {{- /* start it against an empty directory.                             */ -}}
+                    {{- range $s := $secretsFrom }}
+                    - name: secret-{{ $s }}
+                      secret:
+                        secretName: {{ $s }}
                     {{- end }}
             {{- /* --- AWS IAM resources: one Role + Profile + binding Secret per objectStorageRef. --- */}}
             {{- /* Role and Profile lifecycle is tied to this Api (deleted with it).                   */}}
@@ -1224,11 +1240,47 @@ spec:
             {{- $scopeRows = append $scopeRows (dict "target" $c.entraApp.host "scope" (printf "%s/.default" $c.entraApp.appIdUri) "envVar" (printf "ENTRA_SCOPE_%s" ($c.entraApp.role | upper | replace "." "_" | replace "-" "_"))) }}
             {{- end }}
             {{- end }}
-            {{- if or $entraNeeded $scopeRows }}
+            {{- /* Every platform-injected variable name, assembled the same way the      */ -}}
+            {{- /* container env is above. Reading it here beats reconstructing the        */ -}}
+            {{- /* derivation rules from a README.                                          */ -}}
+            {{- $bindingDirs := list }}
+            {{- range $ref := $objectStorageRefs }}{{- $bindingDirs = append $bindingDirs (printf "object-storage-%s" $ref.name) }}{{- end }}
+            {{- if $sqlRefName }}{{- $bindingDirs = append $bindingDirs "sql" }}{{- end }}
+            {{- if $nosqlRefName }}{{- $bindingDirs = append $bindingDirs "nosql" }}{{- end }}
+            {{- if $cacheEnabled }}{{- $bindingDirs = append $bindingDirs "cache" }}{{- end }}
+            {{- /* The credential paths are the ones a reader cannot derive, so they belong */ -}}
+            {{- /* here even though an injected variable also names each of them.           */ -}}
+            {{- $mountedFiles := list }}
+            {{- range $sec := $secretsFrom }}{{- $mountedFiles = append $mountedFiles (printf "/secrets/%s" $sec) }}{{- end }}
+            {{- if gt (len $awsBindings) 0 }}{{- $mountedFiles = append $mountedFiles "/aws-credentials/credentials" }}{{- end }}
+            {{- if $entraNeeded }}{{- $mountedFiles = append $mountedFiles "/entra-identity/token" }}{{- end }}
+            {{- $injectedEnv := list "SERVICE_BINDING_ROOT" }}
+            {{- if gt (len $awsBindings) 0 }}
+            {{- $injectedEnv = append $injectedEnv "AWS_SHARED_CREDENTIALS_FILE" }}
+            {{- range $ref := $objectStorageRefs }}
+            {{- $injectedEnv = append $injectedEnv (printf "AWS_PROFILE_OBJECT_STORAGE_%s" ($ref.name | upper | replace "-" "_")) }}
+            {{- end }}
+            {{- if $nosqlRefName }}{{- $injectedEnv = append $injectedEnv (printf "AWS_PROFILE_NOSQL_%s" ($nosqlRefName | upper | replace "-" "_")) }}{{- end }}
+            {{- if and $sqlRefName (eq $sqlBackend "public-cloud") }}{{- $injectedEnv = append $injectedEnv (printf "AWS_PROFILE_SQL_%s" ($sqlRefName | upper | replace "-" "_")) }}{{- end }}
+            {{- if and $cacheEnabled (eq $cacheBackend "public-cloud") }}{{- $injectedEnv = append $injectedEnv "AWS_PROFILE_CACHE" }}{{- end }}
+            {{- end }}
+            {{- if $entraNeeded }}
+            {{- $injectedEnv = append $injectedEnv "AZURE_CLIENT_ID" }}
+            {{- $injectedEnv = append $injectedEnv "AZURE_TENANT_ID" }}
+            {{- $injectedEnv = append $injectedEnv "AZURE_FEDERATED_TOKEN_FILE" }}
+            {{- end }}
+            {{- range $r := $scopeRows }}{{- $injectedEnv = append $injectedEnv $r.envVar }}{{- end }}
+            {{- if or $topicRefName $subscriptionRefName }}{{- $injectedEnv = append $injectedEnv "NATS_URL" }}{{- end }}
+            {{- if $topicRefName }}{{- $injectedEnv = append $injectedEnv "NATS_STREAM" }}{{- end }}
+            {{- if $subscriptionRefName }}{{- $injectedEnv = append $injectedEnv "NATS_CONSUMER" }}{{- end }}
             ---
             apiVersion: platform.local.lab/v1alpha1
             kind: Api
             status:
+              config:
+                bindings: [{{ range $i, $b := $bindingDirs }}{{ if $i }}, {{ end }}{{ printf "/bindings/%s" $b | quote }}{{ end }}]
+                files: [{{ range $i, $f := $mountedFiles }}{{ if $i }}, {{ end }}{{ $f | quote }}{{ end }}]
+                injectedEnv: [{{ range $i, $e := $injectedEnv }}{{ if $i }}, {{ end }}{{ $e | quote }}{{ end }}]
               {{- if $entraNeeded }}
               entra:
                 {{- if $entraClientId }}
@@ -1245,4 +1297,3 @@ spec:
                   envVar: {{ $r.envVar | quote }}
               {{- end }}
               {{- end }}
-            {{- end }}

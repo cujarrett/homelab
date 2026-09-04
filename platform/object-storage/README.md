@@ -18,7 +18,7 @@ The IAM Role and binding Secret are **not** created by ObjectStorage. They are c
 
 ## Binding secret
 
-Written by the `Api` composition (not by ObjectStorage) when the ref is declared. Secret name is `{api-name}-{ref-name}`; namespace comes from the `Api` that references it. Mounted at `/bindings/object-storage/` (first ref), `/bindings/object-storage-1/` (second), etc.
+Written by the `Api` composition (not by ObjectStorage) when the ref is declared. Secret name is `{api-name}-{ref-name}`; namespace comes from the `Api` that references it. Mounted at `/bindings/object-storage-{ref-name}/`.
 
 | Key | Value |
 |---|---|
@@ -28,7 +28,7 @@ Written by the `Api` composition (not by ObjectStorage) when the ref is declared
 | `region` | `us-east-1` |
 | `role-arn` | IAM role ARN (scoped to this bucket, created by Api) |
 
-The IAM role's inline policy grants `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, and `s3:ListBucket` scoped to the exact bucket ARN. The `workload-identity-sidecar` (injected by Api) exchanges the pod's SVID for short-lived STS credentials and writes them as a named profile. The app reads `AWS_PROFILE_{REF_NAME_UPPER_SNAKE_CASE}` and uses the standard AWS SDK. For the full design: [Platform Workload Identity](../docs/workload-identity.md)
+The IAM role's inline policy grants `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, and `s3:ListBucket` scoped to the exact bucket ARN. The `workload-identity-sidecar` (injected by Api) exchanges the pod's SVID for short-lived STS credentials and writes them as a named profile. The app reads `AWS_PROFILE_OBJECT_STORAGE_<REF>` and uses the standard AWS SDK. For the full design: [Platform Workload Identity](../docs/workload-identity.md)
 
 ## Example
 

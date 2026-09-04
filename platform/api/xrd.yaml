@@ -112,7 +112,7 @@ spec:
                     configFrom:
                       type: array
                       maxItems: 10
-                      description: "ConfigMaps in this namespace, mounted into the container as environment in order. The team owns each object, so changing a value touches that file and never re-reconciles this Api."
+                      description: "ConfigMaps in this namespace, mounted into the container as environment in order, later entries winning on a shared key. The team owns each object, so changing a value touches that file and never re-reconciles this Api."
                       items:
                         type: string
                         pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
@@ -120,7 +120,7 @@ spec:
                     secretsFrom:
                       type: array
                       maxItems: 10
-                      description: "Secrets in this namespace, mounted into the container as environment in order. Hand-create one, or declare a Secret XR that fills it - this field does not care which, and two vendors' credentials can have separate lifecycles."
+                      description: "Secrets in this namespace, mounted as files at /secrets/<secret-name>/<key>, one file per key. Read a file on use rather than at startup, because a rotated value lands there without the pod restarting. Hand-create one or declare a Secret XR that fills it - two vendors' credentials can have separate lifecycles."
                       items:
                         type: string
                         pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
@@ -263,6 +263,25 @@ spec:
               type: object
               description: "What the platform derived. Spec is what you asked for, this is what you got."
               properties:
+                config:
+                  type: object
+                  description: "What the platform put in the container that the spec does not already say. ConfigMaps and Secrets are not repeated here, because configFrom and secretsFrom already name them."
+                  properties:
+                    bindings:
+                      type: array
+                      description: "Directories holding a provisioned datastore's connection details, one file per key."
+                      items:
+                        type: string
+                    files:
+                      type: array
+                      description: "Every other path the platform mounts, including declared Secrets and the credentials refreshed for this pod."
+                      items:
+                        type: string
+                    injectedEnv:
+                      type: array
+                      description: "Environment variable names the platform sets without being asked."
+                      items:
+                        type: string
                 entra:
                   type: object
                   properties:

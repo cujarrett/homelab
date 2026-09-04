@@ -20,27 +20,28 @@ metadata:
   name: orders
   namespace: team-b
 spec:
-  image: ghcr.io/example/orders:sha-...
-  size: md
-  host: orders.example.com
-  configFrom: [orders-config]            # ConfigMaps
-  secretsFrom: [orders-credentials]      # Secrets
-  provides:
-    - name: browse
-      auth: mesh
-      allowedCallers:
-        - { namespace: team-b, app: storefront }
-    - name: collection-write
-      auth: workload
-      allowedCallers:
-        - { namespace: team-a, app: reconciler }
-    - name: profile
-      auth: user
-      allowedCallers:
-        - { namespace: team-b, app: storefront-api }
-  consumes:
-    - { namespace: team-c, app: profiles }
-    - { host: api.vendor.com }
+  parameters:
+    image: ghcr.io/example/orders:sha-...
+    size: md
+    host: orders.example.com
+    configFrom: [orders-config]            # ConfigMaps
+    secretsFrom: [orders-credentials]      # Secrets
+    provides:
+      - name: browse
+        auth: mesh
+        allowedCallers:
+          - { namespace: team-b, app: storefront }
+      - name: collection-write
+        auth: workload
+        allowedCallers:
+          - { namespace: team-a, app: reconciler }
+      - name: profile
+        auth: user
+        allowedCallers:
+          - { namespace: team-b, app: storefront-api }
+    consumes:
+      - { namespace: team-c, app: profiles }
+      - { host: api.vendor.com }
 ```
 
 `provides` is what this API offers and who holds it. `consumes` is everything it calls, naming either an on-platform app or an off-platform host. Both live in the app's own file, and an `allowedCallers` line is the grant.
@@ -64,18 +65,19 @@ metadata:
   name: storefront
   namespace: team-b
 spec:
-  image: ghcr.io/example/storefront:sha-...
-  host: app.example.com
-  publicConfig:
-    FEATURE_X: "true"
-  apiProxies:
-    - path: /api/
-      app: storefront-api          # on-platform, address derived
-    - path: /weather/
-      host: api.weather.com        # off-platform, verbatim
-  userAuth:
-    client: storefront-api
-    scopes: [profile]
+  parameters:
+    image: ghcr.io/example/storefront:sha-...
+    host: app.example.com
+    publicConfig:
+      FEATURE_X: "true"
+    apiProxies:
+      - path: /api/
+        app: storefront-api          # on-platform, address derived
+      - path: /weather/
+        host: api.weather.com        # off-platform, verbatim
+    userAuth:
+      client: storefront-api
+      scopes: [profile]
 ```
 
 `publicConfig` is served as JSON at `/config.json` and fetched on load, so one image deploys everywhere unchanged. Everything in it reaches any browser that asks, so nothing in it is a secret.
@@ -92,7 +94,7 @@ A composition cannot write environment into another XR's Deployment, so the SPA 
 
 The platform creates and owns every Entra object. None is made by hand.
 
-An app gets a registration the first time something needs one, with an Application ID URI of `api://<namespace>-<app>`. Its credential is a federated identity credential whose subject is the pod's SPIFFE ID, so no client secret exists. There is no `enabled` flag: an identity appears when a token is actually in play, the same way a SPIFFE ID appears for every pod without anyone asking.
+An app gets a registration the first time something needs one, with an Application ID URI of `api://<tenant-id>/platform-<namespace>-<app>`, since the tenant refuses a bare `api://<name>`. Its credential is a federated identity credential whose subject is the pod's SPIFFE ID, so no client secret exists. There is no `enabled` flag: an identity appears when a token is actually in play, the same way a SPIFFE ID appears for every pod without anyone asking.
 
 A `provides` entry becomes an app role when `auth: workload` and a delegated scope when `auth: user`. A `mesh` entry becomes nothing in Entra, which is why most apps have no registration. Each `allowedCallers` entry becomes the matching role assignment or permission grant. Redirect URIs derive from the Spa's `host`.
 
@@ -114,13 +116,23 @@ No secret is needed here either. A client assertion is accepted anywhere a clien
 
 ## Config and secrets
 
-`configFrom` names ConfigMaps and `secretsFrom` names Secrets. The composition mounts them as environment, in order. Both are lists, because an app may want two vendors' credentials on separate lifecycles.
+`configFrom` names ConfigMaps and the composition mounts them as environment, in order, later entries winning. `secretsFrom` names Secrets and the composition mounts each as files at `/secrets/<secret-name>/<key>`. Both are lists, so two vendors' credentials can have separate lifecycles.
 
-The team owns both objects. Each is a plain Kubernetes object in the workspace directory alongside the app, applied by ArgoCD. Changing a value touches that file and nothing else, so the app is never re-reconciled and no image is rebuilt.
+Which contract a value gets depends on whether it can change under a running pod.
 
-`secretsFrom` says nothing about where a Secret came from - only that one exists in the app's namespace under that name. Hand-create it, or point it at a Secret an External Secrets Operator `ExternalSecret` already syncs from AWS Secrets Manager, the way `grafana-admin-secret` does today. Either way the app reads env vars and nothing about it changes.
+| What changed | What the pod sees |
+|---|---|
+| A key in a Secret, named by `secretsFrom` or bound | The file updates within about a minute, no restart. Only helps if the app re-reads on use |
+| A key in a ConfigMap named by `configFrom` | [Stakater Reloader](https://github.com/stakater/Reloader) rolls the Deployment, because `envFrom` values cannot change in place |
+| A field in the XR | Crossplane re-renders the Deployment and the rollout happens on its own |
 
-No secret value reaches git on either path.
+The platform also injects variables nobody declared, named by rules an app should never assemble by hand. Read what an app actually got rather than reconstructing them:
+
+```bash
+k get apis.platform.local.lab <app> -n <namespace> -o jsonpath='{.status.config}' | jq
+```
+
+Every name and path is in [Api](../api/README.md#configuration).
 
 ## Lifecycle
 
@@ -136,9 +148,9 @@ Shutting one off is a pull request against `platform-egress-denials` (below) plu
 
 ## Admission checks
 
-Two `ClusterPolicy` objects catch what CEL cannot, because both have to read an object other than the one being admitted. `platform-reference-integrity` refuses an `app` named in `consumes` or `apiProxies` that is not a real Api in the namespace the reference claims. `platform-egress-denials` refuses a host on the denial list, which is empty until someone puts one there.
+Three `ClusterPolicy` objects catch what CEL cannot, because each has to read an object other than the one being admitted. `platform-reference-integrity` refuses an `app` named in `consumes` or `apiProxies` that is not a real Api in the namespace the reference claims, and a `configFrom` entry that is not a ConfigMap in this namespace. `platform-egress-denials` refuses a host on the denial list, which is empty until someone puts one there. `platform-workload-ownership` refuses a workload in a platform namespace that no XR composed, since a pod the platform did not compose gets no Istio Sidecar.
 
-Both ship as `Audit` rather than `Enforce`. A policy matching every `Api` and `Spa` that is subtly wrong would reject every XR update, which is worse than the silent failure it exists to catch, so the reports get read before the switch is flipped.
+All three ship as `Audit` rather than `Enforce`. A policy matching every `Api` and `Spa` that is subtly wrong would reject every XR update, which is worse than the silent failure it exists to catch, so the reports get read before the switch is flipped.
 
 ## Not built yet
 

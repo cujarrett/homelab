@@ -117,11 +117,11 @@ flowchart LR
 
 Each binding gets its own IAM Role scoped to the pod's exact SPIFFE ID - wrong namespace, wrong service account, different cluster: rejected.
 
-The app uses named AWS profiles injected by the composition. Profile env var names are derived from the binding: `AWS_PROFILE_{REF_NAME_UPPER_SNAKE_CASE}` for object storage refs, `AWS_PROFILE_NOSQL` for nosql, `AWS_PROFILE_SQL` for public-cloud sql, and `AWS_PROFILE_CACHE` for public-cloud cache.
+The app uses named AWS profiles injected by the composition. One rule covers every binding: `AWS_PROFILE_<KIND>_<REF>`, uppercased with `-` becoming `_`. So `AWS_PROFILE_OBJECT_STORAGE_FOO_ASSETS`, `AWS_PROFILE_NOSQL_FOO`, `AWS_PROFILE_SQL_FOO`. Cache is the exception at `AWS_PROFILE_CACHE`, because an Api owns at most one and there is no ref name to use.
 
 ```go
 cfg, _ := config.LoadDefaultConfig(ctx,
-    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_FOO_ASSETS")))
+    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_OBJECT_STORAGE_FOO_ASSETS")))
 s3 := s3.NewFromConfig(cfg)
 ```
 
