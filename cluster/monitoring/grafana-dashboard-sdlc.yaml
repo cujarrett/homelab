@@ -338,29 +338,14 @@ data:
           },
           "targets": [
             {
-              "expr": "sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",window!=\"1d\"})",
+              "expr": "sort_desc(sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",window!=\"1d\"}) > 0)",
               "legendFormat": "{{repo}}",
               "instant": true,
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "refId": "A",
-              "format": "table"
-            }
-          ],
-          "transformations": [
-            {
-              "id": "sortBy",
-              "options": {
-                "fields": {},
-                "sort": [
-                  {
-                    "field": "Value",
-                    "desc": true
-                  }
-                ]
-              }
+              "refId": "A"
             }
           ]
         },
