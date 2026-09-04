@@ -345,7 +345,22 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "refId": "A"
+              "refId": "A",
+              "format": "table"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": {},
+                "sort": [
+                  {
+                    "field": "Value",
+                    "desc": true
+                  }
+                ]
+              }
             }
           ]
         },
