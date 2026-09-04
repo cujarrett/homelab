@@ -17,6 +17,11 @@
 #   5. rbac    - every composed kind is granted in cluster/crossplane/rbac.yaml, or
 #                it renders fine but the API server refuses it - XR stays READY=True
 #                while SYNCED=False, so nothing looks wrong.
+#   6. xr      - every XR field exists in its XRD. crossplane render ignores an
+#                undeclared field and the API server then refuses the same file.
+#   7. namespace - every workspace directory carries a namespace.yaml with the mesh
+#                and Pod Security labels. Without one, CreateNamespace=true makes a
+#                bare namespace and pods there run unmeshed.
 set -uo pipefail
 
 # Every path below is repo-root-relative, so anchor to the repo root rather than cwd.
@@ -228,6 +233,110 @@ PY
 else
   red "   FAIL nothing rendered - cannot check rbac coverage"; fail=1
 fi
+
+# --- 6. XR fields against the XRD ---------------------------------------------
+# crossplane render passes an undeclared field straight through, so a typo renders
+# clean and the API server then refuses it with "field not declared in schema".
+echo "── xr"
+if out=$(python3 - "$WORKSPACES" <<'PY'
+import sys, pathlib, yaml
+
+KIND_DIR = {"Api": "api", "Spa": "spa", "Cache": "cache", "Sql": "sql", "NoSql": "nosql",
+            "ObjectStorage": "object-storage", "Subscription": "subscription",
+            "Topic": "topic", "Wordpress": "wordpress"}
+
+def params_schema(xrd_path):
+    v = yaml.safe_load(open(xrd_path))["spec"]["versions"][0]
+    props = v["schema"]["openAPIV3Schema"]["properties"]
+    return props["spec"]["properties"]["parameters"]
+
+def check(value, schema, path, bad):
+    if not isinstance(value, dict) or schema.get("type") not in (None, "object"):
+        return
+    props = schema.get("properties", {})
+    if not props:
+        return
+    for k, v in value.items():
+        if k not in props:
+            bad.append(f"{path}.{k}")
+            continue
+        sub = props[k]
+        if sub.get("type") == "array" and isinstance(v, list):
+            for i, item in enumerate(v):
+                check(item, sub.get("items", {}), f"{path}.{k}[{i}]", bad)
+        else:
+            check(v, sub, f"{path}.{k}", bad)
+
+bad = []
+for xr in sorted(pathlib.Path(sys.argv[1]).glob("*/*.yaml")):
+    try:
+        doc = yaml.safe_load(open(xr))
+    except Exception:
+        continue
+    if not isinstance(doc, dict) or doc.get("kind") not in KIND_DIR:
+        continue
+    schema = params_schema(f"platform/{KIND_DIR[doc['kind']]}/xrd.yaml")
+    local = []
+    check((doc.get("spec") or {}).get("parameters") or {}, schema, "spec.parameters", local)
+    for b in local:
+        bad.append(f"{xr.parent.name}/{xr.stem}: {b} is not declared in the {doc['kind']} XRD")
+
+if bad:
+    print("\n".join(bad))
+    sys.exit(1)
+PY
+); then
+  grn "   ok  every XR field is declared"
+else
+  red "   FAIL an XR sets a field its XRD does not declare"
+  echo "$out" | sed 's/^/        /'
+  echo "        crossplane render ignores these; the API server refuses them."
+  fail=1
+fi
+
+# --- 7. workspace namespaces --------------------------------------------------
+# CreateNamespace=true makes a namespace with no labels, so a directory without a
+# namespace.yaml gets pods with no sidecar and no Pod Security enforcement.
+echo "── namespace"
+ns_fail=0
+for d in "$WORKSPACES"/*/; do
+  wsname=$(basename "$d")
+  [ "$wsname" = ".github" ] && continue
+  ls "$d"*.yaml >/dev/null 2>&1 || continue
+  if ! out=$(python3 - "$d" "$wsname" <<'PY'
+import sys, pathlib, yaml
+d, name = pathlib.Path(sys.argv[1]), sys.argv[2]
+# enforce may be baseline where an image cannot meet restricted, but warn and audit
+# stay restricted so the gap is visible rather than forgotten.
+required = {"pod-security.kubernetes.io/warn": "restricted",
+            "pod-security.kubernetes.io/audit": "restricted",
+            "platform.local.lab/workloads": "true"}
+for f in sorted(d.glob("*.yaml")):
+    try:
+        docs = [x for x in yaml.safe_load_all(open(f)) if isinstance(x, dict)]
+    except Exception:
+        continue
+    for doc in docs:
+        if doc.get("kind") != "Namespace":
+            continue
+        labels = (doc.get("metadata") or {}).get("labels") or {}
+        missing = [k for k, v in required.items() if labels.get(k) != v]
+        if labels.get("pod-security.kubernetes.io/enforce") not in ("restricted", "baseline"):
+            missing.append("pod-security.kubernetes.io/enforce (restricted or baseline)")
+        if labels.get("istio-injection") not in ("enabled", "disabled"):
+            missing.append("istio-injection (enabled, or disabled to declare the exception)")
+        if missing:
+            print(f"{f.name}: missing " + ", ".join(missing))
+            sys.exit(1)
+        sys.exit(0)
+print(f"no namespace.yaml - CreateNamespace=true will make a bare {name} namespace")
+sys.exit(1)
+PY
+  ); then
+    red "   FAIL $wsname"; echo "$out" | sed 's/^/        /'; ns_fail=1; fail=1
+  fi
+done
+[ "$ns_fail" -eq 0 ] && grn "   ok  every workspace namespace is labelled"
 
 echo
 [ "$fail" -eq 0 ] && grn "render-check passed" || red "render-check FAILED"

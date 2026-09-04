@@ -1,0 +1,42 @@
+# managedNamespaceMetadata only labels a namespace ArgoCD creates itself, so a
+# namespace.yaml in the repo silently opts out of it. This is the backstop for
+# anything applied outside render-check.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: platform-namespace-posture
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform namespace posture
+    policies.kyverno.io/description: >-
+      Every platform workload namespace states whether its pods are meshed.
+spec:
+  # Audit until the reports are seen to be correct. A wrong Enforce policy here
+  # blocks the namespace, and with it every workload the directory holds.
+  validationFailureAction: Audit
+  background: false
+  rules:
+    - name: mesh-posture-is-declared
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+              selector:
+                matchLabels:
+                  platform.local.lab/workloads: "true"
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: AnyIn
+            value: [CREATE, UPDATE]
+      validate:
+        message: >-
+          Namespace {{ request.object.metadata.name }} does not set istio-injection.
+          An absent label leaves its pods unmeshed by accident rather than by choice,
+          so set enabled, or disabled with a comment naming the reason.
+        pattern:
+          metadata:
+            labels:
+              istio-injection: "enabled | disabled"
