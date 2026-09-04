@@ -19,6 +19,14 @@ Each app repo's CI job bumps an image tag - most in `homelab-workspaces`, `platf
 `secret-mirror-controller` directly in `homelab`. Both are Actions secrets named `HOMELAB_PAT`;
 which token value a repo holds depends on which group it's in, not the secret name.
 
+A new app repo has to be seeded by hand once, because the rotate scripts discover consumers by
+checking which repos already hold the secret. A repo that never had it set is invisible to them,
+and its deploy job fails with an empty `GH_TOKEN` while test and build both pass.
+
+```bash
+gh secret set HOMELAB_PAT -R cujarrett/<new-repo> --body "<token>"
+```
+
 Rotate with [scripts/homelab-workspaces-deploy-token-rotate/](../scripts/homelab-workspaces-deploy-token-rotate/)
 and [scripts/homelab-deploy-token-rotate/](../scripts/homelab-deploy-token-rotate/). Each script's
 README has the exact steps.
