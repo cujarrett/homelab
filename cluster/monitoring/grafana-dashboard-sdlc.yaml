@@ -108,7 +108,7 @@ data:
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
           "fieldConfig": {
-            "defaults": { "unit": "short", "decimals": 0, "custom": { "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" } },
+            "defaults": { "unit": "short", "decimals": 0, "custom": { "lineWidth": 2, "fillOpacity": 10, "showPoints": "auto" } },
             "overrides": [
               { "matcher": { "id": "byName", "options": "human" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "purple" } }] },
               { "matcher": { "id": "byName", "options": "dependabot-auto" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } }] },
@@ -124,7 +124,7 @@ data:
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
           "fieldConfig": {
-            "defaults": { "unit": "short", "decimals": 0, "custom": { "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "stacking": { "mode": "normal" } } },
+            "defaults": { "unit": "short", "decimals": 0, "custom": { "lineWidth": 2, "fillOpacity": 10, "showPoints": "auto", "stacking": { "mode": "normal" } } },
             "overrides": [
               { "matcher": { "id": "byName", "options": "success" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] },
               { "matcher": { "id": "byName", "options": "failure" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] },
