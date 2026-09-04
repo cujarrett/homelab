@@ -79,3 +79,36 @@ spec:
                   - key: "{{ element.namespace || request.object.metadata.namespace }}/{{ element.app }}"
                     operator: AnyNotIn
                     value: "{{ apis }}"
+
+    - name: configfrom-names-a-real-configmap
+      match:
+        any:
+          - resources:
+              kinds:
+                - platform.local.lab/v1alpha1/Api
+      context:
+        # Scoped to the XR's own namespace, which is the only place configFrom can
+        # name. Secrets are deliberately not checked here - that would mean granting
+        # Kyverno secret reads across the cluster to catch a failure the kubelet
+        # already reports as FailedMount on the pod.
+        - name: configmaps
+          apiCall:
+            urlPath: /api/v1/namespaces/{{ request.object.metadata.namespace }}/configmaps
+            jmesPath: "items[].metadata.name"
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: AnyIn
+            value: [CREATE, UPDATE]
+      validate:
+        message: >-
+          configFrom names {{ element }}, which is not a ConfigMap in this namespace.
+          Existing: {{ configmaps }}
+        foreach:
+          - list: "request.object.spec.parameters.configFrom"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element }}"
+                    operator: AnyNotIn
+                    value: "{{ configmaps }}"

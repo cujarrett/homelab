@@ -202,7 +202,7 @@ The AWS consumption, using the profile whose env var name is derived from the re
 
 ```go
 cfg, _ := config.LoadDefaultConfig(ctx,
-    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_FOO_ASSETS")))
+    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_OBJECT_STORAGE_FOO_ASSETS")))
 s3Client := s3.NewFromConfig(cfg)
 ```
 

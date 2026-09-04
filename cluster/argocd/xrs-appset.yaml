@@ -29,6 +29,12 @@ spec:
         server: https://kubernetes.default.svc
         namespace: "{{path.basename}}"
       syncPolicy:
+        # Labels every workspace namespace so admission policy can tell a platform
+        # workload namespace from a cluster one. The invariant that every workload here
+        # is an Api or Spa is what lets a caller's own declarations be the whole grant.
+        managedNamespaceMetadata:
+          labels:
+            platform.local.lab/workloads: "true"
         automated:
           prune: true
           selfHeal: true

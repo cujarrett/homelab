@@ -24,7 +24,7 @@ Written by the `Api` composition (not by NoSql) when `nosqlRef` is declared. Sec
 | `region` | `us-east-1` |
 | `role-arn` | IAM role ARN (scoped to this table, created by Api) |
 
-The `workload-identity-sidecar` (injected by Api) exchanges the pod's SVID for short-lived STS credentials and writes them as the `nosql` named profile. The app reads `AWS_PROFILE_NOSQL` and uses the standard AWS SDK - no custom endpoint required, the SDK resolves DynamoDB from `region`.
+The `workload-identity-sidecar` (injected by Api) exchanges the pod's SVID for short-lived STS credentials and writes them as the `nosql` named profile. The app reads `AWS_PROFILE_NOSQL_<REF>` and uses the standard AWS SDK - no custom endpoint required, the SDK resolves DynamoDB from `region`.
 
 ## Parameters
 

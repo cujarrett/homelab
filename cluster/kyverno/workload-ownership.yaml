@@ -1,0 +1,44 @@
+# A pod the platform did not compose gets no Istio Sidecar, so nothing restricts what
+# it reaches. Workload namespaces hold Api and Spa instances only.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: platform-workload-ownership
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform workload ownership
+    policies.kyverno.io/description: >-
+      Every workload in a platform namespace must be composed by a Crossplane XR.
+spec:
+  # Audit until the reports are seen to be correct. A wrong Enforce policy here blocks
+  # every deploy into every workload namespace, including the compositions' own output.
+  # Flip to Enforce once the PolicyReports look right.
+  validationFailureAction: Audit
+  background: false
+  rules:
+    - name: workloads-come-from-an-xr
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - StatefulSet
+                - DaemonSet
+                - Pod
+              namespaceSelector:
+                matchLabels:
+                  platform.local.lab/workloads: "true"
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: AnyIn
+            value: [CREATE, UPDATE]
+      validate:
+        message: >-
+          {{ request.object.kind }} {{ request.object.metadata.name }} was not composed by
+          a the platform. Declare it as an Api or Spa in homelab-workspaces instead.
+        pattern:
+          metadata:
+            labels:
+              crossplane.io/composite: "?*"
