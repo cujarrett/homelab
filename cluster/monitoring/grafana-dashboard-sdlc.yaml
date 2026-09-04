@@ -99,7 +99,7 @@ data:
         {
           "id": 2,
           "type": "stat",
-          "title": "Merged by a human",
+          "title": "Opened by a human",
           "gridPos": {
             "x": 5,
             "y": 0,
@@ -132,7 +132,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",category=\"human\",window!=\"1d\"})",
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",author=\"human\",window!=\"1d\"})",
               "instant": true,
               "datasource": {
                 "type": "prometheus",
@@ -145,7 +145,7 @@ data:
         {
           "id": 3,
           "type": "stat",
-          "title": "Merged by Dependabot",
+          "title": "Opened by Dependabot",
           "gridPos": {
             "x": 10,
             "y": 0,
@@ -178,7 +178,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",category=~\"dependabot-.*\",window!=\"1d\"})",
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",author=\"dependabot\",window!=\"1d\"})",
               "instant": true,
               "datasource": {
                 "type": "prometheus",
@@ -353,7 +353,7 @@ data:
           "id": 11,
           "type": "piechart",
           "title": "How a merge happens",
-          "description": "dependabot-auto merged through the auto-merge workflow. dependabot-manual needed a person.",
+          "description": "Read from GitHub's record. auto means GitHub merged it once checks passed, clicked means a person pressed the button, bot means a workflow merged with its own token.",
           "gridPos": {
             "x": 12,
             "y": 4,
@@ -387,22 +387,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "human"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "fixed",
-                      "fixedColor": "purple"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "dependabot-auto"
+                  "options": "auto"
                 },
                 "properties": [
                   {
@@ -417,7 +402,22 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "dependabot-manual"
+                  "options": "clicked"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "purple"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "bot"
                 },
                 "properties": [
                   {
@@ -433,8 +433,8 @@ data:
           },
           "targets": [
             {
-              "expr": "sum by (category) (github_exporter_pr_merged{repo=~\"$repo\",window!=\"1d\"})",
-              "legendFormat": "{{category}}",
+              "expr": "sum by (merge) (github_exporter_pr_merged{repo=~\"$repo\",window!=\"1d\"})",
+              "legendFormat": "{{merge}}",
               "instant": true,
               "datasource": {
                 "type": "prometheus",
@@ -447,7 +447,7 @@ data:
         {
           "id": 20,
           "type": "timeseries",
-          "title": "Merged per day, by category",
+          "title": "Merged per day, by how it merged",
           "gridPos": {
             "x": 0,
             "y": 14,
@@ -482,22 +482,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "human"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "fixed",
-                      "fixedColor": "purple"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "dependabot-auto"
+                  "options": "auto"
                 },
                 "properties": [
                   {
@@ -512,7 +497,22 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "dependabot-manual"
+                  "options": "clicked"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "purple"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "bot"
                 },
                 "properties": [
                   {
@@ -528,8 +528,8 @@ data:
           },
           "targets": [
             {
-              "expr": "sum by (category) (github_exporter_pr_merged{repo=~\"$repo\",window=\"1d\"})",
-              "legendFormat": "{{category}}",
+              "expr": "sum by (merge) (github_exporter_pr_merged{repo=~\"$repo\",window=\"1d\"})",
+              "legendFormat": "{{merge}}",
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
