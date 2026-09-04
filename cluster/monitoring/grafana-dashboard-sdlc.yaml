@@ -39,36 +39,44 @@ data:
       "panels": [
         {
           "id": 1, "type": "stat", "title": "Merged, last 30 days",
-          "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+          "gridPos": { "x": 0, "y": 0, "w": 5, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none", "textMode": "value" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "blue" } } },
-          "targets": [{ "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\"})", "instant": true }]
+          "targets": [{ "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",window!=\"1d\"})", "instant": true }]
         },
         {
           "id": 2, "type": "stat", "title": "Merged by a human",
-          "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+          "gridPos": { "x": 5, "y": 0, "w": 5, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none", "textMode": "value" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "purple" } } },
-          "targets": [{ "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",category=\"human\"})", "instant": true }]
+          "targets": [{ "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",category=\"human\",window!=\"1d\"})", "instant": true }]
         },
         {
           "id": 3, "type": "stat", "title": "Merged by Dependabot",
-          "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+          "gridPos": { "x": 10, "y": 0, "w": 5, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none", "textMode": "value" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "light-blue" } } },
-          "targets": [{ "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",category=~\"dependabot-.*\"})", "instant": true }]
+          "targets": [{ "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",category=~\"dependabot-.*\",window!=\"1d\"})", "instant": true }]
         },
         {
           "id": 4, "type": "stat", "title": "Poll failures",
           "description": "A failed poll and a quiet week both leave the counts flat, so this is how an expired token becomes visible.",
-          "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+          "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } } },
           "targets": [{ "expr": "sum(increase(github_exporter_poll_errors_total{repo=~\"$repo\"}[$__range])) or vector(0)", "instant": true }]
+        },
+        {
+          "id": 5, "type": "stat", "title": "CI pass rate on main",
+          "gridPos": { "x": 15, "y": 0, "w": 5, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value" },
+          "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 1, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 0.9 }, { "color": "green", "value": 0.98 }] } } },
+          "targets": [{ "expr": "sum(github_exporter_workflow_runs{repo=~\"$repo\",conclusion=\"success\"}) / clamp_min(sum(github_exporter_workflow_runs{repo=~\"$repo\",conclusion=~\"success|failure\"}), 1)", "instant": true }]
         },
         {
           "id": 10, "type": "bargauge", "title": "Merged by repo",
@@ -76,7 +84,7 @@ data:
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "orientation": "horizontal", "displayMode": "gradient", "reduceOptions": { "calcs": ["lastNotNull"] }, "showUnfilled": true },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "continuous-BlPu" } } },
-          "targets": [{ "expr": "sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\"})", "legendFormat": "{{repo}}", "instant": true }]
+          "targets": [{ "expr": "sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",window!=\"1d\"})", "legendFormat": "{{repo}}", "instant": true }]
         },
         {
           "id": 11, "type": "piechart", "title": "How a merge happens",
@@ -92,12 +100,11 @@ data:
               { "matcher": { "id": "byName", "options": "dependabot-manual" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "light-blue" } }] }
             ]
           },
-          "targets": [{ "expr": "sum by (category) (github_exporter_pr_merged{repo=~\"$repo\"})", "legendFormat": "{{category}}", "instant": true }]
+          "targets": [{ "expr": "sum by (category) (github_exporter_pr_merged{repo=~\"$repo\",window!=\"1d\"})", "legendFormat": "{{category}}", "instant": true }]
         },
         {
-          "id": 20, "type": "timeseries", "title": "Rolling 30-day window, by category",
-          "description": "Each series is the count inside a sliding 30-day window, so a rise means more merges than a month ago rather than merges today.",
-          "gridPos": { "x": 0, "y": 14, "w": 24, "h": 9 },
+          "id": 20, "type": "timeseries", "title": "Merged per day, by category",
+          "gridPos": { "x": 0, "y": 14, "w": 12, "h": 9 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
           "fieldConfig": {
@@ -108,7 +115,24 @@ data:
               { "matcher": { "id": "byName", "options": "dependabot-manual" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "light-blue" } }] }
             ]
           },
-          "targets": [{ "expr": "sum by (category) (github_exporter_pr_merged{repo=~\"$repo\"})", "legendFormat": "{{category}}" }]
+          "targets": [{ "expr": "sum by (category) (github_exporter_pr_merged{repo=~\"$repo\",window=\"1d\"})", "legendFormat": "{{category}}" }]
+        },
+        {
+          "id": 21, "type": "timeseries", "title": "Workflow runs on main, by outcome",
+          "description": "Runs still in flight carry no conclusion and are not counted.",
+          "gridPos": { "x": 12, "y": 14, "w": 12, "h": 9 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+          "fieldConfig": {
+            "defaults": { "unit": "short", "decimals": 0, "custom": { "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "stacking": { "mode": "normal" } } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "success" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] },
+              { "matcher": { "id": "byName", "options": "failure" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] },
+              { "matcher": { "id": "byName", "options": "cancelled" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "text" } }] },
+              { "matcher": { "id": "byName", "options": "skipped" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "text" } }] }
+            ]
+          },
+          "targets": [{ "expr": "sum by (conclusion) (github_exporter_workflow_runs{repo=~\"$repo\"})", "legendFormat": "{{conclusion}}" }]
         }
       ]
     }
