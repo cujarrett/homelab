@@ -50,6 +50,7 @@ comp_for() {
     Api) echo api ;; Spa) echo spa ;; Cache) echo cache ;; Sql) echo sql ;;
     NoSql) echo nosql ;; ObjectStorage) echo object-storage ;;
     Subscription) echo subscription ;; Topic) echo topic ;; Wordpress) echo wordpress ;;
+    ManagedSecret) echo managed-secret ;;
     *) echo "" ;;
   esac
 }

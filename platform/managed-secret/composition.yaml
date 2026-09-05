@@ -1,0 +1,84 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: managed-secret
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: ManagedSecret
+  mode: Pipeline
+  pipeline:
+    - step: render-aws-resources
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: | # gotemplate
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $ns := $xr.metadata.namespace }}
+            {{- $dataRetention := $xr.spec.parameters.dataRetention | default "retain" }}
+            {{- $recoveryWindowInDays := 7 }}
+            {{- if eq $dataRetention "delete" }}
+            {{- $recoveryWindowInDays = 0 }}
+            {{- end }}
+            {{- $region := "us-east-1" }}
+            {{- /* Slash-separated, so the namespace and name can never reconcatenate into */ -}}
+            {{- /* another instance's path. The Api composition derives the same string.   */ -}}
+            {{- $secretId := printf "platform/%s/%s" $ns $name }}
+            {{- $placeholder := dict "__unset__" true | toJson }}
+            ---
+            # Holds no value of its own. placeholder-value below writes one at creation, and
+            # after that only the owner does, in the console.
+            apiVersion: secretsmanager.aws.m.upbound.io/v1beta1
+            kind: Secret
+            metadata:
+              name: {{ $name }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: secret
+                gotemplating.fn.crossplane.io/ready: "True"
+                crossplane.io/external-name: {{ $secretId }}
+            spec:
+              forProvider:
+                region: {{ $region }}
+                recoveryWindowInDays: {{ $recoveryWindowInDays }}
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+            ---
+            # Plaintext placeholder, held in a k8s Secret because SecretVersion only accepts the
+            # value via a secretRef, never inline. CreateSecret requires a value; there is no way
+            # to create one with genuinely nothing in it.
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $name }}-placeholder
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: placeholder-value
+                gotemplating.fn.crossplane.io/ready: "True"
+            type: Opaque
+            stringData:
+              value: {{ $placeholder | quote }}
+            ---
+            # Create-only, so a value the owner later sets in the console survives every
+            # reconcile. Full management would overwrite it with this placeholder.
+            apiVersion: secretsmanager.aws.m.upbound.io/v1beta1
+            kind: SecretVersion
+            metadata:
+              name: {{ $name }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: secret-version
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              managementPolicies: ["Create"]
+              forProvider:
+                region: {{ $region }}
+                secretId: {{ $secretId }}
+                secretStringSecretRef:
+                  name: {{ $name }}-placeholder
+                  namespace: {{ $ns }}
+                  key: value

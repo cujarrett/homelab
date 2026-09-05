@@ -26,6 +26,7 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 | [`ObjectStorage`](object-storage/README.md) | Object store | MinIO *(planned)* | AWS S3 |
 | [`Topic`](topic/README.md) | Durable message stream | NATS JetStream | - |
 | [`Subscription`](subscription/README.md) | Durable consumer cursor | NATS JetStream | - |
+| [`ManagedSecret`](managed-secret/README.md) | A console-set value, delivered as files | - | AWS Secrets Manager |
 ---
 
 ## How resources connect
@@ -41,6 +42,7 @@ flowchart TD
     xos["ObjectStorage\nstandalone lifecycle"]
     topic["Topic\nNATS stream"]
     xsub["Subscription\nconsumer cursor"]
+    xms["ManagedSecret\nstandalone lifecycle"]
 
     api -->|"cache.enabled"| cache
     api -->|"sqlRef"| sql
@@ -48,6 +50,7 @@ flowchart TD
     api -->|"objectStorageRefs"| xos
     api -->|"topicRef"| topic
     api -->|"subscriptionRef"| xsub
+    api -->|"managedSecretRefs"| xms
     spa -.->|"companion API"| api
 ```
 
