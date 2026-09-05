@@ -465,19 +465,19 @@ data:
                   {
                     "id": "custom.cellOptions",
                     "value": {
-                      "mode": "gradient",
-                      "type": "color-background"
+                      "type": "auto"
                     }
                   },
                   {
                     "id": "color",
                     "value": {
-                      "mode": "continuous-BlPu"
+                      "fixedColor": "text",
+                      "mode": "fixed"
                     }
                   },
                   {
                     "id": "custom.width",
-                    "value": 120
+                    "value": 110
                   }
                 ]
               },
@@ -490,19 +490,19 @@ data:
                   {
                     "id": "custom.cellOptions",
                     "value": {
-                      "mode": "gradient",
-                      "type": "color-background"
+                      "type": "auto"
                     }
                   },
                   {
                     "id": "color",
                     "value": {
-                      "mode": "continuous-BlPu"
+                      "fixedColor": "text",
+                      "mode": "fixed"
                     }
                   },
                   {
                     "id": "custom.width",
-                    "value": 120
+                    "value": 110
                   }
                 ]
               },
@@ -515,19 +515,19 @@ data:
                   {
                     "id": "custom.cellOptions",
                     "value": {
-                      "mode": "gradient",
-                      "type": "color-background"
+                      "type": "auto"
                     }
                   },
                   {
                     "id": "color",
                     "value": {
-                      "mode": "continuous-BlPu"
+                      "fixedColor": "text",
+                      "mode": "fixed"
                     }
                   },
                   {
                     "id": "custom.width",
-                    "value": 120
+                    "value": 110
                   }
                 ]
               },
@@ -654,7 +654,7 @@ data:
             ]
           },
           "gridPos": {
-            "h": 10,
+            "h": 11,
             "w": 24,
             "x": 0,
             "y": 3
@@ -898,10 +898,10 @@ data:
             ]
           },
           "gridPos": {
-            "h": 8,
-            "w": 8,
+            "h": 7,
+            "w": 12,
             "x": 0,
-            "y": 13
+            "y": 14
           },
           "id": 30,
           "options": {
@@ -1060,10 +1060,10 @@ data:
             ]
           },
           "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 8,
-            "y": 13
+            "h": 7,
+            "w": 12,
+            "x": 12,
+            "y": 14
           },
           "id": 31,
           "options": {
@@ -1113,153 +1113,6 @@ data:
             }
           ],
           "title": "Rolling 7 day count",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "description": "Runs still in flight carry no conclusion and are not counted.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 10,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "showValues": false,
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "normal"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "decimals": 0,
-              "unit": "short"
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "success"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "green",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "failure"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "red",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "cancelled"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "text",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "skipped"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "text",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 16,
-            "y": 13
-          },
-          "id": 21,
-          "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "tooltip": {
-              "hideZeros": false,
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "pluginVersion": "13.2.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sum by (conclusion) (github_exporter_workflow_runs{repo=~\"$repo\"})",
-              "legendFormat": "{{conclusion}}",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Workflow runs on main, by outcome",
           "type": "timeseries"
         }
       ],
