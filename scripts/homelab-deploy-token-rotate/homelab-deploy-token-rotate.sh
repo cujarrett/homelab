@@ -5,12 +5,13 @@
 set -euo pipefail
 
 owner="cujarrett"
+secret="HOMELAB_DEPLOY_PAT"
 repos=(platform-exporter secret-mirror-controller)
 
-read -rsp "New HOMELAB_PAT value (homelab-deploy token): " token
+read -rsp "New ${secret} value (homelab-deploy token): " token
 echo
 
 for repo in "${repos[@]}"; do
   echo -n "${owner}/${repo}: "
-  gh secret set HOMELAB_PAT -R "${owner}/${repo}" --body "$token" && echo ok
+  gh secret set "$secret" -R "${owner}/${repo}" --body "$token" && echo ok
 done
