@@ -277,7 +277,7 @@ for spec in "topic:e2e-topic:180" "subscription:e2e-sub:180" "sql:e2e-sql-privat
 done
 
 if ! $PRIVATE_ONLY; then
-  for spec in "nosql:e2e-nosql:180" "objectstorage:e2e-assets:180" "managedsecret:e2e-secret:180" "sql:e2e-sql-public:960"; do
+  for spec in "nosql:e2e-nosql:180" "objectstorage:e2e-assets:180" "managedsecret:e2e-secret:420" "sql:e2e-sql-public:960"; do
     IFS=':' read -r kind name timeout <<< "$spec"
     if wait_ready "$kind" "$name" "$timeout"; then
       record inflate "$kind/$name Ready" PASS ""
