@@ -8,10 +8,9 @@ Kind is `ManagedSecret`, not `Secret` - avoids colliding with `kubectl get secre
 
 ## What it provisions
 
-- A cloud secret the owner sets the value of, holding one property per declared key
-- The identity and access to read it, scoped so only the pods that declared the ref can
+A cloud secret the owner sets the value of, holding one property per declared key. That is all.
 
-The referencing `Api` creates the role and binding, the same way it does for `objectStorageRefs`. `ManagedSecret` manages only the secret's own lifecycle.
+The identity and access to read it belong to the referencing `Api`, which creates them when the ref is declared, the same way it does for `objectStorageRefs`. Trust names the consuming pod, and a `ManagedSecret` does not know which pods those will be.
 
 ## Parameters
 

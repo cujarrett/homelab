@@ -223,6 +223,10 @@ if ! $PRIVATE_ONLY; then
   # The previous run's ElastiCache replication group deletes asynchronously for
   # ~5-10 min after the run ends and the new run reuses the same id - wait it
   # out so back-to-back runs don't stall on the create.
+  # Unique per run, so a value left behind by an earlier run cannot make the
+  # delivery check pass without the sidecar having fetched anything.
+  SECRET_SENTINEL="e2e-$(date +%s)"
+
   RG_RAW="crossplane-$NS-e2e-api-public-cache"
   RG_ID="$RG_RAW"
   if (( ${#RG_RAW} > 40 )); then
@@ -273,7 +277,7 @@ for spec in "topic:e2e-topic:180" "subscription:e2e-sub:180" "sql:e2e-sql-privat
 done
 
 if ! $PRIVATE_ONLY; then
-  for spec in "nosql:e2e-nosql:180" "objectstorage:e2e-assets:180" "sql:e2e-sql-public:960"; do
+  for spec in "nosql:e2e-nosql:180" "objectstorage:e2e-assets:180" "managedsecret:e2e-secret:180" "sql:e2e-sql-public:960"; do
     IFS=':' read -r kind name timeout <<< "$spec"
     if wait_ready "$kind" "$name" "$timeout"; then
       record inflate "$kind/$name Ready" PASS ""
@@ -342,6 +346,7 @@ if $INFLATE_OK; then
     check_secret "nosql binding" e2e-api-public-nosql table-name ""
     check_secret "object-storage binding" e2e-api-public-e2e-assets bucket ""
     check_secret "cache public binding has role-arn" e2e-api-public-cache role-arn ""
+    check_secret "managed secret binding has secret-id, no value" e2e-api-public-secret-e2e-secret secret-id E2E_TOKEN
 
     PUB_DEPLOY=$(kubectl get deployment e2e-api-public -n "$NS" -o json 2>/dev/null)
     if grep -q 'workload-identity-sidecar' <<< "$PUB_DEPLOY"; then
@@ -356,6 +361,39 @@ if $INFLATE_OK; then
         record contract "public deploy has $var" FAIL "env var missing"
       fi
     done
+
+    # The value only exists once someone sets it, so the platform starts with a
+    # placeholder and writes no files. Prove that, then set a value and prove the
+    # sidecar picks it up without a restart - the whole point of the offering.
+    PUB_POD=$(kubectl get pod -n "$NS" -l app.kubernetes.io/instance=e2e-api-public \
+      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    if kubectl exec "$PUB_POD" -n "$NS" -c api -- test -e /secrets/e2e-secret/E2E_TOKEN 2>/dev/null; then
+      record contract "managed secret withheld before a value is set" FAIL "file exists while unset"
+    else
+      record contract "managed secret withheld before a value is set" PASS ""
+    fi
+
+    umask 077 && SECRET_STAGE=$(mktemp)
+    printf '{"E2E_TOKEN":"%s"}' "$SECRET_SENTINEL" > "$SECRET_STAGE"
+    aws secretsmanager put-secret-value --secret-id "platform/$NS/e2e-secret" \
+      --secret-string "file://$SECRET_STAGE" --region "$REGION" >/dev/null 2>&1
+    rm -f "$SECRET_STAGE"
+
+    # The fetcher retries every 30s while a value is missing, so this lands well
+    # inside the window without waiting out the 15 minute steady-state refresh.
+    SECRET_DELIVERED=false
+    for _ in $(seq 1 12); do
+      if kubectl exec "$PUB_POD" -n "$NS" -c api -- \
+          grep -q "$SECRET_SENTINEL" /secrets/e2e-secret/E2E_TOKEN 2>/dev/null; then
+        SECRET_DELIVERED=true; break
+      fi
+      sleep 10
+    done
+    if $SECRET_DELIVERED; then
+      record contract "managed secret value reaches the pod" PASS ""
+    else
+      record contract "managed secret value reaches the pod" FAIL "no file after 120s"
+    fi
 
     # RBAC isolation: each Api's Role must not name the other's secrets.
     PRIV_ROLE=$(kubectl get role e2e-api-private -n "$NS" -o json 2>/dev/null)
@@ -466,6 +504,14 @@ if ! $PRIVATE_ONLY; then
       --query 'Table.TableName' --output text
   aws_gone "S3 bucket gone" \
     aws s3api head-bucket --bucket "platform-$NS-e2e-assets" --region "$REGION"
+  # dataRetention defaults to retain, so the secret is scheduled for deletion rather
+  # than erased. DeletedDate set is the platform having done its job.
+  SECRET_DELETED=$(aws secretsmanager describe-secret --secret-id "platform/$NS/e2e-secret" \
+    --region "$REGION" --query 'DeletedDate' --output text 2>/dev/null)
+  case "$SECRET_DELETED" in
+    ""|"None") record teardown-verify "Secrets Manager secret gone" FAIL "still live, no DeletedDate" ;;
+    *)         record teardown-verify "Secrets Manager secret gone" "PASS (scheduled)" "recoverable until the window expires" ;;
+  esac
   aws_gone "IAM roles gone" bash -c \
     "aws iam list-roles --path-prefix /crossplane/ --query 'Roles[?contains(RoleName, \`$NS\`)].RoleName' --output text --region $REGION | grep ."
   # $RG_ID computed in preflight (mirrors the composition's 40-char naming).
