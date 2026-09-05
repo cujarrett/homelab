@@ -63,35 +63,52 @@ while kubectl get ns "$NS" >/dev/null 2>&1 && [ "$(date +%s)" -lt "$DEADLINE" ];
     echo "   still deleting: $NOW"
     LAST="$NOW"
   fi
+  # A latched async failure never retries, so waiting out the clock on one only
+  # wastes the wait. Break as soon as everything left has already given up.
+  TOTAL=$(kubectl get managed -n "$NS" --no-headers 2>/dev/null | wc -l | tr -d ' ')
+  LATCHED=$(kubectl get managed -n "$NS" -o json 2>/dev/null \
+    | python3 -c "import json,sys;print(sum(1 for i in json.load(sys.stdin).get('items',[]) if any(c.get('reason','').startswith('Async') and c.get('status')=='False' for c in i.get('status',{}).get('conditions',[]))))" 2>/dev/null)
+  if [ -n "$TOTAL" ] && [ "$TOTAL" != "0" ] && [ "$TOTAL" = "$LATCHED" ]; then
+    ylw "   every remaining resource has a latched async failure - not waiting it out"
+    break
+  fi
   sleep 15
 done
 
 if ! kubectl get ns "$NS" >/dev/null 2>&1; then
   grn "   namespace terminated cleanly"
 else
-  ylw "   still terminating - checking for the ElastiCache latch"
-  STUCK=$(kubectl get usergroups.elasticache.aws.m.upbound.io,users.elasticache.aws.m.upbound.io \
-    -n "$NS" -o name 2>/dev/null)
-  for r in $STUCK; do
-    # Only safe because the AWS side is verified gone below. A finalizer removed
-    # while the real resource lives would orphan it and bill silently.
+  ylw "   still terminating - looking for latched deletions"
+  for r in $(kubectl get managed -n "$NS" -o name 2>/dev/null); do
     EXT=$(kubectl get "$r" -n "$NS" -o jsonpath='{.metadata.annotations.crossplane\.io/external-name}' 2>/dev/null)
+    [ -n "$EXT" ] || continue
+
+    # Ask AWS whether the thing still exists, per kind. LIVE non-empty means it does,
+    # UNKNOWN means this kind has no lookup here and the finalizer must stay put -
+    # releasing one blind would orphan a real resource and bill silently.
+    LIVE=""; UNKNOWN=0
     case "$r" in
-      *usergroup*) LIVE=$(aws elasticache describe-user-groups --user-group-id "$EXT" --region "$REGION" \
-                      --query 'UserGroups[].Status' --output text 2>/dev/null) ;;
-      *)           LIVE=$(aws elasticache describe-users --user-id "$EXT" --region "$REGION" \
-                      --query 'Users[].Status' --output text 2>/dev/null) ;;
+      usergroup.elasticache.*)      LIVE=$(aws elasticache describe-user-groups --user-group-id "$EXT" --region "$REGION" --query 'UserGroups[].Status' --output text 2>/dev/null) ;;
+      user.elasticache.*)           LIVE=$(aws elasticache describe-users --user-id "$EXT" --region "$REGION" --query 'Users[].Status' --output text 2>/dev/null) ;;
+      replicationgroup.elasticache.*) LIVE=$(aws elasticache describe-replication-groups --replication-group-id "$EXT" --region "$REGION" --query 'ReplicationGroups[].Status' --output text 2>/dev/null) ;;
+      instance.rds.*)               LIVE=$(aws rds describe-db-instances --db-instance-identifier "$EXT" --region "$REGION" --query 'DBInstances[].DBInstanceStatus' --output text 2>/dev/null) ;;
+      table.dynamodb.*)             LIVE=$(aws dynamodb describe-table --table-name "$EXT" --region "$REGION" --query 'Table.TableStatus' --output text 2>/dev/null) ;;
+      bucket.s3.*)                  LIVE=$(aws s3api head-bucket --bucket "$EXT" --region "$REGION" 2>/dev/null && echo present) ;;
+      secret.secretsmanager.*|secretversion.secretsmanager.*) LIVE=$(aws secretsmanager describe-secret --secret-id "$EXT" --region "$REGION" --query 'Name' --output text 2>/dev/null) ;;
+      role.iam.*)                   LIVE=$(aws iam get-role --role-name "$EXT" --query 'Role.RoleName' --output text 2>/dev/null) ;;
+      *)                            UNKNOWN=1 ;;
     esac
+
+    if [ "$UNKNOWN" -eq 1 ]; then
+      ylw "   $r - no AWS lookup for this kind, leaving its finalizer alone"
+      continue
+    fi
     if [ -n "$LIVE" ]; then
-      ylw "   $EXT still exists in AWS (status $LIVE) - deleting there first"
-      case "$r" in
-        *usergroup*) aws elasticache delete-user-group --user-group-id "$EXT" --region "$REGION" >/dev/null 2>&1 ;;
-        *)           aws elasticache delete-user --user-id "$EXT" --region "$REGION" >/dev/null 2>&1 ;;
-      esac
-      sleep 20
+      ylw "   $EXT still exists in AWS ($LIVE) - leaving it to Crossplane"
+      continue
     fi
     kubectl patch "$r" -n "$NS" --type=merge -p '{"metadata":{"finalizers":[]}}' >/dev/null 2>&1 \
-      && grn "   released finalizer on $r"
+      && grn "   released finalizer on $r (gone from AWS)"
   done
   for _ in $(seq 1 12); do
     kubectl get ns "$NS" >/dev/null 2>&1 || break
