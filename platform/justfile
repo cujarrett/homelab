@@ -15,3 +15,7 @@ test-e2e-private:
 # Full e2e but skip teardown, leaving resources up for debugging
 test-e2e-keep:
     ./test/e2e.sh --keep
+
+# Stop a running e2e and remove everything it left, in the cluster and in AWS
+test-abort:
+    ./test/abort.sh
