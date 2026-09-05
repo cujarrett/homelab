@@ -22,7 +22,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: manager
-          image: ghcr.io/cujarrett/secret-mirror-controller:sha-4f48c2285c0e6be141d34fedf20af4a7113e2ee1
+          image: ghcr.io/cujarrett/secret-mirror-controller:sha-74a689faf891e78b11188437d46dcd6fea167072
           args:
             # The only namespace whose Secrets are watched. Sandbox namespaces are
             # named by guests, so their Secrets are read directly instead.
