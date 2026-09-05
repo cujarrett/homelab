@@ -6,8 +6,8 @@ metadata:
 spec:
   project: cluster
   sources:
-    # Kept to the two values the live release already carries, so the rendered
-    # manifests match what's applied today and adoption has nothing to churn.
+    # Only the two non-default values the release actually needs - selfHeal is on,
+    # so anything else added here fights the values already applied to the cluster.
     - repoURL: https://charts.longhorn.io
       chart: longhorn
       targetRevision: 1.12.0
@@ -24,6 +24,9 @@ spec:
     server: https://kubernetes.default.svc
     namespace: longhorn-system
   syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
