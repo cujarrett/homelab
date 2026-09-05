@@ -295,7 +295,7 @@ data:
             "x": 0,
             "y": 4,
             "w": 12,
-            "h": 8
+            "h": 7
           },
           "datasource": {
             "type": "prometheus",
@@ -356,6 +356,18 @@ data:
                     }
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Time"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "time:MM/DD"
+                  }
+                ]
               }
             ]
           },
@@ -391,7 +403,7 @@ data:
             "x": 12,
             "y": 4,
             "w": 12,
-            "h": 8
+            "h": 7
           },
           "datasource": {
             "type": "prometheus",
@@ -399,8 +411,14 @@ data:
           },
           "options": {
             "legend": {
-              "displayMode": "list",
-              "placement": "bottom"
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "calcs": [
+                "lastNotNull"
+              ],
+              "sortBy": "Last *",
+              "sortDesc": true
             },
             "tooltip": {
               "mode": "multi",
@@ -417,7 +435,20 @@ data:
                 "showPoints": "auto"
               }
             },
-            "overrides": []
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Time"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "time:MM/DD"
+                  }
+                ]
+              }
+            ]
           },
           "targets": [
             {
@@ -439,9 +470,9 @@ data:
           "description": "Open PRs waiting, how the last 30 days of merges reached main, and whether CI is green. Candidates are PRs auto-merge could take; excluded are major bumps and anything else outside the grouped branches.",
           "gridPos": {
             "x": 0,
-            "y": 12,
+            "y": 11,
             "w": 24,
-            "h": 12
+            "h": 10
           },
           "datasource": {
             "type": "prometheus",
