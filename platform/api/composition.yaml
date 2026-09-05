@@ -312,7 +312,7 @@ spec:
                       command:
                         - sh
                         - -c
-                        - "until [ -f /bindings/managed-secret-{{ $ref.name }}/secret-id ]; do echo waiting for {{ $ref.name }} binding; sleep 5; done"
+                        - "until [ -f /bindings/managed-secret-{{ $ref.name }}/type ]; do echo waiting for {{ $ref.name }} binding; sleep 5; done"
                       volumeMounts:
                         - name: managed-secret-{{ $ref.name }}-binding
                           mountPath: /bindings/managed-secret-{{ $ref.name }}
