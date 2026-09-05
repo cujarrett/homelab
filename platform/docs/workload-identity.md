@@ -130,7 +130,7 @@ region:    us-east-1
 
 ## Runtime: AWS
 
-The sidecar fetches one JWT-SVID and presents it to STS once per binding, naming a different role each time. Every 50 minutes it does it again, ahead of the one hour credential expiry.
+The sidecar fetches one JWT-SVID and presents it to STS once per binding, naming a different role each time. Every 50 minutes it does it again, ahead of the one hour credential expiry. This is what a resource binding gets: credentials the app's own SDK then uses. A `managedSecretRefs` binding takes the same exchange somewhere else, described below.
 
 ```mermaid
 sequenceDiagram
@@ -154,6 +154,8 @@ sequenceDiagram
 **One SVID becomes many roles.** The one role per pod limit belongs to the AWS SDK's default credential chain, not to the protocol. Any holder of a valid token may present it to several roles in turn, provided each trust policy accepts that subject. This is the single reason the platform owns a sidecar instead of using stock IRSA, and it is what lets an Api bind object storage, a table and a database at once with each reachable only by the code that asked for it.
 
 **Failure is quiet on purpose.** If a binding's files are not readable yet, or an exchange fails on a throttle or a network blip, the sidecar leaves the previous credentials file untouched, since it is still valid for up to an hour, and retries in 30 seconds rather than crashing.
+
+**A `managedSecretRefs` binding ends in a file, not a profile.** The exchange above is identical, but `GetSecretValue` is SigV4-signed where the token exchange is not, so that call lives in a Go binary in the same image rather than the shell loop. It writes each property of the value to `/secrets/{name}/{key}`, read-only, and refreshes every 15 minutes on its own clock rather than the 50 above, because it is tracking a value an owner may rotate rather than a credential with a known expiry. Until the owner sets one, it writes nothing and logs why.
 
 ---
 
