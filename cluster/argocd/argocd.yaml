@@ -21,6 +21,10 @@ spec:
             - --status-processors=5
             - --operation-processors=5
           resources:
+            # Request is set well under the limit because the controller idles near 1Gi
+            # and only approaches the ceiling during a full re-sync of every app.
+            requests:
+              memory: 1.5Gi
             limits:
               memory: 2.5Gi
           affinity:
@@ -33,6 +37,8 @@ spec:
                         operator: DoesNotExist
         repoServer:
           resources:
+            requests:
+              memory: 128Mi
             limits:
               memory: 512Mi
         server:
@@ -40,6 +46,8 @@ spec:
             # ArgoCD's server has built-in TLS. --insecure disables it so ArgoCD listens on plain HTTP internally. That's correct here because Traefik is handling TLS termination - HTTPS hits Traefik, which strips TLS and proxies plain HTTP to ArgoCD. If you didn't set --insecure, you'd get a double-TLS situation and the ingress would break.
             - --insecure
           resources:
+            requests:
+              memory: 96Mi
             limits:
               memory: 256Mi
         applicationSet:
@@ -59,8 +67,12 @@ spec:
             server.insecure: "true"
             application.namespaces: "*"
           cm:
-            timeout.reconciliation: 10s
-            timeout.reconciliation.jitter: 0s
+            # Self-heal runs off watches, so this timer only governs how fast a new Git
+            # commit is noticed. Launchpad pushes its own refresh annotations for the
+            # paths that need to be instant. Jitter spreads the apps across the window
+            # instead of diffing all of them on the same tick.
+            timeout.reconciliation: 60s
+            timeout.reconciliation.jitter: 30s
             controller.diff.server.side: "true"
             resource.customizations.health.networking.k8s.io_Ingress: |
               hs = {}
