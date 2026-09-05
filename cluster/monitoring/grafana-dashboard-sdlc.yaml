@@ -302,62 +302,29 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Every merge over a trailing 7 days, split by what actually merged it. The purple band is the manual work; success is watching it give way to the others.",
+          "description": "Open right now, merged by a person clicking the button, and merged automatically. window=1d so each point reads as a trailing-24h count.",
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 40,
-                "gradientMode": "opacity",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "showValues": false,
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "normal"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
+              "unit": "short",
               "decimals": 0,
-              "min": 0,
-              "unit": "short"
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto"
+              }
             },
             "overrides": [
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Human click"
+                  "options": "Open now"
                 },
                 "properties": [
                   {
                     "id": "color",
                     "value": {
-                      "fixedColor": "purple",
-                      "mode": "fixed"
+                      "mode": "fixed",
+                      "fixedColor": "light-blue"
                     }
                   }
                 ]
@@ -365,14 +332,14 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Auto-merge"
+                  "options": "Merged by hand"
                 },
                 "properties": [
                   {
                     "id": "color",
                     "value": {
-                      "fixedColor": "blue",
-                      "mode": "fixed"
+                      "mode": "fixed",
+                      "fixedColor": "purple"
                     }
                   }
                 ]
@@ -380,14 +347,14 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Bot token"
+                  "options": "Merged auto"
                 },
                 "properties": [
                   {
                     "id": "color",
                     "value": {
-                      "fixedColor": "light-blue",
-                      "mode": "fixed"
+                      "mode": "fixed",
+                      "fixedColor": "blue"
                     }
                   }
                 ]
@@ -419,38 +386,187 @@ data:
           "pluginVersion": "13.2.0",
           "targets": [
             {
+              "expr": "sum(github_exporter_pr_open{repo=~\"$repo\"})",
+              "legendFormat": "Open now",
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
               "refId": "A",
-              "legendFormat": "Human click",
-              "range": true,
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"7d\"})"
+              "range": true
             },
             {
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"1d\"})",
+              "legendFormat": "Merged by hand",
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
               "refId": "B",
-              "legendFormat": "Auto-merge",
-              "range": true,
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"auto\",window=\"7d\"})"
+              "range": true
             },
             {
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"auto\",window=\"1d\"})",
+              "legendFormat": "Merged auto",
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
               "refId": "C",
-              "legendFormat": "Bot token",
-              "range": true,
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"bot\",window=\"7d\"})"
+              "range": true
             }
           ],
-          "title": "How every merge reaches main",
+          "title": "PRs per day",
           "type": "timeseries"
+        },
+        {
+          "id": 51,
+          "type": "piechart",
+          "title": "How a merge happens",
+          "description": "Read from GitHub's own record. auto means GitHub merged it once checks passed, clicked means a person pressed the button, bot means a workflow merged with its own token.",
+          "gridPos": {
+            "x": 0,
+            "y": 18,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "values": [
+                "value"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "auto"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "blue"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "clicked"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "purple"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "bot"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "light-blue"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "sum by (merge) (github_exporter_pr_merged{repo=~\"$repo\",window=\"30d\"})",
+              "legendFormat": "{{merge}}",
+              "instant": true,
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 52,
+          "type": "timeseries",
+          "title": "CI failures on main",
+          "description": "Trailing 30-day failure count, replotted every poll. A rising line is dependabot's auto-merge CI getting less reliable.",
+          "gridPos": {
+            "x": 12,
+            "y": 18,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "red"
+              },
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto"
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum(github_exporter_workflow_runs{repo=~\"$repo\",conclusion=\"failure\"})",
+              "legendFormat": "Failures",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "A",
+              "range": true
+            }
+          ]
         },
         {
           "datasource": {
@@ -473,7 +589,7 @@ data:
             "h": 6,
             "w": 12,
             "x": 0,
-            "y": 12
+            "y": 26
           },
           "id": 12,
           "options": {
@@ -487,7 +603,7 @@ data:
             "maxVizHeight": 300,
             "minVizHeight": 16,
             "minVizWidth": 8,
-            "namePlacement": "auto",
+            "namePlacement": "left",
             "orientation": "horizontal",
             "reduceOptions": {
               "calcs": [
@@ -555,7 +671,7 @@ data:
             "h": 6,
             "w": 12,
             "x": 12,
-            "y": 12
+            "y": 26
           },
           "id": 13,
           "options": {
