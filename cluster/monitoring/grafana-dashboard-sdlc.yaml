@@ -307,6 +307,160 @@ data:
           "type": "stat"
         },
         {
+          "id": 50,
+          "type": "timeseries",
+          "title": "Open PRs",
+          "description": "The queue over time. Auto-merge ready is what automation could clear on its own; needs a human is everything else - a person's own PR, or a major bump outside the grouped branches.",
+          "gridPos": {
+            "x": 0,
+            "y": 3,
+            "w": 8,
+            "h": 7
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true,
+              "calcs": []
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "min": 0,
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "stepAfter",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "pointSize": 5,
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "All open"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "light-blue"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Auto-merge ready"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "blue"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Needs a human"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "purple"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Time"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "time:MM/DD"
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "sum(github_exporter_pr_open{repo=~\"$repo\"})",
+              "legendFormat": "All open",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "A",
+              "range": true
+            },
+            {
+              "expr": "sum(github_exporter_pr_open{repo=~\"$repo\",scope=\"auto-candidate\"})",
+              "legendFormat": "Auto-merge ready",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "B",
+              "range": true
+            },
+            {
+              "expr": "sum(github_exporter_pr_open{repo=~\"$repo\",scope=~\"human|excluded\"})",
+              "legendFormat": "Needs a human",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "C",
+              "range": true
+            }
+          ]
+        },
+        {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -413,10 +567,10 @@ data:
             ]
           },
           "gridPos": {
-            "h": 7,
-            "w": 12,
-            "x": 0,
-            "y": 3
+            "x": 8,
+            "y": 3,
+            "w": 8,
+            "h": 7
           },
           "id": 55,
           "interval": "1d",
@@ -536,10 +690,10 @@ data:
             ]
           },
           "gridPos": {
-            "h": 7,
-            "w": 12,
-            "x": 12,
-            "y": 3
+            "x": 16,
+            "y": 3,
+            "w": 8,
+            "h": 7
           },
           "id": 52,
           "options": {
