@@ -294,7 +294,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Repos not polling",
+          "title": "Repos with poll errors",
           "type": "stat"
         },
         {
@@ -302,7 +302,7 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Daily bars. Open PRs split by why they are or aren't an auto-merge candidate; merges split by how they reached main. window=1d on the merged series so each bar is a trailing-24h count.",
+          "description": "Daily bars. Open PRs split by why they are or aren't an auto-merge candidate, plus the day's total merges. How a merge happens (below) owns the clicked/auto/bot breakdown.",
           "fieldConfig": {
             "defaults": {
               "unit": "short",
@@ -367,7 +367,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Merged by hand"
+                  "options": "Merged"
                 },
                 "properties": [
                   {
@@ -375,21 +375,6 @@ data:
                     "value": {
                       "mode": "fixed",
                       "fixedColor": "purple"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Merged auto"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "fixed",
-                      "fixedColor": "light-purple"
                     }
                   }
                 ]
@@ -451,23 +436,13 @@ data:
               "range": true
             },
             {
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"1d\"})",
-              "legendFormat": "Merged by hand",
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",window=\"1d\"})",
+              "legendFormat": "Merged",
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
               "refId": "D",
-              "range": true
-            },
-            {
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"auto\",window=\"1d\"})",
-              "legendFormat": "Merged auto",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "refId": "E",
               "range": true
             }
           ],
@@ -609,7 +584,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum by (repo) (github_exporter_workflow_runs{repo=~\"$repo\",conclusion=\"failure\"})",
+              "expr": "sum by (repo) (github_exporter_workflow_runs{repo=~\"$repo\",conclusion=\"failure\"}) > 0",
               "legendFormat": "{{repo}}",
               "datasource": {
                 "type": "prometheus",
