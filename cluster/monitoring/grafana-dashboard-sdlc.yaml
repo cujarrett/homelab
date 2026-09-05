@@ -706,211 +706,17 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Every polled repo in one row. Sorted by merges in the last 30 days.",
+          "description": "Pull requests open right now, not a windowed count. A repo whose poll is failing holds its last good value.",
           "fieldConfig": {
             "defaults": {
-              "custom": {
-                "align": "auto",
-                "cellOptions": {
-                  "type": "auto"
-                },
-                "filterable": true,
-                "inspect": false
+              "color": {
+                "mode": "continuous-BlPu"
               },
               "decimals": 0,
+              "min": 0,
               "unit": "short"
             },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Repo"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 150
-                  },
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "text",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Merged"
-                },
-                "properties": [
-                  {
-                    "id": "custom.cellOptions",
-                    "value": {
-                      "mode": "gradient",
-                      "type": "color-background"
-                    }
-                  },
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "continuous-BlPu"
-                    }
-                  },
-                  {
-                    "id": "custom.width",
-                    "value": 90
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Open"
-                },
-                "properties": [
-                  {
-                    "id": "custom.cellOptions",
-                    "value": {
-                      "type": "auto"
-                    }
-                  },
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "text",
-                      "mode": "fixed"
-                    }
-                  },
-                  {
-                    "id": "custom.width",
-                    "value": 90
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "CI pass rate"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 1
-                  },
-                  {
-                    "id": "custom.cellOptions",
-                    "value": {
-                      "mode": "gradient",
-                      "type": "color-background"
-                    }
-                  },
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "thresholds"
-                    }
-                  },
-                  {
-                    "id": "thresholds",
-                    "value": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "red",
-                          "value": 0
-                        },
-                        {
-                          "color": "yellow",
-                          "value": 0.9
-                        },
-                        {
-                          "color": "green",
-                          "value": 0.98
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "id": "custom.width",
-                    "value": 90
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Polling"
-                },
-                "properties": [
-                  {
-                    "id": "custom.cellOptions",
-                    "value": {
-                      "type": "color-text"
-                    }
-                  },
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "thresholds"
-                    }
-                  },
-                  {
-                    "id": "thresholds",
-                    "value": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "green",
-                          "value": 0
-                        },
-                        {
-                          "color": "red",
-                          "value": 1
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "id": "mappings",
-                    "value": [
-                      {
-                        "type": "value",
-                        "options": {
-                          "0": {
-                            "color": "green",
-                            "index": 0,
-                            "text": "ok"
-                          }
-                        }
-                      },
-                      {
-                        "type": "range",
-                        "options": {
-                          "from": 1,
-                          "to": null,
-                          "result": {
-                            "color": "red",
-                            "index": 1,
-                            "text": "failing"
-                          }
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "id": "custom.width",
-                    "value": 90
-                  }
-                ]
-              }
-            ]
+            "overrides": []
           },
           "gridPos": {
             "h": 7,
@@ -918,24 +724,30 @@ data:
             "x": 12,
             "y": 14
           },
-          "id": 40,
+          "id": 12,
           "options": {
-            "cellHeight": "sm",
-            "footer": {
-              "countRows": false,
-              "fields": "",
-              "reducer": [
-                "sum"
-              ],
-              "show": false
+            "displayMode": "gradient",
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
             },
-            "showHeader": true,
-            "sortBy": [
-              {
-                "desc": true,
-                "displayName": "Merged"
-              }
-            ]
+            "maxVizHeight": 300,
+            "minVizHeight": 16,
+            "minVizWidth": 8,
+            "namePlacement": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "sizing": "auto",
+            "valueMode": "color"
           },
           "pluginVersion": "13.2.0",
           "targets": [
@@ -944,82 +756,14 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",window=\"30d\"})",
-              "format": "table",
+              "expr": "sort_desc(sum by (repo) (github_exporter_pr_open{repo=~\"$repo\"}) > 0)",
               "instant": true,
+              "legendFormat": "{{repo}}",
               "refId": "A"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sum by (repo) (github_exporter_pr_open{repo=~\"$repo\"})",
-              "format": "table",
-              "instant": true,
-              "refId": "D"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sum by (repo) (github_exporter_workflow_runs{repo=~\"$repo\",conclusion=\"success\"}) / (sum by (repo) (github_exporter_workflow_runs{repo=~\"$repo\",conclusion=~\"success|failure\"}) > 0)",
-              "format": "table",
-              "instant": true,
-              "refId": "E"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sum by (repo) (increase(github_exporter_poll_errors_total{repo=~\"$repo\"}[1h])) or (sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",window=\"30d\"}) * 0)",
-              "format": "table",
-              "instant": true,
-              "refId": "F"
             }
           ],
-          "title": "By repo",
-          "transformations": [
-            {
-              "id": "joinByField",
-              "options": {
-                "byField": "repo",
-                "mode": "outer"
-              }
-            },
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {
-                  "Time 1": true,
-                  "Time 2": true,
-                  "Time 3": true,
-                  "Time 4": true,
-                  "Time 5": true,
-                  "Time 6": true,
-                  "Time": true
-                },
-                "includeByName": {},
-                "indexByName": {
-                  "repo": 0,
-                  "Value #A": 1,
-                  "Value #D": 2,
-                  "Value #E": 3,
-                  "Value #F": 4
-                },
-                "renameByName": {
-                  "repo": "Repo",
-                  "Value #A": "Merged",
-                  "Value #D": "Open",
-                  "Value #E": "CI pass rate",
-                  "Value #F": "Polling"
-                }
-              }
-            }
-          ],
-          "type": "table"
+          "title": "Open PRs by repo",
+          "type": "bargauge"
         }
       ],
       "preload": false,
