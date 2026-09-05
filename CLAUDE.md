@@ -401,8 +401,7 @@ Go apps in this workspace:
 | Repo | Binary | Notes |
 |---|---|---|
 | `my-vinyl-api` | `my-vinyl-api` | REST API for my-vinyl SPA |
-| `sump-pump-bridge` | `sump-pump-bridge` | IoT bridge, publishes to NATS |
-| `sump-pump-consumer` | `sump-pump-consumer` | NATS consumer, exposes Prometheus metrics |
+| `sump-pump` | `bridge`, `consumer` | Monorepo - `cmd/bridge` publishes IoT readings to NATS, `cmd/consumer` reads them and exposes Prometheus metrics, `internal/event` holds the shared subjects and payload. Images stay `ghcr.io/cujarrett/sump-pump-bridge` and `-consumer` |
 | `weather-exporter` | `weather-exporter` | Weather Prometheus exporter |
 | `launchpad-api` | `launchpad-api` | BFF for Launchpad UI |
 
