@@ -30,6 +30,15 @@ spec:
   parameters: {}
 ---
 apiVersion: platform.local.lab/v1alpha1
+kind: ManagedSecret
+metadata:
+  name: e2e-secret
+  namespace: platform-e2e
+spec:
+  parameters:
+    keys: [E2E_TOKEN]
+---
+apiVersion: platform.local.lab/v1alpha1
 kind: Api
 metadata:
   name: e2e-api-public
@@ -49,3 +58,5 @@ spec:
       name: e2e-nosql
     objectStorageRefs:
       - name: e2e-assets
+    managedSecretRefs:
+      - name: e2e-secret

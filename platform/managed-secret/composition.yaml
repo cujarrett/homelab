@@ -78,7 +78,8 @@ spec:
               forProvider:
                 region: {{ $region }}
                 secretId: {{ $secretId }}
+                {{- /* No namespace here - this managed resource is itself namespaced, so the */}}
+                {{- /* ref resolves alongside it, and the schema rejects the field outright.  */}}
                 secretStringSecretRef:
                   name: {{ $name }}-placeholder
-                  namespace: {{ $ns }}
                   key: value

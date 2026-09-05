@@ -14,6 +14,9 @@
 #                even when whitespace trimming collapsed a block sequence to a string.
 #   4. diff    - compares against HEAD for both the XR and the composition, so a
 #                shared-composition edit and a lone XR edit are each caught.
+#   4c. crd    - dry-runs the rendered managed resources against the real provider
+#                CRDs. crossplane render has none loaded, so it emits fields the API
+#                server rejects; one only surfaced 20 minutes into a real-AWS e2e run.
 #   5. rbac    - every composed kind is granted in cluster/crossplane/rbac.yaml, or
 #                it renders fine but the API server refuses it - XR stays READY=True
 #                while SYNCED=False, so nothing looks wrong.
@@ -175,6 +178,43 @@ PY
   else
     printf '\033[33m       xr edit renders as - review below\033[0m\n'
     diff "$TMP/head-xr-out.yaml" "$TMP/out.yaml" | sed 's/^/        /' | head -40
+  fi
+done
+
+# --- 4c. rendered resources against the real CRDs -----------------------------
+# crossplane render has no provider CRDs loaded, so it happily emits a field the API
+# server rejects. A ManagedSecret shipped with an invented secretStringSecretRef.namespace
+# that only failed 20 minutes into a real-AWS e2e run. This is the same check, in seconds.
+echo "── crd"
+for xr in "$WORKSPACES"/*/*.yaml; do
+  kind=$(grep -m1 '^kind:' "$xr" 2>/dev/null | awk '{print $2}')
+  dir=$(comp_for "$kind")
+  [ -z "$dir" ] && continue
+  name="$(basename "$(dirname "$xr")")/$(basename "$xr" .yaml)"
+
+  crossplane render "$xr" "platform/$dir/composition.yaml" "$FUNCS" -e "$ENVCFG" \
+    > "$TMP/crd-in.yaml" 2>/dev/null || continue
+
+  # Drop the composite itself and the render-only metadata the API server refuses.
+  python3 - "$TMP/crd-in.yaml" "$TMP/crd-out.yaml" <<'PY2' || continue
+import sys, yaml
+docs = [d for d in yaml.safe_load_all(open(sys.argv[1]))
+        if d and d.get('apiVersion','').startswith(('secretsmanager.','iam.','s3.','dynamodb.','elasticache.','rds.'))]
+for d in docs:
+    d['metadata'].pop('ownerReferences', None)
+    d['metadata'].pop('generateName', None)
+    d['metadata'].get('annotations', {}).pop('crossplane.io/composition-resource-name', None)
+    d['metadata'].setdefault('name', 'render-check-probe')
+yaml.safe_dump_all(docs, open(sys.argv[2], 'w'))
+sys.exit(0 if docs else 1)
+PY2
+
+  if out=$(kubectl apply --dry-run=server -f "$TMP/crd-out.yaml" 2>&1); then
+    grn "   ok  $name managed resources match the CRDs"
+  else
+    red "   FAIL $name - a rendered field the CRD does not accept"
+    sed 's/^/        /' <<< "$out" | head -5
+    fail=1
   fi
 done
 
