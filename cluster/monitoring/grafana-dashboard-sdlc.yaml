@@ -314,7 +314,7 @@ data:
           "gridPos": {
             "x": 0,
             "y": 3,
-            "w": 8,
+            "w": 6,
             "h": 7
           },
           "datasource": {
@@ -567,9 +567,9 @@ data:
             ]
           },
           "gridPos": {
-            "x": 8,
+            "x": 6,
             "y": 3,
-            "w": 8,
+            "w": 6,
             "h": 7
           },
           "id": 55,
@@ -690,9 +690,9 @@ data:
             ]
           },
           "gridPos": {
-            "x": 16,
+            "x": 12,
             "y": 3,
-            "w": 8,
+            "w": 6,
             "h": 7
           },
           "id": 52,
@@ -1002,6 +1002,122 @@ data:
             }
           ],
           "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Read from GitHub's record. auto means GitHub merged it once checks passed, clicked means a person pressed the button, bot means a workflow merged with its own token.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                }
+              },
+              "decimals": 0,
+              "unit": "short"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "auto"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "clicked"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "purple",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "bot"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "light-blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 18,
+            "y": 3
+          },
+          "id": 80,
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "values": [
+                "value"
+              ]
+            },
+            "pieType": "pie",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "sort": "desc",
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "13.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum by (merge) (github_exporter_pr_merged{repo=~\"$repo\",window=\"30d\"})",
+              "instant": true,
+              "legendFormat": "{{merge}}",
+              "refId": "A"
+            }
+          ],
+          "title": "How a merge happens",
+          "type": "piechart"
         }
       ],
       "preload": false,
