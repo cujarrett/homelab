@@ -119,12 +119,8 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
+                    "color": "purple",
+                    "value": null
                   }
                 ]
               },
@@ -602,12 +598,8 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
+                    "color": "text",
+                    "value": null
                   }
                 ]
               },
@@ -668,6 +660,24 @@ data:
                       "mode": "gradient",
                       "type": "gauge"
                     }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "continuous-BlPu"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "blue",
+                          "value": null
+                        }
+                      ]
+                    }
                   }
                 ]
               },
@@ -682,6 +692,54 @@ data:
                     "value": {
                       "mode": "gradient",
                       "type": "gauge"
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "continuous-BlPu"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "blue",
+                          "value": null
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Open"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "text"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Needed a human"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "text"
                     }
                   }
                 ]
