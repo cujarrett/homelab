@@ -8,276 +8,244 @@ metadata:
 data:
   sdlc.json: |-
     {
-      "uid": "sdlc-delivery",
-      "title": "SDLC",
-      "tags": [
-        "sdlc",
-        "github"
-      ],
-      "timezone": "browser",
-      "schemaVersion": 39,
-      "refresh": "5m",
-      "time": {
-        "from": "now-30d",
-        "to": "now"
-      },
-      "templating": {
+      "annotations": {
         "list": [
           {
-            "type": "query",
-            "name": "repo",
-            "label": "Repo",
-            "multi": true,
-            "includeAll": true,
-            "current": {
-              "selected": true,
-              "text": "All",
-              "value": "$__all"
-            },
+            "builtIn": 1,
             "datasource": {
-              "type": "prometheus",
-              "uid": "prometheus"
+              "type": "grafana",
+              "uid": "-- Grafana --"
             },
-            "definition": "label_values(github_exporter_pr_merged, repo)",
-            "query": {
-              "query": "label_values(github_exporter_pr_merged, repo)",
-              "refId": "StandardVariableQuery"
-            },
-            "refresh": 2,
-            "sort": 1,
-            "hide": 0
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
           }
         ]
       },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "liveNow": false,
       "panels": [
         {
-          "id": 1,
-          "type": "stat",
-          "title": "Merged, last 30 days",
-          "gridPos": {
-            "x": 0,
-            "y": 0,
-            "w": 5,
-            "h": 4
-          },
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "options": {
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ]
-            },
-            "colorMode": "value",
-            "graphMode": "none",
-            "textMode": "value"
-          },
           "fieldConfig": {
             "defaults": {
-              "unit": "short",
-              "decimals": 0,
               "color": {
-                "mode": "fixed",
-                "fixedColor": "blue"
-              }
-            }
-          },
-          "targets": [
-            {
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",window!=\"1d\"})",
-              "instant": true,
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
+                "fixedColor": "blue",
+                "mode": "fixed"
               },
-              "refId": "A"
-            }
-          ]
-        },
-        {
-          "id": 2,
-          "type": "stat",
-          "title": "Opened by a human",
-          "gridPos": {
-            "x": 5,
-            "y": 0,
-            "w": 5,
-            "h": 4
-          },
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "options": {
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ]
-            },
-            "colorMode": "value",
-            "graphMode": "none",
-            "textMode": "value"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "short",
-              "decimals": 0,
-              "color": {
-                "mode": "fixed",
-                "fixedColor": "purple"
-              }
-            }
-          },
-          "targets": [
-            {
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",author=\"human\",window!=\"1d\"})",
-              "instant": true,
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "refId": "A"
-            }
-          ]
-        },
-        {
-          "id": 3,
-          "type": "stat",
-          "title": "Opened by Dependabot",
-          "gridPos": {
-            "x": 10,
-            "y": 0,
-            "w": 5,
-            "h": 4
-          },
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "options": {
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ]
-            },
-            "colorMode": "value",
-            "graphMode": "none",
-            "textMode": "value"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "short",
-              "decimals": 0,
-              "color": {
-                "mode": "fixed",
-                "fixedColor": "light-blue"
-              }
-            }
-          },
-          "targets": [
-            {
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",author=\"dependabot\",window!=\"1d\"})",
-              "instant": true,
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "refId": "A"
-            }
-          ]
-        },
-        {
-          "id": 4,
-          "type": "stat",
-          "title": "Poll failures",
-          "description": "A failed poll and a quiet week both leave the counts flat, so this is how an expired token becomes visible.",
-          "gridPos": {
-            "x": 20,
-            "y": 0,
-            "w": 4,
-            "h": 4
-          },
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "options": {
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ]
-            },
-            "colorMode": "background",
-            "graphMode": "none",
-            "textMode": "value"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "short",
               "decimals": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
                     "color": "green",
-                    "value": null
+                    "value": 0
                   },
                   {
                     "color": "red",
-                    "value": 1
+                    "value": 80
                   }
                 ]
-              }
+              },
+              "unit": "short"
             }
           },
+          "gridPos": {
+            "h": 3,
+            "w": 5,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.0",
           "targets": [
             {
-              "expr": "sum(increase(github_exporter_poll_errors_total{repo=~\"$repo\"}[$__range])) or vector(0)",
-              "instant": true,
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",window!=\"1d\"})",
+              "instant": true,
               "refId": "A"
             }
-          ]
+          ],
+          "title": "Merged, last 30 days",
+          "type": "stat"
         },
         {
-          "id": 5,
-          "type": "stat",
-          "title": "CI pass rate on main",
-          "gridPos": {
-            "x": 15,
-            "y": 0,
-            "w": 5,
-            "h": 4
-          },
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "purple",
+                "mode": "fixed"
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 5,
+            "y": 0
+          },
+          "id": 2,
           "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
-              ]
+              ],
+              "fields": "",
+              "values": false
             },
-            "colorMode": "background",
-            "graphMode": "none",
-            "textMode": "value"
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",author=\"human\",window!=\"1d\"})",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Opened by a human",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
           },
           "fieldConfig": {
             "defaults": {
-              "unit": "percentunit",
+              "color": {
+                "fixedColor": "light-blue",
+                "mode": "fixed"
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 5,
+            "x": 11,
+            "y": 0
+          },
+          "id": 3,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",author=\"dependabot\",window!=\"1d\"})",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Opened by Dependabot",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
               "decimals": 1,
+              "max": 1,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
                     "color": "red",
-                    "value": null
+                    "value": 0
                   },
                   {
                     "color": "yellow",
@@ -288,294 +256,364 @@ data:
                     "value": 0.98
                   }
                 ]
-              }
+              },
+              "unit": "percentunit"
             }
           },
+          "gridPos": {
+            "h": 3,
+            "w": 4,
+            "x": 16,
+            "y": 0
+          },
+          "id": 5,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.0",
           "targets": [
             {
-              "expr": "sum(github_exporter_workflow_runs{repo=~\"$repo\",conclusion=\"success\"}) / clamp_min(sum(github_exporter_workflow_runs{repo=~\"$repo\",conclusion=~\"success|failure\"}), 1)",
-              "instant": true,
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
+              "expr": "sum(github_exporter_workflow_runs{repo=~\"$repo\",conclusion=\"success\"}) / clamp_min(sum(github_exporter_workflow_runs{repo=~\"$repo\",conclusion=~\"success|failure\"}), 1)",
+              "instant": true,
               "refId": "A"
             }
-          ]
+          ],
+          "title": "CI pass rate on main",
+          "type": "stat"
         },
         {
-          "id": 10,
-          "type": "bargauge",
-          "title": "Merged by repo",
-          "gridPos": {
-            "x": 0,
-            "y": 4,
-            "w": 12,
-            "h": 10
-          },
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "description": "A failed poll and a quiet week both leave the counts flat, so this is how an expired token becomes visible.",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 4,
+            "x": 20,
+            "y": 0
+          },
+          "id": 4,
           "options": {
-            "orientation": "horizontal",
-            "displayMode": "gradient",
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
-              ]
+              ],
+              "fields": "",
+              "values": false
             },
-            "showUnfilled": true
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(increase(github_exporter_poll_errors_total{repo=~\"$repo\"}[$__range])) or vector(0)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Poll failures",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
           },
           "fieldConfig": {
             "defaults": {
-              "unit": "short",
-              "decimals": 0,
               "color": {
                 "mode": "continuous-BlPu"
-              }
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
             }
           },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 3
+          },
+          "id": 10,
+          "options": {
+            "displayMode": "gradient",
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "maxVizHeight": 300,
+            "minVizHeight": 16,
+            "minVizWidth": 8,
+            "namePlacement": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "sizing": "auto",
+            "valueMode": "color"
+          },
+          "pluginVersion": "13.2.0",
           "targets": [
             {
-              "expr": "sort_desc(sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",window!=\"1d\"}) > 0)",
-              "legendFormat": "{{repo}}",
-              "instant": true,
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
+              "expr": "sort_desc(sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",window!=\"1d\"}) > 0)",
+              "instant": true,
+              "legendFormat": "{{repo}}",
               "refId": "A"
             }
-          ]
+          ],
+          "title": "Merged by repo",
+          "type": "bargauge"
         },
         {
-          "id": 11,
-          "type": "piechart",
-          "title": "How a merge happens",
-          "description": "Read from GitHub's record. auto means GitHub merged it once checks passed, clicked means a person pressed the button, bot means a workflow merged with its own token.",
-          "gridPos": {
-            "x": 12,
-            "y": 4,
-            "w": 12,
-            "h": 10
-          },
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "options": {
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ]
+          "description": "Read from GitHub's record. auto means GitHub merged it once checks passed, clicked means a person pressed the button, bot means a workflow merged with its own token.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "#73BF69",
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                }
+              },
+              "decimals": 0,
+              "unit": "short"
             },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "auto"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "clicked"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "purple",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "bot"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "light-blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 3
+          },
+          "id": 11,
+          "options": {
             "legend": {
               "displayMode": "table",
               "placement": "right",
+              "showLegend": true,
               "values": [
                 "value"
               ]
+            },
+            "pieType": "pie",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "sort": "desc",
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "single",
+              "sort": "none"
             }
           },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "short",
-              "decimals": 0
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "auto"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "fixed",
-                      "fixedColor": "blue"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "clicked"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "fixed",
-                      "fixedColor": "purple"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "bot"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "fixed",
-                      "fixedColor": "light-blue"
-                    }
-                  }
-                ]
-              }
-            ]
-          },
+          "pluginVersion": "13.2.0",
           "targets": [
             {
-              "expr": "sum by (merge) (github_exporter_pr_merged{repo=~\"$repo\",window!=\"1d\"})",
-              "legendFormat": "{{merge}}",
-              "instant": true,
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
+              "expr": "sum by (merge) (github_exporter_pr_merged{repo=~\"$repo\",window!=\"1d\"})",
+              "instant": true,
+              "legendFormat": "{{merge}}",
               "refId": "A"
             }
-          ]
+          ],
+          "title": "How a merge happens",
+          "type": "piechart"
         },
         {
-          "id": 20,
-          "type": "timeseries",
-          "title": "Merged per day, by how it merged",
-          "gridPos": {
-            "x": 0,
-            "y": 14,
-            "w": 12,
-            "h": 9
-          },
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom"
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "short",
-              "decimals": 0,
-              "custom": {
-                "lineWidth": 2,
-                "fillOpacity": 10,
-                "showPoints": "auto"
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "auto"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "fixed",
-                      "fixedColor": "blue"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "clicked"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "fixed",
-                      "fixedColor": "purple"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "bot"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "fixed",
-                      "fixedColor": "light-blue"
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          "targets": [
-            {
-              "expr": "sum by (merge) (github_exporter_pr_merged{repo=~\"$repo\",window=\"1d\"})",
-              "legendFormat": "{{merge}}",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "refId": "A",
-              "range": true
-            }
-          ]
-        },
-        {
-          "id": 21,
-          "type": "timeseries",
-          "title": "Workflow runs on main, by outcome",
           "description": "Runs still in flight carry no conclusion and are not counted.",
-          "gridPos": {
-            "x": 12,
-            "y": 14,
-            "w": 12,
-            "h": 9
-          },
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom"
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
           "fieldConfig": {
             "defaults": {
-              "unit": "short",
-              "decimals": 0,
+              "color": {
+                "mode": "palette-classic"
+              },
               "custom": {
-                "lineWidth": 2,
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
                 "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
                 "showPoints": "auto",
+                "showValues": false,
+                "spanNulls": false,
                 "stacking": {
+                  "group": "A",
                   "mode": "normal"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
                 }
-              }
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
             },
             "overrides": [
               {
@@ -587,8 +625,8 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "mode": "fixed",
-                      "fixedColor": "green"
+                      "fixedColor": "green",
+                      "mode": "fixed"
                     }
                   }
                 ]
@@ -602,8 +640,8 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "mode": "fixed",
-                      "fixedColor": "red"
+                      "fixedColor": "red",
+                      "mode": "fixed"
                     }
                   }
                 ]
@@ -617,8 +655,8 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "mode": "fixed",
-                      "fixedColor": "text"
+                      "fixedColor": "text",
+                      "mode": "fixed"
                     }
                   }
                 ]
@@ -632,61 +670,110 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "mode": "fixed",
-                      "fixedColor": "text"
+                      "fixedColor": "text",
+                      "mode": "fixed"
                     }
                   }
                 ]
               }
             ]
           },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 3
+          },
+          "id": 21,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "13.2.0",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sum by (conclusion) (github_exporter_workflow_runs{repo=~\"$repo\"})",
               "legendFormat": "{{conclusion}}",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "refId": "A",
-              "range": true
+              "range": true,
+              "refId": "A"
             }
-          ]
+          ],
+          "title": "Workflow runs on main, by outcome",
+          "type": "timeseries"
         },
         {
-          "id": 30,
-          "type": "timeseries",
-          "title": "Daily",
-          "description": "Opened, currently open, and merged - by hand vs auto - each as a trailing 1 day count sampled every poll.",
-          "gridPos": {
-            "x": 0,
-            "y": 23,
-            "w": 24,
-            "h": 8
-          },
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom"
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
+          "description": "Opened, currently open, and merged - by hand vs auto - each as a trailing 1 day count sampled every poll.",
           "fieldConfig": {
             "defaults": {
-              "unit": "short",
-              "decimals": 0,
+              "color": {
+                "mode": "palette-classic"
+              },
               "custom": {
-                "lineWidth": 2,
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
                 "fillOpacity": 10,
-                "showPoints": "auto"
-              }
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
             },
             "overrides": [
               {
@@ -698,8 +785,8 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "mode": "fixed",
-                      "fixedColor": "light-blue"
+                      "fixedColor": "light-blue",
+                      "mode": "fixed"
                     }
                   }
                 ]
@@ -713,8 +800,8 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "mode": "fixed",
-                      "fixedColor": "dark-blue"
+                      "fixedColor": "dark-blue",
+                      "mode": "fixed"
                     }
                   }
                 ]
@@ -728,8 +815,8 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "mode": "fixed",
-                      "fixedColor": "purple"
+                      "fixedColor": "purple",
+                      "mode": "fixed"
                     }
                   }
                 ]
@@ -743,91 +830,140 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "mode": "fixed",
-                      "fixedColor": "blue"
+                      "fixedColor": "blue",
+                      "mode": "fixed"
                     }
                   }
                 ]
               }
             ]
           },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 11
+          },
+          "id": 30,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "13.2.0",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sum(github_exporter_pr_opened{repo=~\"$repo\",window=\"1d\"})",
               "legendFormat": "Opened",
+              "range": true,
+              "refId": "A"
+            },
+            {
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "refId": "A",
-              "range": true
-            },
-            {
               "expr": "sum(github_exporter_pr_open{repo=~\"$repo\"})",
               "legendFormat": "Open now",
+              "range": true,
+              "refId": "B"
+            },
+            {
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "refId": "B",
-              "range": true
-            },
-            {
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"1d\"})",
               "legendFormat": "Merged by hand",
+              "range": true,
+              "refId": "C"
+            },
+            {
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "refId": "C",
-              "range": true
-            },
-            {
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"auto\",window=\"1d\"})",
               "legendFormat": "Merged auto",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "refId": "D",
-              "range": true
+              "range": true,
+              "refId": "D"
             }
-          ]
+          ],
+          "title": "Daily",
+          "type": "timeseries"
         },
         {
-          "id": 31,
-          "type": "timeseries",
-          "title": "Weekly",
-          "description": "Same four series as Daily, each as a trailing 7 day count.",
-          "gridPos": {
-            "x": 0,
-            "y": 31,
-            "w": 24,
-            "h": 8
-          },
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom"
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
+          "description": "Same four series as Daily, each as a trailing 7 day count.",
           "fieldConfig": {
             "defaults": {
-              "unit": "short",
-              "decimals": 0,
+              "color": {
+                "mode": "palette-classic"
+              },
               "custom": {
-                "lineWidth": 2,
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
                 "fillOpacity": 10,
-                "showPoints": "auto"
-              }
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
             },
             "overrides": [
               {
@@ -839,8 +975,8 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "mode": "fixed",
-                      "fixedColor": "light-blue"
+                      "fixedColor": "light-blue",
+                      "mode": "fixed"
                     }
                   }
                 ]
@@ -854,8 +990,8 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "mode": "fixed",
-                      "fixedColor": "dark-blue"
+                      "fixedColor": "dark-blue",
+                      "mode": "fixed"
                     }
                   }
                 ]
@@ -869,8 +1005,8 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "mode": "fixed",
-                      "fixedColor": "purple"
+                      "fixedColor": "purple",
+                      "mode": "fixed"
                     }
                   }
                 ]
@@ -884,91 +1020,140 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "mode": "fixed",
-                      "fixedColor": "blue"
+                      "fixedColor": "blue",
+                      "mode": "fixed"
                     }
                   }
                 ]
               }
             ]
           },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 11
+          },
+          "id": 31,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "13.2.0",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sum(github_exporter_pr_opened{repo=~\"$repo\",window=\"7d\"})",
               "legendFormat": "Opened",
+              "range": true,
+              "refId": "A"
+            },
+            {
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "refId": "A",
-              "range": true
-            },
-            {
               "expr": "sum(github_exporter_pr_open{repo=~\"$repo\"})",
               "legendFormat": "Open now",
+              "range": true,
+              "refId": "B"
+            },
+            {
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "refId": "B",
-              "range": true
-            },
-            {
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"7d\"})",
               "legendFormat": "Merged by hand",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "refId": "C",
-              "range": true
+              "range": true,
+              "refId": "C"
             },
             {
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"auto\",window=\"7d\"})",
-              "legendFormat": "Merged auto",
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "refId": "D",
-              "range": true
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"auto\",window=\"7d\"})",
+              "legendFormat": "Merged auto",
+              "range": true,
+              "refId": "D"
             }
-          ]
+          ],
+          "title": "Weekly",
+          "type": "timeseries"
         },
         {
-          "id": 32,
-          "type": "timeseries",
-          "title": "Yearly",
-          "description": "Same four series as Daily, each as a trailing 365 day count. Prometheus keeps 30 days of history, so the line only covers what is actually retained.",
-          "gridPos": {
-            "x": 0,
-            "y": 39,
-            "w": 24,
-            "h": 8
-          },
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom"
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
+          "description": "Same four series as Daily, each as a trailing 365 day count. Prometheus keeps 30 days of history, so the line only covers what is actually retained.",
           "fieldConfig": {
             "defaults": {
-              "unit": "short",
-              "decimals": 0,
+              "color": {
+                "mode": "palette-classic"
+              },
               "custom": {
-                "lineWidth": 2,
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
                 "fillOpacity": 10,
-                "showPoints": "auto"
-              }
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
             },
             "overrides": [
               {
@@ -980,8 +1165,8 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "mode": "fixed",
-                      "fixedColor": "light-blue"
+                      "fixedColor": "light-blue",
+                      "mode": "fixed"
                     }
                   }
                 ]
@@ -995,8 +1180,8 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "mode": "fixed",
-                      "fixedColor": "dark-blue"
+                      "fixedColor": "dark-blue",
+                      "mode": "fixed"
                     }
                   }
                 ]
@@ -1010,8 +1195,8 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "mode": "fixed",
-                      "fixedColor": "purple"
+                      "fixedColor": "purple",
+                      "mode": "fixed"
                     }
                   }
                 ]
@@ -1025,56 +1210,139 @@ data:
                   {
                     "id": "color",
                     "value": {
-                      "mode": "fixed",
-                      "fixedColor": "blue"
+                      "fixedColor": "blue",
+                      "mode": "fixed"
                     }
                   }
                 ]
               }
             ]
           },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 11
+          },
+          "id": 32,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "13.2.0",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sum(github_exporter_pr_opened{repo=~\"$repo\",window=\"365d\"})",
               "legendFormat": "Opened",
+              "range": true,
+              "refId": "A"
+            },
+            {
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "refId": "A",
-              "range": true
-            },
-            {
               "expr": "sum(github_exporter_pr_open{repo=~\"$repo\"})",
               "legendFormat": "Open now",
+              "range": true,
+              "refId": "B"
+            },
+            {
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "refId": "B",
-              "range": true
-            },
-            {
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"365d\"})",
               "legendFormat": "Merged by hand",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "refId": "C",
-              "range": true
+              "range": true,
+              "refId": "C"
             },
             {
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"auto\",window=\"365d\"})",
-              "legendFormat": "Merged auto",
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "refId": "D",
-              "range": true
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"auto\",window=\"365d\"})",
+              "legendFormat": "Merged auto",
+              "range": true,
+              "refId": "D"
             }
-          ]
+          ],
+          "title": "Yearly",
+          "type": "timeseries"
         }
-      ]
+      ],
+      "preload": false,
+      "refresh": "5m",
+      "schemaVersion": 42,
+      "tags": [
+        "sdlc",
+        "github"
+      ],
+      "templating": {
+        "list": [
+          {
+            "allowCustomValue": true,
+            "current": {
+              "text": "All",
+              "value": "$__all"
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "definition": "label_values(github_exporter_pr_merged, repo)",
+            "hide": 0,
+            "includeAll": true,
+            "label": "Repo",
+            "multi": true,
+            "name": "repo",
+            "options": [],
+            "query": {
+              "query": "label_values(github_exporter_pr_merged, repo)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "regexApplyTo": "value",
+            "skipUrlSync": false,
+            "sort": 1,
+            "type": "query"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-30d",
+        "to": "now"
+      },
+      "timepicker": {
+        "refresh_intervals": [
+          "5s",
+          "10s",
+          "30s",
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ]
+      },
+      "timezone": "browser",
+      "title": "SDLC",
+      "uid": "sdlc-delivery"
     }
