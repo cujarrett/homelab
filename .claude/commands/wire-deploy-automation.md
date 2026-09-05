@@ -48,7 +48,7 @@ Append to each image-building workflow:
     with:
       file: <workspace-dir>/<xr-file>.yaml
     secrets:
-      homelab_pat: ${{ secrets.HOMELAB_PAT }}
+      homelab_pat: ${{ secrets.HOMELAB_WORKSPACES_PAT }}
 ```
 
 Two things the defaults get wrong outside the simple case:
@@ -99,7 +99,7 @@ Walk them through it:
 1. Open **https://github.com/settings/personal-access-tokens/new**
 2. Resource owner `cujarrett`; Repository access **Only select repositories** → `homelab-workspaces`
 3. Repository permissions → **Contents: Read and write** - that is the entire requirement, the workflow does one GET and one PUT
-4. Generate, copy, then `gh secret set HOMELAB_PAT -R cujarrett/<repo>`
+4. Generate, copy, then `gh secret set HOMELAB_WORKSPACES_PAT -R cujarrett/<repo>`
 
 `gh secret set` has no `-` stdin convention - `--body` takes a literal string and
 stdin is read only when the flag is absent. Piping into `--body -` stores a
@@ -125,7 +125,7 @@ looking like a missing file instead of a bad token.
 
 Expiry is the failure this pattern actually hits, and it lands in a repo whose README
 may say nothing about deploys at all. Every wired repo gets a `## Deployment` section
-with a `### Rotating HOMELAB_PAT` subsection covering four things - which repo the
+with a `### Rotating HOMELAB_WORKSPACES_PAT` subsection covering four things - which repo the
 token is scoped to, that each repo holds its own token because `cujarrett` is a
 personal account, that expiry shows up as a green build with a failed `deploy`, and
 the `gh secret set` command with this repo's name already filled in. Copy the section

@@ -10,5 +10,5 @@ Rotates the PAT that CI in 10 app repos uses to bump image tags in `homelab-work
 The prompt reads with echo off and the token never touches shell history. Retry any repo that
 503s (GitHub's secrets API is occasionally flaky):
 ```bash
-gh secret set HOMELAB_PAT -R cujarrett/<repo> --body "<token>"
+gh secret set HOMELAB_WORKSPACES_PAT -R cujarrett/<repo> --body "<token>"
 ```
