@@ -27,7 +27,7 @@ spec:
         kind: GoTemplate
         source: Inline
         inline:
-          template: | # yaml
+          template: | # gotemplate
             {{- $name := .observed.composite.resource.metadata.name }}
             {{- $params := .observed.composite.resource.spec.parameters }}
             {{- $namespace := .observed.composite.resource.metadata.namespace }}
