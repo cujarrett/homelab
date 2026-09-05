@@ -75,6 +75,8 @@ Gates 1 and 2 come from the caller's `consumes`. Gates 3 and 4 come from the cal
 
 **Proxied requests must carry the upstream's name as `Host`.** Envoy routes outbound by `:authority`. Forward the browser's hostname and Envoy finds nothing in the registry, then `REGISTRY_ONLY` blackholes it, so the destination never sees a connection. The `Spa` composition sets `Host` to the upstream service and keeps the original as `X-Forwarded-Host`.
 
+**WebSockets are not a gap.** A WebSocket opens as an HTTP/1.1 request with an `Upgrade` header, so it still carries `:authority` for Envoy to route on and gates 1-4 apply exactly as they do to any other HTTP call. Traefik and Cloudflare Tunnel both proxy the upgrade transparently. It only lands in [Complications outside HTTP](#complications-outside-http) if the app drops to raw TCP after the handshake and stops sending a `Host`.
+
 ## The identity it rests on
 
 **Grug:** every pod gets a certificate saying who it is, and it cannot be faked. Istio issues each meshed pod an X.509 SVID carrying a SPIFFE URI SAN:
