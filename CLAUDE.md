@@ -37,6 +37,7 @@ Before telling the user to commit, always run `/security-review`. It reviews the
 > "Complexity very, very bad." - [grugbrain.dev](https://grugbrain.dev/)
 
 - **Say no.** The best weapon against complexity is the word "no". No new feature, no new abstraction, until it earns its place.
+- **Cheapest rung that works.** Before writing code go down the ladder and stop at the first rung that solves it - skip the feature, reuse code already here, standard library, native platform feature, a dependency already installed, one line, then build the minimum.
 - **No abstraction until a pattern repeats three times.** Let cut points emerge naturally from the code; don't invent them up front.
 - **80/20 solutions.** Ship 80% of the value with 20% of the code. Ugly but working beats elegant but over-engineered.
 - **Chesterton's Fence.** Understand why code exists before removing it. If you don't see the use, go away and think.
