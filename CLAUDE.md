@@ -305,7 +305,7 @@ ssh pi@192.168.10.100 "sudo systemctl restart getty@tty1.service"
 
 Crossplane core runs with `--enable-realtime-compositions` (set via Helm `args` in `cluster/argocd/crossplane.yaml`) so composite reconciliation reacts immediately to composed-resource changes via watch, instead of only on the default 60s poll interval. Without it, a composed resource (e.g. an AWS-backed `Role`/`Bucket`) going `Ready` can sit for up to a minute before its dependent secret/status propagates to the XR - this was diagnosed as multi-second dead time in Launchpad guest sandbox rollouts before the flag was added.
 
-Nine platform types are defined under `platform/`:
+Ten platform types are defined under `platform/`:
 
 | XRD | Kind | Notes |
 |---|---|---|
@@ -318,6 +318,7 @@ Nine platform types are defined under `platform/`:
 | `sqls.platform.local.lab` | `Sql` | In-cluster Postgres Deployment; used by Launchpad guest demo sandboxes |
 | `nosqls.platform.local.lab` | `NoSql` | AWS DynamoDB table; used by Launchpad guest demo sandboxes - kept within AWS free tier by design |
 | `objectstorages.platform.local.lab` | `ObjectStorage` | AWS S3 bucket; used by Launchpad guest demo sandboxes - kept within AWS free tier by design |
+| `managedsecrets.platform.local.lab` | `ManagedSecret` | A value the owner sets in a cloud console, delivered to the pod as files; never a Kubernetes Secret |
 
 Which namespaces use which XR types is listed in the Namespaces & Applications table above.
 

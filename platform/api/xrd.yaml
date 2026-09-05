@@ -34,6 +34,18 @@ spec:
                             pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
                             maxLength: 63
                             description: "metadata.name of the ObjectStorage instance."
+                    managedSecretRefs:
+                      type: array
+                      description: "References to ManagedSecret instances to bind. Each ref creates an IAM role and binding Secret, and mounts the value at /secrets/<name>/<key>, one file per property. The pod waits at startup until a value has been set."
+                      items:
+                        type: object
+                        required: [name]
+                        properties:
+                          name:
+                            type: string
+                            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                            maxLength: 63
+                            description: "metadata.name of the ManagedSecret instance."
                     sqlRef:
                       type: object
                       description: "Reference to an existing Sql instance to bind. The platform mounts its Secret at /bindings/sql/."

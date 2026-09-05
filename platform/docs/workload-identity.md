@@ -119,6 +119,8 @@ bucket:    platform-{namespace}-{name}
 region:    us-east-1
 ```
 
+**A `managedSecretRefs` entry is the one binding whose value the sidecar fetches**, rather than handing the app credentials to fetch it with. A secret is a value, not a service, so it arrives as files at `/secrets/{name}/{key}` like any other value the platform delivers, and no app carries cloud SDK code to read one. `GetSecretValue` is signed, unlike the token exchange, so that one call lives in a small Go binary in the sidecar image instead of the shell loop. Its binding carries `secret-id`, `region` and `role-arn`, and never a value.
+
 > **Read `Init:0/4` as progress, not as an error**
 > The init container polls for the last key written to the binding volume, and regular container images are pulled only after every init container completes. During first provisioning a pod sits at `Init:0/4` for 60 to 90 seconds waiting on Crossplane and the clouds. A `Pending` pod would read as broken; this reads as working.
 

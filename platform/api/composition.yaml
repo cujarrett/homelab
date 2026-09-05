@@ -27,7 +27,7 @@ spec:
         kind: GoTemplate
         source: Inline
         inline:
-          template: | # yaml
+          template: | # gotemplate
             {{- $xr := .observed.composite.resource }}
             {{- $name := $xr.metadata.name }}
             {{- $ns := $xr.metadata.namespace }}
@@ -35,6 +35,7 @@ spec:
             {{- /* Refs point to standalone resources created outside this Api. */ -}}
             {{- /* The binding Secret already exists in $ns - just mount it.    */ -}}
             {{- $objectStorageRefs := $xr.spec.parameters.objectStorageRefs | default list }}
+            {{- $managedSecretRefs := $xr.spec.parameters.managedSecretRefs | default list }}
             {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
             {{- $awsAccountId := index $envCtx "awsAccountId" | default "" }}
             {{- /* Public issuer, so it is hardcoded next to the trust domain rather than */ -}}
@@ -127,6 +128,13 @@ spec:
               {{- $awsBindings = append $awsBindings (printf "cache-binding:/bindings/cache:cache") }}
               {{- $sidecarBindingParts = append $sidecarBindingParts "/bindings/cache:cache" }}
             {{- end }}
+            {{- /* bindingDir:outputDir pairs for SECRET_BINDINGS. Two paths because the      */ -}}
+            {{- /* binding is a read-only Secret volume and the fetched value has to land     */ -}}
+            {{- /* somewhere writable that the app container also mounts.                     */ -}}
+            {{- $secretBindingParts := list }}
+            {{- range $ref := $managedSecretRefs }}
+              {{- $secretBindingParts = append $secretBindingParts (printf "/bindings/managed-secret-%s:/secrets/%s" $ref.name $ref.name) }}
+            {{- end }}
             {{- /* Endpoints this pod must reach because of what it bound, not because    */ -}}
             {{- /* it asked. The mesh has no idea these exist otherwise, so under         */ -}}
             {{- /* REGISTRY_ONLY every one of them is a blackhole. Add to this list in    */ -}}
@@ -146,6 +154,12 @@ spec:
               {{- /* Every table in a region shares this endpoint - the table name is in */ -}}
               {{- /* the request body, not the hostname, so IAM is what scopes access.   */ -}}
               {{- $derivedHosts = append $derivedHosts "dynamodb.us-east-1.amazonaws.com" }}
+            {{- end }}
+            {{- if gt (len $managedSecretRefs) 0 }}
+              {{- /* The sidecar reads every ManagedSecret through this one endpoint, and */ -}}
+              {{- /* it needs STS below to have an identity to read them with.            */ -}}
+              {{- $derivedHosts = append $derivedHosts "secretsmanager.us-east-1.amazonaws.com" }}
+              {{- $derivedHosts = append $derivedHosts "sts.us-east-1.amazonaws.com" }}
             {{- end }}
             {{- if $entraNeeded }}
               {{- /* Where an SVID is traded for an Entra token. Same reasoning as STS   */ -}}
@@ -282,8 +296,28 @@ spec:
                     runAsGroup: 65532
                     seccompProfile:
                       type: RuntimeDefault
-                  {{- if or (gt (len $objectStorageRefs) 0) $sqlRefName $nosqlRefName $cacheEnabled }}
+                  {{- if or (gt (len $objectStorageRefs) 0) $sqlRefName $nosqlRefName $cacheEnabled (gt (len $managedSecretRefs) 0) }}
                   initContainers:
+                    {{- range $ref := $managedSecretRefs }}
+                    {{- /* Waits for the binding, not the value. The value is written by the  */}}
+                    {{- /* sidecar, which only starts once every init container has finished, */}}
+                    {{- /* so waiting on it here would never return.                          */}}
+                    - name: wait-for-managed-secret-{{ $ref.name }}-binding
+                      image: busybox:1.36
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        readOnlyRootFilesystem: true
+                        capabilities:
+                          drop: [ALL]
+                      command:
+                        - sh
+                        - -c
+                        - "until [ -f /bindings/managed-secret-{{ $ref.name }}/secret-id ]; do echo waiting for {{ $ref.name }} binding; sleep 5; done"
+                      volumeMounts:
+                        - name: managed-secret-{{ $ref.name }}-binding
+                          mountPath: /bindings/managed-secret-{{ $ref.name }}
+                          readOnly: true
+                    {{- end }}
                     {{- range $i, $ref := $objectStorageRefs }}
                     {{- $osMountName := printf "object-storage-%s" $ref.name }}
                     - name: wait-for-object-storage-{{ $ref.name }}-binding
@@ -496,7 +530,14 @@ spec:
                           mountPath: /secrets/{{ $s }}
                           readOnly: true
                         {{- end }}
-                    {{- if or (gt (len $awsBindings) 0) $entraNeeded }}
+                        {{- /* Same /secrets/<name>/<key> shape as secretsFrom, so an app  */}}
+                        {{- /* reads a ManagedSecret exactly like a hand-created one.      */}}
+                        {{- range $ref := $managedSecretRefs }}
+                        - name: managed-secret-{{ $ref.name }}-value
+                          mountPath: /secrets/{{ $ref.name }}
+                          readOnly: true
+                        {{- end }}
+                    {{- if or (gt (len $awsBindings) 0) $entraNeeded (gt (len $managedSecretRefs) 0) }}
                     - name: workload-identity-sidecar
                       image: ghcr.io/cujarrett/workload-identity-sidecar:main
                       imagePullPolicy: Always
@@ -511,6 +552,10 @@ spec:
                           value: {{ join "," $sidecarBindingParts | quote }}
                         - name: CREDS_FILE
                           value: /aws-credentials/credentials
+                        {{- end }}
+                        {{- if gt (len $secretBindingParts) 0 }}
+                        - name: SECRET_BINDINGS
+                          value: {{ join "," $secretBindingParts | quote }}
                         {{- end }}
                         {{- if $entraNeeded }}
                         - name: ENTRA_FEDERATED_TOKEN_FILE
@@ -551,11 +596,18 @@ spec:
                           mountPath: /bindings/cache
                           readOnly: true
                         {{- end }}
+                        {{- range $ref := $managedSecretRefs }}
+                        - name: managed-secret-{{ $ref.name }}-binding
+                          mountPath: /bindings/managed-secret-{{ $ref.name }}
+                          readOnly: true
+                        - name: managed-secret-{{ $ref.name }}-value
+                          mountPath: /secrets/{{ $ref.name }}
+                        {{- end }}
                     {{- end }}
                   volumes:
                     - name: tmp
                       emptyDir: {}
-                    {{- if or (gt (len $awsBindings) 0) $entraNeeded }}
+                    {{- if or (gt (len $awsBindings) 0) $entraNeeded (gt (len $managedSecretRefs) 0) }}
                     - name: spiffe-bundle
                       csi:
                         driver: csi.spiffe.io
@@ -601,13 +653,25 @@ spec:
                       secret:
                         secretName: {{ $s }}
                     {{- end }}
+                    {{- range $ref := $managedSecretRefs }}
+                    - name: managed-secret-{{ $ref.name }}-binding
+                      secret:
+                        secretName: {{ $name }}-secret-{{ $ref.name }}
+                        optional: true
+                    {{- /* The value lands here rather than in the binding volume, which is */}}
+                    {{- /* a Secret and therefore read-only to the sidecar writing it.      */}}
+                    - name: managed-secret-{{ $ref.name }}-value
+                      emptyDir:
+                        medium: Memory
+                    {{- end }}
             {{- /* --- AWS IAM resources: one Role + Profile + binding Secret per objectStorageRef. --- */}}
             {{- /* Role and Profile lifecycle is tied to this Api (deleted with it).                   */}}
             {{- /* Bucket name is computed from convention: platform-{ns}-{refName}.                    */}}
             {{- /* $hasAwsCloudBindings covers all AWS cloud resource types:                            */}}
             {{- /*   objectStorageRefs (any entries), nosqlRef (always DynamoDB),                       */}}
+            {{- /*   managedSecretRefs (Secrets Manager),                                               */}}
             {{- /*   cache backend=cloud (ElastiCache). Add sqlRef cloud variant when XRD supports.     */}}
-            {{- $hasAwsCloudBindings := or (gt (len $objectStorageRefs) 0) (ne $nosqlRefName "") (and $cacheEnabled (eq $cacheBackend "public-cloud")) (and (ne $sqlRefName "") (eq $sqlBackend "public-cloud")) }}
+            {{- $hasAwsCloudBindings := or (gt (len $objectStorageRefs) 0) (ne $nosqlRefName "") (gt (len $managedSecretRefs) 0) (and $cacheEnabled (eq $cacheBackend "public-cloud")) (and (ne $sqlRefName "") (eq $sqlBackend "public-cloud")) }}
             {{- if $hasAwsCloudBindings }}
             {{- range $i, $ref := $objectStorageRefs }}
             {{- $refName := $ref.name }}
@@ -708,6 +772,60 @@ spec:
               region: us-east-1
               role-arn: {{ $nosqlPredictedRoleArn }}
             {{- end }}{{- /* end nosqlRefName */}}
+            {{- range $ref := $managedSecretRefs }}
+            {{- $refName := $ref.name }}
+            {{- $secretId := printf "platform/%s/%s" $ns $refName }}
+            {{- $rawSecretRoleName := printf "crossplane-%s-%s-%s-secret" $ns $name $refName }}
+            {{- $secretRoleName := $rawSecretRoleName }}
+            {{- if gt (len $rawSecretRoleName) 64 }}
+            {{- $secretRoleName = printf "xp-%s" ($rawSecretRoleName | sha256sum | trunc 61) }}
+            {{- end }}
+            {{- $secretPredictedRoleArn := printf "arn:aws:iam::%s:role/crossplane/%s" $awsAccountId $secretRoleName }}
+            {{- /* Secrets Manager appends six random characters at creation, so the exact  */}}
+            {{- /* ARN is unknowable here. Six ? rather than * because ? matches one       */}}
+            {{- /* character each - a trailing * would also match platform/ns/name-other.  */}}
+            {{- $secretInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "secretsmanager:GetSecretValue" "secretsmanager:DescribeSecret") "Resource" (list (printf "arn:aws:secretsmanager:us-east-1:%s:secret:%s-??????" $awsAccountId $secretId)))) | toJson }}
+            ---
+            # IAM Role for managedSecretRef {{ $refName }}. Trust scoped to this Api's service account.
+            apiVersion: iam.aws.m.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              name: {{ $name }}-secret-{{ $refName }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: role-managed-secret-{{ $refName }}
+                gotemplating.fn.crossplane.io/ready: "True"
+                crossplane.io/external-name: {{ $secretRoleName }}
+            spec:
+              forProvider:
+                path: /crossplane/
+                maxSessionDuration: 3600
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+                  ManagedSecretRef: {{ $refName }}
+                assumeRolePolicy: {{ $trustPolicy | quote }}
+                inlinePolicy:
+                  - name: platform-managed-secret-{{ $ns }}-{{ $refName }}
+                    policy: {{ $secretInlinePolicy | quote }}
+            ---
+            # Binding Secret for managedSecretRef {{ $refName }}. Carries no value, only where
+            # to find one and which role may read it.
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $name }}-secret-{{ $refName }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: binding-secret-managed-secret-{{ $refName }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            type: servicebinding.io/secretsmanager
+            stringData:
+              type: secretsmanager
+              provider: aws
+              secret-id: {{ $secretId }}
+              region: us-east-1
+              role-arn: {{ $secretPredictedRoleArn }}
+            {{- end }}{{- /* end managedSecretRefs */}}
             {{- end }}{{- /* end hasAwsCloudBindings */}}
             {{- if $entraNeeded }}
             ---
@@ -1252,6 +1370,7 @@ spec:
             {{- /* here even though an injected variable also names each of them.           */ -}}
             {{- $mountedFiles := list }}
             {{- range $sec := $secretsFrom }}{{- $mountedFiles = append $mountedFiles (printf "/secrets/%s" $sec) }}{{- end }}
+            {{- range $ref := $managedSecretRefs }}{{- $mountedFiles = append $mountedFiles (printf "/secrets/%s" $ref.name) }}{{- end }}
             {{- if gt (len $awsBindings) 0 }}{{- $mountedFiles = append $mountedFiles "/aws-credentials/credentials" }}{{- end }}
             {{- if $entraNeeded }}{{- $mountedFiles = append $mountedFiles "/entra-identity/token" }}{{- end }}
             {{- $injectedEnv := list "SERVICE_BINDING_ROOT" }}
