@@ -39,7 +39,6 @@ spec:
               name: {{ $name }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: secret
-                gotemplating.fn.crossplane.io/ready: "True"
                 crossplane.io/external-name: {{ $secretId }}
             spec:
               forProvider:
@@ -64,17 +63,17 @@ spec:
             stringData:
               value: {{ $placeholder | quote }}
             ---
-            # Create-only, so a value the owner later sets in the console survives every
-            # reconcile. Full management would overwrite it with this placeholder.
+            # Observe and Create only, so a value the owner later sets in the console
+            # survives every reconcile. Adding Update would overwrite it with this
+            # placeholder, and Create alone is rejected as a policy set.
             apiVersion: secretsmanager.aws.m.upbound.io/v1beta1
             kind: SecretVersion
             metadata:
               name: {{ $name }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: secret-version
-                gotemplating.fn.crossplane.io/ready: "True"
             spec:
-              managementPolicies: ["Create"]
+              managementPolicies: ["Observe", "Create"]
               forProvider:
                 region: {{ $region }}
                 secretId: {{ $secretId }}
