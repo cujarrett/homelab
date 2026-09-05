@@ -106,7 +106,7 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Dependency updates opened by a bot that a person still had to merge by hand, over 30 days. This is the work auto-merge is meant to remove.",
+          "description": "Grouped minor/patch or actions bumps - the ones an auto-merge workflow was built for - that a person merged by hand instead, over 30 days. Excludes major bumps, which were never eligible.",
           "fieldConfig": {
             "defaults": {
               "decimals": 0,
@@ -149,12 +149,12 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",author=\"dependabot\",merge=\"clicked\",window=\"30d\"})",
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",scope=\"auto-candidate\",window=\"30d\"})",
               "instant": true,
               "refId": "A"
             }
           ],
-          "title": "Bot PRs a human clicked through",
+          "title": "Eligible PRs a human clicked anyway",
           "type": "stat"
         },
         {
@@ -518,7 +518,7 @@ data:
           "id": 52,
           "type": "timeseries",
           "title": "CI failures on main",
-          "description": "Trailing 30-day failure count, replotted every poll. A rising line is dependabot's auto-merge CI getting less reliable.",
+          "description": "Trailing 30-day failure count, replotted every poll. A rising line is the auto-merge CI getting less reliable.",
           "gridPos": {
             "x": 12,
             "y": 18,
@@ -569,6 +569,153 @@ data:
           ]
         },
         {
+          "id": 53,
+          "type": "piechart",
+          "title": "Merge eligibility",
+          "description": "Whether the merge could ever have used the auto-merge workflow. human is a person's own PR, excluded is an ungrouped major bump - neither was ever in scope. auto-candidate is the pile auto-merge should be clearing.",
+          "gridPos": {
+            "x": 0,
+            "y": 34,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "values": [
+                "value"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "human"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "light-blue"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "auto-candidate"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "blue"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "excluded"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "purple"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "sum by (scope) (github_exporter_pr_merged{repo=~\"$repo\",window=\"30d\"})",
+              "legendFormat": "{{scope}}",
+              "instant": true,
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 54,
+          "type": "bargauge",
+          "title": "Manual-required merges by repo",
+          "description": "Merges that could never have used auto-merge - a person's own PR, or a major dependency bump - by repo, over 30 days.",
+          "gridPos": {
+            "x": 12,
+            "y": 34,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "options": {
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "namePlacement": "left",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": true
+            },
+            "showUnfilled": true
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "min": 0,
+              "color": {
+                "mode": "continuous-BlPu"
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sort_desc(sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",scope=~\"human|excluded\",window=\"30d\"}) > 0)",
+              "legendFormat": "{{repo}}",
+              "instant": true,
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "A"
+            }
+          ]
+        },
+        {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -589,7 +736,7 @@ data:
             "h": 6,
             "w": 12,
             "x": 0,
-            "y": 26
+            "y": 42
           },
           "id": 12,
           "options": {
@@ -671,7 +818,7 @@ data:
             "h": 6,
             "w": 12,
             "x": 12,
-            "y": 26
+            "y": 42
           },
           "id": 13,
           "options": {
