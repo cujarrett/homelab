@@ -49,11 +49,21 @@ kubectl delete spas.platform.local.lab,sqls.platform.local.lab,nosqls.platform.l
 grn "   XR deletion requested"
 
 # --- 3. wait, then break the ElastiCache latch --------------------------------
-echo "── waiting for the namespace (up to 5 min before forcing)"
-DEADLINE=$(( $(date +%s) + 300 ))
+# RDS and ElastiCache routinely take 5-10 minutes to delete and the MRs hold the
+# namespace until AWS confirms. Waiting less than that reports a healthy teardown
+# as a failure, which trains you to ignore this script.
+echo "── waiting for the namespace (up to 15 min, AWS deletions are slow)"
+DEADLINE=$(( $(date +%s) + 900 ))
 kubectl delete ns "$NS" --wait=false >/dev/null 2>&1
+LAST=""
 while kubectl get ns "$NS" >/dev/null 2>&1 && [ "$(date +%s)" -lt "$DEADLINE" ]; do
-  sleep 10
+  # Name what is still going, so a long wait reads as progress rather than a hang.
+  NOW=$(kubectl get managed -n "$NS" --no-headers 2>/dev/null | awk '{print $1}' | paste -sd, - )
+  if [ "$NOW" != "$LAST" ] && [ -n "$NOW" ]; then
+    echo "   still deleting: $NOW"
+    LAST="$NOW"
+  fi
+  sleep 15
 done
 
 if ! kubectl get ns "$NS" >/dev/null 2>&1; then

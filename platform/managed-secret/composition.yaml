@@ -39,9 +39,12 @@ spec:
               name: {{ $name }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: secret
-                crossplane.io/external-name: {{ $secretId }}
             spec:
               forProvider:
+                {{- /* Set explicitly, not via external-name. This resource's id is its ARN, */}}
+                {{- /* so external-name cannot supply the name and the provider would invent */}}
+                {{- /* one, landing outside the platform/ prefix IAM is scoped to.           */}}
+                name: {{ $secretId }}
                 region: {{ $region }}
                 recoveryWindowInDays: {{ $recoveryWindowInDays }}
                 tags:
@@ -76,7 +79,10 @@ spec:
               managementPolicies: ["Observe", "Create"]
               forProvider:
                 region: {{ $region }}
-                secretId: {{ $secretId }}
+                {{- /* A reference rather than the id, so Crossplane waits for the secret to */}}
+                {{- /* exist. Naming it directly races creation and latches on async failure. */}}
+                secretIdRef:
+                  name: {{ $name }}
                 {{- /* No namespace here - this managed resource is itself namespaced, so the */}}
                 {{- /* ref resolves alongside it, and the schema rejects the field outright.  */}}
                 secretStringSecretRef:
