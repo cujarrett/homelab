@@ -302,22 +302,27 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Open right now, merged by a person clicking the button, and merged automatically. window=1d so each point reads as a trailing-24h count.",
+          "description": "Daily bars. Open PRs split by why they are or aren't an auto-merge candidate; merges split by how they reached main. window=1d on the merged series so each bar is a trailing-24h count.",
           "fieldConfig": {
             "defaults": {
               "unit": "short",
               "decimals": 0,
               "custom": {
-                "lineWidth": 2,
-                "fillOpacity": 10,
-                "showPoints": "auto"
+                "drawStyle": "bars",
+                "barAlignment": 0,
+                "fillOpacity": 80,
+                "lineWidth": 1,
+                "showPoints": "never",
+                "stacking": {
+                  "mode": "none"
+                }
               }
             },
             "overrides": [
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Open now"
+                  "options": "Open (human)"
                 },
                 "properties": [
                   {
@@ -325,6 +330,36 @@ data:
                     "value": {
                       "mode": "fixed",
                       "fixedColor": "light-blue"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Open (candidate)"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "blue"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Open (excluded)"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "dark-blue"
                     }
                   }
                 ]
@@ -354,7 +389,7 @@ data:
                     "id": "color",
                     "value": {
                       "mode": "fixed",
-                      "fixedColor": "blue"
+                      "fixedColor": "light-purple"
                     }
                   }
                 ]
@@ -386,13 +421,33 @@ data:
           "pluginVersion": "13.2.0",
           "targets": [
             {
-              "expr": "sum(github_exporter_pr_open{repo=~\"$repo\"})",
-              "legendFormat": "Open now",
+              "expr": "sum(github_exporter_pr_open{repo=~\"$repo\",scope=\"human\"})",
+              "legendFormat": "Open (human)",
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
               "refId": "A",
+              "range": true
+            },
+            {
+              "expr": "sum(github_exporter_pr_open{repo=~\"$repo\",scope=\"auto-candidate\"})",
+              "legendFormat": "Open (candidate)",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "B",
+              "range": true
+            },
+            {
+              "expr": "sum(github_exporter_pr_open{repo=~\"$repo\",scope=\"excluded\"})",
+              "legendFormat": "Open (excluded)",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "C",
               "range": true
             },
             {
@@ -402,7 +457,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "refId": "B",
+              "refId": "D",
               "range": true
             },
             {
@@ -412,12 +467,13 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "refId": "C",
+              "refId": "E",
               "range": true
             }
           ],
           "title": "PRs per day",
-          "type": "timeseries"
+          "type": "timeseries",
+          "interval": "1d"
         },
         {
           "id": 51,
@@ -517,8 +573,8 @@ data:
         {
           "id": 52,
           "type": "timeseries",
-          "title": "CI failures on main",
-          "description": "Trailing 30-day failure count, replotted every poll. A rising line is the auto-merge CI getting less reliable.",
+          "title": "CI failures by repo",
+          "description": "Trailing 30-day failure count per repo, replotted every poll. A rising line is that repo's auto-merge CI getting less reliable.",
           "gridPos": {
             "x": 12,
             "y": 18,
@@ -543,10 +599,6 @@ data:
             "defaults": {
               "unit": "short",
               "decimals": 0,
-              "color": {
-                "mode": "fixed",
-                "fixedColor": "red"
-              },
               "custom": {
                 "lineWidth": 2,
                 "fillOpacity": 10,
@@ -557,8 +609,8 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(github_exporter_workflow_runs{repo=~\"$repo\",conclusion=\"failure\"})",
-              "legendFormat": "Failures",
+              "expr": "sum by (repo) (github_exporter_workflow_runs{repo=~\"$repo\",conclusion=\"failure\"})",
+              "legendFormat": "{{repo}}",
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
