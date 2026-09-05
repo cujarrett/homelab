@@ -43,15 +43,18 @@ spec:
         # Duty cycle / cycle count = avg seconds per run, separating more water in
         # from each run moving less of it (impeller wear, blocked discharge). Normal
         # ~11.5s; the run-count guard matters - low counts make the ratio meaningless.
+        # sum() not max() over the counter - a consumer restart starts a new series at
+        # zero, and max() would then see only the new pod's runs while the duty-cycle
+        # gauge stays whole, inflating the ratio to a false alert for a full 6h.
         - alert: SumpPumpRunsGettingLonger
           expr: |
             (
               (max(avg_over_time(sump_pump_running{job="sump-pump-consumer"}[6h])) * 21600)
               /
-              max(increase(sump_pump_runs_total{job="sump-pump-consumer"}[6h]))
+              sum(increase(sump_pump_runs_total{job="sump-pump-consumer"}[6h]))
             ) > 30
             and
-            max(increase(sump_pump_runs_total{job="sump-pump-consumer"}[6h])) > 60
+            sum(increase(sump_pump_runs_total{job="sump-pump-consumer"}[6h])) > 60
           for: 30m
           labels:
             severity: warning
@@ -69,7 +72,7 @@ spec:
           expr: |
             max(max_over_time(weather_precipitation_mm[6h])) > 2
             and
-            max(increase(sump_pump_runs_total[6h])) < 5
+            sum(increase(sump_pump_runs_total{job="sump-pump-consumer"}[6h])) < 5
           for: 30m
           labels:
             severity: critical
@@ -85,7 +88,7 @@ spec:
         # archive was this quiet, so expect roughly monthly.
         - alert: SumpPumpIdleTooLong
           expr: |
-            max(increase(sump_pump_runs_total[24h])) < 10
+            sum(increase(sump_pump_runs_total{job="sump-pump-consumer"}[24h])) < 10
           for: 1h
           labels:
             severity: warning
