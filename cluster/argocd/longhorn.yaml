@@ -5,16 +5,25 @@ metadata:
   namespace: argocd
 spec:
   project: cluster
-  source:
-    repoURL: https://github.com/cujarrett/homelab.git
-    targetRevision: main
-    path: cluster/longhorn
+  sources:
+    # Kept to the two values the live release already carries, so the rendered
+    # manifests match what's applied today and adoption has nothing to churn.
+    - repoURL: https://charts.longhorn.io
+      chart: longhorn
+      targetRevision: 1.12.0
+      helm:
+        releaseName: longhorn
+        values: |
+          defaultSettings:
+            defaultReplicaCount: 2
+            storageMinimalAvailablePercentage: 10
+    - repoURL: https://github.com/cujarrett/homelab.git
+      targetRevision: main
+      path: cluster/longhorn
   destination:
     server: https://kubernetes.default.svc
     namespace: longhorn-system
   syncPolicy:
-    automated:
-      prune: false
-      selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
