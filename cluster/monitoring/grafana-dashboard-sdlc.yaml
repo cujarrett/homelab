@@ -298,11 +298,31 @@ data:
           "type": "stat"
         },
         {
+          "id": 50,
+          "type": "timeseries",
+          "title": "Open PRs per day",
+          "description": "Daily bars, split by why a PR is or isn't an auto-merge candidate. Own axis from Merged per day - the open queue is naturally small next to daily merge volume.",
+          "interval": "1d",
+          "gridPos": {
+            "x": 0,
+            "y": 4,
+            "w": 12,
+            "h": 8
+          },
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Daily bars. Open PRs split by why they are or aren't an auto-merge candidate, plus the day's total merges. How a merge happens (below) owns the clicked/auto/bot breakdown.",
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
           "fieldConfig": {
             "defaults": {
               "unit": "short",
@@ -363,47 +383,9 @@ data:
                     }
                   }
                 ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Merged"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "fixed",
-                      "fixedColor": "purple"
-                    }
-                  }
-                ]
               }
             ]
           },
-          "gridPos": {
-            "h": 8,
-            "w": 24,
-            "x": 0,
-            "y": 4
-          },
-          "id": 50,
-          "options": {
-            "legend": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "displayMode": "table",
-              "placement": "right",
-              "showLegend": true
-            },
-            "tooltip": {
-              "hideZeros": false,
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "pluginVersion": "13.2.0",
           "targets": [
             {
               "expr": "sum(github_exporter_pr_open{repo=~\"$repo\",scope=\"human\"})",
@@ -434,7 +416,69 @@ data:
               },
               "refId": "C",
               "range": true
+            }
+          ]
+        },
+        {
+          "id": 55,
+          "type": "timeseries",
+          "title": "Merged per day",
+          "description": "Daily bars, total merges regardless of how. How a merge happens (below) owns the clicked/auto/bot breakdown.",
+          "interval": "1d",
+          "gridPos": {
+            "x": 12,
+            "y": 4,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
             },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "custom": {
+                "drawStyle": "bars",
+                "barAlignment": 0,
+                "fillOpacity": 80,
+                "lineWidth": 1,
+                "showPoints": "never",
+                "stacking": {
+                  "mode": "none"
+                }
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Merged"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "purple"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
             {
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",window=\"1d\"})",
               "legendFormat": "Merged",
@@ -442,13 +486,10 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "refId": "D",
+              "refId": "A",
               "range": true
             }
-          ],
-          "title": "PRs per day",
-          "type": "timeseries",
-          "interval": "1d"
+          ]
         },
         {
           "id": 51,
@@ -457,7 +498,7 @@ data:
           "description": "Read from GitHub's own record. auto means GitHub merged it once checks passed, clicked means a person pressed the button, bot means a workflow merged with its own token.",
           "gridPos": {
             "x": 0,
-            "y": 18,
+            "y": 26,
             "w": 12,
             "h": 8
           },
@@ -552,7 +593,7 @@ data:
           "description": "Trailing 30-day failure count per repo, replotted every poll. A rising line is that repo's auto-merge CI getting less reliable.",
           "gridPos": {
             "x": 12,
-            "y": 18,
+            "y": 26,
             "w": 12,
             "h": 8
           },
@@ -602,7 +643,7 @@ data:
           "description": "Whether the merge could ever have used the auto-merge workflow. human is a person's own PR, excluded is an ungrouped major bump - neither was ever in scope. auto-candidate is the pile auto-merge should be clearing.",
           "gridPos": {
             "x": 0,
-            "y": 34,
+            "y": 42,
             "w": 12,
             "h": 8
           },
@@ -697,7 +738,7 @@ data:
           "description": "Merges that could never have used auto-merge - a person's own PR, or a major dependency bump - by repo, over 30 days.",
           "gridPos": {
             "x": 12,
-            "y": 34,
+            "y": 42,
             "w": 12,
             "h": 8
           },
@@ -763,7 +804,7 @@ data:
             "h": 6,
             "w": 12,
             "x": 0,
-            "y": 42
+            "y": 50
           },
           "id": 12,
           "options": {
@@ -845,7 +886,7 @@ data:
             "h": 6,
             "w": 12,
             "x": 12,
-            "y": 42
+            "y": 50
           },
           "id": 13,
           "options": {
