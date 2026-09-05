@@ -39,7 +39,8 @@ The namespace is owned by the tenant - created by `namespace.yaml` in the tenant
 | `sqlRef.backend` | no | `private-cloud` | Must match the `Sql` instance's backend. When `public-cloud`, the sidecar exchanges the SVID for STS credentials for RDS IAM DB auth. |
 | `nosqlRef.name` | no | - | Name of an existing `NoSql` instance to bind. Creates an IAM Role and binding Secret. |
 | `configFrom` | no | - | ConfigMaps in this namespace, mounted as environment in order, later entries winning. The team owns each, so changing a value never re-reconciles this Api. |
-| `secretsFrom` | no | - | Secrets in this namespace, mounted as files at `/secrets/<secret-name>/<key>`. Hand-create one, or declare a `Secret` XR that fills it. A list, so two vendors' credentials can have separate lifecycles. |
+| `secretsFrom` | no | - | Secrets in this namespace, mounted as files at `/secrets/<secret-name>/<key>`. Hand-create each one. A list, so two vendors' credentials can have separate lifecycles. |
+| `managedSecretRefs` | no | - | Array of references to existing `ManagedSecret` instances. Each creates an IAM Role and binding Secret, and the sidecar writes the value to `/secrets/<ref-name>/<key>`, one file per property. Use this rather than `secretsFrom` when the owner sets the value in a cloud console instead of by hand. |
 | `topicRef.name` | no | - | Name of an `Topic` this API publishes to. Injects `NATS_URL` and `NATS_STREAM` env vars. |
 | `topicRef.streamName` | no | - | NATS stream name from the Topic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the Topic's streamName differs from its metadata.name. |
 | `subscriptionRef.name` | no | - | Name of an `Subscription` this API consumes from. Injects `NATS_URL` and `NATS_CONSUMER` env vars. |
@@ -196,11 +197,12 @@ For `public-cloud`, the sidecar writes a `cache` named profile to the credential
 
 When any AWS cloud binding is declared, or this Api needs an Entra identity, the composition adds a `workload-identity-sidecar` container running [`workload-identity-sidecar`](https://github.com/cujarrett/workload-identity-sidecar) and a `spiffe-bundle` CSI volume (read-only SPIRE agent socket). What else gets added depends on which is enabled - an Api can declare both, and both run independently in the same sidecar.
 
-**AWS** (any `objectStorageRefs`, `nosqlRef`, or `public-cloud` `sqlRef` cache):
+**AWS** (any `objectStorageRefs`, `nosqlRef`, `managedSecretRefs`, or `public-cloud` `sqlRef` cache):
 - The sidecar exchanges the pod's SVID for STS credentials, once per binding, every 50 minutes.
 - An `aws-credentials` emptyDir volume shared between the sidecar and the app container, mounted at `/aws-credentials/credentials`.
 - `AWS_SHARED_CREDENTIALS_FILE=/aws-credentials/credentials` env var in the app container.
 - `AWS_PROFILE_*` env vars for every AWS binding, named `AWS_PROFILE_<KIND>_<REF>` with the ref uppercased and `-` becoming `_`. Cache is the exception at `AWS_PROFILE_CACHE`, because an Api owns at most one and there is no ref name to use.
+- A `managedSecretRefs` entry gets no profile and no env var. The sidecar spends its credentials itself and leaves the value in `/secrets/<ref-name>/<key>`, so the app reads files rather than calling AWS.
 
 **Entra** (an interface sets `auth: workload` or `auth: user`, or this Api consumes another app):
 - The sidecar keeps a raw SPIFFE SVID fresh in an `entra-identity` emptyDir volume, mounted at `/entra-identity/token` - it does not exchange this token itself.
