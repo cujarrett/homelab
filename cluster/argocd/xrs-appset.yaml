@@ -8,7 +8,9 @@ spec:
     - git:
         repoURL: https://github.com/cujarrett/homelab-workspaces.git
         revision: main
-        requeueAfterSeconds: 10
+        # launchpad-api patches this ApplicationSet with a refresh annotation when it
+        # creates a workspace directory, so new sandboxes do not wait on this interval.
+        requeueAfterSeconds: 60
         directories:
           - path: "*"
           - path: ".github"
