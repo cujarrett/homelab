@@ -38,10 +38,47 @@ unlatch_namespace() {
       echo "   unlatch: no AWS lookup for ${r%%/*}, leaving its finalizer" >&2
       continue
     fi
-    [ -n "$live" ] && continue
+    if [ -n "$live" ]; then
+      # Still in AWS. If Crossplane has latched, nobody is going to delete it - the
+      # provider never retries an async failure - so issue the delete here. Without
+      # this both sides wait on each other and the namespace hangs indefinitely.
+      if ! kubectl get "$r" -n "$ns" \
+           -o jsonpath='{.status.conditions[?(@.type=="LastAsyncOperation")].reason}' 2>/dev/null \
+           | grep -q 'AsyncDeleteFailure'; then
+        continue
+      fi
+      echo "   unlatch: $ext is latched and still in AWS ($live), deleting it there" >&2
+      case "$r" in
+        usergroup.elasticache.*)        aws elasticache delete-user-group --user-group-id "$ext" --region "$region" >/dev/null 2>&1 ;;
+        user.elasticache.*)             aws elasticache delete-user --user-id "$ext" --region "$region" >/dev/null 2>&1 ;;
+        replicationgroup.elasticache.*) aws elasticache delete-replication-group --replication-group-id "$ext" --region "$region" >/dev/null 2>&1 ;;
+        *)                              echo "   unlatch: no delete for ${r%%/*}, leaving it" >&2; continue ;;
+      esac
+      # Wait for AWS to actually let go, then re-check. Falling through on a timeout
+      # would drop the finalizer on a resource that still exists, which is the one
+      # outcome this function must never produce.
+      for _ in $(seq 1 18); do
+        sleep 10
+        case "$r" in
+          usergroup.elasticache.*)        aws elasticache describe-user-groups --user-group-id "$ext" --region "$region" >/dev/null 2>&1 || break ;;
+          user.elasticache.*)             aws elasticache describe-users --user-id "$ext" --region "$region" >/dev/null 2>&1 || break ;;
+          replicationgroup.elasticache.*) aws elasticache describe-replication-groups --replication-group-id "$ext" --region "$region" >/dev/null 2>&1 || break ;;
+        esac
+      done
+      case "$r" in
+        usergroup.elasticache.*)        aws elasticache describe-user-groups --user-group-id "$ext" --region "$region" >/dev/null 2>&1 && still=1 || still=0 ;;
+        user.elasticache.*)             aws elasticache describe-users --user-id "$ext" --region "$region" >/dev/null 2>&1 && still=1 || still=0 ;;
+        replicationgroup.elasticache.*) aws elasticache describe-replication-groups --replication-group-id "$ext" --region "$region" >/dev/null 2>&1 && still=1 || still=0 ;;
+        *)                              still=1 ;;
+      esac
+      if [ "$still" -eq 1 ]; then
+        echo "   unlatch: $ext did not disappear from AWS, keeping its finalizer" >&2
+        continue
+      fi
+    fi
 
     if kubectl patch "$r" -n "$ns" --type=merge -p '{"metadata":{"finalizers":[]}}' >/dev/null 2>&1; then
-      echo "   unlatch: released $r (already gone from AWS)" >&2
+      echo "   unlatch: released $r (confirmed gone from AWS)" >&2
       released=$((released + 1))
     fi
   done
