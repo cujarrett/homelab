@@ -13,7 +13,12 @@ spec:
     helm:
       releaseName: argocd
       values: |
-        global: {}
+        global:
+          networkPolicy:
+            # The chart's policies allow ingress only from named ArgoCD pods, so under
+            # k3s's kube-router the kubelet probe matches no rule and the pod never goes
+            # Ready. They separate tenants in a shared cluster; this one has a single tenant.
+            create: false
         dex:
           enabled: false
         controller:
