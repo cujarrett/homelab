@@ -18,6 +18,9 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib-unlatch.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib-unlatch.sh"
+
 NS="platform-e2e"
 REGION="us-east-1"
 PRIVATE_ONLY=false
@@ -492,7 +495,16 @@ kubectl delete namespace "$NS" >/dev/null 2>&1
 if wait_gone namespace "$NS" 600; then
   record teardown-verify "namespace terminated" PASS ""
 else
-  record teardown-verify "namespace terminated" FAIL "stuck terminating"
+  # The ElastiCache user group latches an async delete failure on most runs and never
+  # retries, so a namespace still here after 10 minutes is usually finalizers guarding
+  # AWS objects that are already gone. Only release those, then give it a moment.
+  if unlatch_namespace "$NS" "$REGION"; then
+    wait_gone namespace "$NS" 120 \
+      && record teardown-verify "namespace terminated" "PASS (unlatched)" "released finalizers on resources already gone from AWS" \
+      || record teardown-verify "namespace terminated" FAIL "stuck terminating even after unlatching"
+  else
+    record teardown-verify "namespace terminated" FAIL "stuck terminating"
+  fi
 fi
 
 if ! $PRIVATE_ONLY; then

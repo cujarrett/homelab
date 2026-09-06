@@ -6,7 +6,7 @@ metadata:
   labels:
     grafana_dashboard: '1'
 data:
-  pods-by-node.json: |-
+  pods-by-node.json: |
     {
       "annotations": {
         "list": [
@@ -271,11 +271,100 @@ data:
                     "value": 1
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Mem requested"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 100
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 70
+                        },
+                        {
+                          "color": "red",
+                          "value": 85
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "gauge",
+                      "mode": "gradient"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Mem limits"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 100
+                        },
+                        {
+                          "color": "red",
+                          "value": 150
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  }
+                ]
               }
             ]
           },
           "gridPos": {
-            "h": 7,
+            "h": 8,
             "w": 24,
             "x": 0,
             "y": 3
@@ -352,6 +441,26 @@ data:
               "instant": true,
               "refId": "F",
               "format": "table"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "(sum by (node) (((sum by (namespace,pod,node) (kube_pod_container_resource_requests{resource=\"memory\"})) > (max by (namespace,pod,node) (kube_pod_init_container_resource_requests{resource=\"memory\"}))) or ((sum by (namespace,pod,node) (kube_pod_container_resource_requests{resource=\"memory\"})) unless (max by (namespace,pod,node) (kube_pod_init_container_resource_requests{resource=\"memory\"}))) or (max by (namespace,pod,node) (kube_pod_init_container_resource_requests{resource=\"memory\"})))) / sum by (node) (kube_node_status_allocatable{resource=\"memory\"}) * 100",
+              "instant": true,
+              "refId": "G",
+              "format": "table"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "(sum by (node) (((sum by (namespace,pod,node) (kube_pod_container_resource_limits{resource=\"memory\"})) > (max by (namespace,pod,node) (kube_pod_init_container_resource_limits{resource=\"memory\"}))) or ((sum by (namespace,pod,node) (kube_pod_container_resource_limits{resource=\"memory\"})) unless (max by (namespace,pod,node) (kube_pod_init_container_resource_limits{resource=\"memory\"}))) or (max by (namespace,pod,node) (kube_pod_init_container_resource_limits{resource=\"memory\"})))) / sum by (node) (kube_node_status_allocatable{resource=\"memory\"}) * 100",
+              "instant": true,
+              "refId": "H",
+              "format": "table"
             }
           ],
           "title": "Nodes",
@@ -367,7 +476,9 @@ data:
                     "Value #C",
                     "Value #D",
                     "Value #E",
-                    "Value #F"
+                    "Value #F",
+                    "Value #G",
+                    "Value #H"
                   ]
                 }
               }
@@ -386,7 +497,20 @@ data:
                   "Value #C": "CPU requested",
                   "Value #D": "CPU free",
                   "Value #E": "Mem used",
-                  "Value #F": "Mem free"
+                  "Value #F": "Mem free",
+                  "Value #G": "Mem requested",
+                  "Value #H": "Mem limits"
+                },
+                "indexByName": {
+                  "node": 0,
+                  "Value #A": 1,
+                  "Value #B": 2,
+                  "Value #C": 3,
+                  "Value #D": 4,
+                  "Value #E": 5,
+                  "Value #G": 6,
+                  "Value #H": 7,
+                  "Value #F": 8
                 }
               }
             },
@@ -504,7 +628,7 @@ data:
             "h": 22,
             "w": 6,
             "x": 0,
-            "y": 12
+            "y": 23
           },
           "id": 103,
           "options": {
@@ -706,7 +830,7 @@ data:
             "h": 22,
             "w": 6,
             "x": 6,
-            "y": 12
+            "y": 23
           },
           "id": 105,
           "options": {
@@ -908,7 +1032,7 @@ data:
             "h": 22,
             "w": 6,
             "x": 12,
-            "y": 12
+            "y": 23
           },
           "id": 107,
           "options": {
@@ -1110,7 +1234,7 @@ data:
             "h": 22,
             "w": 6,
             "x": 18,
-            "y": 12
+            "y": 23
           },
           "id": 109,
           "options": {
@@ -1288,7 +1412,7 @@ data:
             "h": 14,
             "w": 24,
             "x": 0,
-            "y": 34
+            "y": 45
           },
           "id": 110,
           "options": {
@@ -1369,6 +1493,72 @@ data:
             }
           ],
           "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "type": "bargauge",
+          "title": "Memory by Namespace",
+          "description": "Working set summed per namespace. Platform components (longhorn-system, crossplane-system, kube-system) dominate here and are the first place to look before trimming an app.",
+          "id": 111,
+          "gridPos": {
+            "h": 11,
+            "w": 24,
+            "x": 0,
+            "y": 11
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "decimals": 1,
+              "min": 0,
+              "color": {
+                "mode": "continuous-BlPu"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": 0
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "displayMode": "gradient",
+            "orientation": "horizontal",
+            "valueMode": "color",
+            "showUnfilled": true,
+            "minVizWidth": 8,
+            "minVizHeight": 16,
+            "sizing": "auto",
+            "namePlacement": "left",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          },
+          "pluginVersion": "13.1.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sort_desc(topk(15, sum by (namespace) (container_memory_working_set_bytes{container!=\"\"})))",
+              "instant": true,
+              "legendFormat": "{{namespace}}",
+              "refId": "A"
+            }
+          ]
         }
       ]
     }
