@@ -15,7 +15,11 @@
 # behind them are already gone.
 set -uo pipefail
 
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)" || exit 1
+TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$TEST_DIR/../.." || exit 1
+
+# shellcheck source=lib-unlatch.sh
+. "$TEST_DIR/lib-unlatch.sh"
 
 NS="platform-e2e"
 REGION="us-east-1"
@@ -79,37 +83,7 @@ if ! kubectl get ns "$NS" >/dev/null 2>&1; then
   grn "   namespace terminated cleanly"
 else
   ylw "   still terminating - looking for latched deletions"
-  for r in $(kubectl get managed -n "$NS" -o name 2>/dev/null); do
-    EXT=$(kubectl get "$r" -n "$NS" -o jsonpath='{.metadata.annotations.crossplane\.io/external-name}' 2>/dev/null)
-    [ -n "$EXT" ] || continue
-
-    # Ask AWS whether the thing still exists, per kind. LIVE non-empty means it does,
-    # UNKNOWN means this kind has no lookup here and the finalizer must stay put -
-    # releasing one blind would orphan a real resource and bill silently.
-    LIVE=""; UNKNOWN=0
-    case "$r" in
-      usergroup.elasticache.*)      LIVE=$(aws elasticache describe-user-groups --user-group-id "$EXT" --region "$REGION" --query 'UserGroups[].Status' --output text 2>/dev/null) ;;
-      user.elasticache.*)           LIVE=$(aws elasticache describe-users --user-id "$EXT" --region "$REGION" --query 'Users[].Status' --output text 2>/dev/null) ;;
-      replicationgroup.elasticache.*) LIVE=$(aws elasticache describe-replication-groups --replication-group-id "$EXT" --region "$REGION" --query 'ReplicationGroups[].Status' --output text 2>/dev/null) ;;
-      instance.rds.*)               LIVE=$(aws rds describe-db-instances --db-instance-identifier "$EXT" --region "$REGION" --query 'DBInstances[].DBInstanceStatus' --output text 2>/dev/null) ;;
-      table.dynamodb.*)             LIVE=$(aws dynamodb describe-table --table-name "$EXT" --region "$REGION" --query 'Table.TableStatus' --output text 2>/dev/null) ;;
-      bucket.s3.*)                  LIVE=$(aws s3api head-bucket --bucket "$EXT" --region "$REGION" 2>/dev/null && echo present) ;;
-      secret.secretsmanager.*|secretversion.secretsmanager.*) LIVE=$(aws secretsmanager describe-secret --secret-id "$EXT" --region "$REGION" --query 'Name' --output text 2>/dev/null) ;;
-      role.iam.*)                   LIVE=$(aws iam get-role --role-name "$EXT" --query 'Role.RoleName' --output text 2>/dev/null) ;;
-      *)                            UNKNOWN=1 ;;
-    esac
-
-    if [ "$UNKNOWN" -eq 1 ]; then
-      ylw "   $r - no AWS lookup for this kind, leaving its finalizer alone"
-      continue
-    fi
-    if [ -n "$LIVE" ]; then
-      ylw "   $EXT still exists in AWS ($LIVE) - leaving it to Crossplane"
-      continue
-    fi
-    kubectl patch "$r" -n "$NS" --type=merge -p '{"metadata":{"finalizers":[]}}' >/dev/null 2>&1 \
-      && grn "   released finalizer on $r (gone from AWS)"
-  done
+  unlatch_namespace "$NS" "$REGION"
   for _ in $(seq 1 12); do
     kubectl get ns "$NS" >/dev/null 2>&1 || break
     sleep 5
