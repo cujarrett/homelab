@@ -733,29 +733,9 @@ spec:
                 matchLabels:
                   app: wordpress
                   instance: {{ $name }}
-              policyTypes: ["Ingress", "Egress"]
-              ingress:
-                - from:
-                    - namespaceSelector:
-                        matchLabels:
-                          kubernetes.io/metadata.name: kube-system
-                      podSelector:
-                        matchLabels:
-                          app.kubernetes.io/name: traefik
-                  ports:
-                    - protocol: TCP
-                      port: 80
-                - from:
-                    - podSelector:
-                        matchLabels:
-                          app: wp-cron
-                          instance: {{ $name }}
-                  ports:
-                    - protocol: TCP
-                      port: 80
-                # No rule for the kubelet readiness probe on purpose - it arrives with the
-                # reserved:host identity, which Cilium always admits while enable-host-firewall
-                # is false. A node-CIDR ipBlock would instead open port 80 to the whole LAN.
+              # Egress only - an ingress rule that admits the kubelet readiness probe has to
+              # name the node CIDR, which opens port 80 to the whole LAN.
+              policyTypes: ["Egress"]
               egress:
                 - to:
                     - namespaceSelector:
