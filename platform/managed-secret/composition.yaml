@@ -30,6 +30,21 @@ spec:
             {{- /* another instance's path. The Api composition derives the same string.   */ -}}
             {{- $secretId := printf "platform/%s/%s" $ns $name }}
             {{- $placeholder := dict "__unset__" true | toJson }}
+            {{- /* An absent ready annotation leaves readiness unspecified, which never  */}}
+            {{- /* counts as ready, so the XR would wait forever. Read what the managed  */}}
+            {{- /* resources actually report instead, the same way Sql and Cache do.     */}}
+            {{- $secretReady := "False" }}
+            {{- with index (.observed.resources | default dict) "secret" }}
+            {{- range (.resource.status.conditions | default list) }}
+            {{- if and (eq .type "Ready") (eq .status "True") }}{{- $secretReady = "True" }}{{- end }}
+            {{- end }}
+            {{- end }}
+            {{- $versionReady := "False" }}
+            {{- with index (.observed.resources | default dict) "secret-version" }}
+            {{- range (.resource.status.conditions | default list) }}
+            {{- if and (eq .type "Ready") (eq .status "True") }}{{- $versionReady = "True" }}{{- end }}
+            {{- end }}
+            {{- end }}
             ---
             # Holds no value of its own. placeholder-value below writes one at creation, and
             # after that only the owner does, in the console.
@@ -39,6 +54,7 @@ spec:
               name: {{ $name }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: secret
+                gotemplating.fn.crossplane.io/ready: {{ $secretReady | quote }}
             spec:
               forProvider:
                 {{- /* Set explicitly, not via external-name. This resource's id is its ARN, */}}
@@ -75,6 +91,7 @@ spec:
               name: {{ $name }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: secret-version
+                gotemplating.fn.crossplane.io/ready: {{ $versionReady | quote }}
             spec:
               managementPolicies: ["Observe", "Create"]
               forProvider:
