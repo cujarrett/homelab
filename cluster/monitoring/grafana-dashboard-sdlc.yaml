@@ -34,7 +34,7 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Share of merges GitHub or a workflow completed on its own. This is the number auto-merge is meant to move.",
+          "description": "Share of each day's merges that no person clicked. The 30 day total is on 'How merges reach main' - this one has to move day to day to show automation working.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -72,7 +72,7 @@ data:
           "id": 60,
           "options": {
             "colorMode": "value",
-            "graphMode": "none",
+            "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
             "percentChangeColorMode": "standard",
@@ -94,8 +94,8 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"30d\"}) / (sum(github_exporter_pr_merged{repo=~\"$repo\",window=\"30d\"}) > 0)",
-              "instant": true,
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"1d\"}) / (sum(github_exporter_pr_merged{repo=~\"$repo\",window=\"1d\"}) > 0)",
+              "range": true,
               "refId": "A"
             }
           ],
@@ -107,20 +107,27 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Grouped minor/patch and actions bumps - eligible for auto-merge - that a person merged by hand anyway, over 30 days.",
+          "description": "Open PRs with auto-merge armed that GitHub will not merge, almost always a failed required check. Automation is on and a person is still needed, so this is toil the automation did not remove.",
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "purple",
-                "mode": "fixed"
+                "mode": "thresholds"
               },
               "decimals": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "purple",
+                    "color": "green",
                     "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 3
                   }
                 ]
               },
@@ -158,12 +165,12 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",scope=\"auto-candidate\",window=\"30d\"})",
+              "expr": "sum(github_exporter_pr_open_blocked{repo=~\"$repo\"})",
               "instant": true,
               "refId": "A"
             }
           ],
-          "title": "Clicks auto-merge could have saved",
+          "title": "Armed but blocked",
           "type": "stat"
         },
         {
@@ -485,7 +492,7 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Daily merge volume, split by whether a person clicked it or automation did.",
+          "description": "Daily merges as a proportion, so the split reads at a glance rather than the volume. Totals are on 'Merged per day'.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -519,7 +526,7 @@ data:
                 "spanNulls": false,
                 "stacking": {
                   "group": "A",
-                  "mode": "normal"
+                  "mode": "percent"
                 },
                 "thresholdsStyle": {
                   "mode": "off"
@@ -535,7 +542,7 @@ data:
                   }
                 ]
               },
-              "unit": "short"
+              "unit": "percentunit"
             },
             "overrides": [
               {
@@ -626,7 +633,7 @@ data:
               "refId": "B"
             }
           ],
-          "title": "Merged per day",
+          "title": "Share of merges per day",
           "type": "timeseries"
         },
         {
