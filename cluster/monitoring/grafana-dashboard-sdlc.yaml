@@ -446,152 +446,14 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Open pull requests, split by whether automation can take them. Stacked, so the height is every open PR and the purple band is the part needing a person.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 60,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "stepAfter",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "showValues": false,
-                "spanNulls": true,
-                "stacking": {
-                  "group": "A",
-                  "mode": "normal"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "decimals": 0,
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "text",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Automation can take it"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "blue",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Needs a person"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "purple",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          "gridPos": {
-            "h": 7,
-            "w": 8,
-            "x": 0,
-            "y": 3
-          },
-          "id": 50,
-          "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "tooltip": {
-              "hideZeros": false,
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "pluginVersion": "13.2.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sum(github_exporter_pr_open{repo=~\"$repo\",scope=\"auto-candidate\"})",
-              "legendFormat": "Automation can take it",
-              "range": true,
-              "refId": "B"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sum(github_exporter_pr_open{repo=~\"$repo\",scope=~\"human|excluded\"})",
-              "legendFormat": "Needs a person",
-              "range": true,
-              "refId": "C"
-            }
-          ],
-          "title": "Open PRs",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "id": 90,
+          "id": 92,
           "type": "bargauge",
-          "title": "Held for a person, by repo",
-          "description": "Open bot pull requests that automerge will never take: a major version, or one of the named exclusions. Every one of these is a deliberate stop, so a rising bar means more decisions waiting, not a broken pipeline.",
+          "title": "Waiting on you, by repo",
+          "description": "Open pull requests automation will not take: a major version, one of the named exclusions, or a human PR. Empty is the goal, and a repo appears here only while something is actually waiting.",
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "purple",
-                "mode": "fixed"
+                "mode": "thresholds"
               },
               "decimals": 0,
               "unit": "short",
@@ -603,14 +465,15 @@ data:
                     "value": null
                   }
                 ]
-              }
+              },
+              "noValue": "Nothing waiting"
             },
             "overrides": []
           },
           "gridPos": {
             "h": 7,
-            "w": 8,
-            "x": 8,
+            "w": 16,
+            "x": 0,
             "y": 3
           },
           "options": {
@@ -640,7 +503,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum by (repo) (github_exporter_pr_open{repo=~\"$repo\",author=\"bot\",scope=\"excluded\"}) > 0",
+              "expr": "sum by (repo) (github_exporter_pr_open{repo=~\"$repo\",scope=~\"human|excluded\"}) > 0",
               "instant": true,
               "legendFormat": "{{repo}}",
               "refId": "A"
