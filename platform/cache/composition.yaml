@@ -164,51 +164,6 @@ spec:
             {{- end }}
             {{- $cacheInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" "elasticache:Connect" "Resource" (list (printf "arn:aws:elasticache:%s:*:replicationgroup:%s" $region $rgId) (printf "arn:aws:elasticache:%s:*:user:%s" $region $userId)))) | toJson }}
             ---
-            # AWS refuses DeleteUserGroup while a replication group still references it, and
-            # refuses DeleteUser while a user group does. Crossplane deletes composed
-            # resources concurrently, so without these it calls the delete too early, AWS
-            # returns 400, and the provider latches the failure and never retries - leaving
-            # finalizers that hold the namespace open forever. Usage makes it wait instead.
-            apiVersion: protection.crossplane.io/v1beta1
-            kind: Usage
-            metadata:
-              name: {{ $name }}-user-group-before-rg
-              namespace: {{ $ns }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: usage-user-group
-                gotemplating.fn.crossplane.io/ready: "True"
-            spec:
-              of:
-                apiVersion: elasticache.aws.m.upbound.io/v1beta1
-                kind: UserGroup
-                resourceRef:
-                  name: {{ $name }}-user-group
-              by:
-                apiVersion: elasticache.aws.m.upbound.io/v1beta1
-                kind: ReplicationGroup
-                resourceRef:
-                  name: {{ $name }}
-            ---
-            apiVersion: protection.crossplane.io/v1beta1
-            kind: Usage
-            metadata:
-              name: {{ $name }}-user-before-user-group
-              namespace: {{ $ns }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: usage-user
-                gotemplating.fn.crossplane.io/ready: "True"
-            spec:
-              of:
-                apiVersion: elasticache.aws.m.upbound.io/v1beta1
-                kind: User
-                resourceRef:
-                  name: {{ $name }}-user
-              by:
-                apiVersion: elasticache.aws.m.upbound.io/v1beta1
-                kind: UserGroup
-                resourceRef:
-                  name: {{ $name }}-user-group
-            ---
             # ElastiCache IAM User. Must exist before the UserGroup and ReplicationGroup.
             apiVersion: elasticache.aws.m.upbound.io/v1beta1
             kind: User

@@ -610,13 +610,33 @@ else
   record teardown-verify "NATS stream/consumer gone" PASS ""
 fi
 
+# Wait for every managed resource to go before touching the namespace. The AWS
+# provider creates a namespaced ProviderConfigUsage on each reconcile, and a
+# terminating namespace refuses new objects - so deleting the namespace first stops
+# the provider reconciling anything left in it, including to finish its own deletes.
+# The namespace then waits on finalizers that can never clear. That deadlock, not
+# the ElastiCache 400, is what wedges teardown.
+echo "   waiting for managed resources before deleting the namespace"
+MR_DEADLINE=$(( $(date +%s) + 1200 ))
+while [ -n "$(kubectl get managed -n "$NS" --no-headers 2>/dev/null)" ] \
+      && [ "$(date +%s)" -lt "$MR_DEADLINE" ]; do
+  sleep 15
+done
+if [ -n "$(kubectl get managed -n "$NS" --no-headers 2>/dev/null)" ]; then
+  record teardown-verify "managed resources gone before namespace delete" FAIL \
+    "$(kubectl get managed -n "$NS" --no-headers 2>/dev/null | awk '{print $1}' | paste -sd, -)"
+  unlatch_namespace "$NS" "$REGION"
+else
+  record teardown-verify "managed resources gone before namespace delete" PASS ""
+fi
+
 kubectl delete namespace "$NS" >/dev/null 2>&1
 if wait_gone namespace "$NS" 600; then
   record teardown-verify "namespace terminated" PASS ""
 else
-  # The ElastiCache user group latches an async delete failure on most runs and never
-  # retries, so a namespace still here after 10 minutes is usually finalizers guarding
-  # AWS objects that are already gone. Only release those, then give it a moment.
+  # Only reachable if a managed resource outlived the wait above, so whatever is left
+  # is holding a finalizer the provider can no longer clear. Release the ones AWS has
+  # already forgotten.
   if unlatch_namespace "$NS" "$REGION"; then
     wait_gone namespace "$NS" 120 \
       && record teardown-verify "namespace terminated" "PASS (unlatched)" "released finalizers on resources already gone from AWS" \
