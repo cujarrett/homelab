@@ -18,21 +18,125 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib-unlatch.sh
-. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib-unlatch.sh"
-
 NS="platform-e2e"
 REGION="us-east-1"
 PRIVATE_ONLY=false
 KEEP=false
+ABORT=false
 
 for arg in "$@"; do
   case "$arg" in
     --private-only) PRIVATE_ONLY=true ;;
     --keep) KEEP=true ;;
+    --abort) ABORT=true ;;
     *) echo "unknown flag: $arg"; exit 2 ;;
   esac
 done
+
+# Release finalizers on managed resources whose AWS object is already gone.
+#
+# Crossplane calls DeleteUserGroup while ElastiCache still has the group in
+# `modifying`, AWS returns 400, and the async delete never retries. Two finalizers
+# then hold the namespace open forever while AWS has nothing left. Happens on most runs.
+#
+# The rule: never release a finalizer without asking AWS whether the object is really
+# gone. One dropped on a live resource orphans it, and an orphan bills silently.
+unlatch_namespace() {
+  local ns=$1 region=$2 r ext live unknown released=0
+
+  for r in $(kubectl get managed -n "$ns" -o name 2>/dev/null); do
+    ext=$(kubectl get "$r" -n "$ns" -o jsonpath='{.metadata.annotations.crossplane\.io/external-name}' 2>/dev/null)
+    [ -n "$ext" ] || continue
+
+    live=""; unknown=0
+    case "$r" in
+      usergroup.elasticache.*)        live=$(aws elasticache describe-user-groups --user-group-id "$ext" --region "$region" --query 'UserGroups[].Status' --output text 2>/dev/null) ;;
+      user.elasticache.*)             live=$(aws elasticache describe-users --user-id "$ext" --region "$region" --query 'Users[].Status' --output text 2>/dev/null) ;;
+      replicationgroup.elasticache.*) live=$(aws elasticache describe-replication-groups --replication-group-id "$ext" --region "$region" --query 'ReplicationGroups[].Status' --output text 2>/dev/null) ;;
+      instance.rds.*)                 live=$(aws rds describe-db-instances --db-instance-identifier "$ext" --region "$region" --query 'DBInstances[].DBInstanceStatus' --output text 2>/dev/null) ;;
+      table.dynamodb.*)               live=$(aws dynamodb describe-table --table-name "$ext" --region "$region" --query 'Table.TableStatus' --output text 2>/dev/null) ;;
+      bucket.s3.*)                    live=$(aws s3api head-bucket --bucket "$ext" --region "$region" 2>/dev/null && echo present) ;;
+      secret.secretsmanager.*|secretversion.secretsmanager.*) live=$(aws secretsmanager describe-secret --secret-id "$ext" --region "$region" --query 'Name' --output text 2>/dev/null) ;;
+      role.iam.*)                     live=$(aws iam get-role --role-name "$ext" --query 'Role.RoleName' --output text 2>/dev/null) ;;
+      *)                              unknown=1 ;;
+    esac
+
+    # An unrecognised kind is left alone on purpose. Guessing here is how a live
+    # database gets orphaned, and a stuck namespace is the cheaper failure.
+    if [ "$unknown" -eq 1 ]; then
+      echo "   unlatch: no AWS lookup for ${r%%/*}, leaving its finalizer" >&2
+      continue
+    fi
+    if [ -n "$live" ]; then
+      # Still in AWS. If Crossplane has latched, nobody is going to delete it - the
+      # provider never retries an async failure - so issue the delete here. Without
+      # this both sides wait on each other and the namespace hangs indefinitely.
+      if ! kubectl get "$r" -n "$ns" \
+           -o jsonpath='{.status.conditions[?(@.type=="LastAsyncOperation")].reason}' 2>/dev/null \
+           | grep -q 'AsyncDeleteFailure'; then
+        continue
+      fi
+      echo "   unlatch: $ext is latched and still in AWS ($live), deleting it there" >&2
+      case "$r" in
+        usergroup.elasticache.*)        aws elasticache delete-user-group --user-group-id "$ext" --region "$region" >/dev/null 2>&1 ;;
+        user.elasticache.*)             aws elasticache delete-user --user-id "$ext" --region "$region" >/dev/null 2>&1 ;;
+        replicationgroup.elasticache.*) aws elasticache delete-replication-group --replication-group-id "$ext" --region "$region" >/dev/null 2>&1 ;;
+        *)                              echo "   unlatch: no delete for ${r%%/*}, leaving it" >&2; continue ;;
+      esac
+      # Wait for AWS to actually let go, then re-check. Falling through on a timeout
+      # would drop the finalizer on a resource that still exists, which is the one
+      # outcome this function must never produce.
+      for _ in $(seq 1 18); do
+        sleep 10
+        case "$r" in
+          usergroup.elasticache.*)        aws elasticache describe-user-groups --user-group-id "$ext" --region "$region" >/dev/null 2>&1 || break ;;
+          user.elasticache.*)             aws elasticache describe-users --user-id "$ext" --region "$region" >/dev/null 2>&1 || break ;;
+          replicationgroup.elasticache.*) aws elasticache describe-replication-groups --replication-group-id "$ext" --region "$region" >/dev/null 2>&1 || break ;;
+        esac
+      done
+      case "$r" in
+        usergroup.elasticache.*)        aws elasticache describe-user-groups --user-group-id "$ext" --region "$region" >/dev/null 2>&1 && still=1 || still=0 ;;
+        user.elasticache.*)             aws elasticache describe-users --user-id "$ext" --region "$region" >/dev/null 2>&1 && still=1 || still=0 ;;
+        replicationgroup.elasticache.*) aws elasticache describe-replication-groups --replication-group-id "$ext" --region "$region" >/dev/null 2>&1 && still=1 || still=0 ;;
+        *)                              still=1 ;;
+      esac
+      if [ "$still" -eq 1 ]; then
+        echo "   unlatch: $ext did not disappear from AWS, keeping its finalizer" >&2
+        continue
+      fi
+    fi
+
+    if kubectl patch "$r" -n "$ns" --type=merge -p '{"metadata":{"finalizers":[]}}' >/dev/null 2>&1; then
+      echo "   unlatch: released $r (confirmed gone from AWS)" >&2
+      released=$((released + 1))
+    fi
+  done
+
+  return $(( released > 0 ? 0 : 1 ))
+}
+
+# --abort: stop a run that died mid-flight and clean up what it left. The teardown
+# below only runs when the script reaches it, so a killed run leaves AWS billing.
+if $ABORT; then
+  pkill -f 'test/e2e.sh' 2>/dev/null && echo "killed the running e2e" && sleep 2
+  kubectl get ns "$NS" >/dev/null 2>&1 || { echo "namespace already gone"; exit 0; }
+  kubectl delete apis.platform.local.lab --all -n "$NS" --ignore-not-found --timeout=60s >/dev/null 2>&1
+  kubectl delete managed -n "$NS" --all --ignore-not-found --timeout=120s >/dev/null 2>&1
+  kubectl delete ns "$NS" --wait=false >/dev/null 2>&1
+  for _ in $(seq 1 60); do
+    kubectl get ns "$NS" >/dev/null 2>&1 || break
+    sleep 10
+  done
+  kubectl get ns "$NS" >/dev/null 2>&1 && unlatch_namespace "$NS" "$REGION"
+  for _ in $(seq 1 24); do
+    kubectl get ns "$NS" >/dev/null 2>&1 || break
+    sleep 5
+  done
+  if kubectl get ns "$NS" >/dev/null 2>&1; then
+    echo "namespace still present - inspect before another run"; exit 1
+  fi
+  echo "aborted clean"; exit 0
+fi
 
 # ---------------------------------------------------------------------------
 # Result collection
@@ -230,13 +334,14 @@ if ! $PRIVATE_ONLY; then
   # delivery check pass without the sidecar having fetched anything.
   SECRET_SENTINEL="e2e-$(date +%s)"
 
-  # A secret scheduled for deletion keeps its name for the whole recovery window, and
-  # CreateSecret then refuses. Left alone this fails deep in inflate; force it here.
-  if aws secretsmanager describe-secret --secret-id "platform/$NS/e2e-secret" --region "$REGION" \
-       --query 'DeletedDate' --output text 2>/dev/null | grep -qv '^None$'; then
+  # Any secret with this name blocks CreateSecret - scheduled for deletion keeps the
+  # name for the whole recovery window, and a live one from --keep collides outright.
+  # Left alone either fails seven minutes into inflate, so force the name free here.
+  if aws secretsmanager describe-secret --secret-id "platform/$NS/e2e-secret" \
+       --region "$REGION" >/dev/null 2>&1; then
     aws secretsmanager delete-secret --secret-id "platform/$NS/e2e-secret" --region "$REGION" \
       --force-delete-without-recovery >/dev/null 2>&1
-    record preflight "stale secret purged" PASS "a previous run left the name scheduled for deletion"
+    record preflight "stale secret purged" PASS "a previous run left the name taken"
   fi
 
   RG_RAW="crossplane-$NS-e2e-api-public-cache"
@@ -366,7 +471,9 @@ if $INFLATE_OK; then
     else
       record contract "public deploy has AWS sidecar" FAIL "workload-identity-sidecar missing"
     fi
-    for var in AWS_PROFILE_E2E_ASSETS AWS_PROFILE_NOSQL AWS_PROFILE_SQL AWS_PROFILE_CACHE; do
+    # Names follow AWS_PROFILE_<KIND>_<REF>; only cache has no ref to name it by.
+    for var in AWS_PROFILE_OBJECT_STORAGE_E2E_ASSETS AWS_PROFILE_NOSQL_E2E_NOSQL \
+               AWS_PROFILE_SQL_E2E_SQL_PUBLIC AWS_PROFILE_CACHE; do
       if grep -q "\"name\": \"$var\"" <<< "$PUB_DEPLOY"; then
         record contract "public deploy has $var" PASS ""
       else
@@ -379,7 +486,10 @@ if $INFLATE_OK; then
     # sidecar picks it up without a restart - the whole point of the offering.
     PUB_POD=$(kubectl get pod -n "$NS" -l app.kubernetes.io/instance=e2e-api-public \
       -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-    if kubectl exec "$PUB_POD" -n "$NS" -c api -- test -e /secrets/e2e-secret/E2E_TOKEN 2>/dev/null; then
+    # Run these in the sidecar, not the app - the app image is distroless and has no
+    # test, ls or grep, so every check there fails on a missing binary rather than a
+    # missing file. Both containers mount the same volume.
+    if kubectl exec "$PUB_POD" -n "$NS" -c workload-identity-sidecar -- test -e /secrets/e2e-secret/E2E_TOKEN 2>/dev/null; then
       record contract "managed secret withheld before a value is set" FAIL "file exists while unset"
     else
       record contract "managed secret withheld before a value is set" PASS ""
@@ -395,7 +505,7 @@ if $INFLATE_OK; then
     # inside the window without waiting out the 15 minute steady-state refresh.
     SECRET_DELIVERED=false
     for _ in $(seq 1 12); do
-      if kubectl exec "$PUB_POD" -n "$NS" -c api -- \
+      if kubectl exec "$PUB_POD" -n "$NS" -c workload-identity-sidecar -- \
           grep -q "$SECRET_SENTINEL" /secrets/e2e-secret/E2E_TOKEN 2>/dev/null; then
         SECRET_DELIVERED=true; break
       fi

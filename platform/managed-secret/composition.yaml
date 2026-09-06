@@ -29,7 +29,8 @@ spec:
             {{- /* Slash-separated, so the namespace and name can never reconcatenate into */ -}}
             {{- /* another instance's path. The Api composition derives the same string.   */ -}}
             {{- $secretId := printf "platform/%s/%s" $ns $name }}
-            {{- $placeholder := dict "__unset__" true | toJson }}
+            {{- /* A string, not a bool - the fetcher reads every property as a string. */}}
+            {{- $placeholder := dict "__unset__" "true" | toJson }}
             {{- /* An absent ready annotation leaves readiness unspecified, which never  */}}
             {{- /* counts as ready, so the XR would wait forever. Read what the managed  */}}
             {{- /* resources actually report instead, the same way Sql and Cache do.     */}}
