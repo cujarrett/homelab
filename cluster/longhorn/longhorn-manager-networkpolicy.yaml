@@ -1,0 +1,41 @@
+# The Longhorn chart's own NetworkPolicy admits only Longhorn's pods, which leaves out two
+# callers longhorn-manager needs. Policies are additive, so this grants what the chart's is
+# missing rather than replacing it, and survives a chart upgrade untouched.
+#
+# Prometheus scrapes 9500 from the monitoring namespace. Without this rule the longhorn-backend
+# targets read down, which is how they sat unnoticed from the 1.12.1 upgrade onward.
+#
+# The kubelet probe on 9502 arrives from the cni0 bridge on the pod's own node, which is the
+# first address of that node's pod CIDR, not the node's LAN address. Cilium admits it by
+# identity and needs no rule; kube-router matches on address alone and drops it without one.
+# Re-check these four if a node is ever rebuilt.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: longhorn-manager-probe-and-metrics
+  namespace: longhorn-system
+spec:
+  podSelector:
+    matchLabels:
+      app: longhorn-manager
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9500
+    - from:
+        - ipBlock:
+            cidr: 10.42.0.1/32
+        - ipBlock:
+            cidr: 10.42.1.1/32
+        - ipBlock:
+            cidr: 10.42.3.1/32
+        - ipBlock:
+            cidr: 10.42.5.1/32
+      ports:
+        - protocol: TCP
+          port: 9502
