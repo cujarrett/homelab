@@ -34,15 +34,16 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Share of each day's merges that no person clicked. The 30 day total is on 'How merges reach main' - this one has to move day to day to show automation working.",
+          "description": "Share of the last 7 days of merges that nobody clicked. This is the toil number, and the only one automation is meant to move.",
+          "id": 60,
+          "title": "Merges with no person",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
               "decimals": 1,
-              "max": 1,
-              "min": 0,
+              "unit": "percentunit",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -59,23 +60,21 @@ data:
                     "value": 0.6
                   }
                 ]
-              },
-              "unit": "percentunit"
-            }
+              }
+            },
+            "overrides": []
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
+            "w": 4,
             "x": 0,
             "y": 0
           },
-          "id": 60,
           "options": {
             "colorMode": "value",
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
-            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
@@ -87,19 +86,17 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "13.2.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"1d\"}) / (sum(github_exporter_pr_merged{repo=~\"$repo\",window=\"1d\"}) > 0)",
-              "range": true,
-              "refId": "A"
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"7d\"}) / (sum(github_exporter_pr_merged{repo=~\"$repo\",window=\"7d\"}) > 0)",
+              "refId": "A",
+              "range": true
             }
           ],
-          "title": "Merged without a human",
           "type": "stat"
         },
         {
@@ -107,13 +104,149 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Open PRs with auto-merge armed that GitHub will not merge, almost always a failed required check. Automation is on and a person is still needed, so this is toil the automation did not remove.",
+          "description": "How many merges automation completed in the last 7 days. The share above says whether it is winning, this says whether there is enough volume for that to mean anything.",
+          "id": 61,
+          "title": "Automated merges, 7d",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
               "decimals": 0,
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 4,
+            "x": 4,
+            "y": 0
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"7d\"}) or vector(0)",
+              "refId": "A",
+              "instant": true
+            }
+          ],
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Share of bot pull requests that qualify for automerge at all. The remainder are majors and the named exclusions, held for a person by design, so this is coverage rather than a failure.",
+          "id": 62,
+          "title": "Eligible for automation",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 1,
+              "unit": "percentunit",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 0.25
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.6
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 4,
+            "x": 8,
+            "y": 0
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",scope=\"auto-candidate\",window=\"30d\"}) / (sum(github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",window=\"30d\"}) > 0)",
+              "refId": "A",
+              "instant": true
+            }
+          ],
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "id": 91,
+          "type": "stat",
+          "title": "Armed but blocked",
+          "description": "Open pull requests with automerge armed that GitHub will not merge, almost always a failed required check. Automation is on and a person is still needed, so this is toil it did not remove.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "unit": "short",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -130,23 +263,21 @@ data:
                     "value": 3
                   }
                 ]
-              },
-              "unit": "short"
-            }
+              }
+            },
+            "overrides": []
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 6,
+            "w": 4,
+            "x": 12,
             "y": 0
           },
-          "id": 61,
           "options": {
             "colorMode": "value",
             "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
-            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
@@ -158,7 +289,6 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
-          "pluginVersion": "13.2.0",
           "targets": [
             {
               "datasource": {
@@ -169,16 +299,14 @@ data:
               "instant": true,
               "refId": "A"
             }
-          ],
-          "title": "Armed but blocked",
-          "type": "stat"
+          ]
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Auto-merge is only as safe as this number. Runs still in flight carry no conclusion and are not counted.",
+          "description": "Runs on main that passed. Automation only merges on a green required check, so a falling number here is the gate doing its job, not a broken gate.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -209,8 +337,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 12,
+            "w": 4,
+            "x": 16,
             "y": 0
           },
           "id": 5,
@@ -276,8 +404,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 18,
+            "w": 4,
+            "x": 20,
             "y": 0
           },
           "id": 4,
@@ -433,7 +561,7 @@ data:
           },
           "gridPos": {
             "h": 7,
-            "w": 9,
+            "w": 8,
             "x": 0,
             "y": 3
           },
@@ -492,155 +620,76 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Rolling 24 hour merges as a proportion, so the split reads at a glance. A continuous line, not daily bars - the underlying window slides.",
+          "id": 90,
+          "type": "bargauge",
+          "title": "Held for a person, by repo",
+          "description": "Open bot pull requests that automerge will never take: a major version, or one of the named exclusions. Every one of these is a deliberate stop, so a rising bar means more decisions waiting, not a broken pipeline.",
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 60,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "stepAfter",
-                "lineWidth": 0,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "never",
-                "showValues": false,
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "percent"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
+                "fixedColor": "purple",
+                "mode": "fixed"
               },
               "decimals": 0,
+              "unit": "short",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "text",
+                    "color": "purple",
                     "value": null
                   }
                 ]
-              },
-              "unit": "percentunit"
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "By hand"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "purple",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Automated"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "blue",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Time"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "time:MM/DD"
-                  }
-                ]
               }
-            ]
+            },
+            "overrides": []
           },
           "gridPos": {
             "h": 7,
-            "w": 9,
-            "x": 9,
+            "w": 8,
+            "x": 8,
             "y": 3
           },
-          "id": 55,
           "options": {
+            "displayMode": "gradient",
             "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "showLegend": false
             },
-            "tooltip": {
-              "hideZeros": false,
-              "mode": "multi",
-              "sort": "desc"
-            }
+            "maxVizHeight": 60,
+            "minVizHeight": 16,
+            "minVizWidth": 8,
+            "namePlacement": "left",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "sizing": "auto",
+            "valueMode": "text"
           },
-          "pluginVersion": "13.2.0",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"1d\"})",
-              "legendFormat": "By hand",
-              "range": true,
+              "expr": "sum by (repo) (github_exporter_pr_open{repo=~\"$repo\",author=\"bot\",scope=\"excluded\"}) > 0",
+              "instant": true,
+              "legendFormat": "{{repo}}",
               "refId": "A"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"1d\"})",
-              "legendFormat": "Automated",
-              "range": true,
-              "refId": "B"
             }
-          ],
-          "title": "Share of merges, rolling 24h",
-          "type": "timeseries"
+          ]
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Read from GitHub's record. auto means GitHub merged it once checks passed, clicked means a person pressed the button, bot means a workflow merged with its own token.",
+          "description": "Thirty days of merges, split by whether a person spent attention on it.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -654,7 +703,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "auto"
+                  "options": "No person"
                 },
                 "properties": [
                   {
@@ -669,7 +718,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "clicked"
+                  "options": "A person"
                 },
                 "properties": [
                   {
@@ -680,28 +729,13 @@ data:
                     }
                   }
                 ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "bot"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "light-blue",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
               }
             ]
           },
           "gridPos": {
             "h": 7,
-            "w": 6,
-            "x": 18,
+            "w": 8,
+            "x": 16,
             "y": 3
           },
           "id": 80,
@@ -733,10 +767,20 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum by (merge) (github_exporter_pr_merged{repo=~\"$repo\",window=\"30d\"})",
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"30d\"})",
               "instant": true,
-              "legendFormat": "{{merge}}",
+              "legendFormat": "No person",
               "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"30d\"})",
+              "instant": true,
+              "legendFormat": "A person",
+              "refId": "B"
             }
           ],
           "title": "How merges reach main",
@@ -914,7 +958,7 @@ data:
             ]
           },
           "gridPos": {
-            "h": 22,
+            "h": 10,
             "w": 24,
             "x": 0,
             "y": 10
