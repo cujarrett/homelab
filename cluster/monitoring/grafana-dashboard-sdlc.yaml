@@ -238,7 +238,7 @@ data:
           },
           "id": 91,
           "type": "stat",
-          "title": "Armed but blocked",
+          "title": "Stuck on a failed check",
           "description": "Open pull requests with automerge armed that GitHub will not merge, almost always a failed required check. Automation is on and a person is still needed, so this is toil it did not remove.",
           "fieldConfig": {
             "defaults": {
@@ -446,7 +446,7 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "The queue over time. Auto-merge ready is what automation could clear on its own; needs a human is everything else - a person's own PR, or a major bump outside the grouped branches.",
+          "description": "Open pull requests, split by whether automation can take them. Stacked, so the height is every open PR and the purple band is the part needing a person.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -461,7 +461,7 @@ data:
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
                 "drawStyle": "line",
-                "fillOpacity": 10,
+                "fillOpacity": 60,
                 "gradientMode": "none",
                 "hideFrom": {
                   "legend": false,
@@ -469,8 +469,8 @@ data:
                   "viz": false
                 },
                 "insertNulls": false,
-                "lineInterpolation": "smooth",
-                "lineWidth": 2,
+                "lineInterpolation": "stepAfter",
+                "lineWidth": 1,
                 "pointSize": 5,
                 "scaleDistribution": {
                   "type": "linear"
@@ -480,7 +480,7 @@ data:
                 "spanNulls": true,
                 "stacking": {
                   "group": "A",
-                  "mode": "none"
+                  "mode": "normal"
                 },
                 "thresholdsStyle": {
                   "mode": "off"
@@ -503,22 +503,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "All open"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "light-blue",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Auto-merge ready"
+                  "options": "Automation can take it"
                 },
                 "properties": [
                   {
@@ -533,7 +518,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Needs a human"
+                  "options": "Needs a person"
                 },
                 "properties": [
                   {
@@ -542,18 +527,6 @@ data:
                       "fixedColor": "purple",
                       "mode": "fixed"
                     }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Time"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "time:MM/DD"
                   }
                 ]
               }
@@ -586,18 +559,8 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(github_exporter_pr_open{repo=~\"$repo\"})",
-              "legendFormat": "All open",
-              "range": true,
-              "refId": "A"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum(github_exporter_pr_open{repo=~\"$repo\",scope=\"auto-candidate\"})",
-              "legendFormat": "Auto-merge ready",
+              "legendFormat": "Automation can take it",
               "range": true,
               "refId": "B"
             },
@@ -607,7 +570,7 @@ data:
                 "uid": "prometheus"
               },
               "expr": "sum(github_exporter_pr_open{repo=~\"$repo\",scope=~\"human|excluded\"})",
-              "legendFormat": "Needs a human",
+              "legendFormat": "Needs a person",
               "range": true,
               "refId": "C"
             }
