@@ -100,9 +100,9 @@ Entra federates against this same identity, so a pod holds no secret for either 
 
 The clearest way past them is to run as UID 1337. Istio skips that UID when redirecting, because it is the UID Envoy itself runs as and redirecting Envoy into Envoy would loop forever. Anything else running as 1337 gets the same free pass, and its packets leave without Envoy ever seeing them.
 
-Stopping that takes a rule the pod cannot reach. Every pod is wired to the node by a virtual cable, and the node holds one end of it. A Cilium `NetworkPolicy` is enforced at that end, outside the pod, so nothing running inside can skip it.
+Stopping that takes a rule the pod cannot reach, enforced at the node end of the pod's virtual cable rather than inside the pod.
 
-**That layer is deliberately not built** and it is not a one-way door. The policy generates from the same `consumes` the mesh already uses, so adding it changes no schema and no app. Two questions decide it: whether off-platform egress uses FQDN or CIDR rules, and whether a compromised pod is in the threat model, since only that case needs it. Cilium's DNS proxy is already on by default, which `toFQDNs` depends on because it learns addresses by watching lookups.
+**That layer is not built and is not planned.** It needed a CNI that enforces policy by identity and resolves egress rules by hostname, and the cluster runs flannel, which does neither. A compromised pod is out of the threat model here, so the mesh's governance is the boundary. Plain `NetworkPolicy` still works for coarse rules - the WordPress composition uses one to keep a compromised site off the LAN - but it names CIDRs, not hostnames, so it cannot express "this pod may reach one SaaS host and nothing else".
 
 **An app with an Ingress is reachable from the ingress controller** whatever its grants, because Traefik is unmeshed and presents no identity. How far that reaches depends on `tlsIssuer`.
 
@@ -130,6 +130,6 @@ Stopping that takes a rule the pod cannot reach. Every pod is wired to the node 
 | AuthorizationPolicy | [ref](https://istio.io/latest/docs/reference/config/security/authorization-policy/) | the first ALLOW makes that workload deny-by-default |
 | ServiceEntry | [egress control](https://istio.io/latest/docs/tasks/traffic-management/egress/egress-control/) | registers a host; alone it gates nothing |
 | Sidecar + `REGISTRY_ONLY` | [ref](https://istio.io/latest/docs/reference/config/networking/sidecar/) | this is what makes egress default-deny |
-| Cilium NetworkPolicy | [policy](https://docs.cilium.io/en/stable/security/policy/) | the containment layer the mesh cannot be |
+| NetworkPolicy | [ref](https://kubernetes.io/docs/concepts/services-networking/network-policies/) | CIDR rules only; the kubelet probe needs an ingress rule of its own |
 
 > **Splitting a requirement widens it.** Istio ORs ALLOW policies and rules together, so two rules are two ways in, not two conditions. Anything that must all hold goes in one rule: `from` + `to` + `when`.
