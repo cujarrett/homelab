@@ -165,7 +165,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(github_exporter_pr_open_blocked{repo=~\"$repo\"})",
+              "expr": "sum(github_exporter_pr_open_blocked{repo=~\"$repo\"}) or vector(0)",
               "instant": true,
               "refId": "A"
             }
@@ -492,7 +492,7 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Daily merges as a proportion, so the split reads at a glance rather than the volume. Totals are on 'Merged per day'.",
+          "description": "Rolling 24 hour merges as a proportion, so the split reads at a glance. A continuous line, not daily bars - the underlying window slides.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -506,8 +506,8 @@ data:
                 "axisPlacement": "auto",
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
-                "drawStyle": "bars",
-                "fillOpacity": 80,
+                "drawStyle": "line",
+                "fillOpacity": 60,
                 "gradientMode": "none",
                 "hideFrom": {
                   "legend": false,
@@ -515,8 +515,8 @@ data:
                   "viz": false
                 },
                 "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
+                "lineInterpolation": "stepAfter",
+                "lineWidth": 0,
                 "pointSize": 5,
                 "scaleDistribution": {
                   "type": "linear"
@@ -596,7 +596,6 @@ data:
             "y": 3
           },
           "id": 55,
-          "interval": "1d",
           "options": {
             "legend": {
               "calcs": [],
@@ -633,7 +632,7 @@ data:
               "refId": "B"
             }
           ],
-          "title": "Share of merges per day",
+          "title": "Share of merges, rolling 24h",
           "type": "timeseries"
         },
         {
