@@ -37,6 +37,9 @@ metadata:
 spec:
   parameters:
     keys: [E2E_TOKEN]
+    # delete, not the retain default - a scheduled secret keeps its name for the whole
+    # recovery window, and the next run cannot recreate it.
+    dataRetention: delete
 ---
 apiVersion: platform.local.lab/v1alpha1
 kind: Api

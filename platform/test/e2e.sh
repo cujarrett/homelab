@@ -230,6 +230,15 @@ if ! $PRIVATE_ONLY; then
   # delivery check pass without the sidecar having fetched anything.
   SECRET_SENTINEL="e2e-$(date +%s)"
 
+  # A secret scheduled for deletion keeps its name for the whole recovery window, and
+  # CreateSecret then refuses. Left alone this fails deep in inflate; force it here.
+  if aws secretsmanager describe-secret --secret-id "platform/$NS/e2e-secret" --region "$REGION" \
+       --query 'DeletedDate' --output text 2>/dev/null | grep -qv '^None$'; then
+    aws secretsmanager delete-secret --secret-id "platform/$NS/e2e-secret" --region "$REGION" \
+      --force-delete-without-recovery >/dev/null 2>&1
+    record preflight "stale secret purged" PASS "a previous run left the name scheduled for deletion"
+  fi
+
   RG_RAW="crossplane-$NS-e2e-api-public-cache"
   RG_ID="$RG_RAW"
   if (( ${#RG_RAW} > 40 )); then
@@ -518,12 +527,10 @@ if ! $PRIVATE_ONLY; then
     aws s3api head-bucket --bucket "platform-$NS-e2e-assets" --region "$REGION"
   # dataRetention defaults to retain, so the secret is scheduled for deletion rather
   # than erased. DeletedDate set is the platform having done its job.
-  SECRET_DELETED=$(aws secretsmanager describe-secret --secret-id "platform/$NS/e2e-secret" \
-    --region "$REGION" --query 'DeletedDate' --output text 2>/dev/null)
-  case "$SECRET_DELETED" in
-    ""|"None") record teardown-verify "Secrets Manager secret gone" FAIL "still live, no DeletedDate" ;;
-    *)         record teardown-verify "Secrets Manager secret gone" "PASS (scheduled)" "recoverable until the window expires" ;;
-  esac
+  # dataRetention delete purges immediately, so the name must be free for the next run.
+  aws_gone "Secrets Manager secret gone" \
+    aws secretsmanager describe-secret --secret-id "platform/$NS/e2e-secret" \
+      --region "$REGION" --query 'Name' --output text
   aws_gone "IAM roles gone" bash -c \
     "aws iam list-roles --path-prefix /crossplane/ --query 'Roles[?contains(RoleName, \`$NS\`)].RoleName' --output text --region $REGION | grep ."
   # $RG_ID computed in preflight (mirrors the composition's 40-char naming).
