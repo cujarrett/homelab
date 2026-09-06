@@ -1,0 +1,33 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":dependencyDashboard"],
+  "assignees": ["cujarrett"],
+  "timezone": "America/Chicago",
+  "schedule": [
+    "after 4pm every weekday",
+    "before 8am every weekday",
+    "every weekend"
+  ],
+  "minimumReleaseAge": "7 days",
+  "packageRules": [
+    {
+      "description": "minor and patch land as one reviewed-by-CI batch",
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "non-breaking",
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "A major reaches a human on its own",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "minimumReleaseAge": null,
+    "schedule": null,
+    "automerge": true,
+    "platformAutomerge": true
+  }
+}
