@@ -35,10 +35,6 @@ rules:
   - apiGroups: ["gateway.networking.k8s.io"]
     resources: ["httproutes", "httproutes/status"]
     verbs: ["*"]
-  # Cache composes these to order its own ElastiCache deletes.
-  - apiGroups: ["protection.crossplane.io"]
-    resources: ["usages", "usages/status"]
-    verbs: ["*"]
 ---
 # Istio mesh resources composed by Connection and (mesh baseline) Api/Spa.
 apiVersion: rbac.authorization.k8s.io/v1
