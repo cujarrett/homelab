@@ -638,14 +638,8 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                }
+                "fixedColor": "blue",
+                "mode": "fixed"
               },
               "decimals": 0,
               "unit": "short"
@@ -706,15 +700,15 @@ data:
           },
           "id": 80,
           "options": {
+            "displayMode": "gradient",
             "legend": {
-              "displayMode": "table",
-              "placement": "right",
-              "showLegend": true,
-              "values": [
-                "value"
-              ]
+              "showLegend": false
             },
-            "pieType": "pie",
+            "maxVizHeight": 60,
+            "minVizHeight": 16,
+            "minVizWidth": 8,
+            "namePlacement": "left",
+            "orientation": "horizontal",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
@@ -722,12 +716,9 @@ data:
               "fields": "",
               "values": false
             },
-            "sort": "desc",
-            "tooltip": {
-              "hideZeros": false,
-              "mode": "single",
-              "sort": "none"
-            }
+            "showUnfilled": true,
+            "sizing": "auto",
+            "valueMode": "text"
           },
           "pluginVersion": "13.2.0",
           "targets": [
@@ -742,8 +733,8 @@ data:
               "refId": "A"
             }
           ],
-          "title": "How a merge happens",
-          "type": "piechart"
+          "title": "How merges reach main",
+          "type": "bargauge"
         },
         {
           "datasource": {
