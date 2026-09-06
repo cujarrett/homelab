@@ -1,10 +1,22 @@
 #!/usr/bin/env bash
-# Usage: ./docs/cluster-backup/backup-cluster-state.sh
+# Usage: ./docs/cluster-backup/backup-cluster-state.sh [--datastore]
 #
 # Captures cluster secrets, app data, and node config to ~/Desktop/cluster-backup/.
 # Follow the printed instructions to encrypt and move to Dropbox, then delete the
 # plaintext output.
+#
+# --datastore also copies the k3s control-plane datastore, which requires stopping
+# k3s on ctrl-1 for about a minute. Off by default so a routine backup never takes
+# the API server down. Use it before anything that reinstalls k3s.
 set -uo pipefail
+
+WITH_DATASTORE=false
+for arg in "$@"; do
+  case "$arg" in
+    --datastore) WITH_DATASTORE=true ;;
+    *) echo "unknown argument: $arg"; exit 2 ;;
+  esac
+done
 
 OUT="$HOME/Desktop/cluster-backup"
 CTRL1="pi@192.168.10.100"
@@ -60,6 +72,30 @@ for ns in "${TENANT_NAMESPACES[@]}"; do
     && ok "tenant-secrets-${ns}.yaml" || fail "tenant-secrets-${ns}.yaml"
 done
 
+# ── Every secret in the cluster ───────────────────────────────────────────────
+# Safety net for the targeted dumps above. ~9MB, and it means a secret added to a
+# new namespace is never silently missing from a backup. Includes the demo-certs
+# TLS secrets, which matter because Let's Encrypt allows only 5 certs per exact
+# hostname per 168h - reissuing all ten would take days.
+echo "==> Every secret in the cluster"
+kubectl get secrets -A -o yaml > "$OUT/all-secrets.yaml" \
+  && ok "all-secrets.yaml" || fail "all-secrets.yaml"
+
+# ── SPIRE identity ────────────────────────────────────────────────────────────
+# The spire-server container is distroless, so its datastore cannot be tarred out
+# through kubectl exec. Capture the trust bundle and the registration entries
+# instead: enough to tell whether the CA survived, and to rebuild the entries if
+# it did not. A new CA means the AWS IAM Roles Anywhere trust anchor and anything
+# pinning oidc.mattjarrett.dev must be updated by hand.
+echo "==> SPIRE identity"
+kubectl get configmap spire-bundle -n spire-server -o yaml > "$OUT/spire-bundle.yaml" \
+  && ok "spire-bundle.yaml" || fail "spire-bundle.yaml"
+kubectl get clusterspiffeids.spire.spiffe.io -o yaml > "$OUT/spire-clusterspiffeids.yaml" \
+  && ok "spire-clusterspiffeids.yaml" || fail "spire-clusterspiffeids.yaml"
+curl -s --max-time 15 https://oidc.mattjarrett.dev/.well-known/keys > "$OUT/spire-oidc-jwks.json" \
+  && [[ -s "$OUT/spire-oidc-jwks.json" ]] \
+  && ok "spire-oidc-jwks.json" || fail "spire-oidc-jwks.json"
+
 # ── AdGuard config ────────────────────────────────────────────────────────────
 echo "==> AdGuard config"
 ADGUARD_POD=$(kubectl get pod -n adguard -l app=adguard-home -o jsonpath='{.items[0].metadata.name}')
@@ -93,10 +129,13 @@ ssh "$CTRL1" 'WP_DB_PASS=$(sudo kubectl get secret mattjarrett-com-mariadb -n ma
   && ssh "$CTRL1" "rm -f /tmp/wp.sql" \
   && ok "mattjarrett-com-wordpress.sql" || fail "mattjarrett-com-wordpress.sql"
 
-ssh "$CTRL1" "sudo kubectl exec -n mattjarrett-com deploy/mattjarrett-com-wordpress -- sh -c 'cd /var/www/html/wp-content && tar czf - uploads' > /tmp/wp-uploads.tar.gz" \
-  && scp -q "$CTRL1:/tmp/wp-uploads.tar.gz" "$OUT/mattjarrett-com-wp-uploads.tar.gz" \
-  && ssh "$CTRL1" "rm -f /tmp/wp-uploads.tar.gz" \
-  && ok "mattjarrett-com-wp-uploads.tar.gz" || fail "mattjarrett-com-wp-uploads.tar.gz"
+# The whole of wp-content, not just uploads - plugins and themes carry site
+# behaviour the image does not seed back, and NextGEN keeps gallery images in
+# their own directory outside uploads.
+ssh "$CTRL1" "sudo kubectl exec -n mattjarrett-com deploy/mattjarrett-com-wordpress -c wordpress -- sh -c 'cd /var/www/html/wp-content && tar czf - --exclude=lost+found --exclude=upgrade-temp-backup --exclude=cache .' > /tmp/wp-content.tar.gz" \
+  && scp -q "$CTRL1:/tmp/wp-content.tar.gz" "$OUT/mattjarrett-com-wp-content.tar.gz" \
+  && ssh "$CTRL1" "rm -f /tmp/wp-content.tar.gz" \
+  && ok "mattjarrett-com-wp-content.tar.gz" || fail "mattjarrett-com-wp-content.tar.gz"
 
 echo "==> WordPress (kentjarrett-com)"
 
@@ -106,10 +145,10 @@ ssh "$CTRL1" 'WP_DB_PASS=$(sudo kubectl get secret kentjarrett-com-mariadb -n ke
   && ssh "$CTRL1" "rm -f /tmp/wp.sql" \
   && ok "kentjarrett-com-wordpress.sql" || fail "kentjarrett-com-wordpress.sql"
 
-ssh "$CTRL1" "sudo kubectl exec -n kentjarrett-com deploy/kentjarrett-com-wordpress -- sh -c 'cd /var/www/html/wp-content && tar czf - uploads' > /tmp/wp-uploads.tar.gz" \
-  && scp -q "$CTRL1:/tmp/wp-uploads.tar.gz" "$OUT/kentjarrett-com-wp-uploads.tar.gz" \
-  && ssh "$CTRL1" "rm -f /tmp/wp-uploads.tar.gz" \
-  && ok "kentjarrett-com-wp-uploads.tar.gz" || fail "kentjarrett-com-wp-uploads.tar.gz"
+ssh "$CTRL1" "sudo kubectl exec -n kentjarrett-com deploy/kentjarrett-com-wordpress -c wordpress -- sh -c 'cd /var/www/html/wp-content && tar czf - --exclude=lost+found --exclude=upgrade-temp-backup --exclude=cache .' > /tmp/wp-content.tar.gz" \
+  && scp -q "$CTRL1:/tmp/wp-content.tar.gz" "$OUT/kentjarrett-com-wp-content.tar.gz" \
+  && ssh "$CTRL1" "rm -f /tmp/wp-content.tar.gz" \
+  && ok "kentjarrett-com-wp-content.tar.gz" || fail "kentjarrett-com-wp-content.tar.gz"
 
 # ── Node files ────────────────────────────────────────────────────────────────
 echo "==> Node files (ctrl-1)"
@@ -128,6 +167,65 @@ scp -q "$CTRL1:~/.bash_profile" "$OUT/nodes/ctrl-1/bash_profile" \
 
 # Worker nodes use the server node-token (already captured above) to join -
 # they do not store a separate token file.
+
+# ── Long-retention Prometheus ─────────────────────────────────────────────────
+# The two instances holding data that cannot be regenerated - sump-pump on 18250d
+# retention and cluster-availability. Both are ~200MB on disk. The main
+# Prometheus is 36GB of 30d cluster metrics and is deliberately not copied; it
+# refills itself. Each PVC mounts at prometheus-db/, so the tar is taken from
+# /prometheus, which is that subdirectory.
+echo "==> Long-retention Prometheus"
+for p in sump-pump cluster-availability; do
+  ssh "$CTRL1" "sudo kubectl exec -n monitoring prometheus-${p}-0 -c prometheus -- tar czf - -C /prometheus . > /tmp/${p}-tsdb.tar.gz" \
+    && scp -q "$CTRL1:/tmp/${p}-tsdb.tar.gz" "$OUT/${p}-tsdb.tar.gz" \
+    && ssh "$CTRL1" "rm -f /tmp/${p}-tsdb.tar.gz" \
+    && ok "${p}-tsdb.tar.gz" || fail "${p}-tsdb.tar.gz"
+done
+
+# ── Grafana database ──────────────────────────────────────────────────────────
+# Dashboards come from ConfigMaps in git, but the kiosk playlist is UI-managed
+# and lives only here.
+echo "==> Grafana database"
+ssh "$CTRL1" "sudo kubectl exec -n monitoring deploy/monitoring-grafana -c grafana -- tar czf - -C /var/lib/grafana grafana.db > /tmp/grafana-db.tar.gz" \
+  && scp -q "$CTRL1:/tmp/grafana-db.tar.gz" "$OUT/grafana-db.tar.gz" \
+  && ssh "$CTRL1" "rm -f /tmp/grafana-db.tar.gz" \
+  && ok "grafana-db.tar.gz" || fail "grafana-db.tar.gz"
+
+# ── k3s install flags ─────────────────────────────────────────────────────────
+# The flags are stored nowhere but the unit file, and a plain reinstall silently
+# drops any it is not given again. Capture them from every node, not from a doc.
+echo "==> k3s install flags"
+ssh "$CTRL1" 'sudo cat /etc/systemd/system/k3s.service' > "$OUT/nodes/ctrl-1/k3s.service" \
+  && ok "ctrl-1/k3s.service" || fail "ctrl-1/k3s.service"
+for n in work-1:$WORK1 work-2:$WORK2 work-3:$WORK3; do
+  name="${n%%:*}"; host="${n#*:}"
+  ssh "$host" 'sudo cat /etc/systemd/system/k3s-agent.service' > "$OUT/nodes/$name/k3s-agent.service" \
+    && ok "$name/k3s-agent.service" || fail "$name/k3s-agent.service"
+done
+
+# ── k3s datastore (opt-in) ────────────────────────────────────────────────────
+# k3s here is single-server on SQLite, not etcd, so there is no etcd-snapshot
+# command. A live copy of a WAL-mode database can be torn, so stop k3s first.
+# This is the last step because it takes the API server away.
+if [[ "$WITH_DATASTORE" == true ]]; then
+  echo "==> k3s datastore (stopping k3s on ctrl-1)"
+  ssh "$CTRL1" "sudo systemctl stop k3s \
+    && sudo tar czf /tmp/k3s-server.tar.gz -C /var/lib/rancher/k3s server \
+    && sudo systemctl start k3s" \
+    && scp -q "$CTRL1:/tmp/k3s-server.tar.gz" "$OUT/nodes/ctrl-1/k3s-server.tar.gz" \
+    && ssh "$CTRL1" "sudo rm -f /tmp/k3s-server.tar.gz" \
+    && ok "ctrl-1/k3s-server.tar.gz" || fail "ctrl-1/k3s-server.tar.gz"
+
+  echo "  waiting for the API server to come back"
+  for _ in $(seq 1 30); do
+    kubectl get --raw /readyz >/dev/null 2>&1 && break
+    sleep 5
+  done
+  kubectl get --raw /readyz >/dev/null 2>&1 \
+    && ok "apiserver back up" || fail "apiserver did not come back - check ctrl-1 before doing anything else"
+else
+  echo "==> k3s datastore skipped (pass --datastore before a k3s reinstall)"
+fi
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
