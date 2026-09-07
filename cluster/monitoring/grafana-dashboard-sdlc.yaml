@@ -35,15 +35,14 @@ data:
             "uid": "prometheus"
           },
           "description": "Share of the last 7 days of merges that nobody clicked. This is the toil number, and the only one automation is meant to move.",
-          "id": 60,
-          "title": "Merges with no person",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
               "decimals": 1,
-              "unit": "percentunit",
+              "max": 1,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -60,9 +59,9 @@ data:
                     "value": 0.6
                   }
                 ]
-              }
-            },
-            "overrides": []
+              },
+              "unit": "percentunit"
+            }
           },
           "gridPos": {
             "h": 3,
@@ -70,11 +69,13 @@ data:
             "x": 0,
             "y": 0
           },
+          "id": 60,
           "options": {
             "colorMode": "value",
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
@@ -86,6 +87,7 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
+          "pluginVersion": "13.2.0",
           "targets": [
             {
               "datasource": {
@@ -93,10 +95,11 @@ data:
                 "uid": "prometheus"
               },
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"7d\"}) / (sum(github_exporter_pr_merged{repo=~\"$repo\",window=\"7d\"}) > 0)",
-              "refId": "A",
-              "range": true
+              "range": true,
+              "refId": "A"
             }
           ],
+          "title": "Merges with no person",
           "type": "stat"
         },
         {
@@ -105,26 +108,23 @@ data:
             "uid": "prometheus"
           },
           "description": "How many merges automation completed in the last 7 days. The share above says whether it is winning, this says whether there is enough volume for that to mean anything.",
-          "id": 61,
-          "title": "Automated merges, 7d",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
               "decimals": 0,
-              "unit": "short",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
                     "color": "blue",
-                    "value": null
+                    "value": 0
                   }
                 ]
-              }
-            },
-            "overrides": []
+              },
+              "unit": "short"
+            }
           },
           "gridPos": {
             "h": 3,
@@ -132,11 +132,13 @@ data:
             "x": 4,
             "y": 0
           },
+          "id": 61,
           "options": {
             "colorMode": "value",
             "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
@@ -148,6 +150,7 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
+          "pluginVersion": "13.2.0",
           "targets": [
             {
               "datasource": {
@@ -155,10 +158,11 @@ data:
                 "uid": "prometheus"
               },
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"7d\"}) or vector(0)",
-              "refId": "A",
-              "instant": true
+              "instant": true,
+              "refId": "A"
             }
           ],
+          "title": "Automated merges, 7d",
           "type": "stat"
         },
         {
@@ -167,15 +171,14 @@ data:
             "uid": "prometheus"
           },
           "description": "Share of bot pull requests that qualify for automerge at all. The remainder are majors and the named exclusions, held for a person by design, so this is coverage rather than a failure.",
-          "id": 62,
-          "title": "Eligible for automation",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
               "decimals": 1,
-              "unit": "percentunit",
+              "max": 1,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -192,9 +195,9 @@ data:
                     "value": 0.6
                   }
                 ]
-              }
-            },
-            "overrides": []
+              },
+              "unit": "percentunit"
+            }
           },
           "gridPos": {
             "h": 3,
@@ -202,11 +205,13 @@ data:
             "x": 8,
             "y": 0
           },
+          "id": 62,
           "options": {
             "colorMode": "value",
             "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
@@ -218,6 +223,7 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
+          "pluginVersion": "13.2.0",
           "targets": [
             {
               "datasource": {
@@ -225,10 +231,11 @@ data:
                 "uid": "prometheus"
               },
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",scope=\"auto-candidate\",window=\"30d\"}) / (sum(github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",window=\"30d\"}) > 0)",
-              "refId": "A",
-              "instant": true
+              "instant": true,
+              "refId": "A"
             }
           ],
+          "title": "Eligible for automation",
           "type": "stat"
         },
         {
@@ -236,9 +243,6 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "id": 91,
-          "type": "stat",
-          "title": "Stuck on a failed check",
           "description": "Open pull requests with automerge armed that GitHub will not merge, almost always a failed required check. Automation is on and a person is still needed, so this is toil it did not remove.",
           "fieldConfig": {
             "defaults": {
@@ -246,7 +250,6 @@ data:
                 "mode": "thresholds"
               },
               "decimals": 0,
-              "unit": "short",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -263,9 +266,9 @@ data:
                     "value": 3
                   }
                 ]
-              }
-            },
-            "overrides": []
+              },
+              "unit": "short"
+            }
           },
           "gridPos": {
             "h": 3,
@@ -273,11 +276,13 @@ data:
             "x": 12,
             "y": 0
           },
+          "id": 91,
           "options": {
             "colorMode": "value",
             "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
@@ -289,6 +294,7 @@ data:
             "textMode": "value",
             "wideLayout": true
           },
+          "pluginVersion": "13.2.0",
           "targets": [
             {
               "datasource": {
@@ -299,7 +305,9 @@ data:
               "instant": true,
               "refId": "A"
             }
-          ]
+          ],
+          "title": "Stuck on a failed check",
+          "type": "stat"
         },
         {
           "datasource": {
@@ -446,177 +454,6 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "id": 92,
-          "type": "bargauge",
-          "title": "Waiting on you, by repo",
-          "description": "Open pull requests automation will not take: a major version, one of the named exclusions, or a human PR. Empty is the goal, and a repo appears here only while something is actually waiting.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "decimals": 0,
-              "unit": "short",
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "purple",
-                    "value": null
-                  }
-                ]
-              },
-              "noValue": "Nothing waiting"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 7,
-            "w": 16,
-            "x": 0,
-            "y": 3
-          },
-          "options": {
-            "displayMode": "gradient",
-            "legend": {
-              "showLegend": false
-            },
-            "maxVizHeight": 60,
-            "minVizHeight": 16,
-            "minVizWidth": 8,
-            "namePlacement": "left",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showUnfilled": true,
-            "sizing": "auto",
-            "valueMode": "text"
-          },
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sum by (repo) (github_exporter_pr_open{repo=~\"$repo\",scope=~\"human|excluded\"}) > 0",
-              "instant": true,
-              "legendFormat": "{{repo}}",
-              "refId": "A"
-            }
-          ]
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "description": "Thirty days of merges, split by whether a person spent attention on it.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "fixedColor": "blue",
-                "mode": "fixed"
-              },
-              "decimals": 0,
-              "unit": "short"
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "No person"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "blue",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "A person"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "purple",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          "gridPos": {
-            "h": 7,
-            "w": 8,
-            "x": 16,
-            "y": 3
-          },
-          "id": 80,
-          "options": {
-            "displayMode": "gradient",
-            "legend": {
-              "showLegend": false
-            },
-            "maxVizHeight": 60,
-            "minVizHeight": 16,
-            "minVizWidth": 8,
-            "namePlacement": "left",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showUnfilled": true,
-            "sizing": "auto",
-            "valueMode": "text"
-          },
-          "pluginVersion": "13.2.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"30d\"})",
-              "instant": true,
-              "legendFormat": "No person",
-              "refId": "A"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"30d\"})",
-              "instant": true,
-              "legendFormat": "A person",
-              "refId": "B"
-            }
-          ],
-          "title": "How merges reach main",
-          "type": "bargauge"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Merges per day, split by whether a person clicked the button. The exporter publishes a rolling 24h count, sampled once a day, so each bar is the day ending at that point.",
           "fieldConfig": {
             "defaults": {
@@ -630,6 +467,7 @@ data:
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "bars",
                 "fillOpacity": 80,
                 "gradientMode": "none",
@@ -646,6 +484,7 @@ data:
                   "type": "linear"
                 },
                 "showPoints": "never",
+                "showValues": false,
                 "spanNulls": false,
                 "stacking": {
                   "group": "A",
@@ -656,7 +495,6 @@ data:
                 }
               },
               "decimals": 0,
-              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -672,7 +510,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Automated"
+                  "options": "Auto merged"
                 },
                 "properties": [
                   {
@@ -687,7 +525,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "A person clicked merge"
+                  "options": "Manual merged"
                 },
                 "properties": [
                   {
@@ -702,10 +540,10 @@ data:
             ]
           },
           "gridPos": {
-            "h": 8,
-            "w": 24,
+            "h": 7,
+            "w": 14,
             "x": 0,
-            "y": 10
+            "y": 3
           },
           "id": 93,
           "options": {
@@ -718,10 +556,12 @@ data:
               "showLegend": true
             },
             "tooltip": {
+              "hideZeros": false,
               "mode": "multi",
               "sort": "none"
             }
           },
+          "pluginVersion": "13.2.0",
           "targets": [
             {
               "datasource": {
@@ -731,7 +571,7 @@ data:
               "editorMode": "code",
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"1d\"})",
               "interval": "1d",
-              "legendFormat": "Automated",
+              "legendFormat": "Auto merged",
               "range": true,
               "refId": "A"
             },
@@ -743,13 +583,129 @@ data:
               "editorMode": "code",
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"1d\"})",
               "interval": "1d",
-              "legendFormat": "A person clicked merge",
+              "legendFormat": "Manual merged",
               "range": true,
               "refId": "B"
             }
           ],
           "title": "Merges per day",
           "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Thirty days of merges, split by whether a person spent attention on it.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "blue",
+                "mode": "fixed"
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Auto merged"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Manual merged"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "purple",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 10,
+            "x": 14,
+            "y": 3
+          },
+          "id": 80,
+          "options": {
+            "displayMode": "gradient",
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "maxVizHeight": 60,
+            "minVizHeight": 60,
+            "minVizWidth": 8,
+            "namePlacement": "left",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "sizing": "manual",
+            "valueMode": "text"
+          },
+          "pluginVersion": "13.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"30d\"})",
+              "instant": true,
+              "legendFormat": "Auto merged",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"30d\"})",
+              "instant": true,
+              "legendFormat": "Manual merged",
+              "refId": "B"
+            }
+          ],
+          "title": "How merges reach main",
+          "type": "bargauge"
         },
         {
           "datasource": {
@@ -926,7 +882,7 @@ data:
             "h": 10,
             "w": 24,
             "x": 0,
-            "y": 18
+            "y": 10
           },
           "id": 70,
           "options": {
@@ -1020,28 +976,28 @@ data:
             {
               "id": "filterByValue",
               "options": {
-                "type": "exclude",
-                "match": "all",
                 "filters": [
                   {
-                    "fieldName": "Open",
                     "config": {
                       "id": "equal",
                       "options": {
                         "value": 0
                       }
-                    }
+                    },
+                    "fieldName": "Open"
                   },
                   {
-                    "fieldName": "Merged 30d",
                     "config": {
                       "id": "equal",
                       "options": {
                         "value": 0
                       }
-                    }
+                    },
+                    "fieldName": "Merged 30d"
                   }
-                ]
+                ],
+                "match": "all",
+                "type": "exclude"
               }
             }
           ],
