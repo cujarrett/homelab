@@ -31,6 +31,15 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: crossplane-system
+  ignoreDifferences:
+    # `just test-e2e` scales worker-nodes-idle to 1 for the run and back to 0 after.
+    # Without this selfHeal reverts the scale-up mid-run and the RDS/ElastiCache
+    # resources never reconcile.
+    - group: pkg.crossplane.io
+      kind: DeploymentRuntimeConfig
+      name: worker-nodes-idle
+      jsonPointers:
+        - /spec/deploymentTemplate/spec/replicas
   syncPolicy:
     automated:
       prune: true

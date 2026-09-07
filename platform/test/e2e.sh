@@ -319,6 +319,26 @@ if kubectl get namespace "$NS" >/dev/null 2>&1; then
 fi
 record preflight "namespace free" PASS ""
 
+# provider-aws-rds and provider-aws-elasticache idle at replicas 0 between runs, since
+# only this suite creates a public Sql or Cache. Wake them for the run and let the trap
+# put them back. ArgoCD ignores this field so selfHeal will not undo it mid-run.
+scale_e2e_providers() {
+  kubectl patch deploymentruntimeconfig worker-nodes-idle --type=merge \
+    -p "{\"spec\":{\"deploymentTemplate\":{\"spec\":{\"replicas\":$1}}}}" >/dev/null 2>&1
+}
+
+if ! $PRIVATE_ONLY; then
+  trap 'scale_e2e_providers 0' EXIT
+  scale_e2e_providers 1
+  if kubectl wait --for=condition=Healthy provider.pkg.crossplane.io/provider-aws-rds \
+       provider.pkg.crossplane.io/provider-aws-elasticache --timeout=180s >/dev/null 2>&1; then
+    record preflight "rds/elasticache providers awake" PASS ""
+  else
+    record preflight "rds/elasticache providers awake" FAIL "did not go Healthy in 180s"
+    report; exit 1
+  fi
+fi
+
 if ! $PRIVATE_ONLY; then
   if aws sts get-caller-identity --region "$REGION" >/dev/null 2>&1; then
     record preflight "aws cli credentials" PASS ""
