@@ -1,22 +1,14 @@
 #!/usr/bin/env bash
-# Usage: ./docs/cluster-backup/backup-cluster-state.sh [--datastore]
+# Usage: ./docs/cluster-backup/backup-cluster-state.sh
 #
-# Captures cluster secrets, app data, and node config to ~/Desktop/cluster-backup/.
-# Follow the printed instructions to encrypt and move to Dropbox, then delete the
-# plaintext output.
+# Captures cluster secrets, app data, node config, and the k3s control-plane
+# datastore to ~/Desktop/cluster-backup/. Follow the printed instructions to encrypt
+# and move to Dropbox, then delete the plaintext output.
 #
-# --datastore also copies the k3s control-plane datastore, which requires stopping
-# k3s on ctrl-1 for about a minute. Off by default so a routine backup never takes
-# the API server down. Use it before anything that reinstalls k3s.
+# The datastore step stops k3s on ctrl-1 for about a minute, so the API server is
+# away while it runs. That is the price of a copy that restores - a backup without
+# the control plane means rebuilding k3s by hand and reattaching volumes.
 set -uo pipefail
-
-WITH_DATASTORE=false
-for arg in "$@"; do
-  case "$arg" in
-    --datastore) WITH_DATASTORE=true ;;
-    *) echo "unknown argument: $arg"; exit 2 ;;
-  esac
-done
 
 OUT="$HOME/Desktop/cluster-backup"
 CTRL1="pi@192.168.10.100"
@@ -213,29 +205,25 @@ for n in work-1:$WORK1 work-2:$WORK2 work-3:$WORK3; do
     && ok "$name/k3s-agent.service" || fail "$name/k3s-agent.service"
 done
 
-# ── k3s datastore (opt-in) ────────────────────────────────────────────────────
+# ── k3s datastore ─────────────────────────────────────────────────────────────
 # k3s here is single-server on SQLite, not etcd, so there is no etcd-snapshot
 # command. A live copy of a WAL-mode database can be torn, so stop k3s first.
 # This is the last step because it takes the API server away.
-if [[ "$WITH_DATASTORE" == true ]]; then
-  echo "==> k3s datastore (stopping k3s on ctrl-1)"
-  ssh "$CTRL1" "sudo systemctl stop k3s \
-    && sudo tar czf /tmp/k3s-server.tar.gz -C /var/lib/rancher/k3s server \
-    && sudo systemctl start k3s" \
-    && scp -q "$CTRL1:/tmp/k3s-server.tar.gz" "$OUT/nodes/ctrl-1/k3s-server.tar.gz" \
-    && ssh "$CTRL1" "sudo rm -f /tmp/k3s-server.tar.gz" \
-    && ok "ctrl-1/k3s-server.tar.gz" || fail "ctrl-1/k3s-server.tar.gz"
+echo "==> k3s datastore (stopping k3s on ctrl-1)"
+ssh "$CTRL1" "sudo systemctl stop k3s \
+  && sudo tar czf /tmp/k3s-server.tar.gz -C /var/lib/rancher/k3s server \
+  && sudo systemctl start k3s" \
+  && scp -q "$CTRL1:/tmp/k3s-server.tar.gz" "$OUT/nodes/ctrl-1/k3s-server.tar.gz" \
+  && ssh "$CTRL1" "sudo rm -f /tmp/k3s-server.tar.gz" \
+  && ok "ctrl-1/k3s-server.tar.gz" || fail "ctrl-1/k3s-server.tar.gz"
 
-  echo "  waiting for the API server to come back"
-  for _ in $(seq 1 30); do
-    kubectl get --raw /readyz >/dev/null 2>&1 && break
-    sleep 5
-  done
-  kubectl get --raw /readyz >/dev/null 2>&1 \
-    && ok "apiserver back up" || fail "apiserver did not come back - check ctrl-1 before doing anything else"
-else
-  echo "==> k3s datastore skipped (pass --datastore before a k3s reinstall)"
-fi
+echo "  waiting for the API server to come back"
+for _ in $(seq 1 30); do
+  kubectl get --raw /readyz >/dev/null 2>&1 && break
+  sleep 5
+done
+kubectl get --raw /readyz >/dev/null 2>&1 \
+  && ok "apiserver back up" || fail "apiserver did not come back - check ctrl-1 before doing anything else"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
