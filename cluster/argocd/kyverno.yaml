@@ -8,50 +8,60 @@ metadata:
   namespace: argocd
 spec:
   project: cluster
-  source:
-    repoURL: https://kyverno.github.io/kyverno/
-    chart: kyverno
-    targetRevision: 3.9.0
-    helm:
-      releaseName: kyverno
-      values: |
-        # kyverno-api.labels/.annotations default to {}, which Kubernetes drops on write,
-        # so desired says "empty map present" and live says "absent" forever - neither
-        # ignoreDifferences nor a reinstall closes that gap. Real values fix it.
-        kyverno-api:
-          labels:
-            platform.local.lab/managed-by: argocd
-          annotations:
-            platform.local.lab/chart: kyverno
-        # Four Raspberry Pis, and only the admission controller is on the hot path.
-        # One replica each: a second would need leader election for no gain here, and
-        # the chart defaults to three for the admission controller.
-        admissionController:
-          replicas: 1
-          serviceMonitor:
+  sources:
+    - repoURL: https://kyverno.github.io/kyverno/
+      chart: kyverno
+      targetRevision: 3.9.0
+      helm:
+        releaseName: kyverno
+        values: |
+          # kyverno-api.labels/.annotations default to {}, which Kubernetes drops on write,
+          # so desired says "empty map present" and live says "absent" forever - neither
+          # ignoreDifferences nor a reinstall closes that gap. Real values fix it.
+          kyverno-api:
+            labels:
+              platform.local.lab/managed-by: argocd
+            annotations:
+              platform.local.lab/chart: kyverno
+          # Four Raspberry Pis, and only the admission controller is on the hot path.
+          # One replica each: a second would need leader election for no gain here, and
+          # the chart defaults to three for the admission controller.
+          admissionController:
+            replicas: 1
+            serviceMonitor:
+              enabled: true
+              additionalLabels:
+                release: monitoring
+            resources:
+              requests:
+                cpu: 50m
+                memory: 192Mi
+              limits:
+                memory: 384Mi
+          backgroundController:
+            replicas: 1
+            resources:
+              requests:
+                cpu: 25m
+                memory: 96Mi
+              limits:
+                memory: 192Mi
+          # Nothing here generates resources, so cleanup stays off. The reports controller
+          # is on because the policies run as Audit - without it a violation is recorded
+          # nowhere and the audit is silent.
+          cleanupController:
+            enabled: false
+          reportsController:
             enabled: true
-            additionalLabels:
-              release: monitoring
-          resources:
-            requests:
-              cpu: 50m
-              memory: 192Mi
-            limits:
-              memory: 384Mi
-        backgroundController:
-          replicas: 1
-          resources:
-            requests:
-              cpu: 25m
-              memory: 96Mi
-            limits:
-              memory: 192Mi
-        # Nothing here generates or cleans up resources, so both are off. Turning one on
-        # later is a values change, not a reinstall.
-        cleanupController:
-          enabled: false
-        reportsController:
-          enabled: false
+            resources:
+              requests:
+                cpu: 25m
+                memory: 96Mi
+              limits:
+                memory: 192Mi
+    - repoURL: https://github.com/cujarrett/homelab.git
+      targetRevision: main
+      path: cluster/kyverno
   destination:
     server: https://kubernetes.default.svc
     namespace: kyverno

@@ -68,7 +68,7 @@ The word only means something if you remember what came before it.
 
 **The lineage** - hand-run shell scripts → CFEngine, Puppet, and Chef converging mutable machines → Ansible pushing over SSH → Terraform declaring cloud resources behind plan-and-apply → Kubernetes running the loop continuously rather than when a human types apply.
 
-**The distinction worth carrying** - Terraform converges when you run it. Kubernetes converges forever. That gap is the entire reason controllers exist, and it is what [Platform Secret Mirror](./secret-mirror-lab.md) demonstrates in one command: delete the copy and it returns, because nobody has to run anything.
+**The distinction worth carrying** - Terraform converges when you run it. Kubernetes converges forever. That gap is the entire reason controllers exist, and it is what the SecretMirror lab in [Kubernetes Controllers](./controllers.md) demonstrates in one command: delete the copy and it returns, because nobody has to run anything.
 
 **Read** - the twelve-factor app (2011). Half of it now reads as assumed, which is the interesting half. Note which factors Kubernetes made trivial and which it simply made someone else's problem.
 
@@ -80,7 +80,7 @@ Read the arguments rather than collecting the quotes.
 
 **nocode** - his joke repo: the best way to write secure and reliable applications is to write nothing. The joke has an edge, and it is the same one grug swings. Every component is a liability. The most reliable system is the one not built.
 
-**Kubernetes the Hard Way** - his framing is the part worth taking, since [Kubernetes the Hard Way](./kubernetes-the-hard-way.md) already schedules the work. It exists so you understand the parts, and he is emphatic that nobody should run production this way.
+**Kubernetes the Hard Way** - his framing is the part worth taking. It exists so you understand the parts, and he is emphatic that nobody should run production this way.
 
 **The serverless thread** - a long-running argument that most teams should not be operating clusters at all. Worth engaging with honestly rather than dismissing, particularly from inside a homelab built for the pleasure of operating one.
 
