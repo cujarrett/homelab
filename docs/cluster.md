@@ -105,9 +105,10 @@ bootstrap, and are listed in [CLAUDE.md](../CLAUDE.md).
 
 ## Networking
 
-External traffic enters through Cloudflare Tunnel to Traefik on `work-1`. Traefik
-terminates TLS and routes to in-cluster Services. Node-to-node traffic is encrypted by
-nothing; pod-to-pod mTLS is Istio's, via a sidecar on each meshed pod.
+External traffic enters through Cloudflare Tunnel and reaches Traefik on `work-1`, which
+terminates TLS and routes to in-cluster Services. Inside the cluster, pods talk over flannel
+VXLAN across the single VLAN the nodes share, unencrypted. Istio adds mTLS on top of that, in
+the namespaces that are meshed.
 
 ```
 Internet → Cloudflare → cloudflared (cloudflare ns)
