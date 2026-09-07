@@ -2392,7 +2392,7 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
+            "w": 6,
             "x": 0,
             "y": 20
           },
@@ -2438,6 +2438,232 @@ data:
             }
           ],
           "title": "Deployments Available",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "ExternalSecrets reporting Ready. Drops to 0 if ESO cannot reach AWS Secrets Manager.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "red",
+                      "index": 0,
+                      "text": "Not Synced"
+                    }
+                  },
+                  "type": "value"
+                },
+                {
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "color": "red",
+                      "text": "No Data"
+                    }
+                  },
+                  "type": "special"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 6,
+            "y": 20
+          },
+          "id": 352,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "sum(externalsecret_status_condition{condition=\"Ready\",status=\"True\"})",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Secrets Synced",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 3,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.001
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 12,
+            "y": 20
+          },
+          "id": 301,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(rate(circuit_breaker_events_total{result=\"Open\"}[5m])) or vector(0)",
+              "instant": true,
+              "legendFormat": "Circuit Opens/s",
+              "refId": "A"
+            }
+          ],
+          "title": "Circuit Breaker Opens/s",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 3,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.01
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 18,
+            "y": 20
+          },
+          "id": 303,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(rate(controller_runtime_reconcile_errors_total{job=\"crossplane-metrics\"}[5m])) or vector(0)",
+              "instant": true,
+              "legendFormat": "Errors/s",
+              "refId": "A"
+            }
+          ],
+          "title": "Reconcile Errors/s",
           "type": "stat"
         },
         {
@@ -2524,9 +2750,9 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
-            "x": 3,
-            "y": 20
+            "w": 6,
+            "x": 0,
+            "y": 23
           },
           "id": 104,
           "options": {
@@ -2567,111 +2793,9 @@ data:
               "instant": true,
               "legendFormat": "Unbound",
               "refId": "B"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "max(kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes) * 100",
-              "instant": true,
-              "legendFormat": "Fullest",
-              "refId": "C"
             }
           ],
           "title": "PVCs",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "description": "ExternalSecrets reporting Ready. Drops to 0 if ESO cannot reach AWS Secrets Manager.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "decimals": 0,
-              "mappings": [
-                {
-                  "options": {
-                    "0": {
-                      "color": "red",
-                      "index": 0,
-                      "text": "Not Synced"
-                    }
-                  },
-                  "type": "value"
-                },
-                {
-                  "options": {
-                    "match": "null",
-                    "result": {
-                      "color": "red",
-                      "text": "No Data"
-                    }
-                  },
-                  "type": "special"
-                }
-              ],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "red",
-                    "value": 0
-                  },
-                  {
-                    "color": "green",
-                    "value": 1
-                  }
-                ]
-              },
-              "unit": "short"
-            }
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 3,
-            "x": 6,
-            "y": 20
-          },
-          "id": 352,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.2.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "editorMode": "code",
-              "expr": "sum(externalsecret_status_condition{condition=\"Ready\",status=\"True\"})",
-              "instant": true,
-              "legendFormat": "__auto",
-              "range": false,
-              "refId": "A"
-            }
-          ],
-          "title": "Secrets Synced",
           "type": "stat"
         },
         {
@@ -2703,9 +2827,9 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
-            "x": 9,
-            "y": 20
+            "w": 6,
+            "x": 6,
+            "y": 23
           },
           "id": 354,
           "options": {
@@ -2748,73 +2872,6 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "thresholds"
-              },
-              "decimals": 3,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 0.001
-                  }
-                ]
-              },
-              "unit": "short"
-            }
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 3,
-            "x": 12,
-            "y": 20
-          },
-          "id": 301,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.2.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sum(rate(circuit_breaker_events_total{result=\"Open\"}[5m])) or vector(0)",
-              "instant": true,
-              "legendFormat": "Circuit Opens/s",
-              "refId": "A"
-            }
-          ],
-          "title": "Circuit Breaker Opens/s",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
                 "fixedColor": "blue",
                 "mode": "fixed"
               },
@@ -2837,9 +2894,9 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
-            "x": 15,
-            "y": 20
+            "w": 6,
+            "x": 12,
+            "y": 23
           },
           "id": 302,
           "options": {
@@ -2873,73 +2930,6 @@ data:
             }
           ],
           "title": "Reconciles/s",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "decimals": 3,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 0.01
-                  }
-                ]
-              },
-              "unit": "short"
-            }
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 3,
-            "x": 18,
-            "y": 20
-          },
-          "id": 303,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.2.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sum(rate(controller_runtime_reconcile_errors_total{job=\"crossplane-metrics\"}[5m])) or vector(0)",
-              "instant": true,
-              "legendFormat": "Errors/s",
-              "refId": "A"
-            }
-          ],
-          "title": "Reconcile Errors/s",
           "type": "stat"
         },
         {
@@ -2998,9 +2988,9 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
-            "x": 21,
-            "y": 20
+            "w": 6,
+            "x": 18,
+            "y": 23
           },
           "id": 304,
           "options": {
@@ -3107,7 +3097,7 @@ data:
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 23
+            "y": 26
           },
           "id": 17,
           "options": {
@@ -3248,7 +3238,7 @@ data:
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 23
+            "y": 26
           },
           "id": 331,
           "options": {
@@ -3351,7 +3341,7 @@ data:
             "h": 6,
             "w": 12,
             "x": 0,
-            "y": 28
+            "y": 31
           },
           "id": 326,
           "options": {
@@ -3453,7 +3443,7 @@ data:
             "h": 6,
             "w": 12,
             "x": 12,
-            "y": 28
+            "y": 31
           },
           "id": 327,
           "options": {
@@ -3525,7 +3515,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 0,
-            "y": 34
+            "y": 37
           },
           "id": 105,
           "options": {
@@ -3592,7 +3582,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 3,
-            "y": 34
+            "y": 37
           },
           "id": 106,
           "options": {
@@ -3659,7 +3649,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 6,
-            "y": 34
+            "y": 37
           },
           "id": 107,
           "options": {
@@ -3726,7 +3716,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 9,
-            "y": 34
+            "y": 37
           },
           "id": 108,
           "options": {
@@ -3794,7 +3784,7 @@ data:
             "h": 3,
             "w": 6,
             "x": 12,
-            "y": 34
+            "y": 37
           },
           "id": 350,
           "options": {
@@ -3863,7 +3853,7 @@ data:
             "h": 3,
             "w": 6,
             "x": 18,
-            "y": 34
+            "y": 37
           },
           "id": 351,
           "options": {
@@ -4063,7 +4053,7 @@ data:
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 37
+            "y": 40
           },
           "id": 360,
           "options": {
@@ -4196,7 +4186,7 @@ data:
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 37
+            "y": 40
           },
           "id": 353,
           "options": {
@@ -4295,7 +4285,7 @@ data:
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 42
+            "y": 45
           },
           "id": 323,
           "options": {
