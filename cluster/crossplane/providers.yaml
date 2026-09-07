@@ -23,6 +23,30 @@ spec:
                   memory: 256Mi
 
 ---
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: worker-nodes-idle
+spec:
+  deploymentTemplate:
+    spec:
+      # Providers only the platform e2e suite exercises. They hold ~600Mi between runs
+      # for zero managed resources, so the controller is scaled to nothing while the
+      # CRDs stay installed and the compositions still render. Scale to 1 before
+      # `just test-e2e`, back to 0 after.
+      replicas: 0
+      selector: {}
+      template:
+        spec:
+          nodeSelector:
+            node-role.kubernetes.io/worker: worker
+          containers:
+            - name: package-runtime
+              resources:
+                requests:
+                  memory: 256Mi
+
+---
 apiVersion: pkg.crossplane.io/v1
 kind: Function
 metadata:
@@ -75,7 +99,7 @@ metadata:
 spec:
   package: xpkg.upbound.io/upbound/provider-aws-elasticache:v2.6.1
   runtimeConfigRef:
-    name: worker-nodes
+    name: worker-nodes-idle
 ---
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
@@ -93,7 +117,7 @@ metadata:
 spec:
   package: xpkg.upbound.io/upbound/provider-aws-rds:v2.6.1
   runtimeConfigRef:
-    name: worker-nodes
+    name: worker-nodes-idle
 ---
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
