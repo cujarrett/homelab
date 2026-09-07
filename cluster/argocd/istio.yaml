@@ -1,6 +1,6 @@
 # Istio service mesh - sidecar mode. See docs/platform-connections.md.
 # Three charts, ordered by sync-wave: base (CRDs) -> istiod + cni.
-# Cilium stays the CNI; istio-cni chains onto Cilium's conflist (cni.exclusive:false set on Cilium).
+# istio-cni chains onto flannel's conflist.
 ---
 # istio-base - CRDs + cluster RBAC. Must apply before istiod/cni.
 apiVersion: argoproj.io/v1alpha1
@@ -110,7 +110,7 @@ spec:
     helm:
       releaseName: istio-cni
       values: |
-        # Chain onto Cilium's existing conflist. Paths match what Cilium uses on this k3s cluster.
+        # Chain onto the CNI conflist k3s already writes for flannel.
         chained: true
         cniBinDir: /opt/cni/bin
         cniConfDir: /etc/cni/net.d

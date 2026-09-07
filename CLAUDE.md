@@ -95,8 +95,8 @@ SSH access: `ssh pi@192.168.10.10x`
 | DNS | AdGuard Home | Runs in `adguard` namespace, pinned to node `ctrl-1` via nodeSelector, hostPort 53 UDP |
 | External Access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; token from secret `cloudflare-tunnel-token` |
 | Platform Abstraction | Crossplane | Nine XR types - see the Crossplane Platform section below |
-| CNI | Cilium | DaemonSet in `kube-system` on all 4 nodes; Helm chart from `helm.cilium.io`. Pinned to 1.19.6 - 1.20.x fails the BPF verifier on this kernel. Plumbing only - pod networking, WireGuard node encryption, kube-proxy replacement, Hubble, NetworkPolicy. Sole policy enforcer: k3s's kube-router is disabled via `disable-network-policy` in `/etc/rancher/k3s/config.yaml` on `ctrl-1` (node-level, not in this repo). Mesh features (mutual auth, connection policy) belong to Istio; Cilium's SPIRE mutual auth is disabled. |
-| Service Mesh | Istio | Sidecar mesh chained onto Cilium CNI; provides workload mTLS. Permissive mode - nothing is denied. Platform-managed connection policy is designed but not built; see [Platform Connections](./platform/docs/connections.md). |
+| CNI | flannel | k3s's bundled CNI, running at its defaults - no install flags, no `/etc/rancher/k3s/config.yaml`. NetworkPolicy is enforced by k3s's kube-router, also default. Mesh concerns (mTLS, connection policy) belong to Istio. |
+| Service Mesh | Istio | Sidecar mesh chained onto flannel; provides workload mTLS. Permissive mode - nothing is denied. Platform-managed connection policy is designed but not built; see [Platform Connections](./platform/docs/connections.md). |
 | Secrets | External Secrets Operator | Syncs `grafana-admin-secret` from AWS Secrets Manager; `ClusterSecretStore` `aws-secrets-manager` authenticates as the `eso-reader` IAM user. Every other Secret is hand-created |
 | Workload Identity | SPIRE | `spire-server` + `spire-system` namespaces; Helm chart from `spiffe.github.io/helm-charts-hardened`. Issues X.509 SVIDs backing AWS IAM Roles Anywhere, and JWT-SVIDs published via the OIDC discovery provider at `oidc.mattjarrett.dev`
 
@@ -363,7 +363,7 @@ Four projects scope workloads by concern:
 | Project | Allowed source repos | Contents |
 |---|---|---|
 | `platform` | homelab git + `argoproj.github.io/argo-helm` + `charts.crossplane.io/stable` | ArgoCD, Crossplane, compositions, bootstrap |
-| `cluster` | homelab git + `nats-io.github.io/k8s/helm/charts` + `charts.jetstack.io` + `helm.cilium.io` + `spiffe.github.io/helm-charts-hardened` | Longhorn, Traefik, cert-manager, AdGuard, Cloudflare, NATS + NACK, Cilium, SPIRE |
+| `cluster` | homelab git + `nats-io.github.io/k8s/helm/charts` + `charts.jetstack.io` + `spiffe.github.io/helm-charts-hardened` | Longhorn, Traefik, cert-manager, AdGuard, Cloudflare, NATS + NACK, SPIRE |
 | `observability` | homelab git + `prometheus-community.github.io/helm-charts` + `grafana.github.io/helm-charts` | kube-prometheus-stack, Loki, Promtail, platform-exporter |
 | `workloads` | homelab git + homelab-workspaces git | All workspace apps (one Application per homelab-workspaces directory) + blog; `sourceNamespaces: ["*"]` for app-in-any-namespace |
 

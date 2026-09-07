@@ -67,8 +67,8 @@ ssh pi@192.168.10.100 "journalctl -u getty@tty1 -n 30 --no-pager && ps aux | gre
 | External access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; zero-trust public ingress, no exposed firewall ports |
 | Remote access | Tailscale | Subnet router on `ctrl-1`; advertises `192.168.10.0/24`; split DNS for `local.lab` |
 | Platform | Crossplane | XRDs + Compositions in `platform/`; see [Platform](../platform/README.md) |
-| CNI | Cilium | Pod networking, WireGuard node encryption, kube-proxy replacement, Hubble observability, NetworkPolicy. Sole policy enforcer - k3s's kube-router is disabled, see [Kubelet Probe Outage](./postmortems/postmortem-kubelet-probe-outage.md). Its own mutual auth is disabled; mesh concerns belong to Istio |
-| Service mesh | Istio | Sidecar mesh chained onto Cilium; workload mTLS and platform-rendered connection policy. See [Platform Connections](../platform/docs/connections.md) |
+| CNI | flannel | k3s's bundled CNI, at its defaults. NetworkPolicy is enforced by k3s's kube-router, also at its default |
+| Service mesh | Istio | Sidecar mesh chained onto flannel; workload mTLS and platform-rendered connection policy. See [Platform Connections](../platform/docs/connections.md) |
 | Secrets | External Secrets Operator | Syncs `grafana-admin-secret` from AWS Secrets Manager. See [External Secrets](./external-secrets.md) |
 | Workload identity | SPIRE | SPIFFE SVIDs backing AWS IAM Roles Anywhere. See [Platform Workload Identity](../platform/docs/workload-identity.md) |
 | Observability | kube-prometheus-stack | Prometheus (30d retention), Grafana, Alertmanager |
@@ -93,7 +93,6 @@ ssh pi@192.168.10.100 "journalctl -u getty@tty1 -n 30 --no-pager && ps aux | gre
 | `external-secrets` | External Secrets Operator | Writes `grafana-admin-secret` from AWS Secrets Manager |
 | `spire-server`, `spire-system` | SPIRE | Workload identity; agent DaemonSet on all nodes |
 | `istio-system` | Istio | Control plane for the sidecar mesh |
-| `kube-system` | Cilium | CNI, Hubble relay (`hubble.local.lab`) |
 | `crossplane-system` | Crossplane | Platform compositions, XRDs, AWS provider |
 | `platform-exporter` | platform-exporter | Prometheus exporter for platform state |
 | `nats` | NATS + NACK | JetStream cluster (3 replicas) |
@@ -108,7 +107,7 @@ bootstrap, and are listed in [CLAUDE.md](../CLAUDE.md).
 
 External traffic enters through Cloudflare Tunnel to Traefik on `work-1`. Traefik
 terminates TLS and routes to in-cluster Services. Node-to-node traffic is encrypted by
-Cilium with WireGuard; pod-to-pod mTLS is Istio's, via a sidecar on each meshed pod.
+nothing; pod-to-pod mTLS is Istio's, via a sidecar on each meshed pod.
 
 ```
 Internet → Cloudflare → cloudflared (cloudflare ns)
@@ -136,7 +135,6 @@ TLS from `local-lab-ca-issuer`. DNS via AdGuard wildcard `*.local.lab → 192.16
 | `grafana.local.lab` | Grafana |
 | `prometheus.local.lab` | Prometheus |
 | `longhorn.local.lab` | Longhorn |
-| `hubble.local.lab` | Hubble UI (Cilium flow observability) |
 
 ### Public
 

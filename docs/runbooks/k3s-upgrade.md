@@ -17,26 +17,23 @@ routine - everything below exists because of two things that broke it before.
 
 ## Background
 
-This cluster runs Cilium instead of k3s's default networking. Cilium needs two things that a
-default k3s install doesn't set up, and **neither one lives in this Git repo** - they live only
-on the physical nodes, as flags and files the upgrade script doesn't manage. If either is ever
-lost, the cluster comes back up looking fine and then breaks in a way that gives no error
-pointing at the cause. That's why Pre-flight below checks both, every time.
+This cluster runs k3s's own networking - flannel for the CNI, kube-router for NetworkPolicy -
+with no install flags and no `/etc/rancher/k3s/config.yaml`. A plain reinstall therefore comes
+back correct on its own, which is the point of running it stock.
 
-**1. Flannel must stay off.** k3s ships its own CNI (flannel) and starts it by default, even
-though Cilium is what actually handles pod networking here. Flannel and Cilium fight over the
-same network device, and the server's k3s service crash-loops. Fixed with a startup flag,
-`--flannel-backend none`, and flags aren't saved anywhere - you have to keep passing it, or the
-next plain reinstall silently drops it and flannel comes back.
+Two things still deserve a look on every upgrade.
 
-**2. k3s's own NetworkPolicy controller must stay off.** k3s also ships a NetworkPolicy
-enforcer, kube-router, on by default. Cilium enforces NetworkPolicy too. With both running, a
-kubelet health check to any pod that has a NetworkPolicy gets silently dropped by kube-router
-before Cilium ever sees it - the pod looks unhealthy forever even though it's serving requests
-fine. This actually happened; see [Kubelet Probe Outage](../postmortems/postmortem-kubelet-probe-outage.md)
-for what it looked like from the outside. Fixed with a setting in a file on the server,
-`/etc/rancher/k3s/config.yaml`, containing `disable-network-policy: true`. That file already
-exists - it was created once, as the fix - and normally never needs to be touched again.
+**1. NetworkPolicy and kubelet probes.** kube-router matches on address alone. A pod behind a
+NetworkPolicy whose ingress rules name only other pods will have its kubelet probe dropped, and
+it reports NotReady while serving fine. See
+[Kubelet Probe Outage](../postmortems/postmortem-kubelet-probe-outage.md). Charts introduce
+policies like this on upgrade without saying so, which is what
+[cluster/longhorn/longhorn-manager-networkpolicy.yaml](../../cluster/longhorn/longhorn-manager-networkpolicy.yaml)
+exists to patch. After any chart bump, `kubectl get networkpolicy -A` is worth a glance.
+
+**2. Nothing else lives only on the nodes.** Read the flags off the running node anyway rather
+than trusting this document, because the installer rewrites the systemd unit from whatever you
+pass it and silently drops the rest.
 
 ---
 
@@ -52,23 +49,9 @@ ssh pi@192.168.10.100 "sudo grep -A20 'ExecStart=/usr/local/bin/k3s' /etc/system
 ssh pi@192.168.10.101 "sudo grep -A12 'ExecStart=/usr/local/bin/k3s' /etc/systemd/system/k3s-agent.service"
 ```
 
-Confirm `--flannel-backend none` is in there (fix #1). Agents normally run only
-`--node-name <node>`.
-
-Now check fix #2 - the file should already exist from a past fix, so this is confirming it
-survived, not setting anything up for the first time:
-
-```bash
-ssh pi@192.168.10.100 "sudo cat /etc/rancher/k3s/config.yaml"
-```
-
-**Expected output:** `disable-network-policy: true`
-
-**If that's missing, something deleted it - recreate it before upgrading:**
-
-```bash
-ssh pi@192.168.10.100 "sudo mkdir -p /etc/rancher/k3s && echo 'disable-network-policy: true' | sudo tee /etc/rancher/k3s/config.yaml"
-```
+The server runs `--write-kubeconfig-mode 644`, `--disable servicelb`, `--disable local-storage`
+and its TLS SANs. Agents normally run only `--node-name <node>`. There should be no
+`--flannel-backend` flag and no `/etc/rancher/k3s/config.yaml`.
 
 Pin the target version, then check its release notes for a bundled-component bump - Traefik,
 CoreDNS, containerd. Those are what break things here, not the Kubernetes version itself.
@@ -107,7 +90,7 @@ kubectl cordon <node>
 kubectl drain <node> --ignore-daemonsets --delete-emptydir-data --timeout=180s
 ```
 
-`--ignore-daemonsets` is required for Cilium, Istio's CNI agent, Traefik and Promtail.
+`--ignore-daemonsets` is required for Istio's CNI agent, Traefik and Promtail.
 Longhorn's `instance-manager` refuses eviction for a minute or two on its disruption budget then
 succeeds - normal, not a stuck drain.
 
@@ -117,7 +100,7 @@ succeeds - normal, not a stuck drain.
 # server
 ssh pi@192.168.10.100 "curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=$K3S_VERSION sh -s - server \
   --write-kubeconfig-mode 644 --disable servicelb --disable local-storage \
-  --flannel-backend none --tls-san 192.168.10.100 --tls-san ctrl-1.local.lab --node-name ctrl-1"
+  --tls-san 192.168.10.100 --tls-san ctrl-1.local.lab --node-name ctrl-1"
 
 # agent - swap IP and node name
 TOKEN=$(ssh pi@192.168.10.100 "sudo cat /var/lib/rancher/k3s/server/node-token")
@@ -169,19 +152,18 @@ for u in \
   https://grafana.local.lab \
   https://prometheus.local.lab \
   https://longhorn.local.lab \
-  https://adguard.local.lab \
-  https://hubble.local.lab
+  https://adguard.local.lab
 do echo "$u $(curl -sk --netrc-optional -o /dev/null -w '%{http_code}' $u --max-time 10 -A 'Mozilla/5.0')"
 done
 # 200 means up. 302 is fine too - some apps redirect their own root (Prometheus, AdGuard).
-# prometheus/longhorn/hubble sit behind basicAuth - --netrc-optional reads ~/.netrc.
-# A 401 on those three means the netrc entry is missing, not that the host is down.
+# prometheus and longhorn sit behind basicAuth - --netrc-optional reads ~/.netrc.
+# A 401 on those means the netrc entry is missing, not that the host is down.
 # Without -A above, the *.mattjarrett.dev hosts 403 - that's Cloudflare rejecting curl's
 # lack of a browser User-Agent, not the site being down.
 ```
 
-Then run [`/cilium-pre-merge-check`](../../.claude/commands/cilium-pre-merge-check.md) - it probes a
-NetworkPolicy-selected pod from its own node, the only way to catch the host-identity failure.
+Then confirm a pod behind a NetworkPolicy passes its kubelet probe - `longhorn-manager` and both
+WordPress deployments are the ones to check.
 
 ---
 
@@ -196,15 +178,6 @@ existing CRDs lack Helm ownership metadata the install job fails, the DaemonSet 
 kubectl get crd -o name | grep 'traefik\.io' | xargs -I{} kubectl label {} app.kubernetes.io/managed-by=Helm --overwrite
 kubectl get crd -o name | grep 'traefik\.io' | xargs -I{} kubectl annotate {} meta.helm.sh/release-name=traefik-crd meta.helm.sh/release-namespace=kube-system --overwrite
 kubectl delete job -n kube-system helm-install-traefik helm-install-traefik-crd
-```
-
-**Cilium config that never took effect.** Agents read `cilium-config` only at startup; a
-values-only change does not restart the DaemonSet, and `4/4 ready` does not mean restarted.
-Verify from the agent, not the ConfigMap:
-
-```bash
-CIL=$(kubectl get pod -n kube-system -l k8s-app=cilium -o jsonpath='{.items[0].metadata.name}')
-kubectl logs -n kube-system $CIL -c cilium-agent | grep enable-bpf-masquerade
 ```
 
 ---
