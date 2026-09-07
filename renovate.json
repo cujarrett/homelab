@@ -7,6 +7,7 @@
   "assignees": ["cujarrett"],
   "reviewers": ["cujarrett"],
   "enabledManagers": ["argocd", "crossplane", "kubernetes","custom.regex"],
+  "ignoreTests": true,
   "minimumReleaseAge": "7 days",
   "customManagers": [
     {
@@ -51,6 +52,11 @@
       "prBodyNotes": [
         "⚠️ **Before merging:** run `/adguard-pre-pull` - AdGuard's `Recreate` rollout strategy plus `ctrl-1`'s DNS pointing only at AdGuard itself means a cold image pull will fail with `ImagePullBackOff`."
       ]
+    },
+    {
+      "description": "One PR per update. A cluster change that self-applies on merge has to be revertable on its own, and a per-package automerge rule only holds when the package is alone on the branch.",
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": null
     },
     {
       "description": "Merging these by hand is real work, not a rubber stamp. AdGuard has a pre-merge skill to run first, and spire moves independently of the agent binary pinned in workload-identity-sidecar.",
