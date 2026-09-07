@@ -38,7 +38,11 @@ spec:
           - key: "{{ request.operation || 'BACKGROUND' }}"
             operator: AnyIn
             value: [CREATE, UPDATE]
+      # Kyverno defaults both of these on write. Stated here so the repo matches
+      # what the API server stores, otherwise ArgoCD sits permanently OutOfSync.
+      skipBackgroundRequests: true
       validate:
+        allowExistingViolations: true
         # element is out of scope in a message, so the report names the candidates
         # rather than the offender.
         message: >-
@@ -69,7 +73,11 @@ spec:
           - key: "{{ request.operation || 'BACKGROUND' }}"
             operator: AnyIn
             value: [CREATE, UPDATE]
+      # Kyverno defaults both of these on write. Stated here so the repo matches
+      # what the API server stores, otherwise ArgoCD sits permanently OutOfSync.
+      skipBackgroundRequests: true
       validate:
+        allowExistingViolations: true
         message: >-
           apiProxies names an app that is not an Api on this platform. Existing: {{ apis }}
         foreach:
@@ -102,7 +110,11 @@ spec:
           - key: "{{ request.operation || 'BACKGROUND' }}"
             operator: AnyIn
             value: [CREATE, UPDATE]
+      # Kyverno defaults both of these on write. Stated here so the repo matches
+      # what the API server stores, otherwise ArgoCD sits permanently OutOfSync.
+      skipBackgroundRequests: true
       validate:
+        allowExistingViolations: true
         message: >-
           configFrom names a ConfigMap that does not exist in this namespace.
           Existing: {{ configmaps }}
