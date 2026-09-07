@@ -32,10 +32,12 @@ spec:
             operator: AnyIn
             value: [CREATE, UPDATE]
       validate:
+        # The message cannot name the offending host - foreach entries take no message
+        # of their own, and element is out of scope here.
         message: >-
-          {{ element.host }} is on the platform egress denial list. Remove the
-          declaration, or open a pull request against cluster/kyverno/egress-denials.yaml
-          if the block is wrong.
+          A host declared in consumes or apiProxies is on the platform egress denial
+          list. Remove the declaration, or open a pull request against
+          cluster/kyverno/egress-denials.yaml if the block is wrong.
         foreach:
           - list: "request.object.spec.parameters.consumes[?host]"
             deny:

@@ -39,9 +39,11 @@ spec:
             operator: AnyIn
             value: [CREATE, UPDATE]
       validate:
+        # element is out of scope in a message, so the report names the candidates
+        # rather than the offender.
         message: >-
-          consumes names {{ element.namespace }}/{{ element.app }}, which is not an Api
-          on this platform. Existing: {{ apis }}
+          consumes names an app that is not an Api on this platform.
+          Existing: {{ apis }}
         foreach:
           - list: "request.object.spec.parameters.consumes[?app]"
             deny:
@@ -102,7 +104,7 @@ spec:
             value: [CREATE, UPDATE]
       validate:
         message: >-
-          configFrom names {{ element }}, which is not a ConfigMap in this namespace.
+          configFrom names a ConfigMap that does not exist in this namespace.
           Existing: {{ configmaps }}
         foreach:
           - list: "request.object.spec.parameters.configFrom"
