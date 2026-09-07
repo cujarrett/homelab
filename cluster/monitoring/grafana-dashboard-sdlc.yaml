@@ -454,7 +454,7 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Merges per day, split by whether a person clicked the button. The exporter publishes a rolling 24h count, sampled once a day, so each bar is the day ending at that point.",
+          "description": "Merges per day, split by whether a person clicked the button. The exporter publishes a rolling 24h count, so the value read at the end of a day is that day's total. The negative offset pulls each reading back onto the day it covers, which leaves today without a bar until midnight.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -569,7 +569,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"1d\"})",
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"1d\"} offset -1d)",
               "interval": "1d",
               "legendFormat": "Auto merged",
               "range": true,
@@ -581,7 +581,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"1d\"})",
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"1d\"} offset -1d)",
               "interval": "1d",
               "legendFormat": "Manual merged",
               "range": true,
