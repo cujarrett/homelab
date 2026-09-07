@@ -111,11 +111,12 @@ spec:
       releaseName: istio-cni
       values: |
         # k3s keeps its CNI config and plugin binaries under /var/lib/rancher, not the
-        # /etc/cni/net.d and /opt/cni/bin the chart defaults to. Pointed anywhere else,
-        # istio-cni writes a chained config kubelet never reads and pods come up with no
-        # traffic redirection.
+        # /etc/cni/net.d and /opt/cni/bin the chart defaults to. data/cni is the only
+        # directory k3s searches for plugins - data/current/bin holds its own symlinks and
+        # is not searched, so a binary installed there is invisible and every pod on the
+        # node fails to get a sandbox.
         chained: true
-        cniBinDir: /var/lib/rancher/k3s/data/current/bin
+        cniBinDir: /var/lib/rancher/k3s/data/cni
         cniConfDir: /var/lib/rancher/k3s/agent/etc/cni/net.d
   destination:
     server: https://kubernetes.default.svc
