@@ -39,13 +39,6 @@
       "minimumReleaseAge": "0 days"
     },
     {
-      "matchPackageNames": ["cilium"],
-      "minimumReleaseAge": "30 days",
-      "prBodyNotes": [
-        "⚠️ **Before merging:** run `/cilium-pre-merge-check`. Cilium 1.20.x fails the BPF verifier on this kernel, which breaks kubelet host-to-pod probes cluster-wide. Verify `Host: BPF` and a real probe returns 200 before merging. See `docs/postmortem-kubelet-probe-outage.md`."
-      ]
-    },
-    {
       "matchPackageNames": ["wordpress"],
       "minimumReleaseAge": "7 days",
       "prBodyNotes": [
@@ -60,8 +53,8 @@
       ]
     },
     {
-      "description": "Merging these by hand is real work, not a rubber stamp. Cilium and AdGuard each have a pre-merge skill to run first, and spire moves independently of the agent binary pinned in workload-identity-sidecar.",
-      "matchPackageNames": ["cilium", "adguard/adguardhome", "spire"],
+      "description": "Merging these by hand is real work, not a rubber stamp. AdGuard has a pre-merge skill to run first, and spire moves independently of the agent binary pinned in workload-identity-sidecar.",
+      "matchPackageNames": ["adguard/adguardhome", "spire"],
       "automerge": false
     }
   ],

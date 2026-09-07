@@ -15,4 +15,4 @@ Don't memorise seven layers. Trace one packet through all of them.
 - DNS as a protocol - `dig +trace`, SOA and negative caching. The UDR7 negative-caching behaviour is already documented in [CLAUDE.md](../../CLAUDE.md); go prove it with `dig`.
 - HTTP/1.1 vs HTTP/2 framing - where Traefik terminates and what it re-originates
 
-**Artifact** - a doc tracing a request to `myvinyl.mattjarrett.dev` from a phone on cellular → Cloudflare edge → tunnel → cloudflared pod → Traefik → Cilium → Istio sidecar → app, naming the layer at each hop. Worth more than a book.
+**Artifact** - a doc tracing a request to `myvinyl.mattjarrett.dev` from a phone on cellular → Cloudflare edge → tunnel → cloudflared pod → Traefik → flannel → Istio sidecar → app, naming the layer at each hop. Worth more than a book.

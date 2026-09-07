@@ -111,4 +111,4 @@ It checks the pod **specification**, not behaviour. A pod that passes `restricte
 
 It is namespace-scoped, so a namespace with no label is unrestricted - new namespaces are unprotected by default, and that is a gap worth having a habit about rather than a control.
 
-And it is deliberately not applied to infrastructure. `kube-system`, `longhorn-system`, `cilium`, `spire-system` and `istio-system` legitimately run privileged workloads. Labelling those breaks the cluster. The point of PSA is not that nothing is privileged - it is that privilege is concentrated in a few namespaces you can name, instead of spread across every namespace that happens to run an application.
+And it is deliberately not applied to infrastructure. `kube-system`, `longhorn-system`, `spire-system` and `istio-system` legitimately run privileged workloads. Labelling those breaks the cluster. The point of PSA is not that nothing is privileged - it is that privilege is concentrated in a few namespaces you can name, instead of spread across every namespace that happens to run an application.
