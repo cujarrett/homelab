@@ -31,7 +31,11 @@ spec:
           - key: "{{ request.operation || 'BACKGROUND' }}"
             operator: AnyIn
             value: [CREATE, UPDATE]
+      # Kyverno defaults both of these on write. Stated here so the repo matches
+      # what the API server stores, otherwise ArgoCD sits permanently OutOfSync.
+      skipBackgroundRequests: true
       validate:
+        allowExistingViolations: true
         message: >-
           Namespace {{ request.object.metadata.name }} does not set istio-injection.
           An absent label leaves its pods unmeshed by accident rather than by choice,

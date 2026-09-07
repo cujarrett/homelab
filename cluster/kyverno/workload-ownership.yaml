@@ -34,7 +34,11 @@ spec:
           - key: "{{ request.operation || 'BACKGROUND' }}"
             operator: AnyIn
             value: [CREATE, UPDATE]
+      # Kyverno defaults both of these on write. Stated here so the repo matches
+      # what the API server stores, otherwise ArgoCD sits permanently OutOfSync.
+      skipBackgroundRequests: true
       validate:
+        allowExistingViolations: true
         message: >-
           {{ request.object.kind }} {{ request.object.metadata.name }} was not composed by
           a the platform. Declare it as an Api or Spa in homelab-workspaces instead.
