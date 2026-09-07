@@ -156,9 +156,12 @@ spec:
             retentionSize: 32GB
             scrapeInterval: "60s"
             evaluationInterval: "60s"
+            # Request tracks steady-state usage (~950Mi with 30d of series). At 512Mi the
+            # scheduler treated this pod as half its real weight and kept stacking heavy
+            # workloads onto the same node.
             resources:
               requests:
-                memory: 512Mi
+                memory: 1Gi
               limits:
                 memory: 1500Mi
             storageSpec:
