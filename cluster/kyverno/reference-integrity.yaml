@@ -32,6 +32,7 @@ spec:
         - name: apis
           apiCall:
             urlPath: /apis/platform.local.lab/v1alpha1/apis
+            method: GET
             jmesPath: "items[].join('/', [metadata.namespace, metadata.name])"
       preconditions:
         all:
@@ -67,6 +68,7 @@ spec:
         - name: apis
           apiCall:
             urlPath: /apis/platform.local.lab/v1alpha1/apis
+            method: GET
             jmesPath: "items[].join('/', [metadata.namespace, metadata.name])"
       preconditions:
         all:
@@ -104,6 +106,7 @@ spec:
         - name: configmaps
           apiCall:
             urlPath: /api/v1/namespaces/{{ request.object.metadata.namespace }}/configmaps
+            method: GET
             jmesPath: "items[].metadata.name"
       preconditions:
         all:
