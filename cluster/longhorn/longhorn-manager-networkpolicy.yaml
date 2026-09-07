@@ -6,9 +6,9 @@
 # targets read down, which is how they sat unnoticed from the 1.12.1 upgrade onward.
 #
 # The kubelet probe on 9502 arrives from the cni0 bridge on the pod's own node, which is the
-# first address of that node's pod CIDR, not the node's LAN address. Cilium admits it by
-# identity and needs no rule; kube-router matches on address alone and drops it without one.
-# Re-check these four if a node is ever rebuilt.
+# first address of that node's pod CIDR, not the node's LAN address. kube-router matches on
+# address alone, so without these four the probe is dropped and the pod reports NotReady.
+# Re-check the addresses if a node is ever rebuilt.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

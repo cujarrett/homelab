@@ -15,8 +15,8 @@ spec:
         kubeApiServer:
           enabled: false
         # kube-proxy, scheduler, and controller-manager aren't separately reachable on k3s -
-        # proxy is replaced by Cilium, the other two are embedded in the k3s binary. Left
-        # enabled these ServiceMonitors scrape nothing and fire *Down alerts permanently.
+        # all three are embedded in the k3s binary. Left enabled these ServiceMonitors scrape
+        # nothing and fire *Down alerts permanently.
         kubeProxy:
           enabled: false
         kubeScheduler:

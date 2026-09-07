@@ -19,7 +19,7 @@ spec:
       type: ClusterIP
     deployment:
       kind: DaemonSet
-      # Mesh only Traefik's own pods, not all of kube-system (would also sidecar Cilium's hostNetwork DaemonSets).
+      # Mesh only Traefik's own pods, not all of kube-system (would also sidecar hostNetwork DaemonSets).
       # Gives Traefik a verifiable identity for AuthorizationPolicy - prerequisite for enforce: true on apps with a direct Ingress.
       podAnnotations:
         sidecar.istio.io/inject: "true"

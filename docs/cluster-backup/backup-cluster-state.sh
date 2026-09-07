@@ -132,9 +132,14 @@ ssh "$CTRL1" 'WP_DB_PASS=$(sudo kubectl get secret mattjarrett-com-mariadb -n ma
 # The whole of wp-content, not just uploads - plugins and themes carry site
 # behaviour the image does not seed back, and NextGEN keeps gallery images in
 # their own directory outside uploads.
-ssh "$CTRL1" "sudo kubectl exec -n mattjarrett-com deploy/mattjarrett-com-wordpress -c wordpress -- sh -c 'cd /var/www/html/wp-content && tar czf - --exclude=lost+found --exclude=upgrade-temp-backup --exclude=cache .' > /tmp/wp-content.tar.gz" \
-  && scp -q "$CTRL1:/tmp/wp-content.tar.gz" "$OUT/mattjarrett-com-wp-content.tar.gz" \
-  && ssh "$CTRL1" "rm -f /tmp/wp-content.tar.gz" \
+# Streamed straight here rather than staged on ctrl-1 - its /tmp is a tmpfs with less
+# room than these archives need. A live site rewrites caches mid-read, which makes tar
+# exit 1 having still written every file, so the archive is verified instead of trusted.
+kubectl exec -n mattjarrett-com deploy/mattjarrett-com-wordpress -c wordpress -- \
+  tar czf - -C /var/www/html/wp-content --warning=no-file-changed \
+  --exclude=lost+found --exclude=upgrade-temp-backup --exclude=cache . \
+  > "$OUT/mattjarrett-com-wp-content.tar.gz" 2>/dev/null
+tar tzf "$OUT/mattjarrett-com-wp-content.tar.gz" > /dev/null 2>&1 \
   && ok "mattjarrett-com-wp-content.tar.gz" || fail "mattjarrett-com-wp-content.tar.gz"
 
 echo "==> WordPress (kentjarrett-com)"
@@ -145,17 +150,22 @@ ssh "$CTRL1" 'WP_DB_PASS=$(sudo kubectl get secret kentjarrett-com-mariadb -n ke
   && ssh "$CTRL1" "rm -f /tmp/wp.sql" \
   && ok "kentjarrett-com-wordpress.sql" || fail "kentjarrett-com-wordpress.sql"
 
-ssh "$CTRL1" "sudo kubectl exec -n kentjarrett-com deploy/kentjarrett-com-wordpress -c wordpress -- sh -c 'cd /var/www/html/wp-content && tar czf - --exclude=lost+found --exclude=upgrade-temp-backup --exclude=cache .' > /tmp/wp-content.tar.gz" \
-  && scp -q "$CTRL1:/tmp/wp-content.tar.gz" "$OUT/kentjarrett-com-wp-content.tar.gz" \
-  && ssh "$CTRL1" "rm -f /tmp/wp-content.tar.gz" \
+# Streamed straight here rather than staged on ctrl-1 - its /tmp is a tmpfs with less
+# room than these archives need. A live site rewrites caches mid-read, which makes tar
+# exit 1 having still written every file, so the archive is verified instead of trusted.
+kubectl exec -n kentjarrett-com deploy/kentjarrett-com-wordpress -c wordpress -- \
+  tar czf - -C /var/www/html/wp-content --warning=no-file-changed \
+  --exclude=lost+found --exclude=upgrade-temp-backup --exclude=cache . \
+  > "$OUT/kentjarrett-com-wp-content.tar.gz" 2>/dev/null
+tar tzf "$OUT/kentjarrett-com-wp-content.tar.gz" > /dev/null 2>&1 \
   && ok "kentjarrett-com-wp-content.tar.gz" || fail "kentjarrett-com-wp-content.tar.gz"
 
 # ── Node files ────────────────────────────────────────────────────────────────
 echo "==> Node files (ctrl-1)"
 ssh "$CTRL1" 'sudo cat /var/lib/rancher/k3s/server/node-token' > "$OUT/nodes/ctrl-1/node-token" \
   && ok "ctrl-1/node-token" || fail "ctrl-1/node-token"
-# disable-network-policy: true lives only here - losing it silently re-enables k3s's
-# kube-router alongside Cilium and breaks kubelet probes. See docs/postmortem-kubelet-probe-outage.md.
+# k3s runs with no config file today. Captured anyway - if one ever appears, the flags in
+# it are not stored anywhere else.
 ssh "$CTRL1" 'sudo cat /etc/rancher/k3s/config.yaml' > "$OUT/nodes/ctrl-1/k3s-config.yaml" \
   && ok "ctrl-1/k3s-config.yaml" || fail "ctrl-1/k3s-config.yaml"
 scp -q "$CTRL1:~/kiosk.sh" "$OUT/nodes/ctrl-1/kiosk.sh" \
