@@ -110,10 +110,13 @@ spec:
     helm:
       releaseName: istio-cni
       values: |
-        # Chain onto the CNI conflist k3s already writes for flannel.
+        # k3s keeps its CNI config and plugin binaries under /var/lib/rancher, not the
+        # /etc/cni/net.d and /opt/cni/bin the chart defaults to. Pointed anywhere else,
+        # istio-cni writes a chained config kubelet never reads and pods come up with no
+        # traffic redirection.
         chained: true
-        cniBinDir: /opt/cni/bin
-        cniConfDir: /etc/cni/net.d
+        cniBinDir: /var/lib/rancher/k3s/data/current/bin
+        cniConfDir: /var/lib/rancher/k3s/agent/etc/cni/net.d
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
