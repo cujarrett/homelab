@@ -17,12 +17,13 @@
       "allowedVersions": "<7"
     },
     {
-      "description": "minor and patch land as one reviewed-by-CI batch",
+      "description": "minor and patch land as one reviewed-by-CI batch. github-exporter reads the automerge label to tell an update it could merge on its own from one that always needed a person, so renaming the label blanks that half of the SDLC dashboard.",
       "matchUpdateTypes": ["minor", "patch", "digest"],
       "groupName": "non-breaking",
       "automerge": true,
       "automergeType": "pr",
-      "platformAutomerge": true
+      "platformAutomerge": true,
+      "labels": ["automerge"]
     },
     {
       "description": "A major reaches a human on its own",
@@ -34,6 +35,7 @@
     "minimumReleaseAge": null,
     "schedule": null,
     "automerge": true,
-    "platformAutomerge": true
+    "platformAutomerge": true,
+    "labels": ["automerge"]
   }
 }
