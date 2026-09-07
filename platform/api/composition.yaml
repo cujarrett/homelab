@@ -27,7 +27,7 @@ spec:
         kind: GoTemplate
         source: Inline
         inline:
-          template: | # gotemplate
+          template: |
             {{- $xr := .observed.composite.resource }}
             {{- $name := $xr.metadata.name }}
             {{- $ns := $xr.metadata.namespace }}
