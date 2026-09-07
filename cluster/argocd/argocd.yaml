@@ -73,11 +73,12 @@ spec:
             application.namespaces: "*"
           cm:
             # Self-heal runs off watches, so this timer only governs how fast a new Git
-            # commit is noticed. Launchpad pushes its own refresh annotations for the
-            # paths that need to be instant. Jitter spreads the apps across the window
-            # instead of diffing all of them on the same tick.
-            timeout.reconciliation: 60s
-            timeout.reconciliation.jitter: 30s
+            # commit is noticed. Launchpad sandboxes are the demo, and a guest watches
+            # this interval elapse twice, so it is set for them rather than for load.
+            # The controller idles near 1Gi against a 2560Mi limit, which is the room a
+            # full re-sync at this rate has to spike into - watch it before raising.
+            timeout.reconciliation: 10s
+            timeout.reconciliation.jitter: 0s
             controller.diff.server.side: "true"
             resource.customizations.health.networking.k8s.io_Ingress: |
               hs = {}
