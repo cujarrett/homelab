@@ -15,6 +15,12 @@ spec:
             node-role.kubernetes.io/worker: worker
           containers:
             - name: package-runtime
+              # Providers request nothing by default while each holds 270-740Mi, so the
+              # scheduler counts them as free and stacks them on one node. No limit - a
+              # provider that briefly exceeds this should be scheduled honestly, not killed.
+              resources:
+                requests:
+                  memory: 256Mi
 
 ---
 apiVersion: pkg.crossplane.io/v1
