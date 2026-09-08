@@ -846,7 +846,7 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Open PRs waiting, how the last 30 days of merges reached main, and whether CI is green. Candidates are PRs auto-merge could take; excluded are major bumps and anything else outside the grouped branches.",
+          "description": "Open PRs waiting, how the last 30 days of merges reached main, and whether CI is green. Candidates are PRs auto-merge could take; excluded are major bumps and anything else outside the grouped branches. Eligible is the share of the repo's bot merges that the bot was configured to merge itself, which is what separates a repo with automation switched off from one whose updates were all majors.",
           "fieldConfig": {
             "defaults": {
               "custom": {
@@ -1009,6 +1009,48 @@ data:
                     }
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Eligible"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "red",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 0.25
+                        },
+                        {
+                          "color": "green",
+                          "value": 0.6
+                        }
+                      ]
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -1071,6 +1113,16 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
+              "expr": "sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",scope=\"auto-candidate\",window=\"30d\"}) / (sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",window=\"30d\"}) > 0)",
+              "format": "table",
+              "instant": true,
+              "refId": "Eligible"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sum by (repo) (github_exporter_workflow_runs{repo=~\"$repo\",conclusion=\"success\"}) / (sum by (repo) (github_exporter_workflow_runs{repo=~\"$repo\",conclusion=~\"success|failure\"}) > 0)",
               "format": "table",
               "instant": true,
@@ -1095,7 +1147,8 @@ data:
                   "Time 2": true,
                   "Time 3": true,
                   "Time 4": true,
-                  "Time 5": true
+                  "Time 5": true,
+                  "Time 6": true
                 },
                 "renameByName": {
                   "Value #Candidate": "Open (candidate)",
@@ -1103,7 +1156,8 @@ data:
                   "Value #Merged": "Merged 30d",
                   "Value #Open": "Open",
                   "Value #Pass": "CI pass rate",
-                  "repo": "Repo"
+                  "repo": "Repo",
+                  "Value #Eligible": "Eligible"
                 }
               }
             },
