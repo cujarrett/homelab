@@ -277,6 +277,10 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               replicas: {{ $replicas }}
+              # A rolling update that never goes Ready holds the old pods forever.
+              # Without a deadline that stalls silently instead of reporting Degraded,
+              # so a bad image looks identical to a quiet day.
+              progressDeadlineSeconds: 300
               selector:
                 matchLabels:
                   app.kubernetes.io/instance: {{ $name }}

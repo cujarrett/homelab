@@ -31,3 +31,31 @@ spec:
               workload itself flapping.
               Check `argocd app get {{ $labels.name }} --grpc-web` for sync history,
               and `k get pods -n <app namespace>` for restarts.
+
+        # progressDeadlineSeconds on the Api and Spa compositions is what flips this
+        # condition. The old pods keep serving, so nothing is down and nothing else
+        # would ever say so.
+        - alert: WorkloadRolloutStuck
+          expr: kube_deployment_status_condition{condition="Progressing",status="false"} == 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/sdlc-delivery/sdlc"
+            summary: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} gave up rolling out"
+            description: >-
+              A new image never went Ready, so the previous pods are still serving it.
+              Check `k rollout status deploy/{{ $labels.deployment }} -n {{ $labels.namespace }}`
+              and `k get pods -n {{ $labels.namespace }}` for the pod that failed its probe.
+
+        - alert: ArgoCDAppDegraded
+          expr: argocd_app_info{health_status="Degraded"} == 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/sdlc-delivery/sdlc"
+            summary: "ArgoCD app {{ $labels.name }} is Degraded"
+            description: >-
+              The commit reached Git and the cluster could not make it real.
+              Check `argocd app get {{ $labels.name }} --grpc-web` for the failing resource.
