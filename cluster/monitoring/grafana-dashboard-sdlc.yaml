@@ -454,7 +454,7 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Merges per day, split by whether a person clicked the button. A finished day reads the rolling 24h count as it stood at that day's midnight, which is why the offset is there. Today has no such reading yet, so its bar comes from the calendar-day count instead and grows until midnight. That substitution is held to days the exporter was actually running, otherwise it would paint today's number onto every day that predates the exporter.",
+          "description": "Merges per day, split by whether a person clicked the button. A finished day reads the rolling 24h count as it stood at that day's midnight, which is why the offset is there. Today has no such reading yet, so its bar comes from the calendar-day count read at the dashboard's own end time. It has to be that timestamp and not the query's, because Grafana rounds the query end down to the last daily step, where the calendar count has just reset to zero. That substitution is held to days the exporter was actually running, otherwise it would paint today's number onto every day that predates the exporter.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -569,7 +569,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"1d\"} offset -1d) or (sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"today\"} @ end()) and on() sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"1d\"}))",
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"1d\"} offset -1d) or (sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"today\"} @ ${__to:date:seconds}) and on() sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"1d\"}))",
               "interval": "1d",
               "legendFormat": "Auto merged",
               "range": true,
@@ -581,7 +581,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"1d\"} offset -1d) or (sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"today\"} @ end()) and on() sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"1d\"}))",
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"1d\"} offset -1d) or (sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"today\"} @ ${__to:date:seconds}) and on() sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"1d\"}))",
               "interval": "1d",
               "legendFormat": "Manual merged",
               "range": true,
