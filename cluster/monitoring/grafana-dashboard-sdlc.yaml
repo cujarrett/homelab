@@ -65,7 +65,7 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
+            "w": 6,
             "x": 0,
             "y": 0
           },
@@ -128,8 +128,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
-            "x": 3,
+            "w": 6,
+            "x": 6,
             "y": 0
           },
           "id": 61,
@@ -201,8 +201,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
-            "x": 6,
+            "w": 6,
+            "x": 12,
             "y": 0
           },
           "id": 62,
@@ -243,77 +243,6 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Open pull requests with automerge armed that GitHub will not merge, almost always a failed required check. Automation is on and a person is still needed, so this is toil it did not remove.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "decimals": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 1
-                  },
-                  {
-                    "color": "red",
-                    "value": 3
-                  }
-                ]
-              },
-              "unit": "short"
-            }
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 3,
-            "x": 9,
-            "y": 0
-          },
-          "id": 91,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.2.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "sum(github_exporter_pr_open_blocked{repo=~\"$repo\"}) or vector(0)",
-              "instant": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Stuck on a failed check",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Runs on main that passed. Automation only merges on a green required check, so a falling number here is the gate doing its job, not a broken gate.",
           "fieldConfig": {
             "defaults": {
@@ -345,8 +274,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
-            "x": 12,
+            "w": 6,
+            "x": 18,
             "y": 0
           },
           "id": 5,
@@ -387,7 +316,7 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Repos whose GitHub poll failed in the last hour. Every count on this dashboard is a floor while this is above zero.",
+          "description": "Open pull requests with automerge armed that GitHub will not merge, almost always a failed required check. Automation is on and a person is still needed, so this is toil it did not remove.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -402,8 +331,12 @@ data:
                     "value": 0
                   },
                   {
-                    "color": "red",
+                    "color": "yellow",
                     "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 3
                   }
                 ]
               },
@@ -412,11 +345,11 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
-            "x": 15,
-            "y": 0
+            "w": 6,
+            "x": 0,
+            "y": 3
           },
-          "id": 4,
+          "id": 91,
           "options": {
             "colorMode": "value",
             "graphMode": "none",
@@ -441,12 +374,12 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "count(increase(github_exporter_poll_errors_total{repo=~\"$repo\"}[1h]) > 0) or vector(0)",
+              "expr": "sum(github_exporter_pr_open_blocked{repo=~\"$repo\"}) or vector(0)",
               "instant": true,
               "refId": "A"
             }
           ],
-          "title": "Repos with poll errors",
+          "title": "Stuck on a failed check",
           "type": "stat"
         },
         {
@@ -479,9 +412,9 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
-            "x": 18,
-            "y": 0
+            "w": 6,
+            "x": 6,
+            "y": 3
           },
           "id": 94,
           "options": {
@@ -546,9 +479,9 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
-            "x": 21,
-            "y": 0
+            "w": 6,
+            "x": 12,
+            "y": 3
           },
           "id": 95,
           "options": {
@@ -581,6 +514,73 @@ data:
             }
           ],
           "title": "Apps degraded",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Repos whose GitHub poll failed in the last hour. Every count on this dashboard is a floor while this is above zero.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 18,
+            "y": 3
+          },
+          "id": 4,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "count(increase(github_exporter_poll_errors_total{repo=~\"$repo\"}[1h]) > 0) or vector(0)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Repos with poll errors",
           "type": "stat"
         },
         {
@@ -677,7 +677,7 @@ data:
             "h": 7,
             "w": 14,
             "x": 0,
-            "y": 3
+            "y": 6
           },
           "id": 93,
           "options": {
@@ -786,7 +786,7 @@ data:
             "h": 7,
             "w": 10,
             "x": 14,
-            "y": 3
+            "y": 6
           },
           "id": 80,
           "options": {
@@ -1016,7 +1016,7 @@ data:
             "h": 10,
             "w": 24,
             "x": 0,
-            "y": 10
+            "y": 13
           },
           "id": 70,
           "options": {
