@@ -428,4 +428,9 @@ argocd app sync <app-name>
 
 # Get ArgoCD admin password (if initial secret exists)
 kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d
+
+# ArgoCD apps - always fully qualified. A bare "applications" also matches Crossplane's
+# Entra applications.azuread.m.upbound.io, which report SYNCED/READY rather than
+# SYNC STATUS/HEALTH STATUS and read as unhealthy to anything filtering on Synced.
+kubectl get applications.argoproj.io -A
 ```
