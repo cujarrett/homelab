@@ -4336,9 +4336,6 @@ data:
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "axisSoftMin": 98,
-                "barAlignment": 0,
-                "barWidthFactor": 0.8,
-                "drawStyle": "bars",
                 "fillOpacity": 80,
                 "gradientMode": "none",
                 "hideFrom": {
@@ -4346,25 +4343,15 @@ data:
                   "tooltip": false,
                   "viz": false
                 },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
                 "lineWidth": 1,
-                "pointSize": 5,
                 "scaleDistribution": {
                   "type": "linear"
-                },
-                "showPoints": "never",
-                "showValues": false,
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
                 },
                 "thresholdsStyle": {
                   "mode": "off"
                 }
               },
-              "decimals": 3,
+              "decimals": 5,
               "mappings": [],
               "max": 100,
               "thresholds": {
@@ -4397,17 +4384,27 @@ data:
           "id": 361,
           "interval": "30d",
           "options": {
+            "barRadius": 0,
+            "barWidth": 0.7,
+            "fullHighlight": false,
+            "groupWidth": 0.7,
             "legend": {
               "calcs": [],
               "displayMode": "list",
               "placement": "bottom",
               "showLegend": false
             },
+            "orientation": "auto",
+            "showValue": "always",
+            "stacking": "none",
             "tooltip": {
               "hideZeros": false,
               "mode": "single",
               "sort": "none"
-            }
+            },
+            "xField": "Time",
+            "xTickLabelRotation": 0,
+            "xTickLabelSpacing": 0
           },
           "pluginVersion": "13.2.0",
           "targets": [
@@ -4425,7 +4422,22 @@ data:
           ],
           "timeFrom": "1y",
           "title": "Monthly Availability",
-          "type": "timeseries"
+          "transformations": [
+            {
+              "id": "convertFieldType",
+              "options": {
+                "conversions": [
+                  {
+                    "dateFormat": "MMM YYYY",
+                    "destinationType": "string",
+                    "targetField": "Time"
+                  }
+                ],
+                "fields": {}
+              }
+            }
+          ],
+          "type": "barchart"
         },
         {
           "datasource": {
