@@ -29,3 +29,20 @@ spec:
               kubectl get crd -o json | jq -r '.items[] | select([.spec.versions[].served] | index(true) | not) | .metadata.name'.
               If a namespace unrelated to any recent work is also stuck, suspect
               the garbage collector rather than the namespace.
+
+        # MemAvailable, not MemFree. Linux parks reclaimable page cache outside free,
+        # so free reads near zero on a node with plenty of headroom.
+        - alert: NodeMemoryPressure
+          expr: |
+            (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 90
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-mbp/homelab"
+            summary: "{{ $labels.instance }} is at {{ $value | printf \"%.0f\" }}% memory"
+            description: >-
+              Find the heaviest pods with `k top pods -A --sort-by=memory` and the
+              heaviest host processes with `ssh pi@<node> "ps -eo pid,comm,rss --sort=-rss | head"`.
+              On ctrl-1 the k3s server process itself is normally the largest single
+              consumer, so compare against its usual size before blaming a workload.

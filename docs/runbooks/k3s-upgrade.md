@@ -135,6 +135,11 @@ kubectl get nodes -o wide
 # Running but NOT ready - a 0/1 Running pod passes a plain "grep -v Running"
 kubectl get pods -A --no-headers | awk '{split($3,a,"/"); if ($4=="Running" && a[1]!=a[2]) print}'
 
+# Two running pods on one address means host-local IPAM re-issued an in-use IP.
+# Expect no output. See Known traps below for why a drain prevents it.
+kubectl get pods -A --field-selector status.phase=Running -o \
+  jsonpath='{range .items[*]}{.status.podIP}{"\n"}{end}' | grep '^10\.42\.' | sort | uniq -d
+
 kubectl get pods -A --no-headers | grep -vE "Running|Completed"
 kubectl get applications -n argocd
 kubectl get volumes.longhorn.io -n longhorn-system --no-headers -o custom-columns=R:.status.robustness | sort | uniq -c
@@ -179,6 +184,28 @@ kubectl get crd -o name | grep 'traefik\.io' | xargs -I{} kubectl label {} app.k
 kubectl get crd -o name | grep 'traefik\.io' | xargs -I{} kubectl annotate {} meta.helm.sh/release-name=traefik-crd meta.helm.sh/release-namespace=kube-system --overwrite
 kubectl delete job -n kube-system helm-install-traefik helm-install-traefik-crd
 ```
+
+**Restarting the server without draining hands out duplicate pod IPs.** flannel uses host-local
+IPAM, which keeps allocations as files under `/var/lib/cni/networks/cbr0/`. Nothing reconciles
+those files against running sandboxes, so pods that survive a `ctrl-1` k3s restart keep the
+address configured in their netns while losing the reservation behind it. IPAM later re-issues
+that address and two pods answer ARP for one IP. The loser's kubelet probe gets connection
+refused while the pod is healthy on localhost, which reads as a pod stuck `Running` but `0/1`
+with no restarts. The drain in step 1 is what prevents this, so it matters just as much for a
+plain `systemctl restart k3s` or a config change as it does for a version bump.
+
+Count reservations against the pods that actually hold an address - the agents should both be
+zero, and only `ctrl-1` drifts:
+
+```bash
+ssh pi@192.168.10.100 'sudo sh -c "ls /var/lib/cni/networks/cbr0 | grep -c ^10\."'
+kubectl get pods --field-selector spec.nodeName=ctrl-1,status.phase=Running \
+  -A -o json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(sum(1 for p in d["items"] if p["status"].get("podIP") and p["status"]["podIP"] != p["status"].get("hostIP")))'
+```
+
+A gap means some pod holds an unreserved address. Delete whichever pod has no reservation file
+naming its sandbox so it gets a fresh CNI ADD. Flushing ARP only re-runs the race between the
+two claimants and the failure returns within hours.
 
 ---
 
