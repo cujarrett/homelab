@@ -1,0 +1,113 @@
+# An AWS resource whose Crossplane managed resource is gone bills forever, since
+# nothing is left to reconcile or delete it. Exits non-zero so KubeJobFailed alerts.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aws-orphan-scanner
+  namespace: crossplane-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: aws-orphan-scanner
+rules:
+  - apiGroups: ["rds.aws.m.upbound.io", "s3.aws.m.upbound.io", "dynamodb.aws.m.upbound.io", "elasticache.aws.m.upbound.io", "iam.aws.m.upbound.io", "secretsmanager.aws.m.upbound.io"]
+    resources: ["instances", "buckets", "tables", "replicationgroups", "roles", "secrets"]
+    verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: aws-orphan-scanner
+subjects:
+  - kind: ServiceAccount
+    name: aws-orphan-scanner
+    namespace: crossplane-system
+roleRef:
+  kind: ClusterRole
+  name: aws-orphan-scanner
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-orphan-scanner-script
+  namespace: crossplane-system
+data:
+  scan.sh: |
+    #!/bin/bash
+    set -uo pipefail
+    API=https://kubernetes.default.svc
+    SA=/var/run/secrets/kubernetes.io/serviceaccount
+
+    # Every external-name Crossplane currently tracks, one per line. An AWS id absent
+    # from this list has nothing left to manage it.
+    tracked=$(for g in rds/instances s3/buckets dynamodb/tables \
+                       elasticache/replicationgroups iam/roles secretsmanager/secrets; do
+      curl -s --cacert "$SA/ca.crt" -H "Authorization: Bearer $(cat $SA/token)" \
+        "$API/apis/${g%/*}.aws.m.upbound.io/v1beta1/${g#*/}"
+    done | grep -o '"crossplane.io/external-name": *"[^"]*"' | sed 's/.*"\([^"]*\)"$/\1/')
+
+    orphans=0
+    while read -r arn; do
+      [ -n "$arn" ] || continue
+      # Secrets Manager names keep internal "/" and gain a random 6-char suffix,
+      # so neither plain segment matches the external-name k8s stores.
+      case "$arn" in
+        arn:aws:secretsmanager:*) id=$(echo "$arn" | sed -E 's#.*:secret:##; s#-[A-Za-z0-9]{6}$##') ;;
+        *)                        id=${arn##*[:/]} ;;
+      esac
+      if ! grep -qxF "$id" <<< "$tracked"; then
+        echo "ORPHAN $arn"
+        orphans=$((orphans + 1))
+      fi
+    done < <(aws resourcegroupstaggingapi get-resources --region us-east-1 \
+               --tag-filters Key=crossplane-kind --query 'ResourceTagMappingList[].ResourceARN' --output text | tr '\t' '\n')
+
+    echo "$orphans orphaned"
+    [ "$orphans" -eq 0 ]
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: aws-orphan-scanner
+  namespace: crossplane-system
+spec:
+  schedule: "0 6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        spec:
+          serviceAccountName: aws-orphan-scanner
+          restartPolicy: Never
+          containers:
+            - name: scan
+              image: public.ecr.aws/aws-cli/aws-cli:2.31.9
+              command: ["bash", "/scripts/scan.sh"]
+              env:
+                - name: AWS_SHARED_CREDENTIALS_FILE
+                  value: /aws/credentials
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                - name: aws-creds
+                  mountPath: /aws
+                  readOnly: true
+          volumes:
+            - name: scripts
+              configMap:
+                name: aws-orphan-scanner-script
+            - name: aws-creds
+              secret:
+                secretName: aws-orphan-scanner-creds
