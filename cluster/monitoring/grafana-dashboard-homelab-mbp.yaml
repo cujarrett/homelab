@@ -3959,6 +3959,7 @@ data:
             "type": "prometheus",
             "uid": "cluster-availability-archive"
           },
+          "description": "Cumulative availability from the first of the month to now. The query returns the raw up/down signal and Grafana's cumulative mean turns it into the running average, since PromQL subquery windows are fixed literals and cannot grow from a calendar-month anchor.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -4004,7 +4005,6 @@ data:
               },
               "decimals": 3,
               "max": 100,
-              "min": 97.5,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -4025,6 +4025,22 @@ data:
               "unit": "percent"
             },
             "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Availability"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": true,
+                      "tooltip": true,
+                      "viz": true
+                    }
+                  }
+                ]
+              },
               {
                 "matcher": {
                   "id": "byName",
@@ -4120,6 +4136,8 @@ data:
             "y": 40
           },
           "id": 360,
+          "interval": "5m",
+          "maxDataPoints": 10000,
           "options": {
             "annotations": {
               "clustering": -1,
@@ -4150,8 +4168,8 @@ data:
                 "type": "prometheus",
                 "uid": "cluster-availability-archive"
               },
-              "expr": "avg_over_time(((count(up{job=\"node-exporter\"} == 1) >= bool 3) * (max(probe_success{probe_group=\"internet\"}) == bool 1))[30d:30s]) * 100",
-              "legendFormat": "30d Rolling Availability",
+              "expr": "avg_over_time(((count(up{job=\"node-exporter\"} == 1) >= bool 3) * (max(probe_success{probe_group=\"internet\"}) == bool 1))[5m:30s]) * 100",
+              "legendFormat": "Availability",
               "range": true,
               "refId": "A"
             },
@@ -4176,7 +4194,22 @@ data:
               "refId": "C"
             }
           ],
-          "title": "Availability Over Time",
+          "timeFrom": "now/M",
+          "title": "Availability Month to Date",
+          "transformations": [
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "Month to Date Availability",
+                "cumulative": {
+                  "field": "Availability",
+                  "reducer": "mean"
+                },
+                "mode": "cumulativeFunctions",
+                "replaceFields": false
+              }
+            }
+          ],
           "type": "timeseries"
         },
         {
