@@ -1,0 +1,37 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: networking
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: networking
+      interval: 1m
+      rules:
+        # Two pods holding one address is host-local IPAM re-issuing a lost reservation,
+        # and the loser fails its kubelet probe while healthy on localhost. Pod CIDR only,
+        # since host-network pods share the node address, and joined to Running so a
+        # Completed pod's lingering kube_pod_info does not trip it.
+        - alert: DuplicatePodIP
+          expr: |
+            count by (pod_ip) (
+              kube_pod_info{pod_ip=~"10\\.42\\..+"}
+              * on (namespace, pod) group_left()
+              (kube_pod_status_phase{phase="Running"} == 1)
+            ) > 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-orphans/orphaned-resources"
+            summary: "{{ $value | printf \"%.0f\" }} running pods share pod IP {{ $labels.pod_ip }}"
+            description: >-
+              Two pods hold one address, so kubelet probes reach whichever answers ARP
+              first and the loser looks down while being healthy inside.
+              Find them with
+              `k get pods -A -o wide --field-selector status.phase=Running | grep {{ $labels.pod_ip }}`.
+              Delete whichever one has no reservation file naming its sandbox in
+              /var/lib/cni/networks/cbr0/{{ $labels.pod_ip }} so it gets a fresh address.
+              Flushing ARP only re-runs the race and the failure returns within hours.
