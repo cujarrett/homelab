@@ -46,3 +46,17 @@ spec:
               heaviest host processes with `ssh pi@<node> "ps -eo pid,comm,rss --sort=-rss | head"`.
               On ctrl-1 the k3s server process itself is normally the largest single
               consumer, so compare against its usual size before blaming a workload.
+
+        # Pi 5 soft-throttles around 80C; 65C leaves headroom while still catching a trend early.
+        - alert: NodeOvertemp
+          expr: |
+            node_hwmon_temp_celsius{chip="thermal_thermal_zone0", sensor="temp0"} > 65
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-mbp/homelab"
+            summary: "{{ $labels.instance }} CPU temp is {{ $value | printf \"%.1f\" }}C"
+            description: >-
+              Check airflow and case fans on the node. Confirm current temp with
+              `curl -s http://{{ $labels.instance }}/metrics | grep thermal_zone0`.
