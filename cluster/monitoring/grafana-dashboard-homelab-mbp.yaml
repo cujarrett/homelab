@@ -4321,6 +4321,115 @@ data:
         {
           "datasource": {
             "type": "prometheus",
+            "uid": "cluster-availability-archive"
+          },
+          "description": "Availability in rolling 30-day buckets over the last year, independent of the dashboard time picker. Buckets align to the panel range end rather than to calendar month boundaries. Months with no archived data render no bar, so the chart fills in as the archive ages.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "axisSoftMin": 98,
+                "barAlignment": 0,
+                "barWidthFactor": 0.8,
+                "drawStyle": "bars",
+                "fillOpacity": 80,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "decimals": 3,
+              "mappings": [],
+              "max": 100,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 99
+                  },
+                  {
+                    "color": "green",
+                    "value": 99.9
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 24,
+            "x": 0,
+            "y": 45
+          },
+          "id": 361,
+          "interval": "30d",
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "13.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "cluster-availability-archive"
+              },
+              "expr": "avg_over_time(((count(up{job=\"node-exporter\"} == 1) >= bool 3) * (max(probe_success{probe_group=\"internet\"}) == bool 1))[30d:5m]) * 100",
+              "interval": "30d",
+              "legendFormat": "Availability",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "timeFrom": "1y",
+          "title": "Monthly Availability",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
             "uid": "prometheus"
           },
           "fieldConfig": {
@@ -4349,7 +4458,7 @@ data:
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 45
+            "y": 50
           },
           "id": 323,
           "options": {
