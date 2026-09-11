@@ -926,7 +926,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "avg_over_time(((min(up{job=\"node-exporter\"}) == bool 1) * (min(probe_success{probe_group=\"internet\"}) == bool 1))[30d:30s]) * 100",
+              "expr": "avg_over_time(((count(up{job=\"node-exporter\"} == 1) >= bool 3) * (max(probe_success{probe_group=\"internet\"}) == bool 1))[30d:30s]) * 100",
               "instant": true,
               "legendFormat": "30d Availability",
               "refId": "A"
@@ -2750,7 +2750,7 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
+            "w": 5,
             "x": 0,
             "y": 23
           },
@@ -2827,8 +2827,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 6,
+            "w": 5,
+            "x": 5,
             "y": 23
           },
           "id": 354,
@@ -2894,8 +2894,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 12,
+            "w": 5,
+            "x": 14,
             "y": 23
           },
           "id": 302,
@@ -2988,8 +2988,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 18,
+            "w": 5,
+            "x": 19,
             "y": 23
           },
           "id": 304,
@@ -3024,6 +3024,70 @@ data:
             }
           ],
           "title": "Certs Ready",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Running pods sharing one pod-CIDR address. host-local IPAM can re-issue an in-use IP after a k3s server restart, and the losing pod fails its kubelet probe while healthy on localhost. Anything above zero needs the DuplicatePodIP runbook entry in docs/runbooks/k3s-upgrade.md.",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 4,
+            "x": 10,
+            "y": 23
+          },
+          "id": 921,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "count(count by (pod_ip) (kube_pod_info{pod_ip=~\"10\\\\.42\\\\..+\"} * on (namespace, pod) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)) > 1) or vector(0)",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Duplicate Pod IPs",
           "type": "stat"
         },
         {
@@ -4086,7 +4150,7 @@ data:
                 "type": "prometheus",
                 "uid": "cluster-availability-archive"
               },
-              "expr": "avg_over_time(((min(up{job=\"node-exporter\"}) == bool 1) * (min(probe_success{probe_group=\"internet\"}) == bool 1))[30d:30s]) * 100",
+              "expr": "avg_over_time(((count(up{job=\"node-exporter\"} == 1) >= bool 3) * (max(probe_success{probe_group=\"internet\"}) == bool 1))[30d:30s]) * 100",
               "legendFormat": "30d Rolling Availability",
               "range": true,
               "refId": "A"
@@ -4096,7 +4160,7 @@ data:
                 "type": "prometheus",
                 "uid": "cluster-availability-archive"
               },
-              "expr": "1 - min(up{job=\"node-exporter\"})",
+              "expr": "1 - (count(up{job=\"node-exporter\"} == 1) >= bool 3)",
               "legendFormat": "Power Down",
               "range": true,
               "refId": "B"
@@ -4106,7 +4170,7 @@ data:
                 "type": "prometheus",
                 "uid": "cluster-availability-archive"
               },
-              "expr": "1 - min(probe_success{probe_group=\"internet\"})",
+              "expr": "1 - max(probe_success{probe_group=\"internet\"})",
               "legendFormat": "Internet Down",
               "range": true,
               "refId": "C"
