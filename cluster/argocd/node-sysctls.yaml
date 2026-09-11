@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: node-sysctls
+  namespace: argocd
+spec:
+  project: cluster
+  source:
+    repoURL: https://github.com/cujarrett/homelab.git
+    targetRevision: main
+    path: cluster/node-sysctls
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: node-sysctls
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
