@@ -12,9 +12,14 @@
   "postUpdateOptions": ["gomodTidy"],
   "packageRules": [
     {
-      "description": "Angular 22 peers typescript >=6.0 <6.1 - TypeScript 7 is the native port and no Angular release accepts it yet",
+      "description": "Angular 22 peers typescript >=6.0 <6.1. TypeScript 7 is the native port and no Angular release accepts it yet.",
       "matchPackageNames": ["typescript"],
       "allowedVersions": "<7"
+    },
+    {
+      "description": "@angular/build 22 peers vitest ^4. Taking vitest 5 leaves npm unable to resolve the tree at all, so every later lockfile update fails.",
+      "matchPackageNames": ["vitest", "@vitest/**"],
+      "allowedVersions": "<5"
     },
     {
       "description": "minor and patch land as one reviewed-by-CI batch. github-exporter reads the automerge label to tell an update it could merge on its own from one that always needed a person, so renaming the label blanks that half of the SDLC dashboard.",
