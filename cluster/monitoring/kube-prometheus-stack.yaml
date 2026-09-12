@@ -96,6 +96,10 @@ spec:
             userKey: admin-user
             passwordKey: admin-password
           grafana.ini:
+            plugins:
+              # Grafana 13 tries to update its bundled plugins on startup, which kills the
+              # running plugin process and then fails on the read-only image filesystem.
+              preinstall_auto_update: false
             auth:
               anonymous:
                 enabled: true
