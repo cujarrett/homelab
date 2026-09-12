@@ -64,7 +64,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: prune
-              image: bitnami/kubectl:1.34
+              image: alpine/kubectl:1.36.3
               command: ["sh", "/scripts/prune.sh"]
               resources:
                 requests:
