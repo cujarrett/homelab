@@ -32,19 +32,42 @@ echo | openssl s_client -connect grafana.local.lab:443 -showcerts 2>/dev/null | 
 # Should output 2
 ```
 
-If iOS still shows "connection not private", also export and re-trust the CA on the device:
+## Trusting the CA on a device
+
+A "connection not private" warning that survives rebundling means the device does not
+trust the CA at all. Same file works everywhere, only the install differs. Export it once:
 
 ```bash
-kubectl get secret local-lab-ca-secret -n cert-manager -o jsonpath='{.data.tls\.crt}' | base64 -d > ~/Desktop/local-lab-ca.crt
+kubectl get secret local-lab-ca-secret -n cert-manager -o jsonpath='{.data.tls\.crt}' | base64 -d \
+  > ~/Desktop/local-lab-ca.crt
 ```
 
-AirDrop `local-lab-ca.crt` to iPhone → Settings → General → VPN & Device Management → Install → Settings → General → About → Certificate Trust Settings → enable full trust.
+Only `tls.crt` leaves the cluster. `tls.key` in that same secret is the CA private key, and
+anyone holding it can mint a trusted cert for any hostname on every machine trusting this CA.
 
-## macOS trust store
+**macOS**
 
-Chrome on macOS shows `NET::ERR_CERT_AUTHORITY_INVALID` when the cluster CA has been rotated but the System keychain still holds the old one. Rebundling does not fix this - the trusted root itself has to be replaced.
+```bash
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/Desktop/local-lab-ca.crt
+```
 
-Compare what the cluster has against what the Mac trusts:
+**iOS** - AirDrop the file, then Settings, General, VPN & Device Management, Install. Trust
+is a separate step: Settings, General, About, Certificate Trust Settings, enable full trust.
+
+**Windows** - copy the file over, right-click, Install Certificate, then **Local Machine**,
+then **Place all certificates in the following store** and browse to **Trusted Root
+Certification Authorities**. The default "Automatically select" files a self-signed CA under
+Intermediate, where Chrome ignores it.
+
+Quit the browser fully afterwards (Cmd-Q, not just the window) - it caches trust decisions
+for the life of the process. Firefox ships its own trust store on every platform and ignores
+the OS one, so import the same file again under Settings, Privacy & Security, Certificates,
+View Certificates, Authorities.
+
+## Replacing a rotated CA on macOS
+
+Adding the new CA is not enough when an old one is still trusted. Compare the cluster's CA
+against the keychain's:
 
 ```bash
 kubectl get secret local-lab-ca-secret -n cert-manager -o jsonpath='{.data.tls\.crt}' | base64 -d \
@@ -53,28 +76,21 @@ security find-certificate -a -c local-lab-ca -p /Library/Keychains/System.keycha
   | openssl x509 -noout -dates -fingerprint
 ```
 
-Different fingerprints means the Mac is trusting a rotated-out CA. Replace it.
+Different fingerprints means the Mac trusts a rotated-out CA. Add the new one first, so an
+interrupted run leaves the Mac over-trusting rather than trusting nothing, then delete the
+rest.
 
-Authenticate first. `sudo` inside the loop below would otherwise read its password
-prompt from the piped hash list and swallow it.
+`sudo` inside the loop would otherwise read its password prompt from the piped hash list and
+swallow it:
 
 ```bash
 sudo -v
 ```
 
-Add the new CA before removing the old one, so an interrupted run leaves the Mac
-over-trusting rather than trusting nothing.
-
-```bash
-kubectl get secret local-lab-ca-secret -n cert-manager -o jsonpath='{.data.tls\.crt}' | base64 -d > /tmp/local-lab-ca.crt
-sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain /tmp/local-lab-ca.crt
-```
-
 ```bash
 # delete-certificate takes one hash per call, and a rotation can leave more than one
 # behind. Collect the hashes before deleting - the list shifts as entries are removed.
-NEW=$(openssl x509 -in /tmp/local-lab-ca.crt -noout -fingerprint \
-  | sed 's/.*=//; s/://g')
+NEW=$(openssl x509 -in ~/Desktop/local-lab-ca.crt -noout -fingerprint | sed 's/.*=//; s/://g')
 STALE=$(security find-certificate -a -c local-lab-ca -Z /Library/Keychains/System.keychain \
   | awk '/^SHA-1 hash: /{print $3}' | grep -v "$NEW")
 for hash in $STALE; do
@@ -90,5 +106,3 @@ security find-certificate -a -c local-lab-ca -Z /Library/Keychains/System.keycha
 echo | openssl s_client -connect grafana.local.lab:443 -servername grafana.local.lab 2>&1 \
   | grep "Verify return code"   # should output 0 (ok)
 ```
-
-Quit Chrome fully (Cmd-Q, not just the window) and reopen - it caches trust decisions for the life of the process.
