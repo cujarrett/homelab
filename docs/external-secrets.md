@@ -8,8 +8,8 @@ Workload credentials, controller-generated TLS, and anything a composition deriv
 
 ## Adding a credential
 
-1. Write the parameter as a `SecureString`. Stage the value in a file under `local-only/`, never on
-   the command line.
+1. Write the parameter as a `SecureString`. Stage the value in a file under `local-only/` so it never lands in
+   shell history.
 2. Add an `ExternalSecret` to that app's file.
 3. If the namespace is new, add it to the store's `conditions`, or ESO refuses the fetch.
 
