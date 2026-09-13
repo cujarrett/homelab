@@ -70,14 +70,11 @@ spec:
         configs:
           params:
             server.insecure: "true"
-            application.namespaces: "*"
           cm:
             # Self-heal runs off watches, so this timer only governs how fast a new Git
-            # commit is noticed. launchpad-api patches its demo Applications directly
-            # when it commits, so sandbox latency no longer depends on this value and it
-            # is set for steady-state cost instead. Jitter spreads the apps across the
-            # interval; without it they all refresh on one tick and the controller
-            # spikes, and it idles near 1Gi against a 2560Mi limit.
+            # commit is noticed. Jitter spreads the apps across the interval; without it
+            # they all refresh on one tick and the controller spikes, and it idles near 1Gi
+            # against a 2560Mi limit.
             timeout.reconciliation: 60s
             timeout.reconciliation.jitter: 30s
             controller.diff.server.side: "true"

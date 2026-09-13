@@ -162,52 +162,17 @@ To restore filtering without making AdGuard a hard dependency for every device, 
 
 ## Cloudflare Tunnel Operations
 
-The `cloudflare-tunnel-token` secret has a single key, `tunnel-token` - a double-base64-encoded JSON blob with fields `a` (account ID), `t` (tunnel ID), and `s` (tunnel secret). Retrieve the IDs with:
-```bash
-kubectl get secret cloudflare-tunnel-token -n cloudflare -o jsonpath='{.data.tunnel-token}' | base64 -d | base64 -d | python3 -c "import json,sys; d=json.load(sys.stdin); print('account:', d['a'], 'tunnel:', d['t'])"
-```
-The account ID is also visible in the Cloudflare dashboard URL (`dash.cloudflare.com/<account-id>/`).
+Use the `/add-cloudflare-tunnel-hostname` skill. The API is a full replace, so a hand-edit has to
+fetch the current ingress array, append, then PUT it all back, which is what the skill does.
 
-All hostnames route to: `https://192.168.10.101:443`. WordPress hosts (`mattjarrett.com`, `kentjarrett.com`) use `noTLSVerify: false` + `originServerName: <hostname>` so cloudflared verifies the Let's Encrypt origin cert; all other hostnames use `noTLSVerify: true`. A hostname can only flip to verified after its `letsencrypt-prod` cert is issued and served by Traefik, otherwise the tunnel 502s - new hostnames must start with `noTLSVerify: true`.
-
-**Every new public hostname requires a tunnel config update.** The API is a full replace - always fetch first, append, then PUT back.
-
-Adding a new public hostname:
-```bash
-# 0. Get IDs from cluster
-CREDS=$(kubectl get secret cloudflare-tunnel-token -n cloudflare -o jsonpath='{.data.tunnel-token}' | base64 -d | base64 -d)
-export ACCOUNT_ID=$(echo "$CREDS" | python3 -c "import json,sys; print(json.load(sys.stdin)['a'])")
-export TUNNEL_ID=$(echo "$CREDS" | python3 -c "import json,sys; print(json.load(sys.stdin)['t'])")
-export CF_TOKEN=<token>
-
-# 1. Fetch current config
-curl -s -X GET \
-  "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/configurations" \
-  -H "Authorization: Bearer $CF_TOKEN" | python3 -m json.tool
-
-# 2. PUT the full ingress array back with the new entry added before the catch-all:
-curl -s -X PUT \
-  "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/configurations" \
-  -H "Authorization: Bearer $CF_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "config": {
-      "ingress": [
-        ...existing entries...,
-        {"hostname":"<new-hostname>","service":"https://192.168.10.101:443","originRequest":{"noTLSVerify":true}},
-        {"service":"http_status:404"}
-      ],
-      "warp-routing":{"enabled":false}
-    }
-  }'
-```
-
-**Required for Let's Encrypt cert issuance:** the tunnel hostname must be added *before* the cert request is created, otherwise the HTTP-01 challenge self-check fails. If the cert is already stuck pending, delete the CertificateRequest to force a retry:
-```bash
-kubectl delete certificaterequest -n <namespace> --all
-```
-
-**API token permissions needed:** Cloudflare Zero Trust → Argo Tunnel (Legacy) → Edit
+- Every hostname routes to `https://192.168.10.101:443`
+- WordPress hosts use `noTLSVerify: false` + `originServerName: <hostname>`; everything else uses
+  `noTLSVerify: true`. A hostname can only flip to verified once its `letsencrypt-prod` cert is
+  issued and served, otherwise the tunnel 502s, so new hostnames start unverified
+- **The tunnel entry must exist before the cert request**, or the HTTP-01 self-check fails. If a
+  cert is stuck pending, `kubectl delete certificaterequest -n <namespace> --all` forces a retry
+- The token in `cloudflare-tunnel-token` is a double-base64 JSON blob with `a` (account), `t`
+  (tunnel) and `s` (secret). API token needs Zero Trust -> Argo Tunnel (Legacy) -> Edit
 
 ## Monitoring Stack Details
 - **Prometheus (main)**: `monitoring-kube-prometheus-prometheus`, port 9090, 30d retention, 35Gi PVC
@@ -229,19 +194,13 @@ Skipping the recreate leaves the app permanently OutOfSync, and any future pod r
 ### Grafana Dashboards
 Colors follow [Dashboard Colors](./cluster/monitoring/dashboard-colors.md) - green/yellow/red are reserved for health, every other value uses the blue/purple family. Read it before adding or editing a panel.
 
-Dashboards are ConfigMaps with label `grafana_dashboard: "1"` in any namespace. Apply locally to test before committing:
-```bash
-kubectl apply -f cluster/monitoring/<dashboard>.yaml
-```
+Each dashboard is a ConfigMap in [cluster/monitoring/](./cluster/monitoring/) named
+`grafana-dashboard-*.yaml`, labelled `grafana_dashboard: "1"`, with its UID inside the file. List
+them with `ls` rather than keeping an index here. Test with `kubectl apply -f` before committing.
 
-Every dashboard is a ConfigMap in [cluster/monitoring/](./cluster/monitoring/) named `grafana-dashboard-*.yaml`, with its UID inside the file. List them with `ls cluster/monitoring/grafana-dashboard-*.yaml` rather than keeping an index here - a hand-maintained table goes stale the first time one is added.
-
-**Adding a new dashboard to the kiosk playlist:**
-1. Create the dashboard ConfigMap in `cluster/monitoring/` with `grafana_dashboard: "1"` label
-2. Keep height at exactly 5 grid units (`"h": 5`) so it fits the 1U display
-3. Use `"instant": true` on all stat panel targets - avoids heavy range queries that crash the Pi
-4. Apply locally to test: `kubectl apply -f cluster/monitoring/<dashboard>.yaml`
-5. Add the dashboard to the kiosk playlist in the Grafana UI at `https://grafana.local.lab/playlists` (playlist `adc6g24` - UI-managed, not provisioned from Git)
+For the kiosk playlist, height must be exactly 5 grid units (`"h": 5`) to fit the 1U display, and
+stat panel targets need `"instant": true` or the range queries crash the Pi. Add it to playlist
+`adc6g24` in the Grafana UI, which is not provisioned from Git.
 
 ### Traefik Prometheus label quirk
 Prometheus renames the `service` label from Traefik metrics to `exported_service` to avoid collision. Always use `exported_service=~"..."` in Traefik queries.
@@ -254,57 +213,16 @@ Service label format: `{namespace}-{servicename}-{port}@kubernetes`
 - `jspollock.mattjarrett.dev` → `js-pollock-js-pollock.*@kubernetes`
 
 ## 1U Display (ctrl-1)
-`ctrl-1` runs a kiosk browser on the attached display. It is **not** managed by systemd - it's a bare background process under the `pi` user.
+`ctrl-1` drives an attached 1424x280 LCD with a kiosk browser, run as a bare background process
+under the `pi` user, not systemd. The script, the Xorg config a rebuilt ctrl-1 needs, and how to
+change the URL are in [docs/kiosk/](./docs/kiosk/).
 
-- Hardware: GeeekPi 6.91" 1U rack-mount LCD, native 1424×280, capacitive touch, mounted in the DeskPi RackMate
-- Script: `~/kiosk.sh` on `ctrl-1`
-- Current URL: `https://grafana.local.lab/playlists/play/adc6g24?kiosk`
-
-### X server config (manual - not in Git)
-The Pi 5 has two DRM devices (`card0` = v3d, `card1` = display). Without explicit config, Xorg fails with "Cannot run in framebuffer mode". A config file must exist at `/etc/X11/xorg.conf.d/99-pi5.conf` on ctrl-1:
-```
-Section "Device"
-    Identifier "Modesetting"
-    Driver "modesetting"
-    Option "kmsdev" "/dev/dri/card1"
-EndSection
-
-Section "Monitor"
-    Identifier "HDMI-1"
-    DisplaySize 172 34
-EndSection
-```
-If ctrl-1 is ever rebuilt, create this file before attempting to start the kiosk:
-```bash
-sudo mkdir -p /etc/X11/xorg.conf.d
-sudo tee /etc/X11/xorg.conf.d/99-pi5.conf << 'EOF'
-Section "Device"
-    Identifier "Modesetting"
-    Driver "modesetting"
-    Option "kmsdev" "/dev/dri/card1"
-EndSection
-
-Section "Monitor"
-    Identifier "HDMI-1"
-    DisplaySize 172 34
-EndSection
-EOF
-```
-
-To update the URL without rebooting ctrl-1:
-```bash
-# 1. Edit the URL
-ssh pi@192.168.10.100 "sed -i 's|OLD_URL|NEW_URL|' ~/kiosk.sh"
-
-# 2. Restart the tty1 session - triggers autologin → startx → kiosk.sh (k3s is unaffected)
-ssh pi@192.168.10.100 "sudo systemctl restart getty@tty1.service"
-```
-
-**Do not** just `pkill chromium` - the `while true` loop in kiosk.sh will relaunch chromium with the URL already loaded in memory, ignoring the file change. Restarting getty re-runs `.bashrc` which re-sources the updated script.
+Do **not** just `pkill chromium` to pick up a URL change - the `while true` loop relaunches it from
+memory. Restart `getty@tty1.service` so `.bashrc` re-sources the script.
 
 ## Crossplane Platform
 
-Crossplane core runs with `--enable-realtime-compositions` (set via Helm `args` in `cluster/argocd/crossplane.yaml`) so composite reconciliation reacts immediately to composed-resource changes via watch, instead of only on the default 60s poll interval. Without it, a composed resource (e.g. an AWS-backed `Role`/`Bucket`) going `Ready` can sit for up to a minute before its dependent secret/status propagates to the XR - this was diagnosed as multi-second dead time in Launchpad guest sandbox rollouts before the flag was added.
+Crossplane core runs with `--enable-realtime-compositions` (Helm `args` in [cluster/argocd/crossplane.yaml](./cluster/argocd/crossplane.yaml)) so composite reconciliation reacts to composed-resource changes by watch rather than waiting out the 60s poll. Without it a composed resource going Ready can sit for up to a minute before its status reaches the XR.
 
 Ten platform types are defined under `platform/`:
 
@@ -347,16 +265,8 @@ DO NOT remove the file first - that orphans resources.
 - `longhorn-delete` - use for `dataRetention: delete` (PV wiped on XR deletion)
 - The `dataRetention` field in the WordPress XR controls which is used
 
-### WordPress restore
-Backup location: `REDACTED`
-```bash
-bash docs/wordpress/restore-wordpress.sh \
-  --backup-dir "REDACTED" \
-  --namespace mattjarrett-com \
-  --instance mattjarrett-com \
-  --old-url http://127.0.0.1 \
-  --new-url https://mattjarrett.com
-```
+### WordPress backup and restore
+Scripts and the full procedure are in [docs/wordpress/](./docs/wordpress/). Backups are off-repo.
 
 ## ArgoCD AppProjects
 Four projects scope workloads by concern:
@@ -365,9 +275,8 @@ Four projects scope workloads by concern:
 | `platform` | homelab git + `argoproj.github.io/argo-helm` + `charts.crossplane.io/stable` | ArgoCD, Crossplane, compositions, bootstrap |
 | `cluster` | homelab git + `nats-io.github.io/k8s/helm/charts` + `charts.jetstack.io` + `spiffe.github.io/helm-charts-hardened` | Longhorn, Traefik, cert-manager, AdGuard, Cloudflare, NATS + NACK, SPIRE |
 | `observability` | homelab git + `prometheus-community.github.io/helm-charts` + `grafana.github.io/helm-charts` | kube-prometheus-stack, Loki, Promtail, platform-exporter |
-| `workloads` | homelab git + homelab-workspaces git | All workspace apps (one Application per homelab-workspaces directory) + blog; `sourceNamespaces: ["*"]` for app-in-any-namespace |
+| `workloads` | homelab git + homelab-workspaces git | All workspace apps (one Application per homelab-workspaces directory) + blog |
 
-Applications from the `workloads` project can live in any namespace (`sourceNamespaces: ["*"]`).
 
 ## Key Conventions
 - ArgoCD `automated: { prune: true, selfHeal: true }` on all apps - cluster converges to repo state automatically
@@ -382,22 +291,15 @@ Applications from the `workloads` project can live in any namespace (`sourceName
 All homelab Go services follow the same layout. When editing or creating a Go app:
 
 - **Build tool: `just`, not `make`** - every Go repo has a `justfile` at the root
-- **Standard recipes** (always the same across all apps):
-  | Recipe | What it does |
-  |---|---|
-  | `just ci` | `lint → test → build` (run this before pushing) |
-  | `just lint` | `go mod tidy -diff` + `golangci-lint run` |
-  | `just test` | `go test -race ./...` |
-  | `just build` | `go build -o <app-name> .` |
-  | `just run` | `go run .` |
-- **Binary name = repo name** - always pass `-o <repo-name>` to `go build`
-- **Race detector always on** - `go test -race ./...`, not `go test ./...`
+- **Standard recipes**, identical across apps - `just ci` (lint, test, build - run before pushing),
+  `lint` (`go mod tidy -diff` + `golangci-lint run`), `test` (`go test -race ./...`), `build`, `run`
+- **Binary name = repo name**, always `-o <repo-name>`. Race detector always on
 - **Stdlib only** - no HTTP frameworks; stdlib `net/http` + `slog`
 - **Graceful shutdown** via `signal.NotifyContext`
 - **/healthz route required** on every app - Kubernetes readiness probe hits `/healthz`
 - **CI/CD** - every repo ships `.github/workflows/ci.yml`: a separate `test` job (`go test ./...` + `go vet ./...`), then `build-and-push` (`needs: test`, `if: main`, builds ARM64 → `ghcr.io/cujarrett/<repo>`), then `deploy` (updates the image tag in `homelab-workspaces`). Test always gates build.
 - **Renovate** - every repo ships `renovate.json` extending the shared preset at `github>cujarrett/homelab//.github/renovate-shared`. Policy lives in the preset, not per repo.
-- **Per-repo `CLAUDE.md`** - standalone repos, so each carries the git rules, pre-commit safety check, and grug philosophy (Claude working in that repo won't see this file). The `/new-go-api` skill scaffolds all of the above.
+- **Per-repo `CLAUDE.md`** - standalone repos, so each carries the git rules, pre-commit safety check, and grug philosophy (Claude working in that repo won't see this file). The `/new-go-api` skill scaffolds all of the above, and is how a new Go API starts.
 
 Go apps in this workspace:
 | Repo | Binary | Notes |
@@ -407,30 +309,14 @@ Go apps in this workspace:
 | `weather-exporter` | `weather-exporter` | Weather Prometheus exporter |
 | `launchpad-api` | `launchpad-api` | BFF for Launchpad UI |
 
-To scaffold a new Go API, use the `/new-go-api` skill (`.claude/commands/new-go-api.md`).
-
 ## Common Commands
 ```bash
-# Check all PVCs
-kubectl get pvc -A
-
-# Watch pods in monitoring
-kubectl get pods -n monitoring -w
-
-# Scale down a StatefulSet (e.g. before PVC resize)
-kubectl scale statefulset <name> -n <namespace> --replicas=0
-
-# ArgoCD login (local)
-argocd login argocd.local.lab --username admin --insecure
-
-# Force ArgoCD sync
-argocd app sync <app-name>
-
-# Get ArgoCD admin password (if initial secret exists)
-kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d
-
-# ArgoCD apps - always fully qualified. A bare "applications" also matches Crossplane's
-# Entra applications.azuread.m.upbound.io, which report SYNCED/READY rather than
+# Always fully qualified. A bare "applications" also matches Crossplane's Entra
+# applications.azuread.m.upbound.io, which report SYNCED/READY rather than
 # SYNC STATUS/HEALTH STATUS and read as unhealthy to anything filtering on Synced.
 kubectl get applications.argoproj.io -A
+
+argocd login argocd.local.lab --username admin --insecure
+argocd app sync <app-name>
+kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d
 ```
