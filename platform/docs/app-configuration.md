@@ -27,10 +27,6 @@ spec:
     configFrom: [orders-config]            # ConfigMaps
     secretsFrom: [orders-credentials]      # Secrets
     provides:
-      - name: browse
-        auth: mesh
-        allowedCallers:
-          - { namespace: team-b, app: storefront }
       - name: collection-write
         auth: workload
         allowedCallers:
@@ -46,12 +42,11 @@ spec:
 
 `provides` is what this API offers and who holds it. `consumes` is everything it calls, naming either an on-platform app or an off-platform host. Both live in the app's own file, and an `allowedCallers` line is the grant.
 
-`auth` says what a caller must prove, and decides which Entra object exists and which claim arrives. It is required on every interface rather than defaulted, because whether a call needs a token is worth stating.
-- `mesh` means the caller's workload identity is enough. No token, no Entra object.
+`auth` says what a caller must prove, and decides which Entra object exists and which claim arrives. It is required on every interface rather than defaulted, so every interface states it.
 - `workload` is a service calling as itself, carrying an Entra app role, checked through the `roles` claim.
 - `user` is a service calling for a signed-in person, carrying a delegated scope, checked through `scp`.
 
-Most interfaces are `mesh`. An app gets an Entra registration only when it offers an interface that needs a token, or calls an app that might.
+An app that only takes calls without checking a token leaves `provides` out. Reachability is then decided by each caller's `consumes`. An app gets an Entra registration only when it offers an interface, or calls an app that might.
 
 A `consumes` entry naming an app names only the app. Which interfaces it may use is already stated by that app's `allowedCallers`, and the injected scope ends in `/.default`, which asks Entra for every role this caller already holds there. A caller never has to read another team's file to find an interface name.
 
@@ -96,7 +91,7 @@ The platform creates and owns every Entra object. None is made by hand.
 
 An app gets a registration the first time something needs one, with an Application ID URI of `api://<tenant-id>/platform-<namespace>-<app>`, since the tenant refuses a bare `api://<name>`. Its credential is a federated identity credential whose subject is the pod's SPIFFE ID, so no client secret exists. There is no `enabled` flag: an identity appears when a token is actually in play, the same way a SPIFFE ID appears for every pod without anyone asking.
 
-A `provides` entry becomes an app role when `auth: workload` and a delegated scope when `auth: user`. A `mesh` entry becomes nothing in Entra, which is why most apps have no registration. Each `allowedCallers` entry becomes the matching role assignment or permission grant. Redirect URIs derive from the Spa's `host`.
+A `provides` entry becomes an app role when `auth: workload` and a delegated scope when `auth: user`. Each `allowedCallers` entry becomes the matching role assignment or permission grant. Redirect URIs derive from the Spa's `host`.
 
 Every derived value lands in the XR's `status`: client ID, audience, issuer, role and scope GUIDs, redirect URIs, and the scope requested for each `consumes` entry. Spec is what you asked for, status is what you got, so `kubectl get apis.platform.local.lab orders -n orders -o yaml` answers what an app expects without opening a composition or the Azure web UI.
 
@@ -108,7 +103,7 @@ Two of those are overridable in spec, because derivation is only usually right. 
 
 **User sign-in.** Authorization Code with PKCE, the only correct choice because a browser cannot keep a secret. The app named in `userAuth.client` completes the code exchange, keeps the tokens, and sets an httpOnly session cookie, so the browser never holds an access token.
 
-**Browser to its backend.** The browser sends only the cookie. The nginx-to-backend hop behind it is a normal meshed call, authorized through the connection the `apiProxies` entry declared.
+**Browser to its backend.** The browser sends only the cookie. The nginx-to-backend hop behind it is a normal meshed call, let out by the connection the `apiProxies` entry declared.
 
 **Downstream as the signed-in user.** The backend calls Entra with the on-behalf-of grant, presenting its federated credential as the `client_assertion`, the incoming user token, and the target scope. That incoming token must carry an `aud` of the backend itself, because Entra refuses to redeem a token issued for anyone else. It returns a token carrying the user's identity, which works only because the backend appears in the downstream interface's `allowedCallers` and that interface is `auth: user`, making it a delegated scope rather than an app role. The downstream app sees `scp`, not `roles`.
 
