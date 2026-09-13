@@ -1,0 +1,17 @@
+# eso-reader's key is the one hand-created Secret. The namespace list stops any other
+# namespace naming this store and reading every /homelab/* parameter.
+apiVersion: external-secrets.io/v1
+kind: ClusterSecretStore
+metadata:
+  name: aws-parameter-store
+spec:
+  conditions:
+    - namespaces: [blog, cloudflare, crossplane-system, longhorn-system, monitoring]
+  provider:
+    aws:
+      service: ParameterStore
+      region: us-east-1
+      auth:
+        secretRef:
+          accessKeyIDSecretRef: {name: aws-eso-creds, namespace: external-secrets, key: access-key-id}
+          secretAccessKeySecretRef: {name: aws-eso-creds, namespace: external-secrets, key: secret-access-key}
