@@ -6,7 +6,7 @@ metadata:
   name: aws-parameter-store
 spec:
   conditions:
-    - namespaces: [blog, cloudflare, crossplane-system, longhorn-system, monitoring]
+    - namespaces: [argocd, blog, cloudflare, crossplane-system, longhorn-system, monitoring]
   provider:
     aws:
       service: ParameterStore

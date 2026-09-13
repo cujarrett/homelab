@@ -23,3 +23,69 @@ spec:
                 name: argocd-server
                 port:
                   number: 80
+---
+# Public, for GitHub push webhooks only. Exact paths, so nothing else on argocd-server
+# is reachable from the internet.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-webhook
+  namespace: argocd
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  tls:
+    - hosts:
+        - argocd-webhook.mattjarrett.dev
+      secretName: argocd-webhook-tls
+  rules:
+    - host: argocd-webhook.mattjarrett.dev
+      http:
+        paths:
+          - path: /api/webhook
+            pathType: Exact
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80
+---
+# The ApplicationSet controller serves its own webhook, also at /api/webhook, so it
+# gets a second path that is rewritten on the way in. This one is what makes a new
+# sandbox directory appear without waiting on the requeue.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: applicationset-webhook-path
+  namespace: argocd
+spec:
+  replacePath:
+    path: /api/webhook
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-applicationset-webhook
+  namespace: argocd
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: argocd-applicationset-webhook-path@kubernetescrd
+spec:
+  tls:
+    - hosts:
+        - argocd-webhook.mattjarrett.dev
+      secretName: argocd-webhook-tls
+  rules:
+    - host: argocd-webhook.mattjarrett.dev
+      http:
+        paths:
+          - path: /applicationset/api/webhook
+            pathType: Exact
+            backend:
+              service:
+                name: argocd-applicationset-controller
+                port:
+                  number: 7000

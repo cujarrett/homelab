@@ -155,6 +155,7 @@ section of [`CLAUDE.md`](../CLAUDE.md) for the API workflow.
 | `jspollock.mattjarrett.dev` | `js-pollock` | `Spa` |
 | `launchpad.mattjarrett.dev` | `launchpad` | `Spa` + `Api` (API cluster-internal, reached via nginx `/api/` proxy) |
 | `connections.mattjarrett.dev` | `platform-connections-demo` | `Spa` + `Api` ×3 - service mesh walkthrough |
+| `argocd-webhook.mattjarrett.dev` | `argocd` | GitHub push webhooks only, so Git changes sync without waiting on a poll |
 | `oidc.mattjarrett.dev` | `spire-server` | SPIRE OIDC discovery document and JWKS - see [SPIRE OIDC Federation](./spire-oidc-federation.md) |
 
 Guest sandbox slots (`demo1`–`demo5` and `demo1-api`–`demo5-api` under `mattjarrett.dev`)
