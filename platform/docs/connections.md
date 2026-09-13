@@ -84,7 +84,7 @@ spiffe://cluster.local/ns/team-b/sa/orders
          └ trust domain   └ namespace └ service account
 ```
 
-That string is the workload's principal, the name a rule grants access to. It is bound to a private key that never leaves the pod, so holding the name is not enough to claim it, and it is the only identity that survives an attacker already inside the cluster network.
+That string is the workload's principal, the identity mTLS proves and Entra federates on. It is bound to a private key that never leaves the pod, so holding the name is not enough to claim it, and it is the only identity that survives an attacker already inside the cluster network.
 
 **Every workload gets its own ServiceAccount.** The moment two apps share one they are the same identity and every grant between them is meaningless.
 
@@ -125,7 +125,7 @@ Stopping that takes a rule the pod cannot reach, enforced at the node end of the
 | Concept | Doc | Watch for |
 |---|---|---|
 | Sidecar injection | [injection](https://istio.io/latest/docs/setup/additional-setup/sidecar-injection/) | meshed pods show 2 containers |
-| SPIFFE identity | [identity](https://istio.io/latest/docs/concepts/security/#istio-identity) | the principal string *is* the grant key |
+| SPIFFE identity | [identity](https://istio.io/latest/docs/concepts/security/#istio-identity) | the principal string is what mTLS proves |
 | PeerAuthentication | [mutual TLS](https://istio.io/latest/docs/concepts/security/#peer-authentication) | STRICT has no dry-run |
 | ServiceEntry | [egress control](https://istio.io/latest/docs/tasks/traffic-management/egress/egress-control/) | registers a host; alone it gates nothing |
 | Sidecar + `REGISTRY_ONLY` | [ref](https://istio.io/latest/docs/reference/config/networking/sidecar/) | this is what makes egress default-deny |

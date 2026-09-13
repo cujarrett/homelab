@@ -3177,7 +3177,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "min(probe_success{probe_group=\"aws-oidc\"})",
+              "expr": "min(max_over_time(probe_success{probe_group=\"aws-oidc\"}[5m]))",
               "instant": true,
               "legendFormat": "__auto",
               "range": false,
@@ -3274,7 +3274,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "min(probe_success{probe_group=\"entra-oidc\"})",
+              "expr": "min(max_over_time(probe_success{probe_group=\"entra-oidc\"}[5m]))",
               "instant": true,
               "legendFormat": "__auto",
               "range": false,
@@ -3371,7 +3371,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "min(probe_success{probe_group=\"argocd-webhook\"})",
+              "expr": "min(max_over_time(probe_success{probe_group=\"argocd-webhook\"}[15m]))",
               "instant": true,
               "legendFormat": "__auto",
               "range": false,

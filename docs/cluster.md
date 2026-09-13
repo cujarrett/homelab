@@ -112,7 +112,7 @@ the namespaces that are meshed.
 
 ```
 Internet → Cloudflare → cloudflared (cloudflare ns)
-         → Traefik (kube-system) ──mTLS (Istio sidecar)──► Pod
+         → Traefik (kube-system) ──plaintext, PERMISSIVE app port──► Pod
 ```
 
 Internal traffic (`*.local.lab`) routes via AdGuard's wildcard DNS entry → Traefik on
