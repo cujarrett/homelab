@@ -157,7 +157,7 @@ To restore filtering without making AdGuard a hard dependency for every device, 
 - `jspollock.mattjarrett.dev` - js-pollock SPA, routed via Cloudflare Tunnel
 - `launchpad.mattjarrett.dev` - Launchpad BFF, routed via Cloudflare Tunnel
 - `connections.mattjarrett.dev` - service mesh walkthrough, routed via Cloudflare Tunnel
-- `argocd-webhook.mattjarrett.dev` - GitHub push webhooks for ArgoCD, exact `/api/webhook` paths only, routed via Cloudflare Tunnel
+- `argocd-webhook.mattjarrett.dev` - GitHub push webhooks from `homelab-workspaces` for ArgoCD; only the exact paths `/api/webhook` and `/applicationset/api/webhook` route, via Cloudflare Tunnel
 - `oidc.mattjarrett.dev` - SPIRE OIDC discovery document and JWKS, routed via Cloudflare Tunnel; the JWKS is served under `/.well-known/keys` because Cloudflare's bot protection 403s datacenter callers elsewhere on the zone
 - `demo{1-5}.mattjarrett.dev` / `demo{1-5}-api.mattjarrett.dev` - fixed ephemeral demo sandbox slots provisioned by `launchpad-api`, not permanently bound to any one app
 
