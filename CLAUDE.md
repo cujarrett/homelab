@@ -97,7 +97,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | Platform Abstraction | Crossplane | Nine XR types - see the Crossplane Platform section below |
 | CNI | flannel | k3s's bundled CNI, running at its defaults - no install flags, no `/etc/rancher/k3s/config.yaml`. NetworkPolicy is enforced by k3s's kube-router, also default. Mesh concerns (mTLS, connection policy) belong to Istio. |
 | Service Mesh | Istio | Sidecar mesh chained onto flannel; provides workload mTLS. Permissive mode - nothing is denied. Platform-managed connection policy is designed but not built; see [Platform Connections](./platform/docs/connections.md). |
-| Secrets | External Secrets Operator | Syncs `grafana-admin-secret` from AWS Secrets Manager; `ClusterSecretStore` `aws-secrets-manager` authenticates as the `eso-reader` IAM user. Every other Secret is hand-created |
+| Secrets | External Secrets Operator | Renders cluster-setup credentials from AWS SSM Parameter Store; `ClusterSecretStore` `aws-parameter-store` authenticates as the `eso-reader` IAM user, scoped read-only to the `/homelab/` path. Only `aws-eso-creds` is hand-created |
 | Workload Identity | SPIRE | `spire-server` + `spire-system` namespaces; Helm chart from `spiffe.github.io/helm-charts-hardened`. Issues X.509 SVIDs backing AWS IAM Roles Anywhere, and JWT-SVIDs published via the OIDC discovery provider at `oidc.mattjarrett.dev`
 
 ## Namespaces & Applications
@@ -125,7 +125,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `demo-certs` | cert-manager `Certificate` objects only (no workloads) | 10 long-lived `letsencrypt-prod` certs for the 5 fixed demo sandbox slots (`demo{1-5}.mattjarrett.dev` + `demo{1-5}-api.mattjarrett.dev`); `launchpad-api` copies the resulting secrets into each sandbox namespace at creation time so cert-manager skips issuance there and Let's Encrypt's 5-certs-per-exact-hostname-per-168h limit is never hit |
 | `platform-connections-demo` | Api ×3 + Spa | Service mesh walkthrough at `connections.mattjarrett.dev`; two callers run one image and differ only in what they declare |
 | `platform-exporter` | platform-exporter | Custom Prometheus exporter for platform metrics; scraped via `platform-exporter-servicemonitor` |
-| `external-secrets` | External Secrets Operator | Writes `grafana-admin-secret` from AWS Secrets Manager |
+| `external-secrets` | External Secrets Operator | Renders cluster-setup Secrets from Parameter Store; every store and `ExternalSecret` is in `cluster/external-secrets/` |
 | `reloader` | Stakater Reloader | Rolls a workload when a ConfigMap it names changes. Watches only workloads annotated `reloader.stakater.com/auto`, which the Api composition sets whenever `configFrom` is used. Secrets are ignored, since they reach apps as files kubelet refreshes in place |
 | `spire-server`, `spire-system` | SPIRE | Workload identity (SPIFFE); agent DaemonSet on all nodes; OIDC discovery provider serving `oidc.mattjarrett.dev` |
 
@@ -372,7 +372,7 @@ Applications from the `workloads` project can live in any namespace (`sourceName
 ## Key Conventions
 - ArgoCD `automated: { prune: true, selfHeal: true }` on all apps - cluster converges to repo state automatically
 - `ServerSideApply: true` used on most apps
-- Secrets (tunnel tokens, Ghost creds, etc.) are pre-created manually in the cluster - never stored in Git. The one exception is `grafana-admin-secret`, which comes from AWS Secrets Manager via External Secrets Operator - see [External Secrets](./docs/external-secrets.md)
+- Never hand-create a cluster-setup Secret and never commit one. Add a parameter and an `ExternalSecret` - see [External Secrets](./docs/external-secrets.md). Controller-generated Secrets (cert-manager TLS, Crossplane provider TLS, webhook CAs) are not credentials anyone chose and stay in-cluster
 - Traefik annotations on all Ingresses: `traefik.ingress.kubernetes.io/router.entrypoints: websecure` and `traefik.ingress.kubernetes.io/router.tls: "true"`
 - cert-manager annotation on all Ingresses: `cert-manager.io/cluster-issuer: local-lab-ca-issuer` (internal) or `letsencrypt-prod` (public) - Spa and Api expose this via the `tlsIssuer` parameter (default `local-lab-ca-issuer`); the WordPress composition hardcodes `letsencrypt-prod` since WordPress sites are always public
 - Spa compositions use `gotemplating.fn.crossplane.io/ready: "True"` on go-templating resources to avoid false `Ready=False` on the XR
