@@ -19,8 +19,8 @@ spec:
       type: ClusterIP
     deployment:
       kind: DaemonSet
-      # Mesh only Traefik's own pods, not all of kube-system (would also sidecar hostNetwork DaemonSets).
-      # Gives Traefik a mesh identity, so it could reach STRICT mTLS ports without a PERMISSIVE hole.
+      # Inert - Istio's webhook selects on the sidecar.istio.io/inject label, not this annotation, so
+      # Traefik runs unmeshed and reaches apps on PERMISSIVE ports. Removing it rolls the DaemonSet.
       podAnnotations:
         sidecar.istio.io/inject: "true"
     tolerations:

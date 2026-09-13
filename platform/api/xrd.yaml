@@ -199,7 +199,7 @@ spec:
                             description: "Workloads granted this interface. Each one receives the matching role or scope."
                             items:
                               type: object
-                              required: [app]
+                              required: [namespace, app]
                               properties:
                                 namespace:
                                   type: string
