@@ -3095,6 +3095,297 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "description": "SPIRE's discovery document and JWKS at oidc.mattjarrett.dev. Down means AWS cannot verify workload tokens, so Roles Anywhere and web identity sign-ins fail.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "color": "red",
+                      "index": 0,
+                      "text": "Down"
+                    },
+                    "1": {
+                      "color": "green",
+                      "index": 1,
+                      "text": "Up"
+                    }
+                  }
+                },
+                {
+                  "type": "special",
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "color": "red",
+                      "text": "No Data"
+                    }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 8,
+            "x": 0,
+            "y": 26
+          },
+          "id": 922,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "min(probe_success{probe_group=\"aws-oidc\"})",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "AWS OIDC",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Entra's discovery document for the tenant. Down means Launchpad sign-in and Entra-issued tokens cannot be validated.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "color": "red",
+                      "index": 0,
+                      "text": "Down"
+                    },
+                    "1": {
+                      "color": "green",
+                      "index": 1,
+                      "text": "Up"
+                    }
+                  }
+                },
+                {
+                  "type": "special",
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "color": "red",
+                      "text": "No Data"
+                    }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 8,
+            "x": 8,
+            "y": 26
+          },
+          "id": 923,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "min(probe_success{probe_group=\"entra-oidc\"})",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Entra OIDC",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Both webhook paths on argocd-webhook.mattjarrett.dev refuse an unsigned POST, which proves the tunnel, Traefik and the handlers answer. Down means pushes fall back to the 60s poll.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "color": "red",
+                      "index": 0,
+                      "text": "Down"
+                    },
+                    "1": {
+                      "color": "green",
+                      "index": 1,
+                      "text": "Up"
+                    }
+                  }
+                },
+                {
+                  "type": "special",
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "color": "red",
+                      "text": "No Data"
+                    }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 8,
+            "x": 16,
+            "y": 26
+          },
+          "id": 924,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "min(probe_success{probe_group=\"argocd-webhook\"})",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "ArgoCD Webhook",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3161,7 +3452,7 @@ data:
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 26
+            "y": 29
           },
           "id": 17,
           "options": {
@@ -3302,7 +3593,7 @@ data:
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 26
+            "y": 29
           },
           "id": 331,
           "options": {
@@ -3405,7 +3696,7 @@ data:
             "h": 6,
             "w": 12,
             "x": 0,
-            "y": 31
+            "y": 34
           },
           "id": 326,
           "options": {
@@ -3507,7 +3798,7 @@ data:
             "h": 6,
             "w": 12,
             "x": 12,
-            "y": 31
+            "y": 34
           },
           "id": 327,
           "options": {
@@ -3579,7 +3870,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 0,
-            "y": 37
+            "y": 40
           },
           "id": 105,
           "options": {
@@ -3646,7 +3937,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 3,
-            "y": 37
+            "y": 40
           },
           "id": 106,
           "options": {
@@ -3713,7 +4004,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 6,
-            "y": 37
+            "y": 40
           },
           "id": 107,
           "options": {
@@ -3780,7 +4071,7 @@ data:
             "h": 3,
             "w": 3,
             "x": 9,
-            "y": 37
+            "y": 40
           },
           "id": 108,
           "options": {
@@ -3849,7 +4140,7 @@ data:
             "h": 3,
             "w": 6,
             "x": 12,
-            "y": 37
+            "y": 40
           },
           "id": 350,
           "options": {
@@ -3918,7 +4209,7 @@ data:
             "h": 3,
             "w": 6,
             "x": 18,
-            "y": 37
+            "y": 40
           },
           "id": 351,
           "options": {
@@ -4119,7 +4410,7 @@ data:
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 40
+            "y": 43
           },
           "id": 360,
           "options": {
@@ -4252,7 +4543,7 @@ data:
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 40
+            "y": 43
           },
           "id": 353,
           "options": {
@@ -4381,7 +4672,7 @@ data:
             "h": 5,
             "w": 24,
             "x": 0,
-            "y": 45
+            "y": 48
           },
           "id": 361,
           "interval": "1h",
@@ -4490,7 +4781,7 @@ data:
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 50
+            "y": 53
           },
           "id": 323,
           "options": {

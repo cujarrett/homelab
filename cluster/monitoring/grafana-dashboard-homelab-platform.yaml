@@ -1274,6 +1274,62 @@ data:
             }
           ],
           "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "GitHub pushes from homelab-workspaces that ArgoCD accepted. A launchpad change shows here within seconds. Rejected requests are left out, because the reachability probe sends one every 5m.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "short",
+              "decimals": 0,
+              "custom": {
+                "drawStyle": "bars",
+                "fillOpacity": 60,
+                "lineWidth": 1,
+                "stacking": {
+                  "mode": "normal"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 24,
+            "x": 0,
+            "y": 37
+          },
+          "id": 14,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "editorMode": "code",
+              "refId": "A",
+              "interval": "5m",
+              "expr": "sum by (handler) (label_replace(increase(traefik_router_requests_total{router=~\"argocd-argocd-(applicationset-)?webhook-.*\",code=~\"2..\"}[5m]), \"handler\", \"$1\", \"router\", \"argocd-argocd-(applicationset-webhook|webhook)-.*\"))",
+              "legendFormat": "{{handler}}"
+            }
+          ],
+          "title": "ArgoCD Webhook Deliveries",
+          "type": "timeseries"
         }
       ],
       "preload": false,
@@ -1301,3 +1357,4 @@ data:
       "title": "Platform",
       "uid": "homelab-platform"
     }
+
