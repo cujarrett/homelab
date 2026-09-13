@@ -177,7 +177,7 @@ spec:
                     provides:
                       type: array
                       maxItems: 10
-                      description: "Named interfaces this API exposes to other workloads. Anything not listed here cannot call this API."
+                      description: "Named interfaces this API exposes to other workloads, and which workloads are granted each one. The API checks the grant on the token it receives."
                       items:
                         type: object
                         required: [name, auth, allowedCallers]
@@ -192,21 +192,11 @@ spec:
                             # Required rather than defaulted - worth stating explicitly on
                             # every interface, and keeps the API server from writing a value
                             # git doesn't have, which would hold an app OutOfSync.
-                            enum: [mesh, workload, user]
-                            description: "What a caller must prove to use this interface. mesh means its workload identity is enough, no token is involved, and no Entra object is created. workload means it must also carry an Entra app role, checked through the roles claim. user means it must carry a delegated scope, checked through scp, which is what on-behalf-of produces."
-                          methods:
-                            type: array
-                            description: "HTTP methods this interface allows. Omit for all methods - the coarsest, lowest-upkeep default. Narrow only if this API genuinely has more than one trust boundary."
-                            items:
-                              type: string
-                          paths:
-                            type: array
-                            description: "URL path globs this interface allows (e.g. /api/v1/collection/*). Omit for all paths - see methods."
-                            items:
-                              type: string
+                            enum: [workload, user]
+                            description: "What a caller must prove to use this interface. workload means it must carry an Entra app role, checked through the roles claim. user means it must carry a delegated scope, checked through scp, which is what on-behalf-of produces."
                           allowedCallers:
                             type: array
-                            description: "Workloads granted this interface. Everything else is denied."
+                            description: "Workloads granted this interface. Each one receives the matching role or scope."
                             items:
                               type: object
                               required: [app]

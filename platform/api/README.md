@@ -10,7 +10,7 @@ Crossplane composition that deploys an API server (Go, Node, GraphQL, etc.) with
 - **ServiceMonitor** - Prometheus scrape target on the metrics port
 - **Ingress** *(optional)* - Traefik `websecure` with TLS; only created when `host` is set. cert-manager issues a certificate via `tlsIssuer` unless `tlsSecret` points to a pre-existing Secret, in which case issuance is skipped.
 - **Cache** *(optional)* - short-lived cache cluster owned by this Api; created and deleted alongside it
-- **Connection policy** - always. Refuses any call this API makes to a destination it has not declared, and any inbound call whose workload identity is not named in `provides`. Metrics scraping and, when `host` is set, ingress traffic stay reachable - neither carries a workload identity to match on. See [Platform Connections](../docs/connections.md).
+- **Connection policy** - always. Refuses any call this API makes to a destination it has not declared, and any inbound call without a mesh identity. Metrics scraping and, when `host` is set, ingress traffic stay reachable - neither carries a workload identity to present. See [Platform Connections](../docs/connections.md).
 - **Entra identity** *(optional)* - only when an interface sets `auth: workload` or `auth: user`, or this API consumes another app. See [App Configuration](../docs/app-configuration.md).
 
 `ObjectStorage`, `Sql`, and `NoSql` are created independently and bound via refs. They outlive any one Api. For `ObjectStorage` and `NoSql`, this composition creates the IAM Role and binding Secret when the ref is declared - their binding secrets only contain names, region, and ARNs, which Api can compute. For `Sql`, those are created by the Sql composition itself, because its binding secret contains RDS connection details (host, port, username) that are only known after RDS provisioning. The tenant lists consuming Api names in `consumerServiceAccounts` on the Sql - each gets its own IAM role and binding secret scoped to its SA.
@@ -44,10 +44,8 @@ The namespace is owned by the tenant - created by `namespace.yaml` in the tenant
 | `topicRef.name` | no | - | Name of an `Topic` this API publishes to. Injects `NATS_URL` and `NATS_STREAM` env vars. |
 | `topicRef.streamName` | no | - | NATS stream name from the Topic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the Topic's streamName differs from its metadata.name. |
 | `subscriptionRef.name` | no | - | Name of an `Subscription` this API consumes from. Injects `NATS_URL` and `NATS_CONSUMER` env vars. |
-| `provides` | no | - | Interfaces this API exposes, and which apps may call each one. Required to accept any call at all. Each entry requires `name` and `allowedCallers`; each caller requires `namespace` and `app`. |
-| `provides[].auth` | yes | - | What a caller must prove. `mesh` = its workload identity is enough, no token, no Entra object. Required rather than defaulted, so every interface states it. `workload` = it must also carry an Entra app role, read from the `roles` claim. `user` = it must carry a delegated scope, read from `scp`, which is what on-behalf-of produces. |
-| `provides[].methods` | no | - | HTTP methods this interface accepts. Omit to accept all. |
-| `provides[].paths` | no | - | Path prefixes this interface covers. Omit to cover the whole API. |
+| `provides` | no | - | Interfaces this API exposes, and which apps are granted each one. The grant arrives as a claim on the caller's token, and this API checks it. Each entry requires `name`, `auth` and `allowedCallers`; each caller requires `namespace` and `app`. |
+| `provides[].auth` | yes | - | What a caller must prove. Required rather than defaulted, so every interface states it. `workload` = it must carry an Entra app role, read from the `roles` claim. `user` = it must carry a delegated scope, read from `scp`, which is what on-behalf-of produces. |
 | `consumes` | no | - | Every destination this API calls, including apps in its own namespace. A `Cache` this API creates itself is allowed automatically - do not list it. Each entry sets exactly one of `host` (off-platform DNS name), `address` (a bare IPv4 with no DNS name, such as a device on the LAN), `app` plus `namespace` (on-platform), or `entraApp` (a registration the platform does not own, carrying `appIdUri`, `role`, and `host`). `port` and `protocol` apply to `host` and `address`. |
 
 ## Example
@@ -75,6 +73,7 @@ spec:
       backend: private-cloud   # private-cloud=in-cluster Redis, public-cloud=AWS ElastiCache
     provides:
       - name: bar
+        auth: workload
         allowedCallers:
           - { namespace: foo, app: baz }
     consumes:
@@ -87,9 +86,9 @@ Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 
 A [`Spa`](../spa/) can proxy a path prefix to this API, so the browser only ever talks to the SPA's hostname. The Spa declares it with `apiProxies` - a path and this API's in-cluster address - and nothing is set here. Four things follow for this API:
 
-- **No `host` needed.** Skip it and the API gets no Ingress, no public hostname, and no certificate. It stays reachable only inside the cluster. Setting `host` anyway leaves it reachable from the ingress controller regardless of `provides`.
+- **No `host` needed.** Skip it and the API gets no Ingress, no public hostname, and no certificate. It stays reachable only inside the cluster. Setting `host` anyway leaves it reachable from the ingress controller without a mesh identity.
 - **The prefix is stripped.** A browser request to `/api/baz` arrives here as `/baz`. Route on the bare path.
-- **Still gated.** Being proxied grants nothing. Under `enforce`, `provides.allowedCallers` must name the Spa or the call is refused with a 403.
+- **Grants still apply.** Being proxied grants no role. A route that checks a token refuses the call unless the caller holds the interface.
 - **Client details move to headers.** The connecting peer is the Spa, so read `X-Forwarded-For` for the client address, `X-Forwarded-Host` for the hostname the browser used, and `X-Forwarded-Proto` for the scheme.
 
 Streaming responses work unchanged - the proxy is configured for Server-Sent Events, with buffering off and a long read timeout.

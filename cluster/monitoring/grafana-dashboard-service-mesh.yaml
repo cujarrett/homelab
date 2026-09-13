@@ -100,7 +100,7 @@ data:
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Requests by response code. 403s are RBAC/AuthorizationPolicy denials.",
+          "description": "Requests by response code. A 403 is an app refusing a token, not the mesh.",
           "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 20, "showPoints": "never", "stacking": { "mode": "normal" } }, "unit": "reqps" } },
           "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
           "id": 7,
@@ -153,7 +153,7 @@ data:
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "AuthorizationPolicy denials (HTTP 403). Empty until default-deny lands; then this is the missing-registration alarm.",
+          "description": "HTTP 403s returned by apps, usually a caller missing an Entra grant.",
           "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "bars", "fillOpacity": 60, "showPoints": "never", "stacking": { "mode": "normal" } }, "unit": "reqps" } },
           "gridPos": { "h": 8, "w": 10, "x": 14, "y": 20 },
           "id": 11,

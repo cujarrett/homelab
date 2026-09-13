@@ -578,22 +578,6 @@ spec:
                 "8080":
                   mode: PERMISSIVE
             ---
-            apiVersion: security.istio.io/v1
-            kind: AuthorizationPolicy
-            metadata:
-              name: {{ $name }}
-              namespace: {{ $namespace }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: connection-authz
-                gotemplating.fn.crossplane.io/ready: "True"
-            spec:
-              selector:
-                matchLabels: { instance: {{ $name }} }
-              action: ALLOW
-              rules:
-                - to:
-                    - operation: { ports: ["8080"] }
-            ---
             # REGISTRY_ONLY: only the control plane, the apiProxies upstreams, and what
             # it declared. The upstream's namespace is read out of its FQDN, so each
             # entry is scoped rather than matching that host in any namespace.

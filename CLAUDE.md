@@ -96,7 +96,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | External Access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; token from secret `cloudflare-tunnel-token` |
 | Platform Abstraction | Crossplane | Nine XR types - see the Crossplane Platform section below |
 | CNI | flannel | k3s's bundled CNI, running at its defaults - no install flags, no `/etc/rancher/k3s/config.yaml`. NetworkPolicy is enforced by k3s's kube-router, also default. Mesh concerns (mTLS, connection policy) belong to Istio. |
-| Service Mesh | Istio | Sidecar mesh chained onto flannel; provides workload mTLS. Permissive mode - nothing is denied. Platform-managed connection policy is designed but not built; see [Platform Connections](./platform/docs/connections.md). |
+| Service Mesh | Istio | Sidecar mesh chained onto flannel; provides workload mTLS. Platform workloads get STRICT mTLS inbound and `REGISTRY_ONLY` egress from their declared `consumes`. Who may call an interface is an Entra grant checked by the app; see [Platform Connections](./platform/docs/connections.md). |
 | Secrets | External Secrets Operator | Renders cluster-setup credentials from AWS SSM Parameter Store; `ClusterSecretStore` `aws-parameter-store` authenticates as the `eso-reader` IAM user, scoped read-only to the `/homelab/` path. Only `aws-eso-creds` is hand-created |
 | Workload Identity | SPIRE | `spire-server` + `spire-system` namespaces; Helm chart from `spiffe.github.io/helm-charts-hardened`. Issues X.509 SVIDs backing AWS IAM Roles Anywhere, and JWT-SVIDs published via the OIDC discovery provider at `oidc.mattjarrett.dev`
 
