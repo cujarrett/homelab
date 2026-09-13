@@ -8,8 +8,9 @@ spec:
     - git:
         repoURL: https://github.com/cujarrett/homelab-workspaces.git
         revision: main
-        # The only trigger for new sandboxes until a GitHub webhook replaces it.
-        requeueAfterSeconds: 10
+        # A fallback only. The GitHub push webhook at argocd-webhook.mattjarrett.dev
+        # refreshes this the moment launchpad-api commits.
+        requeueAfterSeconds: 60
         directories:
           - path: "*"
           - path: ".github"
