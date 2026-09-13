@@ -2542,7 +2542,6 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 3,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -2609,7 +2608,6 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 3,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -2750,7 +2748,7 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 5,
+            "w": 6,
             "x": 0,
             "y": 23
           },
@@ -2827,8 +2825,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 5,
-            "x": 5,
+            "w": 6,
+            "x": 6,
             "y": 23
           },
           "id": 354,
@@ -2875,7 +2873,6 @@ data:
                 "fixedColor": "blue",
                 "mode": "fixed"
               },
-              "decimals": 3,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -2894,9 +2891,9 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 5,
-            "x": 14,
-            "y": 23
+            "w": 4,
+            "x": 20,
+            "y": 40
           },
           "id": 302,
           "options": {
@@ -2988,8 +2985,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 5,
-            "x": 19,
+            "w": 6,
+            "x": 18,
             "y": 23
           },
           "id": 304,
@@ -3054,8 +3051,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 10,
+            "w": 6,
+            "x": 12,
             "y": 23
           },
           "id": 921,
@@ -3147,7 +3144,7 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 8,
+            "w": 6,
             "x": 0,
             "y": 26
           },
@@ -3244,8 +3241,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 8,
-            "x": 8,
+            "w": 6,
+            "x": 6,
             "y": 26
           },
           "id": 923,
@@ -3341,8 +3338,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 8,
-            "x": 16,
+            "w": 6,
+            "x": 12,
             "y": 26
           },
           "id": 924,
@@ -3379,6 +3376,103 @@ data:
             }
           ],
           "title": "ArgoCD Webhook",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Cloudflare and Google probes from inside the cluster. Down only when both fail, which is the same rule 30 Day Availability and Time Since Last Internet Outage use.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "color": "red",
+                      "index": 0,
+                      "text": "Down"
+                    },
+                    "1": {
+                      "color": "green",
+                      "index": 1,
+                      "text": "Up"
+                    }
+                  }
+                },
+                {
+                  "type": "special",
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "color": "red",
+                      "text": "No Data"
+                    }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 18,
+            "y": 26
+          },
+          "id": 925,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "max(max_over_time(probe_success{probe_group=\"internet\"}[2m]))",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Internet",
           "type": "stat"
         },
         {
@@ -4138,7 +4232,7 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
+            "w": 4,
             "x": 12,
             "y": 40
           },
@@ -4207,8 +4301,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 18,
+            "w": 4,
+            "x": 16,
             "y": 40
           },
           "id": 351,
@@ -4267,8 +4361,8 @@ data:
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
                 "drawStyle": "line",
-                "fillOpacity": 100,
-                "gradientMode": "scheme",
+                "fillOpacity": 10,
+                "gradientMode": "none",
                 "hideFrom": {
                   "legend": false,
                   "tooltip": false,
