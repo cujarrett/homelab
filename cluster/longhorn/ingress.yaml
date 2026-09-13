@@ -27,7 +27,7 @@ spec:
 ---
 # --- basicAuth Middleware ---
 # No native authentication, so the control sits at the proxy. Credentials live in
-# the hand-created `longhorn-basic-auth` Secret (key `users`, bcrypt htpasswd line) - never in Git.
+# `longhorn-basic-auth` (key `users`, bcrypt htpasswd line), rendered by External Secrets.
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:

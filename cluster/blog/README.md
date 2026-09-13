@@ -29,31 +29,12 @@ Image `src` attributes in `index.md` are rewritten to relative paths so the file
 
 ### Secrets
 
-Two keys must be pre-created in the cluster as a Secret - never stored in Git:
+Both keys come from AWS Parameter Store through External Secrets - see [External Secrets](../../docs/external-secrets.md). To change one, write the parameter; ESO updates the Secret within the hour.
 
-```bash
-kubectl create secret generic ghost-backup-creds -n blog \
-  --from-literal=content-api-key=<ghost-content-api-key> \
-  --from-literal=github-token=<github-pat>
-```
-
-| Key | Where to get it |
-|---|---|
-| `content-api-key` | Ghost Admin → Settings → Integrations → your integration → Content API Key |
-| `github-token` | GitHub → Settings → Developer settings → Fine-grained tokens → `cujarrett/blog-backups` → Contents: Read and write |
-
-To update a single value:
-```bash
-# Ghost Content API key
-kubectl patch secret ghost-backup-creds -n blog \
-  --type='json' \
-  -p='[{"op":"replace","path":"/data/content-api-key","value":"'$(echo -n "<new-key>" | base64)'"}]'
-
-# GitHub PAT
-kubectl patch secret ghost-backup-creds -n blog \
-  --type='json' \
-  -p='[{"op":"replace","path":"/data/github-token","value":"'$(echo -n "<new-token>" | base64)'"}]'
-```
+| Key | Parameter | Where to get it |
+|---|---|---|
+| `content-api-key` | `/homelab/blog/content-api-key` | Ghost Admin → Settings → Integrations → your integration → Content API Key |
+| `github-token` | `/homelab/blog/backup-github-token` | GitHub → Settings → Developer settings → Fine-grained tokens → `cujarrett/blog-backups` → Contents: Read and write |
 
 ### Manual test run
 

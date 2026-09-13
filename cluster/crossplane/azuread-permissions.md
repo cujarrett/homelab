@@ -48,12 +48,16 @@ Set an expiry and track it somewhere — no rotation automation on this side yet
 the output straight into a shell variable; never let it land in a file that outlives
 the command.
 
-## 4. Create the Kubernetes Secret
+## 4. Store it in Parameter Store
+
+External Secrets renders `azuread-creds` from this parameter - see [External Secrets](../../docs/external-secrets.md) for staging the value without it touching shell history.
 
 ```bash
-kubectl create secret generic azuread-creds -n crossplane-system \
-  --from-literal=credentials='{"clientId":"<app-registration-client-id>","clientSecret":"<the-secret-value>","tenantId":"<entra-tenant-id>"}'
+aws ssm put-parameter --name /homelab/crossplane-system/azuread-credentials --type SecureString --overwrite \
+  --region us-east-1 --value "$(cat local-only/eso/value.txt)"
 ```
+
+The value is `{"clientId":"<app-registration-client-id>","clientSecret":"<the-secret-value>","tenantId":"<entra-tenant-id>"}`.
 
 ---
 
@@ -76,6 +80,5 @@ Skip it and the registration can be created once, then never touched again.
 
 ## What is NOT managed here
 
-- The `azuread-creds` Secret — created manually, never stored in Git, same bootstrap
-  pattern as `aws-creds` (see [aws-iam-policy.md](./aws-iam-policy.md)).
+- The `azuread-creds` value - held in Parameter Store and rendered by External Secrets, never in Git.
 - The Entra tenant itself, and who holds admin rights to grant consent.

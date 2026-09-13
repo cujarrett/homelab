@@ -69,7 +69,7 @@ ssh pi@192.168.10.100 "journalctl -u getty@tty1 -n 30 --no-pager && ps aux | gre
 | Platform | Crossplane | XRDs + Compositions in `platform/`; see [Platform](../platform/README.md) |
 | CNI | flannel | k3s's bundled CNI, at its defaults. NetworkPolicy is enforced by k3s's kube-router, also at its default |
 | Service mesh | Istio | Sidecar mesh chained onto flannel; workload mTLS and platform-rendered connection policy. See [Platform Connections](../platform/docs/connections.md) |
-| Secrets | External Secrets Operator | Syncs `grafana-admin-secret` from AWS Secrets Manager. See [External Secrets](./external-secrets.md) |
+| Secrets | External Secrets Operator | Renders cluster-setup credentials from AWS Parameter Store. See [External Secrets](./external-secrets.md) |
 | Workload identity | SPIRE | SPIFFE SVIDs backing AWS IAM Roles Anywhere. See [Platform Workload Identity](../platform/docs/workload-identity.md) |
 | Observability | kube-prometheus-stack | Prometheus (30d retention), Grafana, Alertmanager |
 | Logs | Loki + Promtail | Loki SingleBinary, 30d retention; Promtail DaemonSet ships logs |
@@ -90,7 +90,7 @@ ssh pi@192.168.10.100 "journalctl -u getty@tty1 -n 30 --no-pager && ps aux | gre
 | `cloudflare` | cloudflared | Cloudflare Tunnel; public ingress entry point |
 | `cert-manager` | cert-manager | TLS issuers for internal and public hosts |
 | `demo-certs` | cert-manager `Certificate` objects only | Long-lived certs for the five demo sandbox slots; no workloads |
-| `external-secrets` | External Secrets Operator | Writes `grafana-admin-secret` from AWS Secrets Manager |
+| `external-secrets` | External Secrets Operator | Renders cluster-setup Secrets from Parameter Store |
 | `spire-server`, `spire-system` | SPIRE | Workload identity; agent DaemonSet on all nodes |
 | `istio-system` | Istio | Control plane for the sidecar mesh |
 | `crossplane-system` | Crossplane | Platform compositions, XRDs, AWS provider |
