@@ -18,3 +18,70 @@ spec:
         - https://www.google.com/generate_204
       labels:
         probe_group: internet
+---
+# The discovery document and JWKS AWS STS fetches to trust SPIRE-issued tokens.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: aws-oidc
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  jobName: blackbox-identity
+  interval: 60s
+  module: http_2xx
+  prober:
+    url: blackbox-exporter.monitoring.svc.cluster.local:9115
+  targets:
+    staticConfig:
+      static:
+        - https://oidc.mattjarrett.dev/.well-known/openid-configuration
+        - https://oidc.mattjarrett.dev/.well-known/keys
+      labels:
+        probe_group: aws-oidc
+---
+# Entra's discovery document for the tenant, which Launchpad sign-in and Entra-issued
+# tokens depend on.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: entra-oidc
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  jobName: blackbox-identity
+  interval: 60s
+  module: http_2xx
+  prober:
+    url: blackbox-exporter.monitoring.svc.cluster.local:9115
+  targets:
+    staticConfig:
+      static:
+        - https://login.microsoftonline.com/7f4c1900-e63c-456b-ab5f-898189b24ec4/v2.0/.well-known/openid-configuration
+      labels:
+        probe_group: entra-oidc
+---
+# Every 5m rather than 30s, because each probe shows up as a 400 in the webhook's
+# own Traefik request counts.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: argocd-webhook
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  jobName: blackbox-argocd-webhook
+  interval: 5m
+  module: http_webhook_rejects_unsigned
+  prober:
+    url: blackbox-exporter.monitoring.svc.cluster.local:9115
+  targets:
+    staticConfig:
+      static:
+        - https://argocd-webhook.mattjarrett.dev/api/webhook
+        - https://argocd-webhook.mattjarrett.dev/applicationset/api/webhook
+      labels:
+        probe_group: argocd-webhook
