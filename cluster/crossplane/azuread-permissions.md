@@ -54,10 +54,12 @@ External Secrets renders `azuread-creds` from this parameter - see [External Sec
 
 ```bash
 aws ssm put-parameter --name /homelab/crossplane-system/azuread-credentials --type SecureString --overwrite \
-  --region us-east-1 --value "$(cat local-only/eso/value.txt)"
+  --region us-east-1 --value "$(cat local-only/eso/value.txt)" && rm -P local-only/eso/value.txt
 ```
 
 The value is `{"clientId":"<app-registration-client-id>","clientSecret":"<the-secret-value>","tenantId":"<entra-tenant-id>"}`.
+
+To rotate, repeat steps 3 and 4. The provider re-reads the Secret on its next reconcile, so no restart is needed.
 
 ---
 

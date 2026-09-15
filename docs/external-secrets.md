@@ -1,32 +1,27 @@
 # External Secrets
 
 Cluster-setup credentials live in AWS SSM Parameter Store under `/homelab/<namespace>/<name>`. ESO
-renders each into a Kubernetes Secret. Every mapping is in
-[cluster/external-secrets/](../cluster/external-secrets/), one file per app. Cost is $0.
+renders each into a Secret, mapped in [cluster/external-secrets/](../cluster/external-secrets/).
+Workload credentials and controller-generated TLS stay out.
 
-Workload credentials, controller-generated TLS, and anything a composition derives stay out.
+## Adding or rotating a credential
 
-## Adding a credential
-
-1. Write the parameter as a `SecureString`. Stage the value in a file under `local-only/` so it never lands in
-   shell history.
-2. Add an `ExternalSecret` to that app's file.
-3. If the namespace is new, add it to the store's `conditions`, or ESO refuses the fetch.
+Stage the value under `local-only/` so it never lands in shell history. A new credential also needs
+an `ExternalSecret`, and a new namespace needs adding to the store's `conditions`.
 
 ```bash
 aws ssm put-parameter --name /homelab/<ns>/<name> --type SecureString --overwrite \
   --region us-east-1 --value "$(cat local-only/eso/value.txt)" && rm -P local-only/eso/value.txt
+kubectl annotate externalsecret <name> -n <ns> force-sync=$(date +%s) --overwrite
 ```
 
-Editing a rendered Secret in the cluster is reverted within the hour. Change the parameter instead.
+Editing a rendered Secret is reverted within the hour. `cloudflared` and `ghost` read theirs as env
+vars, so restart them. Grafana ignores a changed admin password; use `grafana cli admin reset-admin-password`.
 
 ## aws-eso-creds
 
-The one hand-created Secret, because ESO needs it to reach AWS. It can read every parameter, including
-`aws-creds`, so treat it as the most sensitive key in the cluster.
-
-Seed it on a rebuild. A secret access key is shown once, so the file is shredded only after the
-Secret exists.
+The one hand-created Secret, since ESO needs it to reach AWS. It can read every parameter, so it is
+the most sensitive key in the cluster. Seed it on a rebuild:
 
 ```bash
 umask 077 && mkdir -p local-only/eso
@@ -38,7 +33,7 @@ aws iam create-access-key --user-name eso-reader \
 && rm -P local-only/eso/key.txt
 ```
 
-`eso-reader` policy. The `kms:ViaService` condition limits the wildcard to decrypts made through SSM.
+`eso-reader` policy. `kms:ViaService` limits the wildcard to decrypts made through SSM.
 
 ```bash
 aws iam put-user-policy --user-name eso-reader --policy-name ESOReadHomelab --policy-document '{
@@ -59,5 +54,5 @@ kubectl get clustersecretstore aws-parameter-store   # Valid
 kubectl get externalsecret -A                        # SecretSynced
 ```
 
-A failed fetch leaves the existing Secret in place. On a never-synced cluster, ESO must be healthy
-before Crossplane can authenticate.
+A failed fetch leaves the existing Secret in place. On a fresh cluster, ESO must be healthy before
+Crossplane can authenticate.

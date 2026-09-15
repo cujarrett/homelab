@@ -226,7 +226,7 @@ cred, _ := azidentity.NewWorkloadIdentityCredential(nil)
 |---|---|
 | Federated credentials | Entra caps 20 per app registration. Fine at one per workload identity; per-environment variants exhaust it fast |
 | Key rotation | SPIRE publishes both old and new JWT signing keys during overlap. The failure mode is a cloud caching the JWKS past that window, so the CA TTL needs to stay comfortably longer than any consumer's cache |
-| Control plane credentials | Crossplane's own Entra app registration holds a client secret with `Application.ReadWrite.OwnedBy`, hand created and hand rotated. It is the one static credential in the whole system |
+| Control plane credentials | Crossplane's own Entra app registration holds a client secret with `Application.ReadWrite.OwnedBy`, rotated by hand in Parameter Store (see [crossplane-entra App Registration](../../cluster/crossplane/azuread-permissions.md)). It is the one static credential in the whole system |
 | Ownership on created objects | An Entra app created through any API, CLI or Crossplane is never auto-owned. Without an explicit `owners` entry the controller can create objects it can never update or delete, which surfaces later as undeletable drift |
 | Token version | Entra mints v1 tokens by default, issued by `sts.windows.net`. An API validating the v2 issuer rejects every one of them and the token looks fine otherwise. Set `requestedAccessTokenVersion: 2` at creation |
 
