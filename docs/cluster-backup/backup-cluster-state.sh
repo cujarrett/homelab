@@ -38,9 +38,6 @@ echo "==> Kubernetes secrets"
 kubectl get secret local-lab-ca-secret -n cert-manager -o yaml > "$OUT/local-lab-ca-secret.yaml" \
   && ok "local-lab-ca-secret.yaml" || fail "local-lab-ca-secret.yaml"
 
-kubectl get secrets -n argocd -l argocd.argoproj.io/secret-type -o yaml > "$OUT/argocd-repo-creds.yaml" \
-  && ok "argocd-repo-creds.yaml" || fail "argocd-repo-creds.yaml"
-
 kubectl get secrets -n cloudflare -o yaml > "$OUT/cloudflare-secrets.yaml" \
   && ok "cloudflare-secrets.yaml" || fail "cloudflare-secrets.yaml"
 
