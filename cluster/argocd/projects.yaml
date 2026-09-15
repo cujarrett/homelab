@@ -66,11 +66,26 @@ metadata:
 spec:
   description: User-facing applications - blogs, sites, APIs, Crossplane-managed XRs
   sourceRepos:
-    - "https://github.com/cujarrett/homelab.git"
     - "https://github.com/cujarrett/homelab-workspaces.git"
+  # Anyone who can commit to homelab-workspaces gets exactly this. Listing namespaces
+  # stops a directory named after a cluster namespace from deploying into it, so a new
+  # workspace needs its namespace added here first.
   destinations:
-    - server: https://kubernetes.default.svc
-      namespace: "*"
+    - {server: https://kubernetes.default.svc, namespace: github-exporter}
+    - {server: https://kubernetes.default.svc, namespace: js-pollock}
+    - {server: https://kubernetes.default.svc, namespace: kentjarrett-com}
+    - {server: https://kubernetes.default.svc, namespace: launchpad}
+    - {server: https://kubernetes.default.svc, namespace: mattjarrett-com}
+    - {server: https://kubernetes.default.svc, namespace: mattjarrett-dev}
+    - {server: https://kubernetes.default.svc, namespace: my-vinyl}
+    - {server: https://kubernetes.default.svc, namespace: platform-connections-demo}
+    - {server: https://kubernetes.default.svc, namespace: sump-pump}
+    - {server: https://kubernetes.default.svc, namespace: "guest-*"}
   clusterResourceWhitelist:
-    - group: "*"
-      kind: "*"
+    - {group: "", kind: Namespace}
+  # RoleBinding is for launchpad guest sandboxes, which bind secret-mirror-writer.
+  namespaceResourceWhitelist:
+    - {group: platform.local.lab, kind: "*"}
+    - {group: "", kind: ConfigMap}
+    - {group: "", kind: Service}
+    - {group: rbac.authorization.k8s.io, kind: RoleBinding}

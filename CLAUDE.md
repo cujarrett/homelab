@@ -3,6 +3,7 @@
 ## Rules
 
 - **Never run `git add`, `git commit`, `git push`, or any git command that writes to or modifies the index, repository history, or remotes.** Output the commands for the user to run - staging is part of their review, and running it for them removes the checkpoint.
+- **Never add a `Co-Authored-By` trailer or a "Generated with Claude Code" line** to commit messages or PR descriptions, including in suggested commit messages. Commits are authored by the user alone.
 - **Whenever a task requires a commit, always give a suggested commit message** - never leave the user to write it themselves.
 - **Give `git add` and the commit as two separate steps, listing every file explicitly** - never `git add .`, `git add -A`, or a bare directory. Group related files onto one `git add` line. One `git add` + one commit message per repository, each under its own heading when more than one repo changed.
 - **Always precede `git add` with the `cd` to that repo's absolute path**, so the commands can be pasted from anywhere without landing in the wrong repo.
@@ -243,12 +244,13 @@ Ten platform types are defined under `platform/`:
 Which namespaces use which XR types is listed in the Namespaces & Applications table above.
 
 ### GitOps flow for XR instances
-1. Commit XR files to a top-level directory in the `homelab-workspaces` repo (e.g. `mattjarrett-com/mattjarrett-com.yaml`)
-2. `xrs` ApplicationSet (`cluster/argocd/xrs-appset.yaml`) generates one ArgoCD Application per directory, deployed into a namespace named after the directory
-3. ArgoCD applies the XR to the cluster
-4. Crossplane reconciles and creates all composed resources
+1. For a new workspace, add its namespace to the `workloads` project `destinations` in [cluster/argocd/projects.yaml](./cluster/argocd/projects.yaml) and let it sync. The project allows only `platform.local.lab` kinds, ConfigMap, Service, RoleBinding and Namespace
+2. Commit XR files to a top-level directory in the `homelab-workspaces` repo (e.g. `mattjarrett-com/mattjarrett-com.yaml`)
+3. `xrs` ApplicationSet (`cluster/argocd/xrs-appset.yaml`) generates one ArgoCD Application per directory, deployed into a namespace named after the directory
+4. ArgoCD applies the XR to the cluster
+5. Crossplane reconciles and creates all composed resources
 
-XR instance files live in `homelab-workspaces/<name>/` (one directory per workspace, e.g. `mattjarrett-com/`, `kentjarrett-com/`). Ephemeral `demo{1-5}` sandbox directories are written and deleted automatically by `launchpad-api`; all other workspace directories are hand-maintained.
+XR instance files live in `homelab-workspaces/<name>/` (one directory per workspace, e.g. `mattjarrett-com/`, `kentjarrett-com/`). Ephemeral `guest-*` sandbox directories are written and deleted automatically by `launchpad-api`; all other workspace directories are hand-maintained.
 
 ### Deleting an XR instance (correct order - prevents data loss)
 ```bash

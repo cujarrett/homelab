@@ -32,6 +32,9 @@ Create a new directory `./<app-name>/` containing the following files. In every 
 | `./<app-name>/renovate.json` | [.claude/assets/new-go-api/renovate.json](.claude/assets/new-go-api/renovate.json) |
 | `homelab-workspaces/<workspace>/<app-name>.yaml` | [.claude/assets/new-go-api/api.yaml](.claude/assets/new-go-api/api.yaml) |
 
+A new workspace also needs its namespace in the `workloads` project `destinations` in
+[cluster/argocd/projects.yaml](cluster/argocd/projects.yaml), synced before the workspace commit.
+
 Also create:
 
 **`./<app-name>/README.md`**
