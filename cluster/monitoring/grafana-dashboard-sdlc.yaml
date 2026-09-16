@@ -846,7 +846,7 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "description": "Open PRs waiting, how the last 30 days of merges reached main, and whether CI is green. Candidates are PRs auto-merge could take; excluded are major bumps and anything else outside the grouped branches. Eligible is the share of the repo's bot merges that the bot was configured to merge itself, which is what separates a repo with automation switched off from one whose updates were all majors.",
+          "description": "One row per repo. Open PRs waiting, how the last 30 days of merges reached main, and whether CI is green. Human PRs are the ones you opened yourself. Bot, not eligible are dependency bumps auto-merge was never allowed to take - majors and anything outside the grouped branches - so they sat until someone merged them by hand. Eligible is the share of the repo's bot merges that auto-merge was configured to take, which is what separates a repo with automation switched off from one whose updates were all majors.",
           "fieldConfig": {
             "defaults": {
               "custom": {
@@ -875,74 +875,14 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "CI pass rate"
+                  "options": "Open"
                 },
                 "properties": [
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 1
-                  },
-                  {
-                    "id": "custom.cellOptions",
-                    "value": {
-                      "type": "color-text"
-                    }
-                  },
-                  {
-                    "id": "thresholds",
-                    "value": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "red",
-                          "value": 0
-                        },
-                        {
-                          "color": "yellow",
-                          "value": 0.9
-                        },
-                        {
-                          "color": "green",
-                          "value": 0.98
-                        }
-                      ]
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Open (candidate)"
-                },
-                "properties": [
-                  {
-                    "id": "custom.cellOptions",
-                    "value": {
-                      "mode": "gradient",
-                      "type": "gauge"
-                    }
-                  },
                   {
                     "id": "color",
                     "value": {
-                      "mode": "continuous-BlPu"
-                    }
-                  },
-                  {
-                    "id": "thresholds",
-                    "value": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "blue",
-                          "value": 0
-                        }
-                      ]
+                      "fixedColor": "text",
+                      "mode": "fixed"
                     }
                   }
                 ]
@@ -983,7 +923,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Open"
+                  "options": "Human PRs"
                 },
                 "properties": [
                   {
@@ -998,7 +938,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Needed a human"
+                  "options": "Bot, not eligible"
                 },
                 "properties": [
                   {
@@ -1051,6 +991,48 @@ data:
                     }
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CI pass rate"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "red",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 0.9
+                        },
+                        {
+                          "color": "green",
+                          "value": 0.98
+                        }
+                      ]
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -1083,16 +1065,6 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum by (repo) (github_exporter_pr_open{repo=~\"$repo\",scope=\"auto-candidate\"})",
-              "format": "table",
-              "instant": true,
-              "refId": "Candidate"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",window=\"30d\"})",
               "format": "table",
               "instant": true,
@@ -1103,10 +1075,20 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",scope=~\"human|excluded\",window=\"30d\"})",
+              "expr": "sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",author=\"human\",window=\"30d\"})",
               "format": "table",
               "instant": true,
-              "refId": "Manual"
+              "refId": "Human"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",scope=\"excluded\",window=\"30d\"})",
+              "format": "table",
+              "instant": true,
+              "refId": "Blocked"
             },
             {
               "datasource": {
@@ -1135,7 +1117,7 @@ data:
               "id": "joinByField",
               "options": {
                 "byField": "repo",
-                "mode": "outer"
+                "mode": "outerTabular"
               }
             },
             {
@@ -1150,14 +1132,23 @@ data:
                   "Time 5": true,
                   "Time 6": true
                 },
+                "indexByName": {
+                  "repo": 0,
+                  "Value #Open": 1,
+                  "Value #Merged": 2,
+                  "Value #Human": 3,
+                  "Value #Blocked": 4,
+                  "Value #Eligible": 5,
+                  "Value #Pass": 6
+                },
                 "renameByName": {
-                  "Value #Candidate": "Open (candidate)",
-                  "Value #Manual": "Needed a human",
-                  "Value #Merged": "Merged 30d",
-                  "Value #Open": "Open",
-                  "Value #Pass": "CI pass rate",
                   "repo": "Repo",
-                  "Value #Eligible": "Eligible"
+                  "Value #Open": "Open",
+                  "Value #Merged": "Merged 30d",
+                  "Value #Human": "Human PRs",
+                  "Value #Blocked": "Bot, not eligible",
+                  "Value #Eligible": "Eligible",
+                  "Value #Pass": "CI pass rate"
                 }
               }
             },
