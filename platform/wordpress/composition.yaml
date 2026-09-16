@@ -606,7 +606,7 @@ spec:
                     return $approved;
                 }, 10, 2);
             ---
-            # --- wp-login.php / xmlrpc.php / REST users rate limit Middleware ---
+            # --- wp-login.php / REST users rate limit Middleware ---
             apiVersion: traefik.io/v1alpha1
             kind: Middleware
             metadata:
@@ -637,7 +637,7 @@ spec:
               entryPoints:
                 - websecure
               routes:
-                - match: "Host(`{{ $params.host }}`) && (Path(`/wp-login.php`) || Path(`/xmlrpc.php`) || PathPrefix(`/wp-json/wp/v2/users`))"
+                - match: "Host(`{{ $params.host }}`) && (Path(`/wp-login.php`) || PathPrefix(`/wp-json/wp/v2/users`))"
                   kind: Rule
                   priority: 100
                   # Headers first - a 429 from the rate limiter short-circuits the rest of

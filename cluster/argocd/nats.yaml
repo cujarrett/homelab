@@ -51,7 +51,9 @@ spec:
           # Pin pods to worker nodes, keep control plane clean
           podTemplate:
             merge:
-              spec: {}
+              spec:
+                nodeSelector:
+                  node-role.kubernetes.io/worker: worker
           natsBox:
             container:
               merge:
@@ -61,7 +63,9 @@ spec:
                     memory: "32Mi"
             podTemplate:
               merge:
-                spec: {}
+                spec:
+                  nodeSelector:
+                    node-role.kubernetes.io/worker: worker
     - repoURL: https://github.com/cujarrett/homelab.git
       targetRevision: main
       path: cluster/nats
