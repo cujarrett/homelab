@@ -134,6 +134,25 @@ data:
               {
                 "matcher": {
                   "id": "byName",
+                  "options": "Up"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "s"
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
                   "options": " ",
                   "scope": "series"
                 },
@@ -229,6 +248,16 @@ data:
               "instant": true,
               "legendFormat": "Pods",
               "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.100:9100\"}",
+              "instant": true,
+              "legendFormat": "Up",
+              "refId": "F"
             }
           ],
           "title": "ctrl-1",
@@ -339,6 +368,25 @@ data:
               {
                 "matcher": {
                   "id": "byName",
+                  "options": "Up"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "s"
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
                   "options": " ",
                   "scope": "series"
                 },
@@ -435,6 +483,16 @@ data:
               "instant": true,
               "legendFormat": "Pods",
               "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.101:9100\"}",
+              "instant": true,
+              "legendFormat": "Up",
+              "refId": "F"
             }
           ],
           "title": "work-1",
@@ -545,6 +603,25 @@ data:
               {
                 "matcher": {
                   "id": "byName",
+                  "options": "Up"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "s"
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
                   "options": " ",
                   "scope": "series"
                 },
@@ -641,6 +718,16 @@ data:
               "instant": true,
               "legendFormat": "Pods",
               "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.102:9100\"}",
+              "instant": true,
+              "legendFormat": "Up",
+              "refId": "F"
             }
           ],
           "title": "work-2",
@@ -751,6 +838,25 @@ data:
               {
                 "matcher": {
                   "id": "byName",
+                  "options": "Up"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "s"
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
                   "options": " ",
                   "scope": "series"
                 },
@@ -847,92 +953,19 @@ data:
               "instant": true,
               "legendFormat": "Pods",
               "refId": "C"
-            }
-          ],
-          "title": "work-3",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "decimals": 3,
-              "mappings": [
-                {
-                  "options": {
-                    "100": {
-                      "text": "100%"
-                    }
-                  },
-                  "type": "value"
-                }
-              ],
-              "max": 100,
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "red",
-                    "value": 0
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 99
-                  },
-                  {
-                    "color": "green",
-                    "value": 99.9
-                  }
-                ]
-              },
-              "unit": "percent"
-            }
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 3,
-            "x": 12,
-            "y": 0
-          },
-          "id": 305,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
             },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.2.0",
-          "targets": [
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "avg_over_time(((count(up{job=\"node-exporter\"} == 1) >= bool 3) * (max(probe_success{probe_group=\"internet\"}) == bool 1))[30d:30s]) * 100",
+              "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.103:9100\"}",
               "instant": true,
-              "legendFormat": "30d Availability",
-              "refId": "A"
+              "legendFormat": "Up",
+              "refId": "F"
             }
           ],
-          "title": "30 Day Availability",
+          "title": "work-3",
           "type": "stat"
         },
         {
@@ -980,8 +1013,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
-            "x": 15,
+            "w": 4,
+            "x": 12,
             "y": 0
           },
           "id": 16,
@@ -1052,8 +1085,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
-            "x": 18,
+            "w": 4,
+            "x": 16,
             "y": 0
           },
           "id": 4,
@@ -1127,8 +1160,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
-            "x": 21,
+            "w": 4,
+            "x": 20,
             "y": 0
           },
           "id": 5,
@@ -1166,117 +1199,6 @@ data:
             }
           ],
           "title": "Cluster Memory",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "decimals": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "red",
-                    "value": 0
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 3
-                  },
-                  {
-                    "color": "green",
-                    "value": 4
-                  }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Ready"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "green",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Total"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "text",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 3,
-            "x": 12,
-            "y": 3
-          },
-          "id": 101,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "value_and_name",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.2.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "editorMode": "code",
-              "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"})",
-              "instant": true,
-              "legendFormat": "Ready",
-              "refId": "A"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "count(kube_node_info)",
-              "instant": true,
-              "legendFormat": "Total",
-              "refId": "B"
-            }
-          ],
-          "title": "Nodes Ready",
           "type": "stat"
         },
         {
@@ -1324,8 +1246,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
-            "x": 15,
+            "w": 4,
+            "x": 12,
             "y": 3
           },
           "id": 6,
@@ -1401,8 +1323,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
-            "x": 18,
+            "w": 4,
+            "x": 16,
             "y": 3
           },
           "id": 102,
@@ -1467,8 +1389,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
-            "x": 21,
+            "w": 4,
+            "x": 20,
             "y": 3
           },
           "id": 3,
@@ -2606,6 +2528,73 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
+                "fixedColor": "blue",
+                "mode": "fixed"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 3,
+            "x": 18,
+            "y": 20
+          },
+          "id": 302,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(rate(controller_runtime_reconcile_total{job=\"crossplane-metrics\"}[5m])) or vector(0)",
+              "instant": true,
+              "legendFormat": "Reconciles/s",
+              "refId": "A"
+            }
+          ],
+          "title": "Reconciles/s",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
                 "mode": "thresholds"
               },
               "thresholds": {
@@ -2626,8 +2615,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 18,
+            "w": 3,
+            "x": 21,
             "y": 20
           },
           "id": 303,
@@ -2867,22 +2856,21 @@ data:
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "description": "Running pods sharing one pod-CIDR address. host-local IPAM can re-issue an in-use IP after a k3s server restart, and the losing pod fails its kubelet probe while healthy on localhost. Anything above zero needs the DuplicatePodIP runbook entry in docs/runbooks/k3s-upgrade.md.",
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "fixedColor": "blue",
-                "mode": "fixed"
-              },
+              "decimals": 0,
+              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
                     "color": "green",
-                    "value": 0
+                    "value": null
                   },
                   {
                     "color": "red",
-                    "value": 80
+                    "value": 1
                   }
                 ]
               },
@@ -2891,17 +2879,16 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 20,
-            "y": 40
+            "w": 6,
+            "x": 12,
+            "y": 23
           },
-          "id": 302,
+          "id": 921,
           "options": {
-            "colorMode": "value",
+            "colorMode": "background",
             "graphMode": "none",
             "justifyMode": "center",
             "orientation": "auto",
-            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
@@ -2909,7 +2896,6 @@ data:
               "fields": "",
               "values": false
             },
-            "showPercentChange": false,
             "textMode": "auto",
             "wideLayout": true
           },
@@ -2920,13 +2906,13 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(rate(controller_runtime_reconcile_total{job=\"crossplane-metrics\"}[5m])) or vector(0)",
+              "expr": "count(count by (pod_ip) (kube_pod_info{pod_ip=~\"10\\\\.42\\\\..+\"} * on (namespace, pod) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)) > 1) or vector(0)",
               "instant": true,
-              "legendFormat": "Reconciles/s",
+              "legendFormat": "",
               "refId": "A"
             }
           ],
-          "title": "Reconciles/s",
+          "title": "Duplicate Pod IPs",
           "type": "stat"
         },
         {
@@ -3021,70 +3007,6 @@ data:
             }
           ],
           "title": "Certs Ready",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "description": "Running pods sharing one pod-CIDR address. host-local IPAM can re-issue an in-use IP after a k3s server restart, and the losing pod fails its kubelet probe while healthy on localhost. Anything above zero needs the DuplicatePodIP runbook entry in docs/runbooks/k3s-upgrade.md.",
-          "fieldConfig": {
-            "defaults": {
-              "decimals": 0,
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 1
-                  }
-                ]
-              },
-              "unit": "short"
-            }
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 6,
-            "x": 12,
-            "y": 23
-          },
-          "id": 921,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.2.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "count(count by (pod_ip) (kube_pod_info{pod_ip=~\"10\\\\.42\\\\..+\"} * on (namespace, pod) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)) > 1) or vector(0)",
-              "instant": true,
-              "legendFormat": "",
-              "refId": "A"
-            }
-          ],
-          "title": "Duplicate Pod IPs",
           "type": "stat"
         },
         {
@@ -3544,7 +3466,7 @@ data:
           },
           "gridPos": {
             "h": 5,
-            "w": 12,
+            "w": 8,
             "x": 0,
             "y": 29
           },
@@ -3685,8 +3607,8 @@ data:
           },
           "gridPos": {
             "h": 5,
-            "w": 12,
-            "x": 12,
+            "w": 8,
+            "x": 8,
             "y": 29
           },
           "id": 331,
@@ -3727,6 +3649,145 @@ data:
             }
           ],
           "title": "PVC Usage (%)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "line",
+                  "steps": [
+                    {
+                      "color": "transparent"
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                }
+              },
+              "max": 90,
+              "min": 20,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "transparent",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "celsius"
+            }
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 8,
+            "x": 16,
+            "y": 29
+          },
+          "id": 353,
+          "options": {
+            "annotations": {
+              "clustering": -1,
+              "multiLane": false
+            },
+            "legend": {
+              "calcs": [
+                "mean",
+                "max",
+                "lastNotNull"
+              ],
+              "displayMode": "table",
+              "enableFacetedFilter": false,
+              "overflow": "ellipsis",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "13.2.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "node_thermal_zone_temp{instance=~\"192.168.10.100:.*\", type=\"cpu-thermal\"}",
+              "legendFormat": "ctrl-1",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "node_thermal_zone_temp{instance=~\"192.168.10.101:.*\", type=\"cpu-thermal\"}",
+              "legendFormat": "work-1",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "node_thermal_zone_temp{instance=~\"192.168.10.102:.*\", type=\"cpu-thermal\"}",
+              "legendFormat": "work-2",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "node_thermal_zone_temp{instance=~\"192.168.10.103:.*\", type=\"cpu-thermal\"}",
+              "legendFormat": "work-3",
+              "refId": "D"
+            }
+          ],
+          "title": "CPU Temperature per Node",
           "type": "timeseries"
         },
         {
@@ -3941,36 +4002,52 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "fixedColor": "blue",
-                "mode": "fixed"
+                "mode": "thresholds"
               },
+              "decimals": 3,
+              "mappings": [
+                {
+                  "options": {
+                    "100": {
+                      "text": "100%"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "max": 100,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "red",
                     "value": 0
                   },
                   {
-                    "color": "red",
-                    "value": 80
+                    "color": "yellow",
+                    "value": 99
+                  },
+                  {
+                    "color": "green",
+                    "value": 99.9
                   }
                 ]
               },
-              "unit": "s"
+              "unit": "percent"
             }
           },
           "gridPos": {
             "h": 3,
-            "w": 3,
+            "w": 8,
             "x": 0,
             "y": 40
           },
-          "id": 105,
+          "id": 305,
           "options": {
             "colorMode": "background",
             "graphMode": "none",
-            "justifyMode": "auto",
+            "justifyMode": "center",
             "orientation": "auto",
             "percentChangeColorMode": "standard",
             "reduceOptions": {
@@ -3991,214 +4068,13 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.100:9100\"}",
+              "expr": "avg_over_time(((count(up{job=\"node-exporter\"} == 1) >= bool 3) * (max(probe_success{probe_group=\"internet\"}) == bool 1))[30d:30s]) * 100",
               "instant": true,
-              "legendFormat": "ctrl-1",
+              "legendFormat": "30d Availability",
               "refId": "A"
             }
           ],
-          "title": "Uptime ctrl-1",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "fixedColor": "blue",
-                "mode": "fixed"
-              },
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "s"
-            }
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 3,
-            "x": 3,
-            "y": 40
-          },
-          "id": 106,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.2.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.101:9100\"}",
-              "instant": true,
-              "legendFormat": "work-1",
-              "refId": "A"
-            }
-          ],
-          "title": "Uptime work-1",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "fixedColor": "blue",
-                "mode": "fixed"
-              },
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "s"
-            }
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 3,
-            "x": 6,
-            "y": 40
-          },
-          "id": 107,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.2.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.102:9100\"}",
-              "instant": true,
-              "legendFormat": "work-2",
-              "refId": "A"
-            }
-          ],
-          "title": "Uptime work-2",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "fixedColor": "blue",
-                "mode": "fixed"
-              },
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "s"
-            }
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 3,
-            "x": 9,
-            "y": 40
-          },
-          "id": 108,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.2.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.103:9100\"}",
-              "instant": true,
-              "legendFormat": "work-3",
-              "refId": "A"
-            }
-          ],
-          "title": "Uptime work-3",
+          "title": "30 Day Availability",
           "type": "stat"
         },
         {
@@ -4232,8 +4108,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 12,
+            "w": 8,
+            "x": 8,
             "y": 40
           },
           "id": 350,
@@ -4301,7 +4177,7 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
+            "w": 8,
             "x": 16,
             "y": 40
           },
@@ -4569,145 +4445,6 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 10,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "smooth",
-                "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "never",
-                "showValues": false,
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "line",
-                  "steps": [
-                    {
-                      "color": "transparent"
-                    },
-                    {
-                      "color": "red",
-                      "value": 80
-                    }
-                  ]
-                }
-              },
-              "max": 90,
-              "min": 20,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "transparent",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "celsius"
-            }
-          },
-          "gridPos": {
-            "h": 5,
-            "w": 12,
-            "x": 12,
-            "y": 43
-          },
-          "id": 353,
-          "options": {
-            "annotations": {
-              "clustering": -1,
-              "multiLane": false
-            },
-            "legend": {
-              "calcs": [
-                "mean",
-                "max",
-                "lastNotNull"
-              ],
-              "displayMode": "table",
-              "enableFacetedFilter": false,
-              "overflow": "ellipsis",
-              "placement": "bottom",
-              "showLegend": false
-            },
-            "tooltip": {
-              "hideZeros": false,
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "pluginVersion": "13.2.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "node_thermal_zone_temp{instance=~\"192.168.10.100:.*\", type=\"cpu-thermal\"}",
-              "legendFormat": "ctrl-1",
-              "refId": "A"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "node_thermal_zone_temp{instance=~\"192.168.10.101:.*\", type=\"cpu-thermal\"}",
-              "legendFormat": "work-1",
-              "refId": "B"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "node_thermal_zone_temp{instance=~\"192.168.10.102:.*\", type=\"cpu-thermal\"}",
-              "legendFormat": "work-2",
-              "refId": "C"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "expr": "node_thermal_zone_temp{instance=~\"192.168.10.103:.*\", type=\"cpu-thermal\"}",
-              "legendFormat": "work-3",
-              "refId": "D"
-            }
-          ],
-          "title": "CPU Temperature per Node",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
             "uid": "cluster-availability-archive"
           },
           "description": "Availability per calendar month for the last year. Prometheus returns hourly uptime fractions and Grafana groups them by month, since PromQL subquery windows are fixed literals and cannot align to a calendar. The newest bar is the current month so far. The 5m inner step trades about 0.005% of accuracy for a query that stays under two seconds at a full year of data.",
@@ -4764,9 +4501,9 @@ data:
           },
           "gridPos": {
             "h": 5,
-            "w": 24,
-            "x": 0,
-            "y": 48
+            "w": 12,
+            "x": 12,
+            "y": 43
           },
           "id": 361,
           "interval": "1h",
@@ -4875,7 +4612,7 @@ data:
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 53
+            "y": 48
           },
           "id": 323,
           "options": {
