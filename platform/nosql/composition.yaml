@@ -10,52 +10,52 @@ spec:
   pipeline:
     - step: render-aws-resources
       functionRef:
-        name: function-patch-and-transform
+        name: function-go-templating
       input:
-        apiVersion: pt.fn.crossplane.io/v1beta1
-        kind: Resources
-        resources:
-          - name: table
-            base:
-              apiVersion: dynamodb.aws.m.upbound.io/v1beta1
-              kind: Table
-              spec:
-                forProvider:
-                  region: "us-east-1"
-                  billingMode: PAY_PER_REQUEST
-                  hashKey: ""
-                  attribute:
-                    - name: ""
-                      type: S
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.dataRetention
-                toFieldPath: spec.managementPolicies
-                transforms:
-                  - type: map
-                    map:
-                      delete: ["*"]
-                      retain: ["Observe", "Create", "Update", "LateInitialize"]
-              # External name = table name; deterministic so IAM inline policy
-              # can scope to the exact table ARN without wildcards.
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: metadata.annotations["crossplane.io/external-name"]
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.partitionKey
-                toFieldPath: spec.forProvider.hashKey
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.partitionKey
-                toFieldPath: spec.forProvider.attribute[0].name
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.partitionKeyType
-                toFieldPath: spec.forProvider.attribute[0].type
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.forProvider.tags.Table
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.forProvider.tags.App
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.namespace
-                toFieldPath: spec.forProvider.tags.Namespace
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $ns := $xr.metadata.namespace }}
+            {{- /* Defaults mirror the XRD - crossplane render sees the raw XR, with no */ -}}
+            {{- /* API server defaulting applied.                                        */ -}}
+            {{- $partitionKey := $xr.spec.parameters.partitionKey | default "id" }}
+            {{- $partitionKeyType := $xr.spec.parameters.partitionKeyType | default "S" }}
+            {{- $dataRetention := $xr.spec.parameters.dataRetention | default "retain" }}
+            {{- $managementPolicies := list "Observe" "Create" "Update" "LateInitialize" }}
+            {{- if eq $dataRetention "delete" }}
+            {{- $managementPolicies = list "*" }}
+            {{- end }}
+            {{- $ready := "False" }}
+            {{- with index (.observed.resources | default dict) "table" }}
+            {{- range (.resource.status.conditions | default list) }}
+            {{- if and (eq .type "Ready") (eq .status "True") }}{{- $ready = "True" }}{{- end }}
+            {{- end }}
+            {{- end }}
+            ---
+            apiVersion: dynamodb.aws.m.upbound.io/v1beta1
+            kind: Table
+            metadata:
+              name: {{ $name }}
+              annotations:
+                {{- /* Deterministic, so the Api inline policy can scope to the exact */}}
+                {{- /* table ARN without wildcards.                                   */}}
+                crossplane.io/external-name: {{ $name }}
+                gotemplating.fn.crossplane.io/composition-resource-name: table
+                gotemplating.fn.crossplane.io/ready: {{ $ready | quote }}
+            spec:
+              managementPolicies: {{ $managementPolicies | toJson }}
+              forProvider:
+                region: us-east-1
+                billingMode: PAY_PER_REQUEST
+                hashKey: {{ $partitionKey }}
+                attribute:
+                  - name: {{ $partitionKey }}
+                    type: {{ $partitionKeyType }}
+                tags:
+                  Table: {{ $name }}
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}

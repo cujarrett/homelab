@@ -10,57 +10,48 @@ spec:
   pipeline:
     - step: render-aws-resources
       functionRef:
-        name: function-patch-and-transform
+        name: function-go-templating
       input:
-        apiVersion: pt.fn.crossplane.io/v1beta1
-        kind: Resources
-        resources:
-          - name: bucket
-            base:
-              apiVersion: s3.aws.m.upbound.io/v1beta1
-              kind: Bucket
-              spec:
-                forProvider:
-                  region: "us-east-1"
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.dataRetention
-                toFieldPath: spec.managementPolicies
-                transforms:
-                  - type: map
-                    map:
-                      delete: ["*"]
-                      retain: ["Observe", "Create", "Update", "LateInitialize"]
-              # forceDestroy only for dataRetention=delete - AWS refuses DeleteBucket
-              # on a non-empty bucket otherwise, which stalls sandbox teardown forever.
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.dataRetention
-                toFieldPath: spec.forProvider.forceDestroy
-                transforms:
-                  - type: map
-                    map:
-                      delete: true
-                      retain: false
-              # Bucket name: platform-{namespace}-{name}. The platform- prefix lets IAM
-              # resource conditions scope to arn:aws:s3:::platform-* without relying on
-              # bucket tags, which IAM cannot read at auth time.
-              - type: CombineFromComposite
-                combine:
-                  variables:
-                    - fromFieldPath: metadata.namespace
-                    - fromFieldPath: metadata.name
-                  strategy: string
-                  string:
-                    fmt: "platform-%s-%s"
-                toFieldPath: metadata.annotations["crossplane.io/external-name"]
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: spec.forProvider.tags.App
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.namespace
-                toFieldPath: spec.forProvider.tags.Namespace
-            connectionDetails:
-              - type: FromFieldPath
-                name: bucket
-                fromFieldPath: status.atProvider.id
-
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $ns := $xr.metadata.namespace }}
+            {{- $dataRetention := $xr.spec.parameters.dataRetention | default "retain" }}
+            {{- $managementPolicies := list "Observe" "Create" "Update" "LateInitialize" }}
+            {{- $forceDestroy := false }}
+            {{- /* AWS refuses DeleteBucket on a non-empty bucket, which stalls sandbox */ -}}
+            {{- /* teardown forever, so only the delete case sweeps objects first.      */ -}}
+            {{- if eq $dataRetention "delete" }}
+            {{- $managementPolicies = list "*" }}
+            {{- $forceDestroy = true }}
+            {{- end }}
+            {{- /* The platform- prefix lets IAM resource conditions scope to           */ -}}
+            {{- /* arn:aws:s3:::platform-* - IAM cannot read bucket tags at auth time.  */ -}}
+            {{- $bucketName := printf "platform-%s-%s" $ns $name }}
+            {{- $ready := "False" }}
+            {{- with index (.observed.resources | default dict) "bucket" }}
+            {{- range (.resource.status.conditions | default list) }}
+            {{- if and (eq .type "Ready") (eq .status "True") }}{{- $ready = "True" }}{{- end }}
+            {{- end }}
+            {{- end }}
+            ---
+            apiVersion: s3.aws.m.upbound.io/v1beta1
+            kind: Bucket
+            metadata:
+              name: {{ $name }}
+              annotations:
+                crossplane.io/external-name: {{ $bucketName }}
+                gotemplating.fn.crossplane.io/composition-resource-name: bucket
+                gotemplating.fn.crossplane.io/ready: {{ $ready | quote }}
+            spec:
+              managementPolicies: {{ $managementPolicies | toJson }}
+              forProvider:
+                region: us-east-1
+                forceDestroy: {{ $forceDestroy }}
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}

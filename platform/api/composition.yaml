@@ -301,46 +301,21 @@ spec:
                       type: RuntimeDefault
                   {{- if or (gt (len $objectStorageRefs) 0) $sqlRefName $nosqlRefName $cacheEnabled (gt (len $managedSecretRefs) 0) }}
                   initContainers:
+                    {{- /* Waits for the binding, not the value. A managed secret's value is  */}}
+                    {{- /* written by the sidecar, which only starts once every init          */}}
+                    {{- /* container has finished, so waiting on it here would never return.  */}}
+                    {{- $waits := list }}
                     {{- range $ref := $managedSecretRefs }}
-                    {{- /* Waits for the binding, not the value. The value is written by the  */}}
-                    {{- /* sidecar, which only starts once every init container has finished, */}}
-                    {{- /* so waiting on it here would never return.                          */}}
-                    - name: wait-for-managed-secret-{{ $ref.name }}-binding
-                      image: busybox:1.36
-                      securityContext:
-                        allowPrivilegeEscalation: false
-                        readOnlyRootFilesystem: true
-                        capabilities:
-                          drop: [ALL]
-                      command:
-                        - sh
-                        - -c
-                        - "until [ -f /bindings/managed-secret-{{ $ref.name }}/type ]; do echo waiting for {{ $ref.name }} binding; sleep 5; done"
-                      volumeMounts:
-                        - name: managed-secret-{{ $ref.name }}-binding
-                          mountPath: /bindings/managed-secret-{{ $ref.name }}
-                          readOnly: true
+                    {{- $waits = append $waits (dict "binding" (printf "managed-secret-%s" $ref.name) "label" $ref.name) }}
                     {{- end }}
-                    {{- range $i, $ref := $objectStorageRefs }}
-                    {{- $osMountName := printf "object-storage-%s" $ref.name }}
-                    - name: wait-for-object-storage-{{ $ref.name }}-binding
-                      image: busybox:1.36
-                      securityContext:
-                        allowPrivilegeEscalation: false
-                        readOnlyRootFilesystem: true
-                        capabilities:
-                          drop: [ALL]
-                      command:
-                        - sh
-                        - -c
-                        - "until [ -f /bindings/{{ $osMountName }}/type ]; do echo waiting for {{ $ref.name }} binding; sleep 5; done"
-                      volumeMounts:
-                        - name: object-storage-{{ $ref.name }}-binding
-                          mountPath: /bindings/{{ $osMountName }}
-                          readOnly: true
+                    {{- range $ref := $objectStorageRefs }}
+                    {{- $waits = append $waits (dict "binding" (printf "object-storage-%s" $ref.name) "label" $ref.name) }}
                     {{- end }}
-                    {{- if $sqlRefName }}
-                    - name: wait-for-sql-binding
+                    {{- if $sqlRefName }}{{- $waits = append $waits (dict "binding" "sql" "label" "sql") }}{{- end }}
+                    {{- if $nosqlRefName }}{{- $waits = append $waits (dict "binding" "nosql" "label" "nosql") }}{{- end }}
+                    {{- if $cacheEnabled }}{{- $waits = append $waits (dict "binding" "cache" "label" "cache") }}{{- end }}
+                    {{- range $wait := $waits }}
+                    - name: wait-for-{{ $wait.binding }}-binding
                       image: busybox:1.36
                       securityContext:
                         allowPrivilegeEscalation: false
@@ -350,44 +325,10 @@ spec:
                       command:
                         - sh
                         - -c
-                        - "until [ -f /bindings/sql/type ]; do echo waiting for sql binding; sleep 5; done"
+                        - "until [ -f /bindings/{{ $wait.binding }}/type ]; do echo waiting for {{ $wait.label }} binding; sleep 5; done"
                       volumeMounts:
-                        - name: sql-binding
-                          mountPath: /bindings/sql
-                          readOnly: true
-                    {{- end }}
-                    {{- if $nosqlRefName }}
-                    - name: wait-for-nosql-binding
-                      image: busybox:1.36
-                      securityContext:
-                        allowPrivilegeEscalation: false
-                        readOnlyRootFilesystem: true
-                        capabilities:
-                          drop: [ALL]
-                      command:
-                        - sh
-                        - -c
-                        - "until [ -f /bindings/nosql/type ]; do echo waiting for nosql binding; sleep 5; done"
-                      volumeMounts:
-                        - name: nosql-binding
-                          mountPath: /bindings/nosql
-                          readOnly: true
-                    {{- end }}
-                    {{- if $cacheEnabled }}
-                    - name: wait-for-cache-binding
-                      image: busybox:1.36
-                      securityContext:
-                        allowPrivilegeEscalation: false
-                        readOnlyRootFilesystem: true
-                        capabilities:
-                          drop: [ALL]
-                      command:
-                        - sh
-                        - -c
-                        - "until [ -f /bindings/cache/type ]; do echo waiting for cache binding; sleep 5; done"
-                      volumeMounts:
-                        - name: cache-binding
-                          mountPath: /bindings/cache
+                        - name: {{ $wait.binding }}-binding
+                          mountPath: /bindings/{{ $wait.binding }}
                           readOnly: true
                     {{- end }}
                   {{- end }}
@@ -676,9 +617,11 @@ spec:
             {{- /*   cache backend=cloud (ElastiCache). Add sqlRef cloud variant when XRD supports.     */}}
             {{- $hasAwsCloudBindings := or (gt (len $objectStorageRefs) 0) (ne $nosqlRefName "") (gt (len $managedSecretRefs) 0) (and $cacheEnabled (eq $cacheBackend "public-cloud")) (and (ne $sqlRefName "") (eq $sqlBackend "public-cloud")) }}
             {{- if $hasAwsCloudBindings }}
-            {{- range $i, $ref := $objectStorageRefs }}
+            {{- /* One IAM role and one binding Secret per AWS-backed ref. The Secret     */ -}}
+            {{- /* carries no value, only where to find one and which role may read it.   */ -}}
+            {{- $awsBindings := list }}
+            {{- range $ref := $objectStorageRefs }}
             {{- $refName := $ref.name }}
-            {{- $roleKey := printf "role-object-storage-%s" $refName }}
             {{- $bucketName := printf "platform-%s-%s" $ns $refName }}
             {{- /* IAM role names are capped at 64 chars. Hash the name when it would exceed that. */}}
             {{- $rawRoleExternalName := printf "crossplane-%s-%s-%s" $ns $name $refName }}
@@ -686,95 +629,36 @@ spec:
             {{- if gt (len $rawRoleExternalName) 64 }}
             {{- $roleExternalName = printf "xp-%s" ($rawRoleExternalName | sha256sum | trunc 61) }}
             {{- end }}
-            {{- $predictedRoleArn := printf "arn:aws:iam::%s:role/crossplane/%s" $awsAccountId $roleExternalName }}
-            {{- $inlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "s3:GetObject" "s3:PutObject" "s3:DeleteObject" "s3:ListBucket") "Resource" (list (printf "arn:aws:s3:::%s" $bucketName) (printf "arn:aws:s3:::%s/*" $bucketName)))) | toJson }}
-            ---
-            # IAM Role for objectStorageRef {{ $refName }}. Trust scoped to this Api's service account.
-            apiVersion: iam.aws.m.upbound.io/v1beta1
-            kind: Role
-            metadata:
-              name: {{ $name }}-objstorage-{{ $refName }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: {{ $roleKey }}
-                gotemplating.fn.crossplane.io/ready: "True"
-                crossplane.io/external-name: {{ $roleExternalName }}
-            spec:
-              forProvider:
-                path: /crossplane/
-                maxSessionDuration: 3600
-                tags:
-                  App: {{ $name }}
-                  Namespace: {{ $ns }}
-                  ObjectStorageRef: {{ $refName }}
-                assumeRolePolicy: {{ $trustPolicy | quote }}
-                inlinePolicy:
-                  - name: platform-object-storage-{{ $ns }}-{{ $refName }}
-                    policy: {{ $inlinePolicy | quote }}
-
-            ---
-            # Binding Secret for {{ $refName }}.
-            apiVersion: v1
-            kind: Secret
-            metadata:
-              name: {{ $name }}-{{ $refName }}
-              namespace: {{ $ns }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: binding-secret-object-storage-{{ $refName }}
-                gotemplating.fn.crossplane.io/ready: "True"
-            type: servicebinding.io/s3
-            stringData:
-              type: s3
-              provider: aws
-              bucket: {{ $bucketName }}
-              region: us-east-1
-              role-arn: {{ $predictedRoleArn }}
-
+            {{- $policy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "s3:GetObject" "s3:PutObject" "s3:DeleteObject" "s3:ListBucket") "Resource" (list (printf "arn:aws:s3:::%s" $bucketName) (printf "arn:aws:s3:::%s/*" $bucketName)))) | toJson }}
+            {{- $awsBindings = append $awsBindings (dict
+                "roleName" (printf "%s-objstorage-%s" $name $refName)
+                "roleKey" (printf "role-object-storage-%s" $refName)
+                "roleExternalName" $roleExternalName
+                "tagKey" "ObjectStorageRef" "tagValue" $refName
+                "policyName" (printf "platform-object-storage-%s-%s" $ns $refName)
+                "policy" $policy
+                "secretName" (printf "%s-%s" $name $refName)
+                "secretKey" (printf "binding-secret-object-storage-%s" $refName)
+                "bindingType" "s3"
+                "dataKey" "bucket" "dataValue" $bucketName
+                "roleArn" (printf "arn:aws:iam::%s:role/crossplane/%s" $awsAccountId $roleExternalName)) }}
             {{- end }}
             {{- if $nosqlRefName }}
-            {{- $nosqlRoleKey := "role-nosql" }}
-            {{- $tableName := $nosqlRefName }}
-            {{- $nosqlPredictedRoleArn := printf "arn:aws:iam::%s:role/crossplane/crossplane-%s-%s-nosql" $awsAccountId $ns $name }}
-            {{- $nosqlInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "dynamodb:GetItem" "dynamodb:PutItem" "dynamodb:UpdateItem" "dynamodb:DeleteItem" "dynamodb:Query" "dynamodb:Scan" "dynamodb:BatchGetItem" "dynamodb:BatchWriteItem") "Resource" (list (printf "arn:aws:dynamodb:us-east-1:*:table/%s" $tableName) (printf "arn:aws:dynamodb:us-east-1:*:table/%s/index/*" $tableName)))) | toJson }}
-            ---
-            # IAM Role for nosqlRef {{ $nosqlRefName }}. Trust scoped to this Api's service account.
-            apiVersion: iam.aws.m.upbound.io/v1beta1
-            kind: Role
-            metadata:
-              name: {{ $name }}-nosql
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: {{ $nosqlRoleKey }}
-                gotemplating.fn.crossplane.io/ready: "True"
-                crossplane.io/external-name: crossplane-{{ $ns }}-{{ $name }}-nosql
-            spec:
-              forProvider:
-                path: /crossplane/
-                maxSessionDuration: 3600
-                tags:
-                  App: {{ $name }}
-                  Namespace: {{ $ns }}
-                  NoSqlRef: {{ $nosqlRefName }}
-                assumeRolePolicy: {{ $trustPolicy | quote }}
-                inlinePolicy:
-                  - name: platform-nosql-{{ $ns }}-{{ $nosqlRefName }}
-                    policy: {{ $nosqlInlinePolicy | quote }}
-            ---
-            # Binding Secret for nosqlRef {{ $nosqlRefName }}.
-            apiVersion: v1
-            kind: Secret
-            metadata:
-              name: {{ $name }}-nosql
-              namespace: {{ $ns }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: binding-secret-nosql
-                gotemplating.fn.crossplane.io/ready: "True"
-            type: servicebinding.io/dynamodb
-            stringData:
-              type: dynamodb
-              provider: aws
-              table-name: {{ $tableName }}
-              region: us-east-1
-              role-arn: {{ $nosqlPredictedRoleArn }}
-            {{- end }}{{- /* end nosqlRefName */}}
+            {{- /* No hashing fallback here - a table role name is short by construction. */}}
+            {{- $policy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "dynamodb:GetItem" "dynamodb:PutItem" "dynamodb:UpdateItem" "dynamodb:DeleteItem" "dynamodb:Query" "dynamodb:Scan" "dynamodb:BatchGetItem" "dynamodb:BatchWriteItem") "Resource" (list (printf "arn:aws:dynamodb:us-east-1:*:table/%s" $nosqlRefName) (printf "arn:aws:dynamodb:us-east-1:*:table/%s/index/*" $nosqlRefName)))) | toJson }}
+            {{- $awsBindings = append $awsBindings (dict
+                "roleName" (printf "%s-nosql" $name)
+                "roleKey" "role-nosql"
+                "roleExternalName" (printf "crossplane-%s-%s-nosql" $ns $name)
+                "tagKey" "NoSqlRef" "tagValue" $nosqlRefName
+                "policyName" (printf "platform-nosql-%s-%s" $ns $nosqlRefName)
+                "policy" $policy
+                "secretName" (printf "%s-nosql" $name)
+                "secretKey" "binding-secret-nosql"
+                "bindingType" "dynamodb"
+                "dataKey" "table-name" "dataValue" $nosqlRefName
+                "roleArn" (printf "arn:aws:iam::%s:role/crossplane/crossplane-%s-%s-nosql" $awsAccountId $ns $name)) }}
+            {{- end }}
             {{- range $ref := $managedSecretRefs }}
             {{- $refName := $ref.name }}
             {{- $secretId := printf "platform/%s/%s" $ns $refName }}
@@ -783,21 +667,34 @@ spec:
             {{- if gt (len $rawSecretRoleName) 64 }}
             {{- $secretRoleName = printf "xp-%s" ($rawSecretRoleName | sha256sum | trunc 61) }}
             {{- end }}
-            {{- $secretPredictedRoleArn := printf "arn:aws:iam::%s:role/crossplane/%s" $awsAccountId $secretRoleName }}
             {{- /* Secrets Manager appends six random characters at creation, so the exact  */}}
             {{- /* ARN is unknowable here. Six ? rather than * because ? matches one       */}}
             {{- /* character each - a trailing * would also match platform/ns/name-other.  */}}
-            {{- $secretInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "secretsmanager:GetSecretValue" "secretsmanager:DescribeSecret") "Resource" (list (printf "arn:aws:secretsmanager:us-east-1:%s:secret:%s-??????" $awsAccountId $secretId)))) | toJson }}
+            {{- $policy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "secretsmanager:GetSecretValue" "secretsmanager:DescribeSecret") "Resource" (list (printf "arn:aws:secretsmanager:us-east-1:%s:secret:%s-??????" $awsAccountId $secretId)))) | toJson }}
+            {{- $awsBindings = append $awsBindings (dict
+                "roleName" (printf "%s-secret-%s" $name $refName)
+                "roleKey" (printf "role-managed-secret-%s" $refName)
+                "roleExternalName" $secretRoleName
+                "tagKey" "ManagedSecretRef" "tagValue" $refName
+                "policyName" (printf "platform-managed-secret-%s-%s" $ns $refName)
+                "policy" $policy
+                "secretName" (printf "%s-secret-%s" $name $refName)
+                "secretKey" (printf "binding-secret-managed-secret-%s" $refName)
+                "bindingType" "secretsmanager"
+                "dataKey" "secret-id" "dataValue" $secretId
+                "roleArn" (printf "arn:aws:iam::%s:role/crossplane/%s" $awsAccountId $secretRoleName)) }}
+            {{- end }}
+            {{- range $b := $awsBindings }}
             ---
-            # IAM Role for managedSecretRef {{ $refName }}. Trust scoped to this Api's service account.
+            # Trust scoped to this Api's service account.
             apiVersion: iam.aws.m.upbound.io/v1beta1
             kind: Role
             metadata:
-              name: {{ $name }}-secret-{{ $refName }}
+              name: {{ $b.roleName }}
               annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: role-managed-secret-{{ $refName }}
+                gotemplating.fn.crossplane.io/composition-resource-name: {{ $b.roleKey }}
                 gotemplating.fn.crossplane.io/ready: "True"
-                crossplane.io/external-name: {{ $secretRoleName }}
+                crossplane.io/external-name: {{ $b.roleExternalName }}
             spec:
               forProvider:
                 path: /crossplane/
@@ -805,30 +702,28 @@ spec:
                 tags:
                   App: {{ $name }}
                   Namespace: {{ $ns }}
-                  ManagedSecretRef: {{ $refName }}
+                  {{ $b.tagKey }}: {{ $b.tagValue }}
                 assumeRolePolicy: {{ $trustPolicy | quote }}
                 inlinePolicy:
-                  - name: platform-managed-secret-{{ $ns }}-{{ $refName }}
-                    policy: {{ $secretInlinePolicy | quote }}
+                  - name: {{ $b.policyName }}
+                    policy: {{ $b.policy | quote }}
             ---
-            # Binding Secret for managedSecretRef {{ $refName }}. Carries no value, only where
-            # to find one and which role may read it.
             apiVersion: v1
             kind: Secret
             metadata:
-              name: {{ $name }}-secret-{{ $refName }}
+              name: {{ $b.secretName }}
               namespace: {{ $ns }}
               annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: binding-secret-managed-secret-{{ $refName }}
+                gotemplating.fn.crossplane.io/composition-resource-name: {{ $b.secretKey }}
                 gotemplating.fn.crossplane.io/ready: "True"
-            type: servicebinding.io/secretsmanager
+            type: servicebinding.io/{{ $b.bindingType }}
             stringData:
-              type: secretsmanager
+              type: {{ $b.bindingType }}
               provider: aws
-              secret-id: {{ $secretId }}
+              {{ $b.dataKey }}: {{ $b.dataValue }}
               region: us-east-1
-              role-arn: {{ $secretPredictedRoleArn }}
-            {{- end }}{{- /* end managedSecretRefs */}}
+              role-arn: {{ $b.roleArn }}
+            {{- end }}
             {{- end }}{{- /* end hasAwsCloudBindings */}}
             {{- if $entraNeeded }}
             ---
@@ -1196,105 +1091,60 @@ spec:
                     - "{{ $c.namespace }}/{{ $c.app }}.{{ $c.namespace }}.svc.cluster.local"
                     {{- end }}
                     {{- end }}
+            {{- /* One shape for every outbound endpoint. A derived host comes from a    */ -}}
+            {{- /* binding on this XR, so the platform registers it rather than making the */ -}}
+            {{- /* app restate it in consumes. An entraApp host is an API registered       */ -}}
+            {{- /* outside the platform, where its owner grants the role and the platform  */ -}}
+            {{- /* only opens the path. protocol TLS passes the app's own encrypted stream */ -}}
+            {{- /* through, where HTTP would make Envoy try to terminate it.               */ -}}
+            {{- $serviceEntries := list }}
             {{- range $h := $derivedHosts }}
-            ---
-            # {{ $h }} - a binding on this XR implies this endpoint, so the platform
-            # registers it rather than making the app restate it in consumes.
-            apiVersion: networking.istio.io/v1
-            kind: ServiceEntry
-            metadata:
-              name: {{ $name }}-{{ $h | replace "." "-" }}
-              namespace: {{ $ns }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: connection-se-{{ $h | replace "." "-" }}
-                gotemplating.fn.crossplane.io/ready: "True"
-            spec:
-              hosts:
-                - {{ $h | quote }}
-              location: MESH_EXTERNAL
-              resolution: DNS
-              exportTo: ["."]
-              ports:
-                - number: 443
-                  name: tls
-                  protocol: TLS
+            {{- $serviceEntries = append $serviceEntries (dict "key" $h "host" $h "port" 443 "protocol" "TLS") }}
             {{- end }}
             {{- range $c := $consumes }}
+            {{- $port := $c.port | default 443 }}
+            {{- $protocol := $c.protocol | default "TLS" }}
             {{- if $c.host }}
-            ---
-            # consumes {{ $c.host }} - this registers the host. The egress entry above
-            # is what permits it. protocol TLS passes the app's own encrypted stream
-            # straight through; HTTP would make Envoy try to terminate it.
-            apiVersion: networking.istio.io/v1
-            kind: ServiceEntry
-            metadata:
-              name: {{ $name }}-{{ $c.host | replace "." "-" }}
-              namespace: {{ $ns }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: connection-se-{{ $c.host | replace "." "-" }}
-                gotemplating.fn.crossplane.io/ready: "True"
-            spec:
-              hosts:
-                - {{ $c.host | quote }}
-              location: MESH_EXTERNAL
-              resolution: DNS
-              exportTo: ["."]
-              ports:
-                - number: {{ $c.port | default 443 }}
-                  name: {{ $c.protocol | default "TLS" | lower }}
-                  protocol: {{ $c.protocol | default "TLS" }}
+            {{- $serviceEntries = append $serviceEntries (dict "key" $c.host "host" $c.host "port" $port "protocol" $protocol) }}
             {{- end }}
             {{- if $c.address }}
-            ---
-            # consumes {{ $c.address }} - a destination with no DNS name, such as a device
-            # on the LAN. Static resolution names the endpoint directly, because a DNS
-            # ServiceEntry has nothing to look up.
-            apiVersion: networking.istio.io/v1
-            kind: ServiceEntry
-            metadata:
-              name: {{ $name }}-{{ $c.address | replace "." "-" }}
-              namespace: {{ $ns }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: connection-se-{{ $c.address | replace "." "-" }}
-                gotemplating.fn.crossplane.io/ready: "True"
-            spec:
-              hosts:
-                - {{ printf "%s.address.declared" ($c.address | replace "." "-") | quote }}
-              addresses:
-                - {{ printf "%s/32" $c.address | quote }}
-              location: MESH_EXTERNAL
-              resolution: STATIC
-              exportTo: ["."]
-              endpoints:
-                - address: {{ $c.address | quote }}
-              ports:
-                - number: {{ $c.port | default 443 }}
-                  name: {{ $c.protocol | default "TLS" | lower }}
-                  protocol: {{ $c.protocol | default "TLS" }}
+            {{- /* A destination with no DNS name, such as a device on the LAN. Static    */ -}}
+            {{- /* resolution names the endpoint directly, because a DNS ServiceEntry has */ -}}
+            {{- /* nothing to look up.                                                    */ -}}
+            {{- $serviceEntries = append $serviceEntries (dict "key" $c.address "host" (printf "%s.address.declared" ($c.address | replace "." "-")) "address" $c.address "port" $port "protocol" $protocol) }}
             {{- end }}
             {{- if $c.entraApp }}
+            {{- $serviceEntries = append $serviceEntries (dict "key" $c.entraApp.host "host" $c.entraApp.host "port" 443 "protocol" "TLS") }}
+            {{- end }}
+            {{- end }}
+            {{- range $se := $serviceEntries }}
             ---
-            # consumes {{ $c.entraApp.host }} - an API registered in Entra outside the
-            # platform. Its owner grants the role; the platform only opens the path.
             apiVersion: networking.istio.io/v1
             kind: ServiceEntry
             metadata:
-              name: {{ $name }}-{{ $c.entraApp.host | replace "." "-" }}
+              name: {{ $name }}-{{ $se.key | replace "." "-" }}
               namespace: {{ $ns }}
               annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: connection-se-{{ $c.entraApp.host | replace "." "-" }}
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-se-{{ $se.key | replace "." "-" }}
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               hosts:
-                - {{ $c.entraApp.host | quote }}
+                - {{ $se.host | quote }}
+              {{- if $se.address }}
+              addresses:
+                - {{ printf "%s/32" $se.address | quote }}
+              {{- end }}
               location: MESH_EXTERNAL
-              resolution: DNS
+              resolution: {{ if $se.address }}STATIC{{ else }}DNS{{ end }}
               exportTo: ["."]
+              {{- if $se.address }}
+              endpoints:
+                - address: {{ $se.address | quote }}
+              {{- end }}
               ports:
-                - number: 443
-                  name: tls
-                  protocol: TLS
-            {{- end }}
+                - number: {{ $se.port }}
+                  name: {{ $se.protocol | lower }}
+                  protocol: {{ $se.protocol }}
             {{- end }}
             {{- /* Derived values written back so kubectl get api <name> -o yaml answers   */ -}}
             {{- /* what an app expects, without opening a composition or the Azure web UI.  */ -}}

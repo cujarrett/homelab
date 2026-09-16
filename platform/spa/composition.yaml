@@ -222,106 +222,37 @@ spec:
                     }
                     {{- end }}
 
-                    # Bare credential/log paths with no extension for the default-deny rule to catch
-                    location ~* (^|/)(credentials|var/log)(/|$) {
+                    # Scanner probes, all answered 404 so the SPA catch-all never returns 200
+                    # and tells a scanner the stack is here. Grouped by suffix: ";" is a
+                    # terminator alongside "/" so /actuator;/env cannot slip past, _profiler has
+                    # no ^ anchor so it matches nested paths, and id_rsa and friends have no
+                    # extension for the dotted default-deny below to catch.
+                    location ~* "(^|/)(credentials|var/log)(/|$)|/(id_rsa|id_dsa|id_ecdsa|id_ed25519)(\.pub)?$" {
                         return 404;
                     }
 
-                    # Endpoint/framework probes (Spring Boot, Symfony, Magento, etc.). _profiler
-                    # has no ^ anchor to match nested paths; ";" is a terminator alongside "/" so
-                    # matrix-parameter paths like /actuator;/env don't slip past to the catch-all.
-                    location ~* "(^/actuator(/|;|$)|^/jolokia(/|;|$)|^/swagger(/|;|$)|^/openapi(/|;|$)|^/v2/_catalog(/|;|$)|^/v3/api-docs(/|;|$)|^/console(/|;|$)|^/telescope(/|;|$)|^/server-status$|/_profiler(/|;|$)|^/_environment(/|;|$)|^/rest/(V[0-9]+|default)(/|;|$))" {
+                    location ~* "^/(actuator|jolokia|swagger|openapi|console|telescope|_environment|v2/_catalog|v3/api-docs|rest/(V[0-9]+|default))(/|;|$)|^/server-status$|/_profiler(/|;|$)" {
                         return 404;
                     }
 
-                    # SSH key files accessed outside .ssh/ directories (e.g. /devops/id_dsa, /pki/id_ecdsa)
-                    # id_rsa etc. have no extension when the optional .pub suffix is absent
-                    location ~* /(id_rsa|id_dsa|id_ecdsa|id_ed25519)(\.pub)?$ {
+                    location ~* "^/(api/|@vite/|actutor/|manage/|__|_)?env(/|\.|$)" {
                         return 404;
                     }
 
-                    # WordPress/CMS directory probes - return 404 instead of 200 via SPA catch-all
-                    # Prevents scanners from treating 200 as "WordPress is here, keep probing"
-                    location ~* ^/(wp-admin|wp-includes|wp-content|wp-login|wp-cron|wp-config|wordpress|wp|backup|old|new|web|cms|sito|site|admin|administrator)(/|$) {
+                    location ~* "^/(wp-admin|wp-includes|wp-content|wp-login|wp-cron|wp-config|wp-json|wordpress|wp|backup|old|new|web|cms|sito|site|admin|administrator)(/|$)" {
                         return 404;
                     }
 
-                    # PHP info/debug probes without extension (complements the *.php block)
-                    location ~* ^/(phpinfo|php-info|pinfo|server-info|server-status)(/|$) {
+                    location ~* "^/(phpinfo|php-info|pinfo|server-info|server-status|feed|openid_connect|_ignition|sse|mcp|private-key|__debug__|info|health)(/|$)" {
                         return 404;
                     }
 
-                    # Bare /env, /api/env, and env.* file variants seen in scanner traffic
-                    # (subsumes the narrower ^/env(/|\.) and exact `= /env` forms)
-                    location ~* ^/(api/)?env(/|\.|$) {
-                      return 404;
-                    }
-
-                    # Frontend toolchain probe variants
-                    location ~* ^/@vite/env(/|$) {
-                      return 404;
-                    }
-
-                    # Common typo scanner probe for /actuator/env
-                    location ~* ^/actutor/env(/|$) {
-                      return 404;
-                    }
-
-                    # WordPress REST API probes
-                    location ~* ^/wp-json(/|$) {
+                    location ~* "^/(setup|install|installer|installation|wizard|admin/setup|api/user|api/v[0-9]+/(user|config|env)|_internal)(/|$)|^/(app/)?config/(packages|routes|services|security)(/|$)" {
                         return 404;
                     }
 
-                    # RSS/Atom feed probes - not served by SPAs, return 404 instead of 200 via catch-all
-                    location ~* ^/feed(/|$) {
-                        return 404;
-                    }
-
-                    # cPanel SSO / OpenID probes
-                    location ~* ^/openid_connect(/|$) {
-                        return 404;
-                    }
-
-                    # Generic setup/install/discovery path probes - return 404 instead of 200 via catch-all
-                    location ~* ^/(setup|install|installer|installation|wizard|admin/setup|api/user|api/v[0-9]+/user|_internal)(/|$) {
-                        return 404;
-                    }
-
-                    # Laravel Ignition debug/RCE endpoints
-                    location ~* ^/_ignition(/|$) {
-                        return 404;
-                    }
-
-                    # /_env, /__env env-dump path variants
-                    location ~* ^/__?env(/|$) {
-                        return 404;
-                    }
-
-                    # /manage/env and similar env management paths
-                    location ~* ^/manage/env(/|$) {
-                        return 404;
-                    }
-
-                    # Symfony config package paths - /config/packages/, /app/config/
-                    location ~* ^/(app/)?config/(packages|routes|services|security)(/|$) {
-                        return 404;
-                    }
-
-                    # MCP/SSE endpoint probes - SPAs don't serve these; prevent catch-all 200
-                    location ~* ^/(sse|mcp)(/|$) {
-                        return 404;
-                    }
-
-                    # SSRF / open-proxy probe paths (fetch-relay, cloud metadata, dev-server file
-                    # read) - SPAs never implement a server-side fetch proxy, so these are always
-                    # scanner probes; none have a dotted extension for the default-deny rule to catch.
-                    location ~* ^/(fetch|read|redirect|proxy|aws/metadata|api/v1/status/flags|@fs)(/|\?|$) {
-                        return 404;
-                    }
-
-                    # Bare credential/debug/health probe paths with no extension for the
-                    # default-deny rule to catch
-                    location ~* ^/(private-key|__debug__|info|health|api/v[0-9]+/(config|env))(/|$) {
+                    # SSRF and open-proxy probes - a SPA never implements a server-side fetch proxy
+                    location ~* "^/(fetch|read|redirect|proxy|aws/metadata|api/v1/status/flags|@fs)(/|\?|$)" {
                         return 404;
                     }
 
