@@ -78,15 +78,19 @@ unlatch_namespace() {
       fi
       echo "   unlatch: $ext is latched and still in AWS ($live), deleting it there" >&2
       case "$r" in
-        usergroup.elasticache.*)        aws elasticache delete-user-group --user-group-id "$ext" --region "$region" >/dev/null 2>&1 ;;
-        user.elasticache.*)             aws elasticache delete-user --user-id "$ext" --region "$region" >/dev/null 2>&1 ;;
-        replicationgroup.elasticache.*) aws elasticache delete-replication-group --replication-group-id "$ext" --region "$region" >/dev/null 2>&1 ;;
-        *)                              echo "   unlatch: no delete for ${r%%/*}, leaving it" >&2; continue ;;
+        usergroup.elasticache.*|user.elasticache.*|replicationgroup.elasticache.*) ;;
+        *) echo "   unlatch: no delete for ${r%%/*}, leaving it" >&2; continue ;;
       esac
-      # Wait for AWS to actually let go, then re-check. Falling through on a timeout
-      # would drop the finalizer on a resource that still exists, which is the one
-      # outcome this function must never produce.
-      for _ in $(seq 1 18); do
+      # The delete is retried because the user group can stay `modifying` for minutes
+      # while its replication group finishes deleting, and AWS 400s every call until then.
+      # Falling through on a timeout would drop the finalizer on a resource that still
+      # exists, which is the one outcome this function must never produce.
+      for _ in $(seq 1 60); do
+        case "$r" in
+          usergroup.elasticache.*)        aws elasticache delete-user-group --user-group-id "$ext" --region "$region" >/dev/null 2>&1 ;;
+          user.elasticache.*)             aws elasticache delete-user --user-id "$ext" --region "$region" >/dev/null 2>&1 ;;
+          replicationgroup.elasticache.*) aws elasticache delete-replication-group --replication-group-id "$ext" --region "$region" >/dev/null 2>&1 ;;
+        esac
         sleep 10
         case "$r" in
           usergroup.elasticache.*)        aws elasticache describe-user-groups --user-group-id "$ext" --region "$region" >/dev/null 2>&1 || break ;;
