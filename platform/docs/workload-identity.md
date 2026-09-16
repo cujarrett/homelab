@@ -262,5 +262,4 @@ cred, _ := azidentity.NewWorkloadIdentityCredential(nil)
 |---|---|
 | [SPIRE OIDC Federation](../../docs/spire-oidc-federation.md) | The discovery endpoint, the Cloudflare `/.well-known` rewrite, and registering a cloud |
 | [Platform Connections](./connections.md) | The mesh gates a call passes before any token is read |
-| [Entra](../../docs/learning/entra.md) | What the claims mean, and what the error codes are actually telling you |
 | [AzureAD Permissions](../../cluster/crossplane/azuread-permissions.md) | Bootstrapping Crossplane's own Entra registration |

@@ -50,6 +50,19 @@ Workspaces are discovered from `../homelab-workspaces/*/*.yaml` by their `kind`,
 
 Fixtures the check feeds to `crossplane render` live in [fixtures/](./fixtures/) - the composition functions to pull, and a placeholder stand-in for the `aws-platform-config` EnvironmentConfig.
 
+### A FAIL from the rbac gate has two causes
+
+Kubernetes-native kinds (`Secret`, `Deployment`, `Ingress`) each need an explicit grant in [rbac.yaml](../../cluster/crossplane/rbac.yaml). Provider-managed kinds ship their own edit ClusterRole, aggregated the same way, so `skip()` in [render-check.sh](./render-check.sh) matches the `upbound.io` suffix and treats anything under it as already covered. A new provider whose group does not match that suffix fails the gate with real grants already in place.
+
+Ask the cluster which one you are looking at:
+
+```bash
+kubectl auth can-i create applications.applications.azuread.m.upbound.io \
+  --as=system:serviceaccount:crossplane-system:crossplane
+```
+
+`yes` means the gate is wrong, so fix `skip()`. `no` means the gate is right and the fix belongs in `rbac.yaml`. Both look identical from the `FAIL` output alone.
+
 ## End-to-end test
 
 One command that proves the platform still works end to end after big composition changes. It inflates an Api with **every** integration - both backends where they exist - verifies each one actually works from inside the pod, tears everything down, and verifies nothing was left behind in the cluster or AWS.
