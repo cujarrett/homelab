@@ -147,6 +147,29 @@ data:
                       "fixedColor": "blue",
                       "mode": "fixed"
                     }
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "Offline"
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "0": {
+                            "index": 0,
+                            "text": "Offline",
+                            "color": "red"
+                          }
+                        }
+                      }
+                    ]
                   }
                 ]
               },
@@ -200,18 +223,6 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\", node=\"ctrl-1\"})",
-              "instant": false,
-              "legendFormat": " Status",
-              "range": true,
-              "refId": "E"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "editorMode": "code",
               "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.100:9100\",mode=\"idle\"}[2m])) * 100)",
               "instant": true,
               "legendFormat": "CPU",
@@ -254,7 +265,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.100:9100\"}",
+              "expr": "(time() - node_boot_time_seconds{instance=\"192.168.10.100:9100\"}) * on() sum(kube_node_status_condition{condition=\"Ready\",status=\"true\",node=\"ctrl-1\"})",
               "instant": true,
               "legendFormat": "Up",
               "refId": "F"
@@ -381,6 +392,29 @@ data:
                       "fixedColor": "blue",
                       "mode": "fixed"
                     }
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "Offline"
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "0": {
+                            "index": 0,
+                            "text": "Offline",
+                            "color": "red"
+                          }
+                        }
+                      }
+                    ]
                   }
                 ]
               },
@@ -434,18 +468,6 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\", node=\"work-1\"})",
-              "instant": false,
-              "legendFormat": " Status",
-              "range": true,
-              "refId": "E"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "editorMode": "code",
               "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.101:9100\",mode=\"idle\"}[2m])) * 100)",
               "instant": true,
               "legendFormat": "CPU",
@@ -489,7 +511,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.101:9100\"}",
+              "expr": "(time() - node_boot_time_seconds{instance=\"192.168.10.101:9100\"}) * on() sum(kube_node_status_condition{condition=\"Ready\",status=\"true\",node=\"work-1\"})",
               "instant": true,
               "legendFormat": "Up",
               "refId": "F"
@@ -616,6 +638,29 @@ data:
                       "fixedColor": "blue",
                       "mode": "fixed"
                     }
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "Offline"
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "0": {
+                            "index": 0,
+                            "text": "Offline",
+                            "color": "red"
+                          }
+                        }
+                      }
+                    ]
                   }
                 ]
               },
@@ -669,18 +714,6 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\", node=\"work-2\"})",
-              "instant": false,
-              "legendFormat": " Status",
-              "range": true,
-              "refId": "E"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "editorMode": "code",
               "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.102:9100\",mode=\"idle\"}[2m])) * 100)",
               "instant": true,
               "legendFormat": "CPU",
@@ -724,7 +757,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.102:9100\"}",
+              "expr": "(time() - node_boot_time_seconds{instance=\"192.168.10.102:9100\"}) * on() sum(kube_node_status_condition{condition=\"Ready\",status=\"true\",node=\"work-2\"})",
               "instant": true,
               "legendFormat": "Up",
               "refId": "F"
@@ -851,6 +884,29 @@ data:
                       "fixedColor": "blue",
                       "mode": "fixed"
                     }
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  },
+                  {
+                    "id": "noValue",
+                    "value": "Offline"
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "0": {
+                            "index": 0,
+                            "text": "Offline",
+                            "color": "red"
+                          }
+                        }
+                      }
+                    ]
                   }
                 ]
               },
@@ -904,18 +960,6 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\", node=\"work-3\"})",
-              "instant": false,
-              "legendFormat": " Status",
-              "range": true,
-              "refId": "E"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "editorMode": "code",
               "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.103:9100\",mode=\"idle\"}[2m])) * 100)",
               "instant": true,
               "legendFormat": "CPU",
@@ -959,7 +1003,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "time() - node_boot_time_seconds{instance=\"192.168.10.103:9100\"}",
+              "expr": "(time() - node_boot_time_seconds{instance=\"192.168.10.103:9100\"}) * on() sum(kube_node_status_condition{condition=\"Ready\",status=\"true\",node=\"work-3\"})",
               "instant": true,
               "legendFormat": "Up",
               "refId": "F"

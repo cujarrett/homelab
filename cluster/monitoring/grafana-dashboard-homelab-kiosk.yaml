@@ -117,6 +117,48 @@ data:
                                     "value": 85
                                 }
                             ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Up"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "s"
+                                },
+                                {
+                                    "id": "decimals",
+                                    "value": 1
+                                },
+                                {
+                                    "id": "color",
+                                    "value": {
+                                        "fixedColor": "blue",
+                                        "mode": "fixed"
+                                    }
+                                },
+                                {
+                                    "id": "noValue",
+                                    "value": "Offline"
+                                },
+                                {
+                                    "id": "mappings",
+                                    "value": [
+                                        {
+                                            "type": "value",
+                                            "options": {
+                                                "0": {
+                                                    "index": 0,
+                                                    "text": "Offline",
+                                                    "color": "red"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },
@@ -171,6 +213,15 @@ data:
                         "instant": true,
                         "expr": "count(kube_pod_info{node=\"ctrl-1\"})",
                         "legendFormat": "Pods"
+                    },
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "(time() - node_boot_time_seconds{instance=\"192.168.10.100:9100\"}) * on() sum(kube_node_status_condition{condition=\"Ready\",status=\"true\",node=\"ctrl-1\"})",
+                        "legendFormat": "Up"
                     }
                 ]
             },
@@ -260,6 +311,48 @@ data:
                                     "value": 85
                                 }
                             ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Up"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "s"
+                                },
+                                {
+                                    "id": "decimals",
+                                    "value": 1
+                                },
+                                {
+                                    "id": "color",
+                                    "value": {
+                                        "fixedColor": "blue",
+                                        "mode": "fixed"
+                                    }
+                                },
+                                {
+                                    "id": "noValue",
+                                    "value": "Offline"
+                                },
+                                {
+                                    "id": "mappings",
+                                    "value": [
+                                        {
+                                            "type": "value",
+                                            "options": {
+                                                "0": {
+                                                    "index": 0,
+                                                    "text": "Offline",
+                                                    "color": "red"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },
@@ -314,6 +407,15 @@ data:
                         "instant": true,
                         "expr": "count(kube_pod_info{node=\"work-1\"})",
                         "legendFormat": "Pods"
+                    },
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "(time() - node_boot_time_seconds{instance=\"192.168.10.101:9100\"}) * on() sum(kube_node_status_condition{condition=\"Ready\",status=\"true\",node=\"work-1\"})",
+                        "legendFormat": "Up"
                     }
                 ]
             },
@@ -403,6 +505,48 @@ data:
                                     "value": 85
                                 }
                             ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Up"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "s"
+                                },
+                                {
+                                    "id": "decimals",
+                                    "value": 1
+                                },
+                                {
+                                    "id": "color",
+                                    "value": {
+                                        "fixedColor": "blue",
+                                        "mode": "fixed"
+                                    }
+                                },
+                                {
+                                    "id": "noValue",
+                                    "value": "Offline"
+                                },
+                                {
+                                    "id": "mappings",
+                                    "value": [
+                                        {
+                                            "type": "value",
+                                            "options": {
+                                                "0": {
+                                                    "index": 0,
+                                                    "text": "Offline",
+                                                    "color": "red"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },
@@ -457,6 +601,15 @@ data:
                         "instant": true,
                         "expr": "count(kube_pod_info{node=\"work-2\"})",
                         "legendFormat": "Pods"
+                    },
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "(time() - node_boot_time_seconds{instance=\"192.168.10.102:9100\"}) * on() sum(kube_node_status_condition{condition=\"Ready\",status=\"true\",node=\"work-2\"})",
+                        "legendFormat": "Up"
                     }
                 ]
             },
@@ -546,6 +699,48 @@ data:
                                     "value": 85
                                 }
                             ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Up"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "s"
+                                },
+                                {
+                                    "id": "decimals",
+                                    "value": 1
+                                },
+                                {
+                                    "id": "color",
+                                    "value": {
+                                        "fixedColor": "blue",
+                                        "mode": "fixed"
+                                    }
+                                },
+                                {
+                                    "id": "noValue",
+                                    "value": "Offline"
+                                },
+                                {
+                                    "id": "mappings",
+                                    "value": [
+                                        {
+                                            "type": "value",
+                                            "options": {
+                                                "0": {
+                                                    "index": 0,
+                                                    "text": "Offline",
+                                                    "color": "red"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },
@@ -600,6 +795,15 @@ data:
                         "instant": true,
                         "expr": "count(kube_pod_info{node=\"work-3\"})",
                         "legendFormat": "Pods"
+                    },
+                    {
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "prometheus"
+                        },
+                        "instant": true,
+                        "expr": "(time() - node_boot_time_seconds{instance=\"192.168.10.103:9100\"}) * on() sum(kube_node_status_condition{condition=\"Ready\",status=\"true\",node=\"work-3\"})",
+                        "legendFormat": "Up"
                     }
                 ]
             }
