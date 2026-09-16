@@ -13,12 +13,23 @@ spec:
       template:
         spec:
           restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
           nodeSelector:
             node-role.kubernetes.io/worker: worker
           containers:
             - name: backup
               image: python:3.14-alpine
               command: ["python", "/scripts/backup.py"]
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
               env:
                 - name: GHOST_CONTENT_KEY
                   valueFrom:
