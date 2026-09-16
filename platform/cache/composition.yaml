@@ -164,6 +164,49 @@ spec:
             {{- end }}
             {{- $cacheInlinePolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" "elasticache:Connect" "Resource" (list (printf "arn:aws:elasticache:%s:*:replicationgroup:%s" $region $rgId) (printf "arn:aws:elasticache:%s:*:user:%s" $region $userId)))) | toJson }}
             ---
+            # AWS refuses to delete a user group a replication group still references, or a
+            # user a user group still holds, and the provider never retries that failure.
+            # Usage makes Crossplane delete them in order; replayDeletion skips GC backoff.
+            apiVersion: protection.crossplane.io/v1beta1
+            kind: Usage
+            metadata:
+              name: {{ $name }}-user-group-before-rg
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: usage-user-group
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              replayDeletion: true
+              of:
+                apiVersion: elasticache.aws.m.upbound.io/v1beta1
+                kind: UserGroup
+                resourceRef:
+                  name: {{ $name }}-user-group
+              by:
+                apiVersion: elasticache.aws.m.upbound.io/v1beta1
+                kind: ReplicationGroup
+                resourceRef:
+                  name: {{ $name }}
+            ---
+            apiVersion: protection.crossplane.io/v1beta1
+            kind: Usage
+            metadata:
+              name: {{ $name }}-user-before-user-group
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: usage-user
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              replayDeletion: true
+              of:
+                apiVersion: elasticache.aws.m.upbound.io/v1beta1
+                kind: User
+                resourceRef:
+                  name: {{ $name }}-user
+              by:
+                apiVersion: elasticache.aws.m.upbound.io/v1beta1
+                kind: UserGroup
+                resourceRef:
+                  name: {{ $name }}-user-group
+            ---
             # ElastiCache IAM User. Must exist before the UserGroup and ReplicationGroup.
             apiVersion: elasticache.aws.m.upbound.io/v1beta1
             kind: User

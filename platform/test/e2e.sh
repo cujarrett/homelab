@@ -35,9 +35,9 @@ done
 
 # Release finalizers on managed resources whose AWS object is already gone.
 #
-# Crossplane calls DeleteUserGroup while ElastiCache still has the group in
-# `modifying`, AWS returns 400, and the async delete never retries. Two finalizers
-# then hold the namespace open forever while AWS has nothing left. Happens on most runs.
+# A namespace deleted while its managed resources are still deleting wedges, because
+# the provider cannot reconcile in a terminating namespace. Their finalizers then hold
+# the namespace open forever, even once AWS has nothing left.
 #
 # The rule: never release a finalizer without asking AWS whether the object is really
 # gone. One dropped on a live resource orphans it, and an orphan bills silently.
@@ -68,46 +68,8 @@ unlatch_namespace() {
       continue
     fi
     if [ -n "$live" ]; then
-      # Still in AWS. If Crossplane has latched, nobody is going to delete it - the
-      # provider never retries an async failure - so issue the delete here. Without
-      # this both sides wait on each other and the namespace hangs indefinitely.
-      if ! kubectl get "$r" -n "$ns" \
-           -o jsonpath='{.status.conditions[?(@.type=="LastAsyncOperation")].reason}' 2>/dev/null \
-           | grep -q 'AsyncDeleteFailure'; then
-        continue
-      fi
-      echo "   unlatch: $ext is latched and still in AWS ($live), deleting it there" >&2
-      case "$r" in
-        usergroup.elasticache.*|user.elasticache.*|replicationgroup.elasticache.*) ;;
-        *) echo "   unlatch: no delete for ${r%%/*}, leaving it" >&2; continue ;;
-      esac
-      # The delete is retried because the user group can stay `modifying` for minutes
-      # while its replication group finishes deleting, and AWS 400s every call until then.
-      # Falling through on a timeout would drop the finalizer on a resource that still
-      # exists, which is the one outcome this function must never produce.
-      for _ in $(seq 1 60); do
-        case "$r" in
-          usergroup.elasticache.*)        aws elasticache delete-user-group --user-group-id "$ext" --region "$region" >/dev/null 2>&1 ;;
-          user.elasticache.*)             aws elasticache delete-user --user-id "$ext" --region "$region" >/dev/null 2>&1 ;;
-          replicationgroup.elasticache.*) aws elasticache delete-replication-group --replication-group-id "$ext" --region "$region" >/dev/null 2>&1 ;;
-        esac
-        sleep 10
-        case "$r" in
-          usergroup.elasticache.*)        aws elasticache describe-user-groups --user-group-id "$ext" --region "$region" >/dev/null 2>&1 || break ;;
-          user.elasticache.*)             aws elasticache describe-users --user-id "$ext" --region "$region" >/dev/null 2>&1 || break ;;
-          replicationgroup.elasticache.*) aws elasticache describe-replication-groups --replication-group-id "$ext" --region "$region" >/dev/null 2>&1 || break ;;
-        esac
-      done
-      case "$r" in
-        usergroup.elasticache.*)        aws elasticache describe-user-groups --user-group-id "$ext" --region "$region" >/dev/null 2>&1 && still=1 || still=0 ;;
-        user.elasticache.*)             aws elasticache describe-users --user-id "$ext" --region "$region" >/dev/null 2>&1 && still=1 || still=0 ;;
-        replicationgroup.elasticache.*) aws elasticache describe-replication-groups --replication-group-id "$ext" --region "$region" >/dev/null 2>&1 && still=1 || still=0 ;;
-        *)                              still=1 ;;
-      esac
-      if [ "$still" -eq 1 ]; then
-        echo "   unlatch: $ext did not disappear from AWS, keeping its finalizer" >&2
-        continue
-      fi
+      echo "   unlatch: $ext still in AWS ($live), keeping its finalizer" >&2
+      continue
     fi
 
     if kubectl patch "$r" -n "$ns" --type=merge -p '{"metadata":{"finalizers":[]}}' >/dev/null 2>&1; then
