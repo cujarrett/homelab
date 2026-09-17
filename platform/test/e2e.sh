@@ -573,22 +573,6 @@ fi
 # ---------------------------------------------------------------------------
 echo "== Phase 5: verify teardown"
 
-# writeConnectionSecretToRef secrets are owned by the provider MR, not the XR, and
-# that MR's finalizer can lag AWS-side deletion by minutes - give the namespace up
-# to 10 min to empty out before calling anything an orphan.
-EMPTY_DEADLINE=$(( $(date +%s) + 600 ))
-while true; do
-  LEFTOVER=$(kubectl get deployments,secrets,pvc -n "$NS" --no-headers 2>/dev/null)
-  [[ -z "$LEFTOVER" ]] && break
-  (( $(date +%s) > EMPTY_DEADLINE )) && break
-  sleep 10
-done
-if [[ -n "$LEFTOVER" ]]; then
-  record teardown-verify "namespace empty" FAIL "left in $NS: $(awk '{print $1}' <<< "$LEFTOVER" | tr '\n' ' ')"
-else
-  record teardown-verify "namespace empty" PASS ""
-fi
-
 if kubectl get streams.jetstream.nats.io e2e-topic -n nats >/dev/null 2>&1 \
    || kubectl get consumers.jetstream.nats.io e2e-sub -n nats >/dev/null 2>&1; then
   record teardown-verify "NATS stream/consumer gone" FAIL "orphaned in nats namespace"
@@ -600,8 +584,7 @@ fi
 # provider creates a namespaced ProviderConfigUsage on each reconcile, and a
 # terminating namespace refuses new objects - so deleting the namespace first stops
 # the provider reconciling anything left in it, including to finish its own deletes.
-# The namespace then waits on finalizers that can never clear. That deadlock, not
-# the ElastiCache 400, is what wedges teardown.
+# The namespace then waits on finalizers that can never clear.
 echo "   waiting for managed resources before deleting the namespace"
 MR_DEADLINE=$(( $(date +%s) + 1200 ))
 while [ -n "$(kubectl get managed -n "$NS" --no-headers 2>/dev/null)" ] \
@@ -614,6 +597,21 @@ if [ -n "$(kubectl get managed -n "$NS" --no-headers 2>/dev/null)" ]; then
   unlatch_namespace "$NS" "$REGION"
 else
   record teardown-verify "managed resources gone before namespace delete" PASS ""
+fi
+
+# Connection secrets are owned by their managed resource, so this runs after the
+# wait above. The deadline still catches anything else left behind.
+EMPTY_DEADLINE=$(( $(date +%s) + 600 ))
+while true; do
+  LEFTOVER=$(kubectl get deployments,secrets,pvc -n "$NS" --no-headers 2>/dev/null)
+  [[ -z "$LEFTOVER" ]] && break
+  (( $(date +%s) > EMPTY_DEADLINE )) && break
+  sleep 10
+done
+if [[ -n "$LEFTOVER" ]]; then
+  record teardown-verify "namespace empty" FAIL "left in $NS: $(awk '{print $1}' <<< "$LEFTOVER" | tr '\n' ' ')"
+else
+  record teardown-verify "namespace empty" PASS ""
 fi
 
 kubectl delete namespace "$NS" >/dev/null 2>&1
