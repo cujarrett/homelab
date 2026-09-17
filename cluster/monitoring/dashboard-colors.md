@@ -1,6 +1,6 @@
 # Dashboard Colors
 
-> **The one idea (grug):** green, yellow and red mean health. Nothing else is allowed to use them, so a wall of dashboards can be read from across the room.
+Green, yellow and red mean health. Nothing else is allowed to use them, so a wall of dashboards can be read from across the room.
 
 ## Index
 

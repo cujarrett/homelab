@@ -1,6 +1,6 @@
 # Platform Connections
 
-> **The one idea (grug):** Kubernetes runs the workloads. Service Mesh decides which calls get through.
+Kubernetes runs the workloads. Service Mesh decides which calls get through.
 
 Istio puts a proxy beside every pod. Nothing leaves a workload without passing its own proxy, and that proxy only lets out what the workload declared.
 
@@ -21,7 +21,7 @@ What a team writes is in [App Configuration](./app-configuration.md). This is ho
 
 ## What gets rendered
 
-**Grug:** a call passes four checkpoints. Two leaving the caller, one arriving at the callee, one in the app. Miss any and the call dies.
+A call passes four checkpoints. Two leaving the caller, one arriving at the callee, one in the app. Miss any and the call dies.
 
 Each app's composition renders its own `Sidecar` from that app's `consumes`, and its own `PeerAuthentication`. Nothing aggregates across resources, so no controller writes these objects. Admission validation is a separate job and belongs to Kyverno - see [App Configuration → Admission checks](./app-configuration.md#admission-checks). A field that already states a dependency is not asked for twice: a `Spa` naming an `apiProxies` entry, or an `Api` binding a cache, declares nothing further.
 
@@ -77,7 +77,7 @@ Gates 1 and 2 come from the caller's `consumes`. Gate 3 is on every workload. Ga
 
 ## The identity it rests on
 
-**Grug:** every pod gets a certificate saying who it is, and it cannot be faked. Istio issues each meshed pod an X.509 SVID carrying a SPIFFE URI SAN:
+Every pod gets a certificate saying who it is, and it cannot be faked. Istio issues each meshed pod an X.509 SVID carrying a SPIFFE URI SAN:
 
 ```
 spiffe://cluster.local/ns/team-b/sa/orders
@@ -92,7 +92,7 @@ Entra federates against this same identity, so a pod holds no secret for either 
 
 ## Known limits
 
-**Grug:** the mesh does its own job, not the layer below it or above it. Below is packets, could a hostile pod send this at all, which is not built. Above is the app deciding what a claim permits, and past that whether a person may see a record, which is out of scope rather than pending.
+The mesh does its own job, not the layer below it or above it. Below is packets, could a hostile pod send this at all, which is not built. Above is the app deciding what a claim permits, and past that whether a person may see a record, which is out of scope rather than pending.
 
 **The mesh is governance, not containment.** Istio enforces its rules with iptables rules written inside the pod. Traffic is redirected to Envoy, Envoy applies the policy, and code in that pod is on the same side of the fence as the rules deciding what it may do.
 
