@@ -60,3 +60,23 @@ spec:
             description: >-
               Check airflow and case fans on the node. Confirm current temp with
               `curl -s http://{{ $labels.instance }}/metrics | grep thermal_zone0`.
+
+        # A Job whose pod failed and that cannot start a retry (missing ServiceAccount,
+        # quota, admission denial) sits "running" with nothing running. KubeJobFailed
+        # waits for backoffLimit and KubeJobNotCompleted needs an active pod, so neither fires.
+        - alert: JobStalled
+          expr: |
+            kube_job_status_failed > 0
+              and on (namespace, job_name) kube_job_status_active == 0
+              unless on (namespace, job_name) kube_job_status_succeeded > 0
+              unless on (namespace, job_name) kube_job_failed{condition="true"} == 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-orphans/orphaned-resources"
+            summary: "Job {{ $labels.namespace }}/{{ $labels.job_name }} failed and is not retrying"
+            description: >-
+              See why the retry cannot start with
+              kubectl get events -n {{ $labels.namespace }} --field-selector involvedObject.name={{ $labels.job_name }}.
+              The failed pod may already be gone, so its logs can be lost.
