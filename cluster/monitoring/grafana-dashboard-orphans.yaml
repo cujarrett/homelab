@@ -188,6 +188,34 @@ data:
           "targets": [
             { "expr": "sum by (namespace) (increase(kube_pod_container_status_restarts_total[1h])) > 0", "legendFormat": "{{namespace}}", "refId": "A" }
           ]
+        },
+        {
+          "id": 9,
+          "type": "table",
+          "title": "Failed Pods",
+          "description": "Pods in Failed or Unknown phase, with the container that stopped and why. Unknown phase has no container reason, usually a lost node.",
+          "gridPos": { "x": 0, "y": 20, "w": 24, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "sortBy": [{ "displayName": "namespace", "desc": false }], "footer": { "show": false } },
+          "fieldConfig": {
+            "defaults": { "custom": { "align": "left" } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "phase" }, "properties": [
+                { "id": "custom.width", "value": 100 },
+                { "id": "mappings", "value": [
+                  { "type": "value", "options": { "Failed": { "text": "Failed", "color": "red", "index": 0 }, "Unknown": { "text": "Unknown", "color": "yellow", "index": 1 } } }
+                ] },
+                { "id": "custom.displayMode", "value": "color-text" }
+              ] }
+            ]
+          },
+          "targets": [
+            { "expr": "max by (namespace, pod, container, reason) (kube_pod_container_status_terminated_reason == 1) * on (namespace, pod) group_left (phase) (kube_pod_status_phase{phase=~\"Failed|Unknown\"} == 1) or on (namespace, pod) label_replace(kube_pod_status_phase{phase=~\"Failed|Unknown\"} == 1, \"reason\", \"Unknown\", \"\", \"\")", "instant": true, "legendFormat": "", "format": "table", "refId": "A" }
+          ],
+          "transformations": [
+            { "id": "filterFieldsByName", "options": { "include": { "names": ["namespace", "pod", "container", "phase", "reason"] } } },
+            { "id": "organize", "options": { "indexByName": { "namespace": 0, "pod": 1, "container": 2, "phase": 3, "reason": 4 } } }
+          ]
         }
       ]
     }
