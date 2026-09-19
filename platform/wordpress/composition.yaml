@@ -430,11 +430,12 @@ spec:
                             - -fsS
                             # A pod that starts before its node has the Service programmed gets
                             # an instant connection refusal - retry instead of failing the Job.
+                            # That refusal has lasted 30s, so this rides out a full minute.
                             - --retry
-                            - "3"
+                            - "6"
                             - --retry-connrefused
                             - --retry-delay
-                            - "5"
+                            - "10"
                             - --max-time
                             - "120"
                             - -o
