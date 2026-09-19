@@ -51,6 +51,7 @@ Before telling the user to commit, always run `/security-review`. It reviews the
 
 Applies to every `.md` file in this repo - same grug philosophy, applied to prose.
 
+- **State facts plainly.** No slogans ("One boundary, not two"), no "not X, Y" contrast framing, no jargon where a plain word works ("thrash", "blast radius"), and no spaced hyphen (` - `) standing in for a dash. Say it directly: "Hand-made objects on this map: one, the commit" becomes "The commit is the only thing on this map a person wrote by hand." Also applies to UI copy in the app repos.
 - **Grug first, then depth.** Every section opens with one or two plain sentences before any table, diagram, or YAML. If a reader stops after the first line, they should still have the idea.
 - **Concise > long.** One representation per idea. Never a diagram that repeats the prose, or a table that repeats the diagram.
 - **One numbering scheme per doc.** If steps or phases are numbered, nothing else is. Chapters are flat `#` headings with plain titles - never "Part 3".
