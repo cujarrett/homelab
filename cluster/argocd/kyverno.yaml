@@ -15,6 +15,12 @@ spec:
       helm:
         releaseName: kyverno
         values: |
+          # The migration Job is a Helm hook whose ServiceAccount ArgoCD deletes the moment
+          # it is created, so the Job dies Unauthorized and alerts. Run it by hand before an
+          # upgrade whose release notes drop an old CRD version.
+          crds:
+            migration:
+              enabled: false
           # kyverno-api.labels/.annotations default to {}, which Kubernetes drops on write,
           # so desired says "empty map present" and live says "absent" forever - neither
           # ignoreDifferences nor a reinstall closes that gap. Real values fix it.
@@ -67,10 +73,7 @@ spec:
     namespace: kyverno
   syncPolicy:
     automated:
-      # The chart's migration Job carries a plain helm.sh/hook ArgoCD doesn't translate,
-      # so it never leaves the resource tree and gets flagged for pruning every compare.
-      # Prune=false stops that; nothing else in this vendor chart is ever removed.
-      prune: false
+      prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
