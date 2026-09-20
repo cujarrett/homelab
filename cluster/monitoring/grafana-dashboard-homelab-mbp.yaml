@@ -1412,6 +1412,9 @@ data:
           },
           "fieldConfig": {
             "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
               "links": [
                 {
                   "targetBlank": false,
@@ -1419,9 +1422,6 @@ data:
                   "url": "/d/homelab-orphans/orphaned-resources"
                 }
               ],
-              "color": {
-                "mode": "thresholds"
-              },
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -1522,8 +1522,6 @@ data:
                   "mode": "off"
                 }
               },
-              "max": 100,
-              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -1780,8 +1778,6 @@ data:
                   "mode": "off"
                 }
               },
-              "max": 100,
-              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
