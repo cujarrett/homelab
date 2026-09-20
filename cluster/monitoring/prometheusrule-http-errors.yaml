@@ -21,7 +21,10 @@ spec:
             )
             * on(service_prefix) group_left(namespace)
             label_join(kube_service_info, "service_prefix", "-", "namespace", "service")
-            > 0
+            # Vulnerability scanners walking WordPress paths produce the odd
+            # lone 500, so a single error is not worth a page. Five in five
+            # minutes means something is actually broken.
+            > 5
           for: 2m
           labels:
             severity: warning

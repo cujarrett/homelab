@@ -1,0 +1,63 @@
+# One Application per plain directory under cluster/. An app that needs a Helm
+# chart, a second source, or its own ignoreDifferences keeps a hand-written
+# Application file next to this one instead.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: cluster-apps
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=zero"]
+  generators:
+    - list:
+        elements:
+          # dir is the directory under cluster/, the Application name, and the
+          # destination namespace. project defaults to cluster.
+          - dir: adguard
+          - dir: blog
+          - dir: cert-manager
+          - dir: cloudflare
+          - dir: demo-certs
+            project: platform
+          - dir: monitoring
+            project: observability
+          - dir: node-sysctls
+            serverSideApply: true
+          - dir: platform-exporter
+            project: observability
+            serverSideApply: true
+          - dir: secret-mirror-controller
+            serverSideApply: true
+          - dir: traefik
+            # Traefik is a k3s HelmChartConfig, which the k3s controller reads
+            # from kube-system only.
+            namespace: kube-system
+  template:
+    metadata:
+      name: "{{ .dir }}"
+    spec:
+      project: '{{ default "cluster" .project }}'
+      source:
+        repoURL: https://github.com/cujarrett/homelab.git
+        targetRevision: main
+        path: "cluster/{{ .dir }}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{ default .dir .namespace }}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+  # syncOptions is a list, so it cannot be built from the template above.
+  # RespectIgnoreDifferences honours the PVC volumeName exemption set in
+  # argocd-cm, which selfHeal would otherwise revert.
+  templatePatch: |
+    spec:
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+          - RespectIgnoreDifferences=true
+          {{- if .serverSideApply }}
+          - ServerSideApply=true
+          {{- end }}

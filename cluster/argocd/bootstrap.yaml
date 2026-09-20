@@ -1,5 +1,5 @@
-# App-of-apps root: only recurses apps/argocd/ to pick up Application manifests.
-# Each app directory under apps/ has its own Application manifest here.
+# App-of-apps root. Applies cluster/argocd/ without recursing, so every
+# Application and ApplicationSet manifest here is picked up and nothing else is.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

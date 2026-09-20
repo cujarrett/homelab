@@ -10,6 +10,10 @@ cluster/
   <app>/        ← Raw manifests for apps that need them. Not every app has one.
 ```
 
+An app whose whole Application is a name, a path and a namespace is a row in
+[cluster-apps.yaml](argocd/cluster-apps.yaml) rather than a file of its own. An app that needs a
+Helm chart, a second source or its own `ignoreDifferences` gets a hand-written Application.
+
 ## When does an app get a subfolder?
 
 An app gets a subfolder under `cluster/` when it needs **raw Kubernetes manifests** that can't be expressed in Helm values alone - things like `Certificate`, `ServiceMonitor`, `Ingress`, or custom `ConfigMap` resources.

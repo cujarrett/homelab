@@ -5,101 +5,105 @@ metadata:
   namespace: argocd
 spec:
   project: cluster
-  source:
-    repoURL: https://spiffe.github.io/helm-charts-hardened/
-    chart: spire
-    targetRevision: 0.30.2
-    helm:
-      releaseName: spire
-      values: |
-        global:
-          spire:
-            trustDomain: homelab.local
-            # Sets both the JWT-SVID `iss` claim minted by spire-server and the issuer
-            # advertised by the discovery document - AWS and Entra require them to match.
-            jwtIssuer: https://oidc.mattjarrett.dev
-            clusterName: homelab
-            namespaces:
-              create: true
-            persistence:
-              storageClass: longhorn-retain
-
-        spire-server:
-          # HA requires a shared datastore; single replica is sufficient for homelab.
-          replicaCount: 1
-          # 1 year - avoids frequent CA rotation with no automated rotation tooling in place.
-          caTTL: 8760h
-          caSubject:
-            country: US
-            organization: Homelab
-            commonName: homelab-spire
-          # Prefer worker nodes - ctrl-1 runs AdGuard (DNS) and the kiosk display.
-          affinity:
-            nodeAffinity:
-              preferredDuringSchedulingIgnoredDuringExecution:
-                - weight: 100
-                  preference:
-                    matchExpressions:
-                      - key: node-role.kubernetes.io/control-plane
-                        operator: DoesNotExist
-          # Watches pods and issues each a SPIFFE ID from its namespace + service account.
-          controllerManager:
-            enabled: true
-            identities:
-              clusterSPIFFEIDs:
-                # By default the chart IDs every pod; we only want platform pods.
-                default:
-                  enabled: false
-                # Issue an ID to Api pods only (label set by the composition). Spa has no
-                # server-side process to hold one - see docs/platform-workload-identity.md
-                # "Static frontends".
-                homelab-workloads:
-                  spiffeIDTemplate: spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}
-                  podSelector:
-                    matchExpressions:
-                      - key: app
-                        operator: In
-                        values:
-                          - api
-
-        spire-agent:
-          logLevel: INFO
-
-        # CSI driver mounts each pod's SVID (cert + key) as files via a volume.
-        # Required before any workload can consume its identity for AWS credential exchange.
-        spiffe-csi-driver:
-          enabled: true
-
-        # Publishes the JWT-SVID signing keys so AWS and Entra can validate them.
-        # Public by necessity - both clouds fetch the discovery doc and JWKS from the internet.
-        spiffe-oidc-discovery-provider:
-          enabled: true
-          # Traefik terminates TLS at the edge; the provider serves plain HTTP behind it.
-          tls:
+  sources:
+    - repoURL: https://spiffe.github.io/helm-charts-hardened/
+      chart: spire
+      targetRevision: 0.30.2
+      helm:
+        releaseName: spire
+        values: |
+          global:
             spire:
-              enabled: false
-          config:
-            # Advertise the /.well-known/ path that Cloudflare lets datacenter callers reach.
-            # Traefik rewrites it back to /keys - see cluster/spire/oidc-jwks-ingress.yaml.
-            jwksUri: https://oidc.mattjarrett.dev/.well-known/keys
-          ingress:
+              trustDomain: homelab.local
+              # Sets both the JWT-SVID `iss` claim minted by spire-server and the issuer
+              # advertised by the discovery document - AWS and Entra require them to match.
+              jwtIssuer: https://oidc.mattjarrett.dev
+              clusterName: homelab
+              namespaces:
+                create: true
+              persistence:
+                storageClass: longhorn-retain
+
+          spire-server:
+            # HA requires a shared datastore; single replica is sufficient for homelab.
+            replicaCount: 1
+            # 1 year - avoids frequent CA rotation with no automated rotation tooling in place.
+            caTTL: 8760h
+            caSubject:
+              country: US
+              organization: Homelab
+              commonName: homelab-spire
+            # Prefer worker nodes - ctrl-1 runs AdGuard (DNS) and the kiosk display.
+            affinity:
+              nodeAffinity:
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - weight: 100
+                    preference:
+                      matchExpressions:
+                        - key: node-role.kubernetes.io/control-plane
+                          operator: DoesNotExist
+            # Watches pods and issues each a SPIFFE ID from its namespace + service account.
+            controllerManager:
+              enabled: true
+              identities:
+                clusterSPIFFEIDs:
+                  # By default the chart IDs every pod; we only want platform pods.
+                  default:
+                    enabled: false
+                  # Issue an ID to Api pods only (label set by the composition). Spa has no
+                  # server-side process to hold one - see docs/platform-workload-identity.md
+                  # "Static frontends".
+                  homelab-workloads:
+                    spiffeIDTemplate: spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}
+                    podSelector:
+                      matchExpressions:
+                        - key: app
+                          operator: In
+                          values:
+                            - api
+
+          spire-agent:
+            logLevel: INFO
+
+          # CSI driver mounts each pod's SVID (cert + key) as files via a volume.
+          # Required before any workload can consume its identity for AWS credential exchange.
+          spiffe-csi-driver:
             enabled: true
-            className: traefik
-            # Suppresses the chart's nginx-specific annotations - ours are set below.
-            controllerType: other
-            annotations:
-              traefik.ingress.kubernetes.io/router.entrypoints: websecure
-              traefik.ingress.kubernetes.io/router.tls: "true"
-              cert-manager.io/cluster-issuer: letsencrypt-prod
-            hosts:
-              - host: oidc.mattjarrett.dev
-                paths:
-                  - path: /
-                    pathType: Prefix
+
+          # Publishes the JWT-SVID signing keys so AWS and Entra can validate them.
+          # Public by necessity - both clouds fetch the discovery doc and JWKS from the internet.
+          spiffe-oidc-discovery-provider:
+            enabled: true
+            # Traefik terminates TLS at the edge; the provider serves plain HTTP behind it.
             tls:
-              - secretName: oidc-mattjarrett-dev-tls
-                hosts:
-                  - oidc.mattjarrett.dev
+              spire:
+                enabled: false
+            config:
+              # Advertise the /.well-known/ path that Cloudflare lets datacenter callers reach.
+              # Traefik rewrites it back to /keys - see cluster/spire/oidc-jwks-ingress.yaml.
+              jwksUri: https://oidc.mattjarrett.dev/.well-known/keys
+            ingress:
+              enabled: true
+              className: traefik
+              # Suppresses the chart's nginx-specific annotations - ours are set below.
+              controllerType: other
+              annotations:
+                traefik.ingress.kubernetes.io/router.entrypoints: websecure
+                traefik.ingress.kubernetes.io/router.tls: "true"
+                cert-manager.io/cluster-issuer: letsencrypt-prod
+              hosts:
+                - host: oidc.mattjarrett.dev
+                  paths:
+                    - path: /
+                      pathType: Prefix
+              tls:
+                - secretName: oidc-mattjarrett-dev-tls
+                  hosts:
+                    - oidc.mattjarrett.dev
+    # The JWKS ingress rewrite - see cluster/spire/oidc-jwks-ingress.yaml.
+    - repoURL: https://github.com/cujarrett/homelab.git
+      targetRevision: main
+      path: cluster/spire
   destination:
     server: https://kubernetes.default.svc
     namespace: spire-server

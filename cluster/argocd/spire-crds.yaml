@@ -1,6 +1,6 @@
-# CRDs for spire-controller-manager, plus the JWKS ingress rewrite. Not shipped
-# inside the Helm chart, so they must exist before the controller-manager starts.
-# Pin these to the controllerManager.image.tag in cluster/argocd/spire.yaml.
+# CRDs for spire-controller-manager. Shipped as their own chart rather than
+# inside the spire chart, and they must exist before the controller-manager
+# starts. Renovate tracks targetRevision as it does for the spire chart.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -9,9 +9,11 @@ metadata:
 spec:
   project: cluster
   source:
-    repoURL: https://github.com/cujarrett/homelab.git
-    targetRevision: HEAD
-    path: cluster/spire
+    repoURL: https://spiffe.github.io/helm-charts-hardened/
+    chart: spire-crds
+    targetRevision: 0.6.1
+    helm:
+      releaseName: spire-crds
   destination:
     server: https://kubernetes.default.svc
     namespace: spire-server
@@ -21,4 +23,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - SkipDryRunOnMissingResource=true
+      - ServerSideApply=true
