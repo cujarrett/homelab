@@ -13,7 +13,8 @@ the keys from becoming account admin.
 
 `CrossplaneWorkloadIdentityManagement` ([aws-iam-policy.json](./aws-iam-policy.json)) lets
 Crossplane manage IAM roles under the `/crossplane/` IAM path. That is how a pod reaches
-AWS without holding a key.
+AWS without holding a key. It is attached rather than inline, because all of a user's
+inline policies together may only be 2048 bytes.
 
 Creating a role, and writing its policy, only succeed when the role carries the
 `CrossplaneWorkloadRoleBoundary` permissions boundary
@@ -31,13 +32,16 @@ aws iam create-policy \
   --policy-name CrossplaneWorkloadRoleBoundary \
   --policy-document file://cluster/crossplane/aws-iam-boundary.json
 
-aws iam put-user-policy \
-  --user-name crossplane-user \
+aws iam create-policy \
   --policy-name CrossplaneWorkloadIdentityManagement \
   --policy-document file://cluster/crossplane/aws-iam-policy.json
+
+aws iam attach-user-policy \
+  --user-name crossplane-user \
+  --policy-arn arn:aws:iam::550429969116:policy/CrossplaneWorkloadIdentityManagement
 ```
 
-When the boundary changes, publish a new version:
+When the boundary or the role-management policy changes, publish a new version:
 
 ```bash
 aws iam create-policy-version \
