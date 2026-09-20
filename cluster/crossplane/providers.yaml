@@ -122,9 +122,11 @@ spec:
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
-  name: provider-aws-secretsmanager
+  name: provider-aws-ssm
 spec:
-  package: xpkg.upbound.io/upbound/provider-aws-secretsmanager:v2.6.1
+  # Parameter Store holds every ManagedSecret value. Same service ESO already
+  # reads cluster credentials from, under a separate /platform/ prefix.
+  package: xpkg.upbound.io/upbound/provider-aws-ssm:v2.6.1
   runtimeConfigRef:
     name: worker-nodes
 ---
