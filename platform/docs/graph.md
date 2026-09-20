@@ -118,7 +118,7 @@ Preprod, the branch slots and prod's router are all LAN-only. The demo's backend
 |---|---|---|
 | **a. Checks plus code owners** (picked) | cheap, and review happens where the code already is | the graph team sees changes only where it is a code owner |
 | b. Schema proposals for shared types | design agreed before code exists | process that pays off only with many teams |
-| c. Linting in checks | machines settle naming and style | not listed on any GraphOS plan, so confirm before relying on it |
+| c. Linting in checks | machines settle naming and style, and the Developer plan includes it | covers naming and style only, so a person still judges the design |
 
 See [Reviewing a schema change](#reviewing-a-schema-change).
 
@@ -175,7 +175,7 @@ A GraphQL API publishes a **schema**, a typed description of everything it can a
 - **Subgraph**: one team's service and its schema.
 - **Composition**: merging every subgraph schema into one **supergraph schema**. It fails loudly if two subgraphs disagree, which is the safety property.
 - **Router**: the one endpoint clients call. It splits a query into a **query plan**, calls the subgraphs it needs, and stitches one response.
-- **Variant**: one environment of a graph in GraphOS, written `storefront@preprod`.
+- **Variant**: one environment of a graph in GraphOS, written `storefront-homelab@preprod`.
 
 Subgraphs link through an **entity**, a type split across services and joined on a key:
 
@@ -209,9 +209,9 @@ flowchart TB
     subgraph cluster["k3s cluster"]
       OPN["operator, non-prod"]
       OPP["operator, prod"]
-      PRE["graph-preprod<br/>storefront@preprod"]
-      DEV["graph-dev-1 to 3<br/>storefront@dev-1 to 3"]
-      PROD["graph-prod<br/>storefront@prod"]
+      PRE["graph-preprod<br/>storefront-homelab@preprod"]
+      DEV["graph-dev-1 to 3<br/>storefront-homelab@dev-1 to 3"]
+      PROD["graph-prod<br/>storefront-homelab@prod"]
       DEMO["demo SPA and backend<br/>graph.mattjarrett.dev"]
     end
 
@@ -257,7 +257,7 @@ metadata:
   namespace: graph-preprod
 spec:
   parameters:
-    graphRef: storefront@preprod
+    graphRef: storefront-homelab@preprod
     host: graph-preprod.local.lab
     tlsIssuer: local-lab-ca-issuer
     replicas: 1
@@ -290,6 +290,7 @@ Fixed by convention, never a field:
 |---|---|
 | Schema location | `/schema.graphql` inside the image |
 | Image reference | a digest, never a tag |
+| Port | `8080`, the `Api` default |
 | Endpoint | `http://<name>.<namespace>.svc.cluster.local/graphql`, derived from the Service the nested `Api` creates |
 | Ingress | none, the router is the only front door |
 | Allowed caller | the `FederatedGraph` router in the same namespace |
@@ -335,10 +336,10 @@ Every slot is a full copy of the graph, with its own empty database. That keeps 
 The dev runs their subgraph locally against everything preprod already publishes.
 
 ```bash
-rover dev --graph-ref storefront@preprod --supergraph-config override.yaml
+rover dev --graph-ref storefront-homelab@preprod --supergraph-config override.yaml
 ```
 
-`--graph-ref` pulls every published subgraph schema from the variant, and `override.yaml` names the one running on localhost. Nothing is published or deployed. A branch slot is the next step, for trying it live or showing a reviewer.
+`--graph-ref` pulls every published subgraph schema from the variant, and `override.yaml` names the one running on localhost. Nothing is published or deployed. The other subgraphs' URLs resolve only inside the cluster, so a query that reaches one needs a `kubectl port-forward` to it and a matching `routing_url` in `override.yaml`. A branch slot is the next step, for trying it live or showing a reviewer.
 
 ## Reviewing a schema change
 
@@ -350,7 +351,7 @@ Three gates, in order.
 | Human review, with the graph team as a code owner on `schema.graphql` | naming, ownership, a type that belongs to another team, a field that should not be in the graph | a break against live traffic |
 | Branch protection requiring both | a merge that skips either gate | nothing downstream re-checks the schema, so turning this off removes both gates |
 
-Promotion runs the check again against `storefront@prod` before the digest moves.
+Promotion runs the check again against `storefront-homelab@prod` before the digest moves.
 
 **Operation checks are only as good as the traffic behind them.** They compare against operations the variant has seen inside the retention window, 7 days on the Developer plan. A graph with no real users has little to compare against, so a green check here is weaker than the same command at work.
 
@@ -389,7 +390,7 @@ Subgraphs keep STRICT mTLS from their nested `Api`, so each router must be in th
 
 | Foundation | Where |
 |---|---|
-| GraphOS org on the Developer plan, graph `storefront`, variants `preprod`, `dev-1` to `dev-3` and `prod` | apollographql.com |
+| GraphOS org on the Developer plan, graph `storefront-homelab`, variants `preprod`, `dev-1` to `dev-3` and `prod` | apollographql.com |
 | Two operator API keys, non-prod and prod, from `rover api-key create <ORG_ID> operator <NAME>` | Parameter Store, each rendered to its operator's namespace by an `ExternalSecret` |
 | Operator Helm chart `oci://registry-1.docker.io/apollograph/operator-chart`, installed twice. The prod install sets `installCRDs: false` and `rbac.create: false` | ArgoCD Applications, registry added to the `cluster` AppProject `sourceRepos` |
 | Crossplane RBAC for `apollographql.com` Kinds | [rbac.yaml](../../cluster/crossplane/rbac.yaml) |
@@ -409,6 +410,7 @@ Subgraphs keep STRICT mTLS from their nested `Api`, so each router must be in th
 ## Open questions
 
 - Does the router call any Apollo host beyond `uplink.api.apollographql.com` and `usage-reporting.api.apollographql.com`? Read its egress while building by hand, before writing the `ServiceEntry` list.
+- Which key can CI hold that runs checks and cannot publish? Subgraph API keys need the Standard plan.
 
 ## Phases
 
@@ -435,9 +437,9 @@ Each item builds on a working prod demo.
 
 Decisions [2](#2-where-the-schema-file-lives) and [10](#10-governance-of-schema-changes) grow here when many teams share the graph.
 
-- **Proposals.** A change to a shared type needs an approved schema proposal, and checks fail without one.
+- **Proposals.** A change to a shared type needs an approved schema proposal, and checks fail without one. Needs the Standard plan.
 - **Ownership in the schema.** `@contact` on every subgraph, so a composed type always names who to ask.
-- **Linting.** If a plan offers it, naming and style move from review into the check.
+- **Linting.** Naming and style move from review into the check. The Developer plan includes it.
 - **Central schema repo.** Only if the graph team needs one review venue, and only with publish still waiting for deploy.
 
 ### User authorization
