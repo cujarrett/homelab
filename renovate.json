@@ -59,10 +59,19 @@
       "groupName": null
     },
     {
-      "description": "Merging these by hand is real work, not a rubber stamp. AdGuard has a pre-merge skill to run first, and spire moves independently of the agent binary pinned in workload-identity-sidecar.",
+      "description": "Merging these by hand is real work, not a rubber stamp. AdGuard has a pre-merge skill to run first, and a spire minor or major can move the agent binary out of step with the one in workload-identity-sidecar.",
       "matchPackageNames": ["adguard/adguardhome", "spire"],
       "automerge": false,
       "labels": []
+    },
+    {
+      "description": "A spire chart patch leaves appVersion alone, so the agent binary in workload-identity-sidecar cannot fall out of step. Minor and major still reach a human via the rule above.",
+      "matchPackageNames": ["spire"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true,
+      "labels": ["automerge"]
     }
   ],
   "argocd": {
