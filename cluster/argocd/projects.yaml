@@ -15,6 +15,8 @@ spec:
     - "https://kyverno.github.io/kyverno/"
     - "https://stakater.github.io/stakater-charts"
     - "https://charts.longhorn.io"
+    # OCI Helm, so no scheme prefix - ArgoCD matches the registry path as written.
+    - "registry-1.docker.io/apollograph"
   destinations:
     - server: https://kubernetes.default.svc
       namespace: "*"

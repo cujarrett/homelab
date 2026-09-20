@@ -1,0 +1,11 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: apollo-api-key
+  namespace: apollo-operator
+spec:
+  secretStoreRef: {kind: ClusterSecretStore, name: aws-parameter-store}
+  data:
+    # APOLLO_KEY is the key name the operator chart reads from the Secret.
+    - secretKey: APOLLO_KEY
+      remoteRef: {key: /homelab/apollo-operator/apollo-api-key}

@@ -1,0 +1,60 @@
+# Apollo GraphOS Operator, non-prod. Reads each subgraph's schema from the deployed
+# image, publishes it to GraphOS, and runs the router for preprod and the branch slots.
+# Prod gets its own install and its own key, so nothing here can publish to the prod graph.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: apollo-operator
+  namespace: argocd
+spec:
+  project: cluster
+  sources:
+    - repoURL: registry-1.docker.io/apollograph
+      chart: operator-chart
+      targetRevision: 1.4.0
+      helm:
+        releaseName: apollo-operator
+        values: |
+          apiKey:
+            secretName: apollo-api-key
+          config:
+            controllers:
+              # An empty list means cluster-scoped, so every namespace is named
+              # explicitly. The graph namespaces arrive with the first subgraph;
+              # watching one that does not exist yet costs nothing.
+              subgraph:
+                namespaces: &graphNamespaces
+                  - graph-preprod
+                  - graph-dev-1
+                  - graph-dev-2
+                  - graph-dev-3
+              supergraph:
+                namespaces: *graphNamespaces
+                # Pinned, because the chart defaults this to busybox:latest and a
+                # moving tag decides what runs next to every published schema. The
+                # index digest resolves per architecture, so arm64 nodes are covered.
+                loaderImage: busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+              supergraphSchema:
+                namespaces: *graphNamespaces
+              supergraphSet:
+                namespaces: *graphNamespaces
+          podTemplate:
+            nodeSelector:
+              node-role.kubernetes.io/worker: worker
+          container:
+            resources:
+              requests:
+                cpu: 25m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: apollo-operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
