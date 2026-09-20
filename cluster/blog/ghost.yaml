@@ -136,24 +136,25 @@ spec:
       X-XSS-Protection: "0"
       Strict-Transport-Security: "max-age=31536000; includeSubDomains"
 ---
-# /ghost is the admin login, reachable from the internet. One person signs in here, so
-# a limit low enough to stop password guessing is still far above real use. Keyed on
-# CF-Connecting-IP because every request arrives from the two cloudflared pod IPs.
+# The sign-in POST, reachable from the internet. Only the credential check is limited,
+# never /ghost itself - the admin is a single-page app that pulls dozens of assets from
+# there, and limiting those blanks the screen. Keyed on CF-Connecting-IP because every
+# request arrives from the two cloudflared pod IPs.
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: ghost-admin-ratelimit
+  name: ghost-signin-ratelimit
   namespace: blog
 spec:
   rateLimit:
-    average: 10
-    burst: 5
+    average: 5
+    burst: 3
     period: 1m
     sourceCriterion:
       requestHeaderName: CF-Connecting-IP
 ---
-# Readers get the same headers without the admin limit. Traefik ranks a longer path
-# prefix first, so the /ghost router below wins for admin requests.
+# Everything else, readers and the admin app alike, gets the headers only. Traefik ranks
+# a longer path prefix first, so the sign-in router below wins for that one path.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -185,12 +186,12 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ghost-admin
+  name: ghost-signin
   namespace: blog
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
-    traefik.ingress.kubernetes.io/router.middlewares: "blog-ghost-security-headers@kubernetescrd,blog-ghost-admin-ratelimit@kubernetescrd"
+    traefik.ingress.kubernetes.io/router.middlewares: "blog-ghost-security-headers@kubernetescrd,blog-ghost-signin-ratelimit@kubernetescrd"
 spec:
   ingressClassName: traefik
   tls:
@@ -201,7 +202,7 @@ spec:
     - host: blog.mattjarrett.dev
       http:
         paths:
-          - path: /ghost
+          - path: /ghost/api/admin/session
             pathType: Prefix
             backend:
               service:
