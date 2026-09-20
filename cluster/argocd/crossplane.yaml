@@ -28,6 +28,10 @@ spec:
     - repoURL: https://github.com/cujarrett/homelab.git
       targetRevision: main
       path: cluster/crossplane
+      # The IAM policy documents beside the manifests are for the aws cli. ArgoCD
+      # reads any .json as a manifest and fails the whole comparison on them.
+      directory:
+        exclude: "*.json"
   destination:
     server: https://kubernetes.default.svc
     namespace: crossplane-system

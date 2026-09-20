@@ -7,6 +7,9 @@ metadata:
   annotations:
     # Kyverno's CRDs have to exist before this can apply.
     argocd.argoproj.io/sync-wave: "1"
+    # Autogen copies pods-have-an-owner onto Deployments and CronJobs, where it reads
+    # ownerReferences off the pod template. A template never has any, so every one is denied.
+    pod-policies.kyverno.io/autogen-controllers: none
     policies.kyverno.io/title: Platform workload ownership
     policies.kyverno.io/description: >-
       Every workload in a platform namespace must be composed by a Crossplane XR.
