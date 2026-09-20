@@ -128,3 +128,17 @@ spec:
                   - key: "{{ element }}"
                     operator: AnyNotIn
                     value: "{{ configmaps }}"
+---
+# The apis lookup above runs as the admission controller, which the chart binds to
+# "view". Crossplane aggregates platform kinds into its own view role, so nothing
+# grants the read and an Enforce policy denies every Api and Spa that names an app.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kyverno:admission-controller:platform-apis
+  labels:
+    rbac.kyverno.io/aggregate-to-admission-controller: "true"
+rules:
+  - apiGroups: ["platform.local.lab"]
+    resources: ["apis"]
+    verbs: ["get", "list"]
