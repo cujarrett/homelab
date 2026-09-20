@@ -1,0 +1,43 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PlatformBuckets",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"],
+      "Resource": "arn:aws:s3:::platform-*"
+    },
+    {
+      "Sid": "PlatformTables",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem"
+      ],
+      "Resource": "arn:aws:dynamodb:us-east-1:550429969116:table/*"
+    },
+    {
+      "Sid": "PlatformManagedSecrets",
+      "Effect": "Allow",
+      "Action": ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
+      "Resource": "arn:aws:secretsmanager:us-east-1:550429969116:secret:platform/*"
+    },
+    {
+      "Sid": "PlatformCacheAndDatabase",
+      "Effect": "Allow",
+      "Action": ["elasticache:Connect", "rds-db:connect"],
+      "Resource": [
+        "arn:aws:elasticache:*:550429969116:replicationgroup:*",
+        "arn:aws:elasticache:*:550429969116:user:*",
+        "arn:aws:rds-db:*:550429969116:dbuser:*/app",
+        "arn:aws:rds-db:*:550429969116:dbuser/*/app"
+      ]
+    }
+  ]
+}

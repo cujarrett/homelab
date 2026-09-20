@@ -245,7 +245,7 @@ Ten platform types are defined under `platform/`:
 Which namespaces use which XR types is listed in the Namespaces & Applications table above.
 
 ### GitOps flow for XR instances
-1. For a new workspace, add its namespace to the `workloads` project `destinations` in [cluster/argocd/projects.yaml](./cluster/argocd/projects.yaml) and let it sync. The project allows only `platform.local.lab` kinds, ConfigMap, Service, RoleBinding and Namespace
+1. For a new workspace, add its namespace to the `workloads` project `destinations` in [cluster/argocd/projects.yaml](./cluster/argocd/projects.yaml) and to both namespace lists in [cluster/kyverno/workspace-rbac.yaml](./cluster/kyverno/workspace-rbac.yaml), then let it sync. The project allows only `platform.local.lab` kinds, ConfigMap, Service, RoleBinding and Namespace
 2. Commit XR files to a top-level directory in the `homelab-workspaces` repo (e.g. `mattjarrett-com/mattjarrett-com.yaml`)
 3. `xrs` ApplicationSet (`cluster/argocd/xrs-appset.yaml`) generates one ArgoCD Application per directory, deployed into a namespace named after the directory
 4. ArgoCD applies the XR to the cluster

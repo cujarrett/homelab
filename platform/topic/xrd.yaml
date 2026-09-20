@@ -26,6 +26,8 @@ spec:
                   properties:
                     streamName:
                       type: string
+                      pattern: "^[A-Za-z0-9_-]+$"
+                      maxLength: 255
                       description: >
                         NATS JetStream stream name (e.g. FOO-EVENTS).
                         Must not contain spaces, wildcards, or dots.
@@ -39,6 +41,8 @@ spec:
                       minItems: 1
                       items:
                         type: string
+                        pattern: "^[A-Za-z0-9_*>.-]+$"
+                        maxLength: 255
                     retention:
                       type: string
                       description: >

@@ -31,12 +31,18 @@ spec:
                       properties:
                         name:
                           type: string
+                          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                          maxLength: 63
                           description: metadata.name of the Topic instance (e.g. foo-events).
                         streamName:
                           type: string
+                          pattern: "^[A-Za-z0-9_-]+$"
+                          maxLength: 255
                           description: "NATS stream name as defined in the Topic's spec.parameters.streamName. Defaults to topicRef.name uppercased when omitted. Set explicitly when the Topic's streamName differs from its metadata.name."
                     filterSubject:
                       type: string
+                      pattern: "^[A-Za-z0-9_*>.-]+$"
+                      maxLength: 255
                       description: >
                         Only deliver messages matching this subject. Supports wildcards:
                         * matches a single token, > matches one or more tokens.

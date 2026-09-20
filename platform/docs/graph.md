@@ -2,7 +2,7 @@
 
 Every team ships its own small GraphQL API. A router joins them into one API that clients see as a single schema, and the platform makes joining one YAML file.
 
-[Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](./nothing-novel.md)
+[Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](../../docs/nothing-novel.md)
 
 ## Decisions
 
@@ -383,7 +383,7 @@ The Developer plan bills $5 per million router requests after a $50 signup credi
 
 ## How it meets Connections
 
-Subgraphs keep STRICT mTLS from their nested `Api`, so each router must be in the mesh. `FederatedGraph` renders the router's `Sidecar` with egress to its own namespace's subgraphs, and `ServiceEntry` objects for the GraphOS endpoints the router calls. See [Platform Connections](../platform/docs/connections.md).
+Subgraphs keep STRICT mTLS from their nested `Api`, so each router must be in the mesh. `FederatedGraph` renders the router's `Sidecar` with egress to its own namespace's subgraphs, and `ServiceEntry` objects for the GraphOS endpoints the router calls. See [Platform Connections](./connections.md).
 
 ## Foundations to install
 
@@ -392,8 +392,8 @@ Subgraphs keep STRICT mTLS from their nested `Api`, so each router must be in th
 | GraphOS org on the Developer plan, graph `storefront`, variants `preprod`, `dev-1` to `dev-3` and `prod` | apollographql.com |
 | Two operator API keys, non-prod and prod, from `rover api-key create <ORG_ID> operator <NAME>` | Parameter Store, each rendered to its operator's namespace by an `ExternalSecret` |
 | Operator Helm chart `oci://registry-1.docker.io/apollograph/operator-chart`, installed twice. The prod install sets `installCRDs: false` and `rbac.create: false` | ArgoCD Applications, registry added to the `cluster` AppProject `sourceRepos` |
-| Crossplane RBAC for `apollographql.com` Kinds | [rbac.yaml](../cluster/crossplane/rbac.yaml) |
-| `graph-preprod`, `graph-dev-1` to `graph-dev-3` and `graph-prod` in the `workloads` project destinations | [projects.yaml](../cluster/argocd/projects.yaml) |
+| Crossplane RBAC for `apollographql.com` Kinds | [rbac.yaml](../../cluster/crossplane/rbac.yaml) |
+| `graph-preprod`, `graph-dev-1` to `graph-dev-3` and `graph-prod` in the `workloads` project destinations and both namespace lists of the workspace RBAC policy | [projects.yaml](../../cluster/argocd/projects.yaml), [workspace-rbac.yaml](../../cluster/kyverno/workspace-rbac.yaml) |
 | Check-only GraphOS key as a GitHub Actions secret, and a token that can write `homelab-workspaces` | the demo repo |
 | Kyverno `ImageValidatingPolicy` verifying `main`-branch cosign signatures on `platform-graph-demo` images in `graph-preprod` and `graph-prod`, for pods and for Apollo `Subgraph` resources. Kyverno 1.19 already runs here | `cluster/kyverno/` |
 | `graph.mattjarrett.dev` and `graph-api.mattjarrett.dev` tunnel entries for the demo SPA and its backend, before their certs | `/add-cloudflare-tunnel-hostname` |
@@ -474,5 +474,5 @@ Decision [4](#4-composition-authority), option b. Each cluster's operator publis
 | Router rate limits | [performance/traffic-shaping](https://www.apollographql.com/docs/graphos/routing/performance/traffic-shaping) |
 | Kyverno image validation | [ImageValidatingPolicy](https://kyverno.io/docs/policy-types/image-validating-policy/) |
 | GraphOS pricing | [apollographql.com/pricing](https://www.apollographql.com/pricing) |
-| Existing platform offerings | [platform/](../platform/) |
+| Existing platform offerings | [platform/](../) |
 | Demo repo pattern | [platform-connections-demo](https://github.com/cujarrett/platform-connections-demo) |

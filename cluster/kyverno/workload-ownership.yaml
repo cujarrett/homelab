@@ -11,10 +11,7 @@ metadata:
     policies.kyverno.io/description: >-
       Every workload in a platform namespace must be composed by a Crossplane XR.
 spec:
-  # Audit until the reports are seen to be correct. A wrong Enforce policy here blocks
-  # every deploy into every workload namespace, including the compositions' own output.
-  # Flip to Enforce once the PolicyReports look right.
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: false
   rules:
     - name: workloads-come-from-an-xr
@@ -25,7 +22,6 @@ spec:
                 - Deployment
                 - StatefulSet
                 - DaemonSet
-                - Pod
               namespaceSelector:
                 matchLabels:
                   platform.local.lab/workloads: "true"
@@ -41,8 +37,39 @@ spec:
         allowExistingViolations: true
         message: >-
           {{ request.object.kind }} {{ request.object.metadata.name }} was not composed by
-          a the platform. Declare it as an Api or Spa in homelab-workspaces instead.
+          the platform. Declare it as an Api or Spa in homelab-workspaces instead.
         pattern:
           metadata:
             labels:
               crossplane.io/composite: "?*"
+
+    # Pods take their labels from the pod template, which Crossplane does not label,
+    # so a pod is checked for having an owner rather than for the composite label.
+    - name: pods-have-an-owner
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaceSelector:
+                matchLabels:
+                  platform.local.lab/workloads: "true"
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: AnyIn
+            value: [CREATE, UPDATE]
+      # Kyverno defaults both of these on write. Stated here so the repo matches
+      # what the API server stores, otherwise ArgoCD sits permanently OutOfSync.
+      skipBackgroundRequests: true
+      validate:
+        allowExistingViolations: true
+        message: >-
+          Pod {{ request.object.metadata.name }} has no owner. Declare it as an Api or
+          Spa in homelab-workspaces instead.
+        deny:
+          conditions:
+            all:
+              - key: "{{ length(request.object.metadata.ownerReferences || `[]`) }}"
+                operator: Equals
+                value: 0

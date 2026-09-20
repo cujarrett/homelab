@@ -87,11 +87,15 @@ spec:
                           description: "Cache backend: private-cloud=in-cluster Redis, public-cloud=AWS ElastiCache."
                     image:
                       type: string
+                      pattern: "^[A-Za-z0-9][A-Za-z0-9._/:@-]*$"
+                      maxLength: 255
                       description: >-
                         Container image (e.g. ghcr.io/owner/api:sha-abc123). Managed by CI -
                         set on first create, then updated automatically on each merge to main.
                     repo:
                       type: string
+                      pattern: "^https://[A-Za-z0-9._/-]+$"
+                      maxLength: 255
                       description: "GitHub repository URL for this app's source code (e.g. https://github.com/owner/api)."
                     port:
                       type: integer
@@ -110,6 +114,8 @@ spec:
                       pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
                     host:
                       type: string
+                      pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+                      maxLength: 253
                       description: "Hostname for the Ingress. If omitted, no Ingress is created."
                     tlsIssuer:
                       type: string
@@ -120,6 +126,8 @@ spec:
                       description: "Certificate issuer. Internal for services only on the homelab network. External for services exposed via Cloudflare Tunnel to the public internet."
                     tlsSecret:
                       type: string
+                      pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+                      maxLength: 253
                       description: "Name of a pre-existing TLS Secret in the app namespace. When set, the Ingress references it directly and cert-manager issuance is skipped."
                     configFrom:
                       type: array
@@ -149,6 +157,8 @@ spec:
                           description: "metadata.name of the Topic instance (e.g. foo-events)."
                         streamName:
                           type: string
+                          pattern: "^[A-Za-z0-9_-]+$"
+                          maxLength: 255
                           description: "NATS stream name as defined in the Topic's spec.parameters.streamName. Defaults to topicRef.name uppercased when omitted. Set explicitly when the Topic's streamName differs from its metadata.name."
                     subscriptionRef:
                       type: object
@@ -167,6 +177,8 @@ spec:
                       description: "Number of API replicas."
                     readinessCheckPath:
                       type: string
+                      pattern: "^/[A-Za-z0-9._~/-]*$"
+                      maxLength: 253
                       default: /healthz
                       description: "HTTP path the readiness probe hits. Defaults to /healthz. Set to /readyz for apps that gate readiness on external dependencies (e.g. service bindings)."
                     size:
@@ -203,9 +215,13 @@ spec:
                               properties:
                                 namespace:
                                   type: string
+                                  pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                                  maxLength: 63
                                   description: "Namespace the calling workload runs in."
                                 app:
                                   type: string
+                                  pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                                  maxLength: 63
                                   description: "The calling Api/Spa's metadata.name - also its ServiceAccount name."
                     consumes:
                       type: array
@@ -223,6 +239,8 @@ spec:
                         properties:
                           host:
                             type: string
+                            pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+                            maxLength: 253
                             description: "Off-platform hostname (e.g. api.discogs.com). Anything not listed is blocked at this workload's own sidecar."
                           port:
                             type: integer
@@ -237,9 +255,13 @@ spec:
                             description: "Bare IPv4 address of an off-platform destination that has no DNS name, such as a device on the LAN. Renders a ServiceEntry with static resolution rather than a DNS lookup. Use with port."
                           app:
                             type: string
+                            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                            maxLength: 63
                             description: "metadata.name of an Api in another namespace this calls. Use with namespace."
                           namespace:
                             type: string
+                            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                            maxLength: 63
                             description: "Namespace of app. Required when app is set."
                           entraApp:
                             type: object
@@ -249,6 +271,7 @@ spec:
                               appIdUri:
                                 type: string
                                 maxLength: 255
+                                pattern: "^[A-Za-z][A-Za-z0-9+.-]*://[A-Za-z0-9._~:/-]+$"
                                 description: "The target's Application ID URI (e.g. api://legacy-billing). Becomes the audience of the requested token. An identifier, not a URL."
                               role:
                                 type: string
@@ -257,6 +280,8 @@ spec:
                                 description: "App role to request on that registration."
                               host:
                                 type: string
+                                pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+                                maxLength: 253
                                 description: "Hostname the request actually goes to. Separate from appIdUri, which names the token audience rather than an address."
                   required: [image]
               required:

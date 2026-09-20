@@ -43,4 +43,6 @@ spec:
                       type: array
                       items:
                         type: string
+                        pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                        maxLength: 63
                       description: "Service account names of the Apis that will bind this database (public-cloud only). Each entry gets its own IAM role and binding secret scoped to that SA's exact SPIFFE ID. Each entry must match an Api name."

@@ -13,10 +13,7 @@ metadata:
       Hosts no workload may declare. Empty by design; add one only to shut a
       destination off across the whole platform.
 spec:
-  # Audit until the reports are seen to be correct. A wrong Enforce policy matching
-  # every Api and Spa rejects every XR update, which is worse than the silent failure
-  # it exists to catch. Flip to Enforce once the PolicyReports look right.
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: false
   rules:
     - name: host-is-not-denied

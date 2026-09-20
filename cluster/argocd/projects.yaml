@@ -69,7 +69,8 @@ spec:
     - "https://github.com/cujarrett/homelab-workspaces.git"
   # Anyone who can commit to homelab-workspaces gets exactly this. Listing namespaces
   # stops a directory named after a cluster namespace from deploying into it, so a new
-  # workspace needs its namespace added here first.
+  # workspace needs its namespace added here first, and to both namespace lists in
+  # cluster/kyverno/workspace-rbac.yaml.
   destinations:
     - {server: https://kubernetes.default.svc, namespace: github-exporter}
     - {server: https://kubernetes.default.svc, namespace: js-pollock}

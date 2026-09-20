@@ -1,0 +1,55 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ManageRolesUnderCrossplanePath",
+      "Effect": "Allow",
+      "Action": [
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:ListRoleTags",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:GetRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListInstanceProfilesForRole",
+        "iam:PassRole"
+      ],
+      "Resource": "arn:aws:iam::550429969116:role/crossplane/*"
+    },
+    {
+      "Sid": "WritePermissionsOnlyUnderBoundary",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:PutRolePermissionsBoundary"
+      ],
+      "Resource": "arn:aws:iam::550429969116:role/crossplane/*",
+      "Condition": {
+        "StringEquals": {
+          "iam:PermissionsBoundary": "arn:aws:iam::550429969116:policy/CrossplaneWorkloadRoleBoundary"
+        }
+      }
+    },
+    {
+      "Sid": "ManageRolesAnywhereProfiles",
+      "Effect": "Allow",
+      "Action": [
+        "rolesanywhere:CreateProfile",
+        "rolesanywhere:DeleteProfile",
+        "rolesanywhere:GetProfile",
+        "rolesanywhere:UpdateProfile",
+        "rolesanywhere:EnableProfile",
+        "rolesanywhere:DisableProfile",
+        "rolesanywhere:TagResource",
+        "rolesanywhere:UntagResource",
+        "rolesanywhere:ListTagsForResource"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

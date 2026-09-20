@@ -1,0 +1,112 @@
+# The workloads AppProject can allow RoleBinding as a kind but not limit its roleRef,
+# and launchpad-api's internet-facing GitHub token can commit to homelab-workspaces.
+# This limits what that commit can grant to the one binding guest sandboxes need.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: platform-workspace-rbac
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform workspace RBAC
+    policies.kyverno.io/description: >-
+      A RoleBinding synced from homelab-workspaces may only give secret-mirror-controller
+      the secret-mirror-writer role inside a guest sandbox.
+spec:
+  # Enforce from the start because nothing legitimate matches except the guest binding.
+  # Api compositions create their own RoleBindings as Crossplane, not ArgoCD.
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: only-guest-secret-mirror-binding
+      match:
+        any:
+          - resources:
+              kinds:
+                - RoleBinding
+              # Mirrors the workloads AppProject destinations in
+              # cluster/argocd/projects.yaml. A label selector would let a workspace
+              # commit relabel its namespace out of scope.
+              namespaces:
+                - github-exporter
+                - js-pollock
+                - kentjarrett-com
+                - launchpad
+                - mattjarrett-com
+                - mattjarrett-dev
+                - my-vinyl
+                - platform-connections-demo
+                - sump-pump
+                - "guest-*"
+            subjects:
+              - kind: ServiceAccount
+                name: argocd-application-controller
+                namespace: argocd
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: AnyIn
+            value: [CREATE, UPDATE]
+      # Kyverno defaults both of these on write. Stated here so the repo matches
+      # what the API server stores, otherwise ArgoCD sits permanently OutOfSync.
+      skipBackgroundRequests: true
+      validate:
+        # An UPDATE to a binding that already fails, such as one an Api composition
+        # created, would otherwise be admitted and could rewrite its subjects.
+        allowExistingViolations: false
+        message: >-
+          RoleBinding {{ request.object.metadata.name }} in {{ request.namespace }} is not
+          the guest secret-mirror-writer binding. Workspaces cannot grant other roles.
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.namespace }}"
+                operator: NotEquals
+                value: "guest-*"
+              - key: "{{ request.object.roleRef.kind }}/{{ request.object.roleRef.name }}"
+                operator: NotEquals
+                value: ClusterRole/secret-mirror-writer
+              - key: "{{ request.object.subjects[].join('/', [kind, namespace || '', name]) }}"
+                operator: NotEquals
+                value: ["ServiceAccount/secret-mirror-controller/secret-mirror-controller"]
+
+    # Every other platform policy selects on this label, so a workspace commit that
+    # relabels its namespace would switch them all off. Guest namespaces are left
+    # out because launchpad-api renders them without the label.
+    - name: workspace-namespaces-stay-labelled
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+              names:
+                - github-exporter
+                - js-pollock
+                - kentjarrett-com
+                - launchpad
+                - mattjarrett-com
+                - mattjarrett-dev
+                - my-vinyl
+                - platform-connections-demo
+                - sump-pump
+            subjects:
+              - kind: ServiceAccount
+                name: argocd-application-controller
+                namespace: argocd
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: AnyIn
+            value: [CREATE, UPDATE]
+      # Kyverno defaults both of these on write. Stated here so the repo matches
+      # what the API server stores, otherwise ArgoCD sits permanently OutOfSync.
+      skipBackgroundRequests: true
+      validate:
+        allowExistingViolations: false
+        message: >-
+          Namespace {{ request.object.metadata.name }} must keep the label
+          platform.local.lab/workloads set to "true".
+        pattern:
+          metadata:
+            labels:
+              platform.local.lab/workloads: "true"

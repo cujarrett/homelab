@@ -249,6 +249,8 @@ spec:
             spec:
               forProvider:
                 path: /crossplane/
+                # crossplane-user may only create roles under this boundary.
+                permissionsBoundary: arn:aws:iam::{{ $awsAccountId }}:policy/CrossplaneWorkloadRoleBoundary
                 tags:
                   App: {{ $name }}
                   Namespace: {{ $ns }}

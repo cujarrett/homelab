@@ -26,6 +26,8 @@ spec:
                   properties:
                     partitionKey:
                       type: string
+                      pattern: "^[A-Za-z0-9_.-]+$"
+                      maxLength: 255
                       default: id
                       description: "Partition key attribute name."
                     partitionKeyType:
