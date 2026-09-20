@@ -399,6 +399,9 @@ spec:
               startingDeadlineSeconds: 300
               jobTemplate:
                 spec:
+                  # KubeJobFailed waits 15m, so a Job that cleans itself up sooner never alerts.
+                  # A cron that is genuinely broken shows up as a stale wp-cron, not a failed Job.
+                  ttlSecondsAfterFinished: 600
                   backoffLimit: 1
                   template:
                     metadata:
