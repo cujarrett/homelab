@@ -96,7 +96,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | Storage | Longhorn | Three StorageClasses: `longhorn` (default, Delete), `longhorn-retain` (Retain - use for stateful platform XRs), `longhorn-delete` (explicit Delete) |
 | DNS | AdGuard Home | Runs in `adguard` namespace, pinned to node `ctrl-1` via nodeSelector, hostPort 53 UDP |
 | External Access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; token from secret `cloudflare-tunnel-token` |
-| Platform Abstraction | Crossplane | Nine XR types - see the Crossplane Platform section below |
+| Platform Abstraction | Crossplane | Ten XR types - see the Crossplane Platform section below |
 | CNI | flannel | k3s's bundled CNI, running at its defaults - no install flags, no `/etc/rancher/k3s/config.yaml`. NetworkPolicy is enforced by k3s's kube-router, also default. Mesh concerns (mTLS, connection policy) belong to Istio. |
 | Service Mesh | Istio | Sidecar mesh chained onto flannel; provides workload mTLS. Platform workloads get STRICT mTLS inbound and `REGISTRY_ONLY` egress from their declared `consumes`. Who may call an interface is an Entra grant checked by the app; see [Platform Connections](./platform/docs/connections.md). |
 | Secrets | External Secrets Operator | Renders cluster-setup credentials from AWS SSM Parameter Store; `ClusterSecretStore` `aws-parameter-store` authenticates as the `eso-reader` IAM user, scoped read-only to the `/homelab/` path. Only `aws-eso-creds` is hand-created |

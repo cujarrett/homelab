@@ -44,7 +44,7 @@ flowchart LR
     pod -->|"token traded for tokens"| entra
 ```
 
-**SPIRE** is the identity provider. Its controller manager watches pods and issues an identity to any pod carrying `app: api`, the label the composition sets. The SPIFFE ID is `spiffe://homelab.local/ns/{namespace}/sa/{service-account}`, templated in [cluster/argocd/spire.yaml](../cluster/argocd/spire.yaml). That URI is the identity, and every downstream trust decision is a literal string match on it.
+**SPIRE** is the identity provider. Its controller manager watches pods and issues an identity to any pod carrying `app: api`, the label the composition sets. The SPIFFE ID is `spiffe://homelab.local/ns/{namespace}/sa/{service-account}`, templated in [cluster/argocd/spire.yaml](../../cluster/argocd/spire.yaml). That URI is the identity, and every downstream trust decision is a literal string match on it.
 
 **The agent** does the attestation. It verifies with the node's own kubelet that the pod requesting a token is genuinely running with the namespace and service account it claims, before signing anything. This is why a stolen manifest is not an identity.
 

@@ -20,6 +20,7 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 |---|---|---|---|
 | [`Api`](api/README.md) | Deployment · Service · Ingress · TLS | - | - |
 | [`Spa`](spa/README.md) | Static frontend via nginx | - | - |
+| [`Wordpress`](wordpress/README.md) | WordPress site with its own database | - | - |
 | [`Sql`](sql/README.md) | Relational database | Postgres on Longhorn | AWS RDS Postgres |
 | [`Cache`](cache/README.md) | Cache cluster (owned by Api) | Redis | AWS ElastiCache |
 | [`NoSql`](nosql/README.md) | Key-value / document store | ExtendDB *(planned)* | AWS DynamoDB |

@@ -82,7 +82,9 @@ spec:
               hs = {}
               hs.status = "Healthy"
               return hs
-            resource.customizations.ignoreDifferences.core_PersistentVolumeClaim: |
+            # No group prefix. A PVC's API group is the empty string, not "core",
+            # so a "core_" key matches nothing and the ignore never applies.
+            resource.customizations.ignoreDifferences.PersistentVolumeClaim: |
               jsonPointers:
               - /spec/volumeName
   destination:

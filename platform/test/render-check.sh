@@ -284,7 +284,7 @@ import sys, pathlib, yaml
 
 KIND_DIR = {"Api": "api", "Spa": "spa", "Cache": "cache", "Sql": "sql", "NoSql": "nosql",
             "ObjectStorage": "object-storage", "Subscription": "subscription",
-            "Topic": "topic", "Wordpress": "wordpress"}
+            "Topic": "topic", "Wordpress": "wordpress", "ManagedSecret": "managed-secret"}
 
 def params_schema(xrd_path):
     v = yaml.safe_load(open(xrd_path))["spec"]["versions"][0]

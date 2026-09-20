@@ -109,9 +109,6 @@ ssh "$CTRL1" "sudo kubectl exec -n blog deploy/ghost -- sh -c 'cd /var/lib/ghost
 
 # ── WordPress ─────────────────────────────────────────────────────────────────
 echo "==> WordPress (mattjarrett-com)"
-WP_DB_PASS=$(kubectl get secret mattjarrett-com-mariadb -n mattjarrett-com \
-  -o jsonpath='{.data.password}' | base64 -d)
-
 # Fetch password on ctrl-1 to avoid passing credentials through SSH arguments
 ssh "$CTRL1" 'WP_DB_PASS=$(sudo kubectl get secret mattjarrett-com-mariadb -n mattjarrett-com -o jsonpath='"'"'{.data.password}'"'"' | base64 -d) && sudo kubectl exec -n mattjarrett-com sts/mattjarrett-com-mariadb -c mariadb -- mariadb-dump -u wordpress -p"$WP_DB_PASS" wordpress > /tmp/wp.sql' \
   && scp -q "$CTRL1:/tmp/wp.sql" "$OUT/mattjarrett-com-wordpress.sql" \
