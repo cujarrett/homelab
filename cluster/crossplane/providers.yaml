@@ -131,18 +131,6 @@ spec:
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
-  name: provider-aws-ssm
-spec:
-  # Parameter Store holds every ManagedSecret value. Same service ESO already
-  # reads cluster credentials from, under a separate /platform/ prefix.
-  # provider-aws-secretsmanager goes once the composition stops referencing it.
-  package: xpkg.upbound.io/upbound/provider-aws-ssm:v2.6.1
-  runtimeConfigRef:
-    name: worker-nodes
----
-apiVersion: pkg.crossplane.io/v1
-kind: Provider
-metadata:
   name: provider-azuread
 spec:
   # Creates the Entra Application, ServicePrincipal and FederatedIdentityCredential
