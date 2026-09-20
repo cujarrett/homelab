@@ -12,9 +12,9 @@ metadata:
     policies.kyverno.io/description: >-
       Every platform workload namespace states whether its pods are meshed.
 spec:
-  # Audit until the reports are seen to be correct. A wrong Enforce policy here
-  # blocks the namespace, and with it every workload the directory holds.
-  validationFailureAction: Audit
+  # Enforce. A rejected namespace blocks every workload in its directory, so this
+  # only moved once every workspace PolicyReport passed.
+  validationFailureAction: Enforce
   background: false
   rules:
     - name: mesh-posture-is-declared

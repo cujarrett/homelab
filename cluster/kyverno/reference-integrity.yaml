@@ -13,10 +13,9 @@ metadata:
       Every app named in consumes or apiProxies must be an Api that exists, deployed
       into the namespace the reference claims.
 spec:
-  # Audit until the reports are seen to be correct. A wrong Enforce policy matching
-  # every Api and Spa rejects every XR update, which is worse than the silent failure
-  # it exists to catch. Flip to Enforce once the PolicyReports look right.
-  validationFailureAction: Audit
+  # Enforce. This matches every Api and Spa, so a wrong rule rejects every XR update.
+  # It only moved once every workspace PolicyReport passed.
+  validationFailureAction: Enforce
   background: false
   rules:
     - name: consumes-names-a-real-api
