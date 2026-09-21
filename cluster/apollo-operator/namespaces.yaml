@@ -1,0 +1,12 @@
+# The operator chart binds a RoleBinding into every namespace it watches, so this
+# must exist before it syncs. Labels match every other workload namespace.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: graph-preprod
+  labels:
+    istio-injection: enabled
+    platform.local.lab/workloads: "true"
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

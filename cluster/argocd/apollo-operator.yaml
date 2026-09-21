@@ -19,15 +19,12 @@ spec:
             secretName: apollo-api-key
           config:
             controllers:
-              # An empty list means cluster-scoped, so every namespace is named
-              # explicitly. The graph namespaces arrive with the first subgraph;
-              # watching one that does not exist yet costs nothing.
+              # An empty list means cluster-scoped, so every namespace is named.
+              # The chart binds a RoleBinding into each one, so each must exist.
+              # The three branch slots are added by the workflows that claim them.
               subgraph:
                 namespaces: &graphNamespaces
                   - graph-preprod
-                  - graph-dev-1
-                  - graph-dev-2
-                  - graph-dev-3
               supergraph:
                 namespaces: *graphNamespaces
                 # Pinned, because the chart defaults this to busybox:latest and a
