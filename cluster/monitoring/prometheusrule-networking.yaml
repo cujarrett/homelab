@@ -10,10 +10,10 @@ spec:
     - name: networking
       interval: 1m
       rules:
-        # Two pods holding one address is host-local IPAM re-issuing a lost reservation,
-        # and the loser fails its kubelet probe while healthy on localhost. Pod CIDR only,
-        # since host-network pods share the node address, and joined to Running so a
-        # Completed pod's lingering kube_pod_info does not trip it.
+        # Two pods on one address means host-local IPAM re-issued a lost reservation.
+        # The loser fails its kubelet probe while healthy on localhost.
+        # Pod CIDR only, since host-network pods share the node address.
+        # Joined to Running, or a Completed pod's lingering kube_pod_info trips it.
         - alert: DuplicatePodIP
           expr: |
             count by (pod_ip) (

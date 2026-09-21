@@ -16,8 +16,8 @@ spec:
         global:
           networkPolicy:
             # The chart's policies allow ingress only from named ArgoCD pods, so under
-            # k3s's kube-router the kubelet probe matches no rule and the pod never goes
-            # Ready. They separate tenants in a shared cluster; this one has a single tenant.
+            # k3s's kube-router the kubelet probe matches no rule and the pod never goes Ready.
+            # They exist to separate tenants. This cluster has one tenant.
             create: false
         dex:
           enabled: false
@@ -48,7 +48,10 @@ spec:
               memory: 512Mi
         server:
           extraArgs:
-            # ArgoCD's server has built-in TLS. --insecure disables it so ArgoCD listens on plain HTTP internally. That's correct here because Traefik is handling TLS termination - HTTPS hits Traefik, which strips TLS and proxies plain HTTP to ArgoCD. If you didn't set --insecure, you'd get a double-TLS situation and the ingress would break.
+            # ArgoCD's server has built-in TLS. --insecure disables it, so it listens on
+            # plain HTTP internally.
+            # Traefik terminates TLS and proxies plain HTTP here. Without --insecure that
+            # is double TLS and the ingress breaks.
             - --insecure
           resources:
             requests:
@@ -71,10 +74,10 @@ spec:
           params:
             server.insecure: "true"
           cm:
-            # Self-heal runs off watches, so this timer only governs how fast a new Git
-            # commit is noticed. Jitter spreads the apps across the interval; without it
-            # they all refresh on one tick and the controller spikes, and it idles near 1Gi
-            # against a 2560Mi limit.
+            # Self-heal runs off watches, so this timer only sets how fast a new Git commit
+            # is noticed.
+            # Jitter spreads apps across the interval. Without it they refresh on one tick
+            # and the controller spikes. It idles near 1Gi against a 2560Mi limit.
             timeout.reconciliation: 60s
             timeout.reconciliation.jitter: 30s
             controller.diff.server.side: "true"

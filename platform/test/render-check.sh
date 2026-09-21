@@ -6,7 +6,7 @@
 #   just render-check                      # from platform/
 #   ./platform/test/render-check.sh        # from anywhere
 #
-# Five gates, each catching a class of bug that reached the cluster at least once:
+# Each gate catches a class of bug that reached the cluster at least once:
 #   1. schema  - server-side dry-run catches invalid CRD schemas Kubernetes would
 #                otherwise silently refuse, leaving the CRD at its old generation.
 #   2. render  - crossplane render exits 0.

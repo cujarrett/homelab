@@ -1,7 +1,7 @@
-# Third-party egress is declared, not approved - anyone may reach a new host by saying
-# so. This is the other half: a host listed here is refused everywhere, so a takedown
-# is one pull request. Adding a host stops new declarations only - existing ones keep
-# working until swept, since Kyverno only runs at admission.
+# Third-party egress is declared, not approved. Anyone may reach a new host by saying so.
+# A host listed here is refused everywhere, so a takedown is one pull request.
+# Kyverno runs only at admission, so adding a host stops new declarations.
+# Existing ones keep working until swept.
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
@@ -33,8 +33,8 @@ spec:
       skipBackgroundRequests: true
       validate:
         allowExistingViolations: true
-        # The message cannot name the offending host - foreach entries take no message
-        # of their own, and element is out of scope here.
+        # The message cannot name the offending host.
+        # foreach entries take no message of their own, and element is out of scope here.
         message: >-
           A host declared in consumes or apiProxies is on the platform egress denial
           list. Remove the declaration, or open a pull request against

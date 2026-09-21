@@ -19,8 +19,9 @@ spec:
       type: ClusterIP
     deployment:
       kind: DaemonSet
-      # Inert - Istio's webhook selects on the sidecar.istio.io/inject label, not this annotation, so
-      # Traefik runs unmeshed and reaches apps on PERMISSIVE ports. Removing it rolls the DaemonSet.
+      # Inert. Istio's webhook selects on the sidecar.istio.io/inject label, not this
+      # annotation, so Traefik runs unmeshed and reaches apps on PERMISSIVE ports.
+      # Removing it rolls the DaemonSet.
       podAnnotations:
         sidecar.istio.io/inject: "true"
     tolerations:

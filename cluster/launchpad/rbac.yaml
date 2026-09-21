@@ -39,11 +39,11 @@ subjects:
     name: launchpad-api
     namespace: launchpad
 ---
-# Allows launchpad-api to watch pods cluster-wide so it can stream init container
-# binding status to SSE clients. Kubernetes RBAC cannot scope a ClusterRole to a
-# namespace prefix, so the grant is cluster-wide; filtering to guest-* namespaces
-# is enforced in extractPodStatus before any data is broadcast. Scoped to
-# get/list/watch only - the SA cannot create, update, or delete pods.
+# launchpad-api watches pods cluster-wide to stream init container binding status to
+# SSE clients.
+# RBAC cannot scope a ClusterRole to a namespace prefix, so the grant is cluster-wide.
+# extractPodStatus filters to guest-* namespaces before anything is broadcast.
+# get/list/watch only. The SA cannot create, update or delete a pod.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:

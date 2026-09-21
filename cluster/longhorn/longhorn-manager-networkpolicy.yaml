@@ -1,14 +1,13 @@
-# The Longhorn chart's own NetworkPolicy admits only Longhorn's pods, which leaves out two
-# callers longhorn-manager needs. Policies are additive, so this grants what the chart's is
-# missing rather than replacing it, and survives a chart upgrade untouched.
+# The chart's own NetworkPolicy admits Longhorn pods only. Policies are additive, so this
+# adds the two callers it misses and survives a chart upgrade.
 #
-# Prometheus scrapes 9500 from the monitoring namespace. Without this rule the longhorn-backend
-# targets read down, which is how they sat unnoticed from the 1.12.1 upgrade onward.
+# Port 9500: Prometheus scrapes it from the monitoring namespace. Missing it reads as
+# longhorn-backend targets down.
+# Port 9502: the kubelet probe. Missing it reads as the pod NotReady.
 #
-# The kubelet probe on 9502 arrives from the cni0 bridge on the pod's own node, which is the
-# first address of that node's pod CIDR, not the node's LAN address. kube-router matches on
-# address alone, so without these four the probe is dropped and the pod reports NotReady.
-# Re-check the addresses if a node is ever rebuilt.
+# The four CIDRs are each node's cni0 bridge, the first address of that node's pod CIDR.
+# Not the node's LAN address. kube-router matches on address alone.
+# Re-check them if a node is rebuilt.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

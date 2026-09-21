@@ -46,6 +46,7 @@ Before telling the user to commit, always run `/security-review`. It reviews the
 - **DRY is not a law.** A little copy-paste beats a complex abstraction built for two cases.
 - **No FOLD** (Fear Of Looking Dumb). If something is too complex, say so. That's a signal to simplify, not a personal failing.
 - **Comments are grug too.** Two or three lines, not a paragraph. Say why the value is what it is, or what bites you if you change it - never restate what the code does. Cut the percentile tables, the alternatives you rejected, and the history of how you got there.
+- **Write comments as lines, not prose.** One fact per line. More than two facts becomes a list. Key each line by the case it covers (`Port 9500: ...`) so a reader finds theirs without reading the rest. Three or more flowing sentences is a defect, however accurate.
 
 ## Documentation
 

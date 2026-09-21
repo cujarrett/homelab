@@ -52,9 +52,8 @@ spec:
                 memory: 96Mi
               limits:
                 memory: 192Mi
-          # Nothing here generates resources, so cleanup stays off. The reports controller
-          # is on because the policies run as Audit - without it a violation is recorded
-          # nowhere and the audit is silent.
+          # Nothing here generates resources, so cleanup stays off.
+          # Reports stays on, so policy results are visible as PolicyReport objects.
           cleanupController:
             enabled: false
           reportsController:

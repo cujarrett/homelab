@@ -1,8 +1,8 @@
-# Istio service mesh - sidecar mode. See docs/platform-connections.md.
-# Three charts, ordered by sync-wave: base (CRDs) -> istiod + cni.
+# Istio service mesh, sidecar mode. See docs/platform-connections.md.
+# Three charts ordered by sync-wave, base (CRDs) then istiod and cni.
 # istio-cni chains onto flannel's conflist.
 ---
-# istio-base - CRDs + cluster RBAC. Must apply before istiod/cni.
+# istio-base: CRDs and cluster RBAC. Must apply before istiod and cni.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -21,9 +21,9 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
-  # istiod patches its validating webhook at runtime - injects the CA (caBundle) and flips
-  # failurePolicy Ignore->Fail once healthy. Ignore both so ArgoCD doesn't show perpetual
-  # drift or revert them on selfHeal.
+  # istiod patches its validating webhook at runtime. It injects the CA (caBundle) and
+  # flips failurePolicy from Ignore to Fail once healthy.
+  # Both are ignored here, or ArgoCD shows drift and reverts them on selfHeal.
   ignoreDifferences:
     - group: admissionregistration.k8s.io
       kind: ValidatingWebhookConfiguration
@@ -39,7 +39,7 @@ spec:
       - ServerSideApply=true
       - RespectIgnoreDifferences=true
 ---
-# istiod - control plane, sidecar mode. Pinned to ctrl-1, next to the apiserver.
+# istiod: control plane, sidecar mode. Pinned to ctrl-1, next to the apiserver.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -56,15 +56,15 @@ spec:
     helm:
       releaseName: istiod
       values: |
-        # Use the istio-cni DaemonSet instead of injecting a NET_ADMIN init container into
-        # every pod. Without this istiod still injects istio-init even though the CNI is
-        # installed, and that init container is what fails Pod Security Admission.
+        # Uses the istio-cni DaemonSet instead of a NET_ADMIN init container in every pod.
+        # Without it istiod injects istio-init even with the CNI installed, and that init
+        # container fails Pod Security Admission.
         cni:
           enabled: true
-        # Pin the control plane to ctrl-1 - istiod sits next to the apiserver it watches.
+        # Pins the control plane to ctrl-1, next to the apiserver istiod watches.
         nodeSelector:
           node-role.kubernetes.io/control-plane: "true"
-        # One fixed replica - no HPA on a 4-node Pi cluster.
+        # One fixed replica. No HPA on a 4-node Pi cluster.
         autoscaleEnabled: false
         replicaCount: 1
         resources:
@@ -92,8 +92,8 @@ spec:
       - ServerSideApply=true
       - RespectIgnoreDifferences=true
 ---
-# istio-cni - installs the CNI plugin (DaemonSet, all nodes) that wires sidecar
-# traffic redirection at pod creation instead of a NET_ADMIN init container.
+# istio-cni: a DaemonSet on all nodes installing the CNI plugin.
+# Wires sidecar traffic redirection at pod creation, not a NET_ADMIN init container.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -110,11 +110,11 @@ spec:
     helm:
       releaseName: istio-cni
       values: |
-        # k3s keeps its CNI config and plugin binaries under /var/lib/rancher, not the
-        # /etc/cni/net.d and /opt/cni/bin the chart defaults to. data/cni is the only
-        # directory k3s searches for plugins - data/current/bin holds its own symlinks and
-        # is not searched, so a binary installed there is invisible and every pod on the
-        # node fails to get a sandbox.
+        # k3s keeps CNI config and plugin binaries under /var/lib/rancher, not the
+        # /etc/cni/net.d and /opt/cni/bin the chart defaults to.
+        # data/cni is the only directory k3s searches. data/current/bin holds k3s's own
+        # symlinks and is never searched, so a binary there is invisible and every pod on
+        # the node fails to get a sandbox.
         chained: true
         cniBinDir: /var/lib/rancher/k3s/data/cni
         cniConfDir: /var/lib/rancher/k3s/agent/etc/cni/net.d
