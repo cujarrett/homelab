@@ -12,7 +12,8 @@ metadata:
     pod-policies.kyverno.io/autogen-controllers: none
     policies.kyverno.io/title: Platform workload ownership
     policies.kyverno.io/description: >-
-      Every workload in a platform namespace must be composed by a Crossplane XR.
+      Every workload in a platform namespace must be composed by a Crossplane XR, or be
+      the router an Apollo Supergraph owns.
 spec:
   validationFailureAction: Enforce
   background: false
@@ -33,6 +34,11 @@ spec:
           - key: "{{ request.operation || 'BACKGROUND' }}"
             operator: AnyIn
             value: [CREATE, UPDATE]
+          # The Apollo operator's router Deployment is owned by a Supergraph, which
+          # only Crossplane or a platform admin can create. Composed at one remove.
+          - key: "{{ length(request.object.metadata.ownerReferences[?kind == 'Supergraph' && starts_with(apiVersion, 'apollographql.com/')] || `[]`) }}"
+            operator: Equals
+            value: 0
       # Kyverno defaults both of these on write. Stated here so the repo matches
       # what the API server stores, otherwise ArgoCD sits permanently OutOfSync.
       skipBackgroundRequests: true
