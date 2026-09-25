@@ -4112,7 +4112,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "avg_over_time(((count(up{job=\"node-exporter\"} == 1) >= bool 3) * (max(probe_success{probe_group=\"internet\"}) == bool 1))[30d:30s]) * 100",
+              "expr": "avg_over_time((clamp_max((count(up{job=\"node-exporter\"} == 1) >= bool 3) + (count(up{job=\"node-exporter\"} offset 30s == 1) >= bool 3), 1) * (max(probe_success{probe_group=\"internet\"}) == bool 1))[30d:30s]) * 100",
               "instant": true,
               "legendFormat": "30d Availability",
               "refId": "A"
@@ -4457,7 +4457,7 @@ data:
                 "type": "prometheus",
                 "uid": "cluster-availability-archive"
               },
-              "expr": "avg_over_time(((count(up{job=\"node-exporter\"} == 1) >= bool 3) * (max(probe_success{probe_group=\"internet\"}) == bool 1))[30d:30s]) * 100",
+              "expr": "avg_over_time((clamp_max((count(up{job=\"node-exporter\"} == 1) >= bool 3) + (count(up{job=\"node-exporter\"} offset 30s == 1) >= bool 3), 1) * (max(probe_success{probe_group=\"internet\"}) == bool 1))[30d:30s]) * 100",
               "legendFormat": "30d Rolling Availability",
               "range": true,
               "refId": "A"
@@ -4467,7 +4467,7 @@ data:
                 "type": "prometheus",
                 "uid": "cluster-availability-archive"
               },
-              "expr": "1 - (count(up{job=\"node-exporter\"} == 1) >= bool 3)",
+              "expr": "1 - clamp_max((count(up{job=\"node-exporter\"} == 1) >= bool 3) + (count(up{job=\"node-exporter\"} offset 30s == 1) >= bool 3), 1)",
               "legendFormat": "Power Down",
               "range": true,
               "refId": "B"
@@ -4580,7 +4580,7 @@ data:
                 "type": "prometheus",
                 "uid": "cluster-availability-archive"
               },
-              "expr": "avg_over_time(((count(up{job=\"node-exporter\"} == 1) >= bool 3) * (max(probe_success{probe_group=\"internet\"}) == bool 1))[1h:5m]) * 100",
+              "expr": "avg_over_time((clamp_max((count(up{job=\"node-exporter\"} == 1) >= bool 3) + (count(up{job=\"node-exporter\"} offset 30s == 1) >= bool 3), 1) * (max(probe_success{probe_group=\"internet\"}) == bool 1))[1h:5m]) * 100",
               "interval": "1h",
               "legendFormat": "Availability",
               "range": true,
