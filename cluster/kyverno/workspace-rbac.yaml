@@ -11,7 +11,8 @@ metadata:
     policies.kyverno.io/title: Platform workspace RBAC
     policies.kyverno.io/description: >-
       A RoleBinding synced from homelab-workspaces may only give secret-mirror-controller
-      the secret-mirror-writer role inside a guest sandbox.
+      the secret-mirror-writer role inside a guest sandbox, or the Apollo operator its
+      own roles in a namespace it watches.
 spec:
   # Enforce from the start because nothing legitimate matches except the guest binding.
   # Api compositions create their own RoleBindings as Crossplane, not ArgoCD.
@@ -48,6 +49,12 @@ spec:
           - key: "{{ request.operation || 'BACKGROUND' }}"
             operator: AnyIn
             value: [CREATE, UPDATE]
+          # The Apollo operator binds its own ClusterRoles to its own ServiceAccount
+          # in every namespace it watches. A workspace commit copying that shape
+          # grants the operator nothing it lacks, and grants the committer nothing.
+          - key: "{{ request.object.roleRef.kind == 'ClusterRole' && starts_with(request.object.roleRef.name, 'apollo-operator:') && length(request.object.subjects || `[]`) == `1` && request.object.subjects[0].kind == 'ServiceAccount' && request.object.subjects[0].name == 'apollo-operator' && request.object.subjects[0].namespace == 'apollo-operator' }}"
+            operator: Equals
+            value: false
       # Kyverno defaults both of these on write. Stated here so the repo matches
       # what the API server stores, otherwise ArgoCD sits permanently OutOfSync.
       skipBackgroundRequests: true
