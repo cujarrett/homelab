@@ -8,7 +8,7 @@
 - **Give `git add` and the commit as two separate steps, listing every file explicitly** - never `git add .`, `git add -A`, or a bare directory. Group related files onto one `git add` line. One `git add` + one commit message per repository, each under its own heading when more than one repo changed.
 - **Always precede `git add` with the `cd` to that repo's absolute path**, so the commands can be pasted from anywhere without landing in the wrong repo.
 - **Never output a `git push` command.** The user pushes as a deliberate human step.
-- **Never include a `:` in YAML comment** Editors highlight the trailing colon as a key and mis-colour the rest of the block. Use an em dash, or reword - `# depends on tlsIssuer - letsencrypt-prod means...`, not `# depends on tlsIssuer:`. Mid-line colons (`# curl: raw curl without browser UA`) are fine.
+- **Never end a YAML comment with `:`.** Editors highlight the trailing colon as a key and mis-colour the rest of the block. Reword instead, `# depends on tlsIssuer, letsencrypt-prod means...`. Mid-line colons (`# curl: raw curl without browser UA`) are fine.
 - **Always use `k` instead of `kubectl` in commands shown to the user in chat. Use kubectl in all doc files.**
 - **Never wrap `kubectl`/`k` commands in `ssh pi@...` - the user's local machine has Tailscale and kubeconfig configured. Run `kubectl` commands directly in the terminal.**
 - **When debugging, always list every command used** - show the command, what it does, and why - so the user can learn the debugging workflow. Do this inline as you debug, not as a summary at the end.
@@ -100,6 +100,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | Platform Abstraction | Crossplane | Ten XR types - see the Crossplane Platform section below |
 | CNI | flannel | k3s's bundled CNI, running at its defaults - no install flags, no `/etc/rancher/k3s/config.yaml`. NetworkPolicy is enforced by k3s's kube-router, also default. Mesh concerns (mTLS, connection policy) belong to Istio. |
 | Service Mesh | Istio | Sidecar mesh chained onto flannel; provides workload mTLS. Platform workloads get STRICT mTLS inbound and `REGISTRY_ONLY` egress from their declared `consumes`. Who may call an interface is an Entra grant checked by the app; see [Platform Connections](./platform/docs/connections.md). |
+| GraphQL | Apollo operator + router | `apollo-operator` namespace, Helm chart from `registry-1.docker.io/apollograph`. Joins each team's subgraph into one supergraph; see [Platform Graph](./platform/docs/graph.md). Router image is `ghcr.io/cujarrett/apollo-router-arm64`, rebuilt from source because the official image aborts on a 16K-page kernel |
 | Secrets | External Secrets Operator | Renders cluster-setup credentials from AWS SSM Parameter Store; `ClusterSecretStore` `aws-parameter-store` authenticates as the `eso-reader` IAM user, scoped read-only to the `/homelab/` path. Only `aws-eso-creds` is hand-created |
 | Workload Identity | SPIRE | `spire-server` + `spire-system` namespaces; Helm chart from `spiffe.github.io/helm-charts-hardened`. Issues X.509 SVIDs backing AWS IAM Roles Anywhere, and JWT-SVIDs published via the OIDC discovery provider at `oidc.mattjarrett.dev`
 
@@ -130,6 +131,9 @@ SSH access: `ssh pi@192.168.10.10x`
 | `platform-exporter` | platform-exporter | Custom Prometheus exporter for platform metrics; scraped via `platform-exporter-servicemonitor` |
 | `external-secrets` | External Secrets Operator | Renders cluster-setup Secrets from Parameter Store; every store and `ExternalSecret` is in `cluster/external-secrets/` |
 | `reloader` | Stakater Reloader | Rolls a workload when a ConfigMap it names changes. Watches only workloads annotated `reloader.stakater.com/auto`, which the Api composition sets whenever `configFrom` is used. Secrets are ignored, since they reach apps as files kubelet refreshes in place |
+| `graph-test` | Api ×2 | `records` and `reviews` subgraphs from `platform-graph-demo`; the test variant of the supergraph |
+| `secret-mirror-controller` | secret-mirror-controller | Kubebuilder controller for the `SecretMirror` CRD; copies a Secret into other namespaces |
+| `node-sysctls` | node-sysctls | DaemonSet applying sysctls against the host so they survive a node reboot |
 | `spire-server`, `spire-system` | SPIRE | Workload identity (SPIFFE); agent DaemonSet on all nodes; OIDC discovery provider serving `oidc.mattjarrett.dev` |
 
 ## Internal Hostnames (`.local.lab`)
@@ -252,7 +256,7 @@ Which namespaces use which XR types is listed in the Namespaces & Applications t
 4. ArgoCD applies the XR to the cluster
 5. Crossplane reconciles and creates all composed resources
 
-XR instance files live in `homelab-workspaces/<name>/` (one directory per workspace, e.g. `mattjarrett-com/`, `kentjarrett-com/`). Ephemeral `guest-*` sandbox directories are written and deleted automatically by `launchpad-api`; all other workspace directories are hand-maintained.
+Directory layout and the `namespace.yaml` requirement are in the [homelab-workspaces README](https://github.com/cujarrett/homelab-workspaces#structure). XR instance files live in `homelab-workspaces/<name>/` (one directory per workspace, e.g. `mattjarrett-com/`, `kentjarrett-com/`). Ephemeral `guest-*` sandbox directories are written and deleted automatically by `launchpad-api`; all other workspace directories are hand-maintained.
 
 ### Deleting an XR instance (correct order - prevents data loss)
 ```bash
@@ -278,7 +282,7 @@ Four projects scope workloads by concern:
 | Project | Allowed source repos | Contents |
 |---|---|---|
 | `platform` | homelab git + `argoproj.github.io/argo-helm` + `charts.crossplane.io/stable` | ArgoCD, Crossplane, compositions, bootstrap |
-| `cluster` | homelab git + `nats-io.github.io/k8s/helm/charts` + `charts.jetstack.io` + `spiffe.github.io/helm-charts-hardened` | Longhorn, Traefik, cert-manager, AdGuard, Cloudflare, NATS + NACK, SPIRE |
+| `cluster` | homelab git + `nats-io.github.io/k8s/helm/charts` + `charts.jetstack.io` + `spiffe.github.io/helm-charts-hardened` + `registry-1.docker.io/apollograph` | Longhorn, Traefik, cert-manager, AdGuard, Cloudflare, NATS + NACK, SPIRE, Apollo operator |
 | `observability` | homelab git + `prometheus-community.github.io/helm-charts` + `grafana.github.io/helm-charts` | kube-prometheus-stack, Loki, Promtail, platform-exporter |
 | `workloads` | homelab git + homelab-workspaces git | All workspace apps (one Application per homelab-workspaces directory) + blog |
 
@@ -304,7 +308,7 @@ All homelab Go services follow the same layout. When editing or creating a Go ap
 - **/healthz route required** on every app - Kubernetes readiness probe hits `/healthz`
 - **CI/CD** - every repo ships `.github/workflows/ci.yml`: a separate `test` job (`go test ./...` + `go vet ./...`), then `build-and-push` (`needs: test`, `if: main`, builds ARM64 → `ghcr.io/cujarrett/<repo>`), then `deploy` (updates the image tag in `homelab-workspaces`). Test always gates build.
 - **Renovate** - every repo ships `renovate.json` extending the shared preset at `github>cujarrett/homelab//.github/renovate-shared`. Policy lives in the preset, not per repo.
-- **Per-repo `CLAUDE.md`** - standalone repos, so each carries the git rules, pre-commit safety check, and grug philosophy (Claude working in that repo won't see this file). The `/new-go-api` skill scaffolds all of the above, and is how a new Go API starts.
+- **Per-repo `AGENTS.md`** - standalone repos, so each carries the git rules, pre-commit safety check, and grug philosophy (an agent working in that repo won't see this file). The `/new-go-api` skill scaffolds all of the above, and is how a new Go API starts.
 
 Go apps in this workspace:
 | Repo | Binary | Notes |
@@ -313,6 +317,10 @@ Go apps in this workspace:
 | `sump-pump` | `bridge`, `consumer` | Monorepo - `cmd/bridge` publishes IoT readings to NATS, `cmd/consumer` reads them and exposes Prometheus metrics, `internal/event` holds the shared subjects and payload. Images stay `ghcr.io/cujarrett/sump-pump-bridge` and `-consumer` |
 | `weather-exporter` | `weather-exporter` | Weather Prometheus exporter |
 | `launchpad-api` | `launchpad-api` | BFF for Launchpad UI |
+
+## Skills
+
+Repo skills live in [.claude/commands/](./.claude/commands/), one file per skill. List them with `ls` rather than keeping an index here.
 
 ## Common Commands
 ```bash
