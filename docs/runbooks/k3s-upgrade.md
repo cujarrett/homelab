@@ -119,6 +119,11 @@ kubectl uncordon <node>
 A climbing `NRestarts` means the service is crash-looping even though the node reports Ready -
 `journalctl -u k3s` will have a `Shutdown request received` line naming the cause.
 
+After uncordon, check every public URL before moving on. A mesh pod that could not be created
+while the node was cordoned sits in ReplicaSet backoff for up to five minutes, and a
+single-replica Spa returns 503 until then. See
+[Postmortem - istiod Drain Outage](../postmortems/postmortem-istiod-drain-outage.md).
+
 **4. Let Longhorn finish rebuilding before the next node.**
 
 ```bash

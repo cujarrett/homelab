@@ -61,12 +61,18 @@ spec:
         # container fails Pod Security Admission.
         cni:
           enabled: true
-        # Pins the control plane to ctrl-1, next to the apiserver istiod watches.
-        nodeSelector:
-          node-role.kubernetes.io/control-plane: "true"
-        # One fixed replica. No HPA on a 4-node Pi cluster.
+        # Two fixed replicas on different nodes. No HPA on a 4-node Pi cluster.
+        # The injection webhook fails closed, so one replica must survive any single drain
+        # or every mesh pod evicted after istiod stays absent until the node is uncordoned.
         autoscaleEnabled: false
-        replicaCount: 1
+        replicaCount: 2
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchLabels:
+                    istio: pilot
+                topologyKey: kubernetes.io/hostname
         resources:
           requests:
             cpu: 100m
