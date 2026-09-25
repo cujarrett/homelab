@@ -20,11 +20,11 @@ spec:
           config:
             controllers:
               # An empty list means cluster-scoped, so every namespace is named.
-              # The chart binds a RoleBinding into each one, so each must exist.
-              # The three branch slots are added by the workflows that claim them.
+              # The chart binds a RoleBinding into each one. The namespace itself is
+              # owned by homelab-workspaces, like every other workload namespace.
               subgraph:
                 namespaces: &graphNamespaces
-                  - graph-preprod
+                  - graph-test
               supergraph:
                 namespaces: *graphNamespaces
                 # Pinned, because the chart defaults this to busybox:latest and a
@@ -45,9 +45,6 @@ spec:
                 memory: 64Mi
               limits:
                 memory: 256Mi
-    - repoURL: https://github.com/cujarrett/homelab.git
-      targetRevision: main
-      path: cluster/apollo-operator
   destination:
     server: https://kubernetes.default.svc
     namespace: apollo-operator
