@@ -4182,7 +4182,7 @@ data:
                 "uid": "cluster-availability-archive"
               },
               "editorMode": "code",
-              "expr": "time() - max_over_time(timestamp((count(up{job=\"node-exporter\"} == 1) >= bool 3) == 0)[30d:30s])",
+              "expr": "time() - min(node_boot_time_seconds)",
               "instant": true,
               "legendFormat": "Time Since Last Power Outage",
               "refId": "A"
