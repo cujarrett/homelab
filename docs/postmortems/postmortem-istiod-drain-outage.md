@@ -36,6 +36,8 @@ Uncordoning `ctrl-1` and waiting. Nothing else was needed.
 
 ## Actions
 
+Fixed in [#241](https://github.com/cujarrett/homelab/pull/241).
+
 - [x] istiod runs two replicas on different nodes with no `nodeSelector`, set in
       [cluster/argocd/istio.yaml](../../cluster/argocd/istio.yaml). One replica survives any
       single drain, so the webhook keeps answering.
