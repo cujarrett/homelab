@@ -4133,7 +4133,7 @@ data:
                 "fixedColor": "blue",
                 "mode": "fixed"
               },
-              "noValue": "No outage in window",
+              "noValue": "No node data",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -4179,7 +4179,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "cluster-availability-archive"
+                "uid": "prometheus"
               },
               "editorMode": "code",
               "expr": "time() - min(node_boot_time_seconds)",
@@ -4202,7 +4202,7 @@ data:
                 "fixedColor": "blue",
                 "mode": "fixed"
               },
-              "noValue": "No outage in window",
+              "noValue": "None in 5 years",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -4248,10 +4248,10 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "cluster-availability-archive"
               },
               "editorMode": "code",
-              "expr": "time() - max_over_time(timestamp(max(probe_success{probe_group=\"internet\"}) == 0)[30d:30s])",
+              "expr": "time() - max_over_time(timestamp(max(probe_success{probe_group=\"internet\"}) == 0)[1825d:1m])",
               "instant": true,
               "legendFormat": "Time Since Last Internet Outage",
               "refId": "A"
