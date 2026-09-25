@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: internet
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: internet
+      interval: 30s
+      rules:
+        # Discord is unreachable while the internet is down, so this fires after
+        # recovery instead. Value is seconds of failed probes in the last 24h.
+        # Fires for 5 minutes after the last failed probe, then resolves.
+        - alert: InternetOutageRecovered
+          expr: |
+            (count_over_time((max(probe_success{probe_group="internet"}) == 0)[24h:30s]) * 30)
+            and on() (max(probe_success{probe_group="internet"}) == 1)
+            and on() ((time() - max_over_time(timestamp(max(probe_success{probe_group="internet"}) == 0)[24h:30s])) < 300)
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-mbp/homelab"
+            summary: "Internet was down for {{ $value | humanizeDuration }}"
+            description: >-
+              The upstream probe failed and has since recovered. Duration is the
+              failed probe count over the last 24h at 30s per probe.

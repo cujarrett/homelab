@@ -4124,9 +4124,9 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "cluster-availability-archive"
+            "uid": "prometheus"
           },
-          "description": "Time since the cluster last lost node quorum, using the same three-of-four rule as the availability panels. A single node rebooting does not count - the uptime tiles already show that. Reads no data when quorum has held for the whole 30d lookback.",
+          "description": "Time since every node last booted, read from the kernel boot time. A single node rebooting for an upgrade does not move it. Only a full-cluster power cycle does.",
           "fieldConfig": {
             "defaults": {
               "color": {
