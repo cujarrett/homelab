@@ -278,6 +278,6 @@ at `192.168.10.100` directly, not over Tailscale.
 
 **The kiosk needs its X config.** `/etc/X11/xorg.conf.d/99-pi5.conf` is not in Git and is
 not on the SSD if the SSD was reimaged. If the display comes back black, recreate it from
-[CLAUDE.md](../../CLAUDE.md) before debugging anything else.
+[AGENTS.md](../../AGENTS.md) before debugging anything else.
 
 Swapping a worker instead skips all three.

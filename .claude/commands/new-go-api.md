@@ -75,7 +75,7 @@ module github.com/cujarrett/<app-name>
 go 1.26
 ```
 
-**`./<app-name>/CLAUDE.md`** - a standalone repo, so it carries the same git rules, pre-commit safety check, and grug philosophy as the homelab repo (Claude working in this repo won't see homelab's CLAUDE.md):
+**`./<app-name>/AGENTS.md`** - a standalone repo, so it carries the same git rules, pre-commit safety check, and grug philosophy as the homelab repo (an agent working in this repo won't see homelab's AGENTS.md):
 ```markdown
 ## Rules
 

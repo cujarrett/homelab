@@ -179,7 +179,7 @@ cd "$(git rev-parse --show-toplevel)"
 # replace with whatever the change removed or renamed
 for term in connectionPosture entra.enabled apiProxies allowedCallers; do
   echo "--- $term ---"
-  grep -rn "$term" --include="*.md" docs/ platform/ CLAUDE.md 2>/dev/null || echo "none"
+  grep -rn "$term" --include="*.md" docs/ platform/ AGENTS.md 2>/dev/null || echo "none"
 done
 ```
 

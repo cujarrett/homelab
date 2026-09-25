@@ -99,7 +99,7 @@ ssh pi@192.168.10.100 "journalctl -u getty@tty1 -n 30 --no-pager && ps aux | gre
 
 This table is cluster infrastructure only. Application namespaces (`mattjarrett-com`,
 `my-vinyl`, etc.) are owned by tenant `namespace.yaml` files, not by the cluster
-bootstrap, and are listed in [CLAUDE.md](../CLAUDE.md).
+bootstrap, and are listed in [AGENTS.md](../AGENTS.md).
 
 ---
 
@@ -143,7 +143,7 @@ TLS from `letsencrypt-prod`. Traffic via Cloudflare Tunnel.
 
 Adding a new hostname requires updating the Cloudflare Tunnel ingress config before
 the cert-manager HTTP-01 challenge can succeed. See the "Cloudflare Tunnel Operations"
-section of [`CLAUDE.md`](../CLAUDE.md) for the API workflow.
+section of [AGENTS.md](../AGENTS.md) for the API workflow.
 
 | Hostname | Namespace | Stack |
 |---|---|---|

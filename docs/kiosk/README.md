@@ -50,4 +50,4 @@ Do **not** just `pkill chromium` - the loop will relaunch with the old URL still
 ## X server requirement
 
 Requires `/etc/X11/xorg.conf.d/99-pi5.conf` on `ctrl-1` to force the display DRM device.
-See [Homelab Cluster Context → 1U Display](../../CLAUDE.md#1u-display-ctrl-1) for the config file contents.
+See [Homelab Cluster Context → 1U Display](../../AGENTS.md#1u-display-ctrl-1) for the config file contents.

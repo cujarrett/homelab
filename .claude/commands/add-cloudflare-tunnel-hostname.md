@@ -141,4 +141,4 @@ curl -s -o /dev/null -w "%{http_code}\n" -A "$UA" https://<hostname>/
 kubectl get certificate -n <namespace>
 ```
 
-Then add the hostname to the **Public Hostnames** list in `CLAUDE.md`.
+Then add the hostname to the **Public Hostnames** list in `AGENTS.md`.
