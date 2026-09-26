@@ -1,0 +1,60 @@
+# The schema a subgraph publishes is read from its image, so an unsigned image
+# could publish a schema without its pod ever running. Both places the image
+# appears are verified against the same signature, made only by CI on main.
+apiVersion: policies.kyverno.io/v1
+kind: ImageValidatingPolicy
+metadata:
+  name: platform-graph-image-signatures
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform graph image signatures
+    policies.kyverno.io/description: >-
+      A platform-graph-demo image runs in a graph lane, or has its schema published,
+      only if CI on main signed that exact digest.
+spec:
+  validationActions: [Deny]
+  failurePolicy: Fail
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [graph-test, graph-prod]
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+      - apiGroups: [apollographql.com]
+        apiVersions: [v1alpha2]
+        operations: [CREATE, UPDATE]
+        resources: [subgraphs]
+  matchImageReferences:
+    - glob: "ghcr.io/cujarrett/platform-graph-demo-*"
+  # The operator reads this field directly, so it is an image reference too.
+  images:
+    - name: subgraphSchema
+      expression: "has(object.spec) && has(object.spec.schema) && has(object.spec.schema.ociImage) ? [object.spec.schema.ociImage.reference] : []"
+  attestors:
+    - name: github
+      cosign:
+        keyless:
+          identities:
+            - issuer: https://token.actions.githubusercontent.com
+              # Only the two subgraph workflows, and only from main. A branch build
+              # is never signed, so a signature here means the commit was reviewed.
+              subjectRegExp: "^https://github\\.com/cujarrett/platform-graph-demo/\\.github/workflows/(records|reviews)\\.yml@refs/heads/main$"
+        ctlog:
+          url: https://rekor.sigstore.dev
+  # Every expression runs against every matched kind, so each one applies only
+  # where its image list exists.
+  validations:
+    - expression: >-
+        !has(images.containers) ||
+        images.containers.map(image, verifyImageSignatures(image, [attestors.github])).all(e, e > 0)
+      message: pod image is not signed by platform-graph-demo CI on main
+    - expression: >-
+        !has(images.subgraphSchema) ||
+        images.subgraphSchema.map(image, verifyImageSignatures(image, [attestors.github])).all(e, e > 0)
+      message: subgraph schema image is not signed by platform-graph-demo CI on main
