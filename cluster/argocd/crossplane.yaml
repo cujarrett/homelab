@@ -16,6 +16,13 @@ spec:
             - --enable-realtime-compositions
           metrics:
             enabled: true
+          # Sized to the 7 day p95. The chart default of 256Mi undercounts it by
+          # more than half, so the scheduler stacked it with the providers.
+          resourcesCrossplane:
+            requests:
+              memory: 640Mi
+            limits:
+              memory: 1Gi
           rbacManager: {}
           affinity:
             nodeAffinity:

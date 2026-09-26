@@ -56,6 +56,10 @@ spec:
 
               {{ end }}{{ end }}
           alertmanagerSpec:
+            # The operator defaults the request to 200Mi. It holds 45Mi.
+            resources:
+              requests:
+                memory: 64Mi
             affinity:
               nodeAffinity:
                 requiredDuringSchedulingIgnoredDuringExecution:

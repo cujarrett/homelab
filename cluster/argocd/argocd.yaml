@@ -60,10 +60,14 @@ spec:
               memory: 256Mi
         applicationSet:
           resources:
+            requests:
+              memory: 160Mi
             limits:
               memory: 512Mi
         notifications:
           resources:
+            requests:
+              memory: 64Mi
             limits:
               memory: 128Mi
         redis:

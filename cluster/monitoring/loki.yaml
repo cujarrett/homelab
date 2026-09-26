@@ -39,6 +39,10 @@ spec:
             delete_request_cancel_period: 10m
         singleBinary:
           replicas: 1
+          # The chart requests nothing, so the scheduler counted Loki as free.
+          resources:
+            requests:
+              memory: 320Mi
           affinity:
             nodeAffinity:
               requiredDuringSchedulingIgnoredDuringExecution:

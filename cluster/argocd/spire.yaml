@@ -64,6 +64,10 @@ spec:
 
           spire-agent:
             logLevel: INFO
+            # The chart requests nothing, so the scheduler counted each agent as free.
+            resources:
+              requests:
+                memory: 128Mi
 
           # CSI driver mounts each pod's SVID (cert + key) as files via a volume.
           # Required before any workload can consume its identity for AWS credential exchange.

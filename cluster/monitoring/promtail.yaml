@@ -19,6 +19,10 @@ spec:
           enabled: true
           labels:
             release: monitoring
+        # The chart requests nothing, so the scheduler counted each shipper as free.
+        resources:
+          requests:
+            memory: 160Mi
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

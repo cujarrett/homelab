@@ -17,6 +17,10 @@ spec:
         protocol: TCP
     service:
       type: ClusterIP
+    # The chart requests nothing, so the scheduler counted Traefik as free on every node.
+    resources:
+      requests:
+        memory: 192Mi
     deployment:
       kind: DaemonSet
       # Inert. Istio's webhook selects on the sidecar.istio.io/inject label, not this
