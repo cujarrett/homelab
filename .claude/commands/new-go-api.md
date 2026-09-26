@@ -79,7 +79,7 @@ go 1.26
 ```markdown
 # <app-name>
 
-Go HTTP API. Single binary, stdlib only. Commands are in the [README](./README.md) and the `justfile`.
+Go HTTP API. Single binary, stdlib only. Commands are in the README and the `justfile`.
 
 ## Rules
 
