@@ -1,0 +1,46 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: federatedgraphs.platform.local.lab
+spec:
+  group: platform.local.lab
+  scope: Namespaced
+  names:
+    kind: FederatedGraph
+    plural: federatedgraphs
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  required: [graphRef]
+                  properties:
+                    graphRef:
+                      type: string
+                      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?@[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                      description: "The graph and variant this environment serves, as graph@variant. Every subgraph in this namespace that names this FederatedGraph is composed into it."
+                    host:
+                      type: string
+                      pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+                      maxLength: 253
+                      description: "Hostname clients call. If omitted, the graph is reachable only inside the cluster."
+                    tlsIssuer:
+                      type: string
+                      default: local-lab-ca-issuer
+                      enum:
+                        - local-lab-ca-issuer
+                        - letsencrypt-prod
+                      description: "Certificate issuer for host. Internal for services only on the homelab network. External for services exposed to the public internet."
+                    replicas:
+                      type: integer
+                      default: 1
+                      minimum: 1
+                      description: "Number of router replicas."

@@ -131,7 +131,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `platform-exporter` | platform-exporter | Custom Prometheus exporter for platform metrics; scraped via `platform-exporter-servicemonitor` |
 | `external-secrets` | External Secrets Operator | Renders cluster-setup Secrets from Parameter Store; every store and `ExternalSecret` is in `cluster/external-secrets/` |
 | `reloader` | Stakater Reloader | Rolls a workload when a ConfigMap it names changes. Watches only workloads annotated `reloader.stakater.com/auto`, which the Api composition sets whenever `configFrom` is used. Secrets are ignored, since they reach apps as files kubelet refreshes in place |
-| `graph-test` | Api ×2 | `records` and `reviews` subgraphs from `platform-graph-demo`; the test variant of the supergraph |
+| `graph-test` | Api ×2 + FederatedGraph | `records` and `reviews` subgraphs from `platform-graph-demo`, composed into `storefront-homelab@test`; router at `graph-test.local.lab` |
 | `secret-mirror-controller` | secret-mirror-controller | Kubebuilder controller for the `SecretMirror` CRD; copies a Secret into other namespaces |
 | `node-sysctls` | node-sysctls | DaemonSet applying sysctls against the host so they survive a node reboot |
 | `spire-server`, `spire-system` | SPIRE | Workload identity (SPIFFE); agent DaemonSet on all nodes; OIDC discovery provider serving `oidc.mattjarrett.dev` |
@@ -232,7 +232,7 @@ memory. Restart `getty@tty1.service` so `.bashrc` re-sources the script.
 
 Crossplane core runs with `--enable-realtime-compositions` (Helm `args` in [cluster/argocd/crossplane.yaml](./cluster/argocd/crossplane.yaml)) so composite reconciliation reacts to composed-resource changes by watch rather than waiting out the 60s poll. Without it a composed resource going Ready can sit for up to a minute before its status reaches the XR.
 
-Ten platform types are defined under `platform/`:
+Eleven platform types are defined under `platform/`:
 
 | XRD | Kind | Notes |
 |---|---|---|
@@ -246,6 +246,7 @@ Ten platform types are defined under `platform/`:
 | `nosqls.platform.local.lab` | `NoSql` | AWS DynamoDB table; used by Launchpad guest demo sandboxes - kept within AWS free tier by design |
 | `objectstorages.platform.local.lab` | `ObjectStorage` | AWS S3 bucket; used by Launchpad guest demo sandboxes - kept within AWS free tier by design |
 | `managedsecrets.platform.local.lab` | `ManagedSecret` | A value the owner sets in a cloud console, delivered to the pod as files; never a Kubernetes Secret |
+| `federatedgraphs.platform.local.lab` | `FederatedGraph` | One environment of a federated GraphQL graph; composes the namespace's subgraphs and runs the Apollo router. See [Platform Graph](./platform/docs/graph.md) |
 
 Which namespaces use which XR types is listed in the Namespaces & Applications table above.
 

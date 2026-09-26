@@ -1,0 +1,205 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: federated-graph
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: FederatedGraph
+  mode: Pipeline
+  pipeline:
+    - step: render-federated-graph
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $ns := $xr.metadata.namespace }}
+            {{- $params := $xr.spec.parameters } }
+            {{- $graphRef := $params.graphRef }}
+            {{- $host := $params.host | default "" }}
+            {{- $tlsIssuer := $params.tlsIssuer | default "local-lab-ca-issuer" }}
+            {{- $replicas := $params.replicas | default 1 }}
+            {{- $service := printf "%s-router" $name }}
+            {{- /* The operator labels every router pod with this. Mesh policy selects on it. */ -}}
+            {{- $routerLabel := dict "apollographql.com/supergraph" $name }}
+            {{- /* The router pulls its composed schema from these at startup and reports usage back. */ -}}
+            {{- /* Each gets a ServiceEntry so REGISTRY_ONLY egress can name it.                       */ -}}
+            {{- $registryHosts := list "artifact.api.apollographql.com" "uplink.api.apollographql.com" "aws.uplink.api.apollographql.com" "usage-reporting.api.apollographql.com" }}
+            ---
+            # Selects every subgraph in this namespace carrying this graph's label.
+            # A team joins by merging its own GraphApi, never by editing this file.
+            apiVersion: apollographql.com/v1alpha2
+            kind: SupergraphSchema
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              labels:
+                platform.local.lab/graph: {{ $name }}
+                platform.local.lab/environment: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: supergraph-schema
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              graphRef: {{ $graphRef }}
+              # Every subgraph of the variant lives in this namespace, so a missing one fails composition.
+              partial: false
+              # Deleting this environment keeps the variant and its history in the registry.
+              deletionPolicy: KeepVariant
+              selectors:
+                - matchLabels:
+                    platform.local.lab/graph: {{ $name }}
+                    platform.local.lab/environment: {{ $ns }}
+            ---
+            apiVersion: apollographql.com/v1alpha4
+            kind: Supergraph
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              labels:
+                platform.local.lab/graph: {{ $name }}
+                platform.local.lab/environment: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: supergraph
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              replicas: {{ $replicas }}
+              schema:
+                resource:
+                  name: {{ $name }}
+              networking:
+                serviceName: {{ $service }}
+              routerConfig:
+                supergraph:
+                  # Clients read the schema from the registry, so a scanner gets nothing here.
+                  introspection: false
+                traffic_shaping:
+                  router:
+                    global_rate_limit:
+                      capacity: 100
+                      interval: 1s
+              deployment:
+                podTemplate:
+                  # Apollo's image aborts on the Pi's 16K-page kernel. Same source, one build flag.
+                  image: ghcr.io/cujarrett/apollo-router-arm64:2.17.0
+                  nodeSelector:
+                    node-role.kubernetes.io/worker: worker
+                  # Workspace namespaces enforce the restricted PodSecurity profile. The image's
+                  # USER is a name, so runAsNonRoot needs the numeric UID to verify.
+                  podSecurityContext:
+                    runAsNonRoot: true
+                    runAsUser: 1000
+                    runAsGroup: 1000
+                    seccompProfile:
+                      type: RuntimeDefault
+                  routerContainer:
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      capabilities:
+                        drop: [ALL]
+                    resources:
+                      requests:
+                        cpu: 50m
+                        memory: 128Mi
+                      limits:
+                        memory: 512Mi
+            {{- if $host }}
+            ---
+            apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: {{ $service }}
+              namespace: {{ $ns }}
+              annotations:
+                traefik.ingress.kubernetes.io/router.entrypoints: websecure
+                traefik.ingress.kubernetes.io/router.tls: "true"
+                cert-manager.io/cluster-issuer: {{ $tlsIssuer }}
+                gotemplating.fn.crossplane.io/composition-resource-name: ingress
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              ingressClassName: traefik
+              tls:
+                - hosts:
+                    - {{ $host }}
+                  secretName: {{ $service }}-tls
+              rules:
+                - host: {{ $host }}
+                  http:
+                    paths:
+                      - path: /
+                        pathType: Prefix
+                        backend:
+                          service:
+                            name: {{ $service }}
+                            port:
+                              number: 80
+            {{- end }}
+            ---
+            # Callers must prove a mesh identity. Traefik is unmeshed, so when host is set
+            # the router port takes plain traffic from it, and reach is decided by tlsIssuer.
+            apiVersion: security.istio.io/v1
+            kind: PeerAuthentication
+            metadata:
+              name: {{ $service }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-peerauth
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels: {{ $routerLabel | toJson }}
+              mtls:
+                mode: STRICT
+              {{- if $host }}
+              portLevelMtls:
+                "4000":
+                  mode: PERMISSIVE
+              {{- end }}
+            ---
+            # REGISTRY_ONLY, three destinations.
+            # istio-system: the control plane.
+            # ./*: every subgraph in this namespace. A team joins by merging its own file, so no list of names exists here.
+            # The ServiceEntry hosts below: the schema registry.
+            apiVersion: networking.istio.io/v1
+            kind: Sidecar
+            metadata:
+              name: {{ $service }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-sidecar
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              workloadSelector:
+                labels: {{ $routerLabel | toJson }}
+              outboundTrafficPolicy:
+                mode: REGISTRY_ONLY
+              egress:
+                - hosts:
+                    - "istio-system/*"
+                    - "./*"
+            {{- range $h := $registryHosts }}
+            ---
+            apiVersion: networking.istio.io/v1
+            kind: ServiceEntry
+            metadata:
+              name: {{ $service }}-{{ $h | replace "." "-" }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-se-{{ $h | replace "." "-" }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              hosts:
+                - {{ $h | quote }}
+              location: MESH_EXTERNAL
+              resolution: DNS
+              exportTo: ["."]
+              ports:
+                - number: 443
+                  name: https
+                  protocol: HTTPS
+            {{- end }}
