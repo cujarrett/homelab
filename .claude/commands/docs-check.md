@@ -104,7 +104,7 @@ That directory is gitignored, so any link into it is dead for every reader but y
 ```bash
 cd "$(git rev-parse --show-toplevel)"
 grep -rn "](.*local-only/" --include="*.md" . \
-  | grep -v "^\.\?/\?local-only/\|^\.\?/\?CLAUDE\.md:\|^\.\?/\?\.claude/" || echo "none"
+  | grep -v "^\.\?/\?local-only/\|^\.\?/\?AGENTS\.md:\|^\.\?/\?\.claude/" || echo "none"
 ```
 
 ## 5. The same field described two ways

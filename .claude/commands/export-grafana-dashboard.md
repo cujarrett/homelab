@@ -75,10 +75,10 @@ Grafana hot-reloads provisioned dashboards - no restart needed. Open the dashboa
 
 ### 4. Check `"instant": true` for kiosk dashboards
 
-First check whether this dashboard is in the kiosk playlist:
+The kiosk playlist lives in the Grafana UI, not Git. Check whether this dashboard is in it:
 
 ```bash
-grep '<uid>' cluster/monitoring/grafana-playlist-kiosk.yaml
+curl -sk https://grafana.local.lab/api/playlists/adc6g24/items | grep -c '<uid>'
 ```
 
 If it is, verify all stat panel targets have `"instant": true` - range queries on stat panels crash the Pi on the kiosk display:

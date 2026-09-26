@@ -1,5 +1,5 @@
 ---
-description: Pre-pull the AdGuard image on ctrl-1 before merging a Renovate PR, to avoid ImagePullBackOff caused by the DNS chicken-and-egg with the Recreate rollout strategy
+description: Pre-pull the AdGuard image on ctrl-1 before merging its Renovate PR. Use for any AdGuard image bump, or when the adguard pod is stuck in ImagePullBackOff.
 ---
 
 AdGuard runs on `ctrl-1` with `strategy: Recreate` and `hostPort: 53`. Because `ctrl-1`'s `/etc/resolv.conf` points only at `127.0.0.1` (AdGuard itself), the Recreate strategy kills the old pod before the new one starts - leaving the node with no DNS and unable to pull the new image from Docker Hub.

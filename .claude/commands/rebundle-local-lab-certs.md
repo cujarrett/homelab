@@ -6,7 +6,10 @@ Run the following to append the CA cert to every local-lab-ca signed TLS secret.
 
 ```bash
 CA=$(kubectl get secret local-lab-ca-secret -n cert-manager -o jsonpath='{.data.tls\.crt}' | base64 -d)
-for ns_secret in argocd/argocd-tls-cert monitoring/grafana-tls-cert monitoring/prometheus-tls-cert adguard/adguard-local-lab-tls longhorn-system/longhorn-tls-cert my-vinyl/my-vinyl-api-tls sump-pump/sump-pump-bridge-tls; do
+# Every secret cert-manager issued from the local CA, so a new .local.lab host is covered
+# without editing this list.
+for ns_secret in $(kubectl get certificates.cert-manager.io -A -o json \
+  | python3 -c "import json,sys; [print(c['metadata']['namespace']+'/'+c['spec']['secretName']) for c in json.load(sys.stdin)['items'] if c['spec']['issuerRef']['name']=='local-lab-ca-issuer']"); do
   ns=${ns_secret%%/*}; secret=${ns_secret##*/}
   LEAF=$(kubectl get secret "$secret" -n "$ns" -o jsonpath='{.data.tls\.crt}' 2>/dev/null | base64 -d)
 
