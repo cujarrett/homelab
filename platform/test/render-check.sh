@@ -54,6 +54,7 @@ comp_for() {
     NoSql) echo nosql ;; ObjectStorage) echo object-storage ;;
     Subscription) echo subscription ;; Topic) echo topic ;; Wordpress) echo wordpress ;;
     ManagedSecret) echo managed-secret ;;
+    FederatedGraph) echo federated-graph ;; GraphApi) echo graph-api ;;
     *) echo "" ;;
   esac
 }
@@ -284,7 +285,8 @@ import sys, pathlib, yaml
 
 KIND_DIR = {"Api": "api", "Spa": "spa", "Cache": "cache", "Sql": "sql", "NoSql": "nosql",
             "ObjectStorage": "object-storage", "Subscription": "subscription",
-            "Topic": "topic", "Wordpress": "wordpress", "ManagedSecret": "managed-secret"}
+            "Topic": "topic", "Wordpress": "wordpress", "ManagedSecret": "managed-secret",
+            "FederatedGraph": "federated-graph", "GraphApi": "graph-api"}
 
 def params_schema(xrd_path):
     v = yaml.safe_load(open(xrd_path))["spec"]["versions"][0]

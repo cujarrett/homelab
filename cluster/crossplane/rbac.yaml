@@ -64,5 +64,5 @@ metadata:
     rbac.crossplane.io/aggregate-to-crossplane: "true"
 rules:
   - apiGroups: ["apollographql.com"]
-    resources: ["supergraphs", "supergraphs/status", "supergraphschemas", "supergraphschemas/status"]
+    resources: ["subgraphs", "subgraphs/status", "supergraphs", "supergraphs/status", "supergraphschemas", "supergraphschemas/status"]
     verbs: ["*"]

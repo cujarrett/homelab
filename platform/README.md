@@ -29,6 +29,7 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 | [`Subscription`](subscription/README.md) | Durable consumer cursor | NATS JetStream | - |
 | [`ManagedSecret`](managed-secret/README.md) | A console-set value, delivered as files | - | AWS Secrets Manager |
 | [`FederatedGraph`](federated-graph/README.md) | Federated GraphQL router and composed schema | - | - |
+| [`GraphApi`](graph-api/README.md) | One team's subgraph, joined to a FederatedGraph | - | - |
 
 ---
 

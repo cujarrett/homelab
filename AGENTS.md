@@ -97,7 +97,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | Storage | Longhorn | Three StorageClasses: `longhorn` (default, Delete), `longhorn-retain` (Retain - use for stateful platform XRs), `longhorn-delete` (explicit Delete) |
 | DNS | AdGuard Home | Runs in `adguard` namespace, pinned to node `ctrl-1` via nodeSelector, hostPort 53 UDP |
 | External Access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; token from secret `cloudflare-tunnel-token` |
-| Platform Abstraction | Crossplane | Ten XR types - see the Crossplane Platform section below |
+| Platform Abstraction | Crossplane | Twelve XR types - see the Crossplane Platform section below |
 | CNI | flannel | k3s's bundled CNI, running at its defaults - no install flags, no `/etc/rancher/k3s/config.yaml`. NetworkPolicy is enforced by k3s's kube-router, also default. Mesh concerns (mTLS, connection policy) belong to Istio. |
 | Service Mesh | Istio | Sidecar mesh chained onto flannel; provides workload mTLS. Platform workloads get STRICT mTLS inbound and `REGISTRY_ONLY` egress from their declared `consumes`. Who may call an interface is an Entra grant checked by the app; see [Platform Connections](./platform/docs/connections.md). |
 | GraphQL | Apollo operator + router | `apollo-operator` namespace, Helm chart from `registry-1.docker.io/apollograph`. Joins each team's subgraph into one supergraph; see [Platform Graph](./platform/docs/graph.md). Router image is `ghcr.io/cujarrett/apollo-router-arm64`, rebuilt from source because the official image aborts on a 16K-page kernel |
@@ -131,7 +131,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `platform-exporter` | platform-exporter | Custom Prometheus exporter for platform metrics; scraped via `platform-exporter-servicemonitor` |
 | `external-secrets` | External Secrets Operator | Renders cluster-setup Secrets from Parameter Store; every store and `ExternalSecret` is in `cluster/external-secrets/` |
 | `reloader` | Stakater Reloader | Rolls a workload when a ConfigMap it names changes. Watches only workloads annotated `reloader.stakater.com/auto`, which the Api composition sets whenever `configFrom` is used. Secrets are ignored, since they reach apps as files kubelet refreshes in place |
-| `graph-test` | Api ×2 + FederatedGraph | `records` and `reviews` subgraphs from `platform-graph-demo`, composed into `storefront-homelab@test`; router at `graph-test.local.lab` |
+| `graph-test` | GraphApi ×2 + FederatedGraph | `records` and `reviews` subgraphs from `platform-graph-demo`, composed into `storefront-homelab@test`; router at `graph-test.local.lab` |
 | `secret-mirror-controller` | secret-mirror-controller | Kubebuilder controller for the `SecretMirror` CRD; copies a Secret into other namespaces |
 | `node-sysctls` | node-sysctls | DaemonSet applying sysctls against the host so they survive a node reboot |
 | `spire-server`, `spire-system` | SPIRE | Workload identity (SPIFFE); agent DaemonSet on all nodes; OIDC discovery provider serving `oidc.mattjarrett.dev` |
@@ -232,7 +232,7 @@ memory. Restart `getty@tty1.service` so `.bashrc` re-sources the script.
 
 Crossplane core runs with `--enable-realtime-compositions` (Helm `args` in [cluster/argocd/crossplane.yaml](./cluster/argocd/crossplane.yaml)) so composite reconciliation reacts to composed-resource changes by watch rather than waiting out the 60s poll. Without it a composed resource going Ready can sit for up to a minute before its status reaches the XR.
 
-Eleven platform types are defined under `platform/`:
+Twelve platform types are defined under `platform/`:
 
 | XRD | Kind | Notes |
 |---|---|---|
@@ -247,6 +247,7 @@ Eleven platform types are defined under `platform/`:
 | `objectstorages.platform.local.lab` | `ObjectStorage` | AWS S3 bucket; used by Launchpad guest demo sandboxes - kept within AWS free tier by design |
 | `managedsecrets.platform.local.lab` | `ManagedSecret` | A value the owner sets in a cloud console, delivered to the pod as files; never a Kubernetes Secret |
 | `federatedgraphs.platform.local.lab` | `FederatedGraph` | One environment of a federated GraphQL graph; composes the namespace's subgraphs and runs the Apollo router. See [Platform Graph](./platform/docs/graph.md) |
+| `graphapis.platform.local.lab` | `GraphApi` | One team's subgraph. Nests an `Api` and publishes its schema from the same image digest to the named `FederatedGraph` |
 
 Which namespaces use which XR types is listed in the Namespaces & Applications table above.
 

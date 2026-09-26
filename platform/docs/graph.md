@@ -168,7 +168,7 @@ spec:
     size: sm
 ```
 
-`GraphApi` exposes a small subset of `Api` parameters: `image`, `size`, `replicas`, `sqlRef`, `cache` and `consumes`. Others are added when a real subgraph needs one.
+`GraphApi` exposes four `Api` parameters: `graph`, `image`, `size` and `replicas`. `sqlRef`, `cache` and `consumes` are added when a real subgraph needs one.
 
 Fixed by convention, never a field:
 

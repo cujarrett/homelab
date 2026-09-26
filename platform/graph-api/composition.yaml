@@ -1,0 +1,77 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: graph-api
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: GraphApi
+  mode: Pipeline
+  pipeline:
+    - step: render-graph-api
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $ns := $xr.metadata.namespace }}
+            {{- $params := $xr.spec.parameters }}
+            {{- $graph := $params.graph }}
+            {{- $image := $params.image }}
+            {{- /* An absent ready annotation never counts as ready, so each nested resource */ -}}
+            {{- /* reports what it actually observed, the same way Sql and Cache do.         */ -}}
+            {{- $apiReady := "False" }}
+            {{- with index (.observed.resources | default dict) "api" }}
+            {{- range (.resource.status.conditions | default list) }}
+            {{- if and (eq .type "Ready") (eq .status "True") }}{{- $apiReady = "True" }}{{- end }}
+            {{- end }}
+            {{- end }}
+            {{- $schemaReady := "False" }}
+            {{- with index (.observed.resources | default dict) "subgraph" }}
+            {{- range (.resource.status.conditions | default list) }}
+            {{- if and (eq .type "SchemaLoaded") (eq .status "True") }}{{- $schemaReady = "True" }}{{- end }}
+            {{- end }}
+            {{- end }}
+            ---
+            # The workload. No host, so the router is the only way in. Same name as the XR,
+            # so the Service the Api creates is the endpoint the Subgraph below names.
+            apiVersion: platform.local.lab/v1alpha1
+            kind: Api
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: api
+                gotemplating.fn.crossplane.io/ready: {{ $apiReady | quote }}
+            spec:
+              parameters:
+                image: {{ $image }}
+                size: {{ $params.size | default "sm" }}
+                replicas: {{ $params.replicas | default 1 }}
+            ---
+            # The operator reads /schema.graphql from this exact digest and publishes it.
+            # Same digest as the Api above, so the registry never advertises a schema
+            # nothing is serving.
+            apiVersion: apollographql.com/v1alpha2
+            kind: Subgraph
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              labels:
+                platform.local.lab/graph: {{ $graph }}
+                platform.local.lab/environment: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: subgraph
+                gotemplating.fn.crossplane.io/ready: {{ $schemaReady | quote }}
+            spec:
+              name: {{ $name }}
+              endpoint: http://{{ $name }}.{{ $ns }}.svc.cluster.local/graphql
+              schema:
+                ociImage:
+                  reference: {{ $image }}
+                  path: /schema.graphql
