@@ -31,6 +31,7 @@ spec:
               namespaces:
                 - github-exporter
                 - graph-test
+                - graph-prod
                 - js-pollock
                 - kentjarrett-com
                 - launchpad
@@ -49,10 +50,16 @@ spec:
           - key: "{{ request.operation || 'BACKGROUND' }}"
             operator: AnyIn
             value: [CREATE, UPDATE]
-          # The Apollo operator binds its own ClusterRoles to its own ServiceAccount
+          # Each Apollo operator binds the shared ClusterRoles to its own ServiceAccount
           # in every namespace it watches. A workspace commit copying that shape
           # grants the operator nothing it lacks, and grants the committer nothing.
-          - key: "{{ request.object.roleRef.kind == 'ClusterRole' && starts_with(request.object.roleRef.name, 'apollo-operator:') && length(request.object.subjects || `[]`) == `1` && request.object.subjects[0].kind == 'ServiceAccount' && request.object.subjects[0].name == 'apollo-operator' && request.object.subjects[0].namespace == 'apollo-operator' }}"
+          - key: >-
+              {{ request.object.roleRef.kind == 'ClusterRole'
+                 && starts_with(request.object.roleRef.name, 'apollo-operator:')
+                 && length(request.object.subjects || `[]`) == `1`
+                 && request.object.subjects[0].kind == 'ServiceAccount'
+                 && request.object.subjects[0].name == 'apollo-operator'
+                 && contains(`["apollo-operator", "apollo-operator-prod"]`, request.object.subjects[0].namespace) }}
             operator: Equals
             value: false
       # Kyverno defaults both of these on write. Stated here so the repo matches
@@ -90,6 +97,7 @@ spec:
               names:
                 - github-exporter
                 - graph-test
+                - graph-prod
                 - js-pollock
                 - kentjarrett-com
                 - launchpad

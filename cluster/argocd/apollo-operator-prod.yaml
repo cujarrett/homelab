@@ -1,0 +1,60 @@
+# Apollo GraphOS Operator, prod. Its own install, its own key, watching only
+# graph-prod, so nothing outside that namespace can publish to the prod variant.
+# CRDs and ClusterRoles come from the test install.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: apollo-operator-prod
+  namespace: argocd
+spec:
+  project: cluster
+  sources:
+    - repoURL: registry-1.docker.io/apollograph
+      chart: operator-chart
+      targetRevision: 1.4.0
+      helm:
+        releaseName: apollo-operator-prod
+        values: |
+          apiKey:
+            secretName: apollo-api-key
+          installCRDs: false
+          rbac:
+            create: false
+          config:
+            controllers:
+              # An empty list means cluster-scoped, so every namespace is named.
+              # The chart binds a RoleBinding into each one. The namespace itself is
+              # owned by homelab-workspaces, like every other workload namespace.
+              subgraph:
+                namespaces: &graphNamespaces
+                  - graph-prod
+              supergraph:
+                namespaces: *graphNamespaces
+                # Pinned, because the chart defaults this to busybox:latest and a
+                # moving tag decides what runs next to every published schema. The
+                # index digest resolves per architecture, so arm64 nodes are covered.
+                loaderImage: busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+              supergraphSchema:
+                namespaces: *graphNamespaces
+              supergraphSet:
+                namespaces: *graphNamespaces
+          podTemplate:
+            nodeSelector:
+              node-role.kubernetes.io/worker: worker
+          container:
+            resources:
+              requests:
+                cpu: 25m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: apollo-operator-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

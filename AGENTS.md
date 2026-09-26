@@ -132,6 +132,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `external-secrets` | External Secrets Operator | Renders cluster-setup Secrets from Parameter Store; every store and `ExternalSecret` is in `cluster/external-secrets/` |
 | `reloader` | Stakater Reloader | Rolls a workload when a ConfigMap it names changes. Watches only workloads annotated `reloader.stakater.com/auto`, which the Api composition sets whenever `configFrom` is used. Secrets are ignored, since they reach apps as files kubelet refreshes in place |
 | `graph-test` | GraphApi ×2 + FederatedGraph | `records` and `reviews` subgraphs from `platform-graph-demo`, composed into `storefront-homelab@test`; router at `graph-test.local.lab` |
+| `graph-prod` | GraphApi ×2 + FederatedGraph | Same two subgraphs at the digests promoted from test by PR, composed into `storefront-homelab@prod`; router at `graph-prod.local.lab`. Published only by the prod operator in `apollo-operator-prod`, which holds its own key |
 | `secret-mirror-controller` | secret-mirror-controller | Kubebuilder controller for the `SecretMirror` CRD; copies a Secret into other namespaces |
 | `node-sysctls` | node-sysctls | DaemonSet applying sysctls against the host so they survive a node reboot |
 | `spire-server`, `spire-system` | SPIRE | Workload identity (SPIFFE); agent DaemonSet on all nodes; OIDC discovery provider serving `oidc.mattjarrett.dev` |
