@@ -20,7 +20,7 @@ spec:
             {{- $xr := .observed.composite.resource }}
             {{- $name := $xr.metadata.name }}
             {{- $ns := $xr.metadata.namespace }}
-            {{- $params := $xr.spec.parameters } }
+            {{- $params := $xr.spec.parameters }}
             {{- $graphRef := $params.graphRef }}
             {{- $host := $params.host | default "" }}
             {{- $tlsIssuer := $params.tlsIssuer | default "local-lab-ca-issuer" }}
