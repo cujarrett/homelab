@@ -304,6 +304,8 @@ The backend is an `Api` with one endpoint per scene and per query, each a fixed 
 ## Known limits
 
 - **The operator is a black box the platform depends on.** Its Kinds are `v1alpha2` and `v1alpha4`, so expect breaking upgrades.
+- **The test operator's Application owns the CRDs and ClusterRoles prod borrows.** Deleting that Application deletes every `Subgraph` and `Supergraph` in both lanes. Apollo ships no CRDs-only chart, and vendoring 16,000 lines of CRD goes stale, so the dependency stays and the Application keeps its name.
+- **An operator that starts before its RoleBindings exist never recovers.** Its watches fail with 403 and stay dead after the bindings land, so its CRs sit with no status. Restart the pod. Happens on every fresh install, because ArgoCD creates the Deployment and the RoleBindings in the same sync.
 - **No user authorization yet.** Anyone on the LAN can query any field. See [TODO](#todo).
 - **The operator writes a graph API key Secret into each router namespace.** It is controller-generated, like cert-manager TLS, so it stays out of ESO.
 - **Operation checks need traffic.** The demo's backend is the only client, so the check protects a handful of fixed queries.

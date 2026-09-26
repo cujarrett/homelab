@@ -59,7 +59,7 @@ spec:
                  && length(request.object.subjects || `[]`) == `1`
                  && request.object.subjects[0].kind == 'ServiceAccount'
                  && request.object.subjects[0].name == 'apollo-operator'
-                 && contains(`["apollo-operator", "apollo-operator-prod"]`, request.object.subjects[0].namespace) }}
+                 && contains(`["apollo-operator-test", "apollo-operator-prod"]`, request.object.subjects[0].namespace) }}
             operator: Equals
             value: false
       # Kyverno defaults both of these on write. Stated here so the repo matches

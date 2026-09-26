@@ -1,6 +1,10 @@
-# Apollo GraphOS Operator, non-prod. Reads each subgraph's schema from the deployed
-# image, publishes it to GraphOS, and runs the router for preprod and the branch slots.
-# Prod gets its own install and its own key, so nothing here can publish to the prod graph.
+# Apollo GraphOS Operator, test. Reads each subgraph's schema from the deployed
+# image, publishes it to GraphOS, and runs the router. Prod has its own install
+# and key, so nothing here can publish to the prod variant.
+#
+# This Application also owns the CRDs and ClusterRoles the prod install borrows,
+# so deleting it deletes every Subgraph and Supergraph in both lanes. The
+# Application keeps its name for that reason; only what it installs is renamed.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -13,7 +17,7 @@ spec:
       chart: operator-chart
       targetRevision: 1.4.0
       helm:
-        releaseName: apollo-operator
+        releaseName: apollo-operator-test
         values: |
           apiKey:
             secretName: apollo-api-key
@@ -47,7 +51,7 @@ spec:
                 memory: 256Mi
   destination:
     server: https://kubernetes.default.svc
-    namespace: apollo-operator
+    namespace: apollo-operator-test
   syncPolicy:
     automated:
       prune: true
