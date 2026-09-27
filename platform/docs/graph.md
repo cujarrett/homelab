@@ -311,6 +311,7 @@ The backend is an `Api` with one endpoint per query and one for the live rows. E
 - **No user authorization yet.** Anyone on the LAN can query any field. See [TODO](#todo).
 - **The operator writes a graph API key Secret into each router namespace.** It is controller-generated, like cert-manager TLS, so it stays out of ESO.
 - **Operation checks need traffic.** The demo's backend is the only client, so the check protects a handful of fixed queries.
+- **Every CI key is Graph Admin.** On the Developer plan a graph API key has one role, and it can publish. A leaked `storefront-records` CI key could publish over `reviews`. Each repo holds its own key, so a leak is attributed and rotated in one place, and nothing in CI ever publishes. Per-role and subgraph-scoped keys are Enterprise features.
 
 ## TODO
 
