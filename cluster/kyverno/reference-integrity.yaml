@@ -33,6 +33,12 @@ spec:
             urlPath: /apis/platform.local.lab/v1alpha1/apis
             method: GET
             jmesPath: "items[].join('/', [metadata.namespace, metadata.name])"
+        # A FederatedGraph router is a callable app too. Its Service is <name>-router.
+        - name: routers
+          apiCall:
+            urlPath: /apis/platform.local.lab/v1alpha1/federatedgraphs
+            method: GET
+            jmesPath: "items[].join('/', [metadata.namespace, join('', [metadata.name, '-router'])])"
       preconditions:
         all:
           - key: "{{ request.operation || 'BACKGROUND' }}"
@@ -46,8 +52,8 @@ spec:
         # element is out of scope in a message, so the report names the candidates
         # rather than the offender.
         message: >-
-          consumes names an app that is not an Api on this platform.
-          Existing: {{ apis }}
+          consumes names an app that is not an Api or a graph router on this platform.
+          Existing: {{ apis }} {{ routers }}
         foreach:
           - list: "request.object.spec.parameters.consumes[?app]"
             deny:
@@ -56,6 +62,9 @@ spec:
                   - key: "{{ element.namespace }}/{{ element.app }}"
                     operator: AnyNotIn
                     value: "{{ apis }}"
+                  - key: "{{ element.namespace }}/{{ element.app }}"
+                    operator: AnyNotIn
+                    value: "{{ routers }}"
 
     - name: apiproxies-names-a-real-api
       match:
@@ -143,5 +152,5 @@ metadata:
     rbac.kyverno.io/aggregate-to-reports-controller: "true"
 rules:
   - apiGroups: ["platform.local.lab"]
-    resources: ["apis"]
+    resources: ["apis", "federatedgraphs"]
     verbs: ["get", "list"]
