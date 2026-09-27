@@ -1,0 +1,53 @@
+# The signature policy checks only storefront-* images, so any other image would
+# skip it. In the graph lanes nothing else may run or publish a schema.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: platform-graph-image-allowlist
+  annotations:
+    policies.kyverno.io/title: Platform graph image allow list
+    policies.kyverno.io/description: >-
+      A graph lane runs only its subgraphs, its router and the mesh proxy, and a
+      subgraph publishes its schema only from its own signed image.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: pods-run-known-images
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaces: [graph-test, graph-prod]
+      # Kyverno defaults this on write. Stated here so ArgoCD does not sit OutOfSync.
+      skipBackgroundRequests: true
+      validate:
+        allowExistingViolations: true
+        # element is out of scope in a message, so it names what is allowed instead.
+        message: >-
+          Only a storefront-* subgraph by digest, the router and the Istio proxy
+          may run in a graph lane.
+        foreach:
+          - list: "request.object.spec.[containers, initContainers, ephemeralContainers][]"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ regex_match('^(ghcr\\.io/cujarrett/storefront-[a-z0-9-]+@sha256:[a-f0-9]{64}|ghcr\\.io/cujarrett/apollo-router-arm64:[0-9.]+|registry\\.istio\\.io/release/proxyv2:[0-9.]+)$', '{{ element.image }}') }}"
+                    operator: Equals
+                    value: false
+    - name: subgraphs-publish-from-storefront-images
+      match:
+        any:
+          - resources:
+              kinds: [apollographql.com/v1alpha2/Subgraph]
+              namespaces: [graph-test, graph-prod]
+      skipBackgroundRequests: true
+      validate:
+        allowExistingViolations: true
+        message: a subgraph publishes its schema only from a storefront-* image pinned by digest
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.spec.schema.ociImage.reference || 'none' }}"
+                operator: NotEquals
+                value: "ghcr.io/cujarrett/storefront-*@sha256:*"
