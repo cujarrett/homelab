@@ -10,7 +10,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
     policies.kyverno.io/title: Platform graph image signatures
     policies.kyverno.io/description: >-
-      A platform-graph-demo image runs in a graph lane, or has its schema published,
+      A subgraph image runs in a graph lane, or has its schema published,
       only if CI on main signed that exact digest.
 spec:
   validationActions: [Deny]
@@ -31,7 +31,7 @@ spec:
         operations: [CREATE, UPDATE]
         resources: [subgraphs]
   matchImageReferences:
-    - glob: "ghcr.io/cujarrett/platform-graph-demo-*"
+    - glob: "ghcr.io/cujarrett/storefront-*"
   # The operator reads this field directly, so it is an image reference too.
   images:
     - name: subgraphSchema
@@ -44,7 +44,7 @@ spec:
             - issuer: https://token.actions.githubusercontent.com
               # Only the two subgraph workflows, and only from main. A branch build
               # is never signed, so a signature here means the commit was reviewed.
-              subjectRegExp: "^https://github\\.com/cujarrett/platform-graph-demo/\\.github/workflows/(records|reviews)\\.yml@refs/heads/main$"
+              subjectRegExp: "^https://github\\.com/cujarrett/storefront-(records|reviews)/\\.github/workflows/ci\\.yml@refs/heads/main$"
         ctlog:
           url: https://rekor.sigstore.dev
   # Every expression runs against every matched kind, so each one applies only
@@ -53,8 +53,8 @@ spec:
     - expression: >-
         !has(images.containers) ||
         images.containers.map(image, verifyImageSignatures(image, [attestors.github])).all(e, e > 0)
-      message: pod image is not signed by platform-graph-demo CI on main
+      message: pod image is not signed by its subgraph repo CI on main
     - expression: >-
         !has(images.subgraphSchema) ||
         images.subgraphSchema.map(image, verifyImageSignatures(image, [attestors.github])).all(e, e > 0)
-      message: subgraph schema image is not signed by platform-graph-demo CI on main
+      message: subgraph schema image is not signed by its subgraph repo CI on main

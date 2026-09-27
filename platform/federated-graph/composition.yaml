@@ -78,6 +78,10 @@ spec:
                 supergraph:
                   # Clients read the schema from the registry, so a scanner gets nothing here.
                   introspection: false
+                plugins:
+                  # Sent back only when a request asks with Apollo-Expose-Query-Plan: true.
+                  # The plan names which subgraph answered each field.
+                  experimental.expose_query_plan: true
                 traffic_shaping:
                   router:
                     global_rate_limit:

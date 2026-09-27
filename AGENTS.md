@@ -128,10 +128,11 @@ SSH access: `ssh pi@192.168.10.10x`
 | `launchpad` | Api | `launchpad.mattjarrett.dev` via Cloudflare Tunnel; BFF for Launchpad UI, provisions ephemeral demo sandboxes |
 | `demo-certs` | cert-manager `Certificate` objects only (no workloads) | 10 long-lived `letsencrypt-prod` certs for the 5 fixed demo sandbox slots (`demo{1-5}.mattjarrett.dev` + `demo{1-5}-api.mattjarrett.dev`); `launchpad-api` copies the resulting secrets into each sandbox namespace at creation time so cert-manager skips issuance there and Let's Encrypt's 5-certs-per-exact-hostname-per-168h limit is never hit |
 | `platform-connections-demo` | Api ×3 + Spa | Service mesh walkthrough at `connections.mattjarrett.dev`; two callers run one image and differ only in what they declare |
+| `platform-graph-demo` | Api + Spa | Schema management walkthrough at `graph.mattjarrett.dev`; the backend runs fixed queries against the `graph-prod` router under a call budget and reads GitHub every ten minutes |
 | `platform-exporter` | platform-exporter | Custom Prometheus exporter for platform metrics; scraped via `platform-exporter-servicemonitor` |
 | `external-secrets` | External Secrets Operator | Renders cluster-setup Secrets from Parameter Store; every store and `ExternalSecret` is in `cluster/external-secrets/` |
 | `reloader` | Stakater Reloader | Rolls a workload when a ConfigMap it names changes. Watches only workloads annotated `reloader.stakater.com/auto`, which the Api composition sets whenever `configFrom` is used. Secrets are ignored, since they reach apps as files kubelet refreshes in place |
-| `graph-test` | GraphApi ×2 + FederatedGraph | `records` and `reviews` subgraphs from `platform-graph-demo`, composed into `storefront-homelab@test`; router at `graph-test.local.lab` |
+| `graph-test` | GraphApi ×2 + FederatedGraph | `records` and `reviews` subgraphs, one repo each (`storefront-records`, `storefront-reviews`), composed into `storefront-homelab@test`; router at `graph-test.local.lab` |
 | `graph-prod` | GraphApi ×2 + FederatedGraph | Same two subgraphs at the digests promoted from test by PR, composed into `storefront-homelab@prod`; router at `graph-prod.local.lab`. Published only by the prod operator in `apollo-operator-prod`, which holds its own key |
 | `secret-mirror-controller` | secret-mirror-controller | Kubebuilder controller for the `SecretMirror` CRD; copies a Secret into other namespaces |
 | `node-sysctls` | node-sysctls | DaemonSet applying sysctls against the host so they survive a node reboot |
@@ -165,6 +166,7 @@ To restore filtering without making AdGuard a hard dependency for every device, 
 - `jspollock.mattjarrett.dev` - js-pollock SPA, routed via Cloudflare Tunnel
 - `launchpad.mattjarrett.dev` - Launchpad BFF, routed via Cloudflare Tunnel
 - `connections.mattjarrett.dev` - service mesh walkthrough, routed via Cloudflare Tunnel
+- `graph.mattjarrett.dev` - schema management walkthrough, routed via Cloudflare Tunnel
 - `argocd-webhook.mattjarrett.dev` - GitHub push webhooks from `homelab-workspaces` for ArgoCD; only the exact paths `/api/webhook` and `/applicationset/api/webhook` route, via Cloudflare Tunnel
 - `oidc.mattjarrett.dev` - SPIRE OIDC discovery document and JWKS, routed via Cloudflare Tunnel; the JWKS is served under `/.well-known/keys` because Cloudflare's bot protection 403s datacenter callers elsewhere on the zone
 - `demo{1-5}.mattjarrett.dev` / `demo{1-5}-api.mattjarrett.dev` - fixed ephemeral demo sandbox slots provisioned by `launchpad-api`, not permanently bound to any one app

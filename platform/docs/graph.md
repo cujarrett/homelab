@@ -164,7 +164,7 @@ metadata:
 spec:
   parameters:
     graph: storefront
-    image: ghcr.io/cujarrett/platform-graph-demo-records@sha256:4f1c...   # digest, written by CI
+    image: ghcr.io/cujarrett/storefront-records@sha256:4f1c...   # digest, written by CI
     size: sm
 ```
 
@@ -266,7 +266,7 @@ Subgraphs keep STRICT mTLS from their nested `Api`, so the router is in the mesh
 The Developer plan bills $5 per million router requests after a $50 signup credit, with no hard spend limit. The design keeps the bill at zero by controlling who can reach a router.
 
 - **LAN only.** Neither router has a public hostname. Only my own traffic reaches them.
-- **One public caller.** The demo's backend is an ordinary `Api` with one endpoint per pane. Each runs a fixed query against prod's router and caches the answer for 60 seconds. However much traffic reaches the demo, the router sees a few requests per minute, about 6,000 a day, which is under $1 a month and inside the credit.
+- **One public caller.** The demo's backend is an ordinary `Api` with one endpoint per query. Each runs a fixed query against prod's router, at most 30 times a minute per query. However much traffic reaches the demo, the router sees at most 60 requests a minute, about 86,000 a day at the ceiling, which is under $1 a month and inside the credit.
 - **Backups already in the stack.** The backend's `Api` carries the platform's per-IP rate limit, and every router sets `traffic_shaping.router.global_rate_limit`.
 
 ## The demo
@@ -283,9 +283,11 @@ The Developer plan bills $5 per million router requests after a $50 signup credi
 
 The map shows `records`, `reviews` and a ghosted third subgraph, so the chain reads as N, not two. Every scene names the pattern it is and links to [Nothing novel](../../docs/nothing-novel.md).
 
-Below the map, **Run it**. Three fixed queries, one button each. The response shows the query plan coloured by which subgraph answered each field, and beside it the evidence that this hit the cluster: the pod and node that served each hop, the image digest the pod is running, the supergraph schema hash the router is serving, and the GraphOS publish it came from, linked.
+Below the map, **Run it**. Two fixed queries, one button each: one subgraph, and both subgraphs in one query. The response shows the query plan and which subgraph answered, and beside it what each subgraph is running: the digest its prod file names, linked, and the commit that last changed its schema.
 
-The backend is an `Api` with one endpoint per scene and per query, each a fixed query or API call cached for 60 seconds. Nothing the public sends reaches the router, GitHub or GraphOS.
+Beside the chain, **Live, right now**: the same digests, the last merged PR and the last schema commit, read from GitHub.
+
+The backend is an `Api` with one endpoint per query and one for the live rows. Every click reaches the router while a budget of 30 calls a minute per query lasts, so the latency shown is real. Past that the last answer is served. GitHub is read every ten minutes. Nothing the public sends reaches the router or GitHub. The page and the backend live in [platform-graph-demo](https://github.com/cujarrett/platform-graph-demo) under `spa/` and `backend/`, and deploy to the `platform-graph-demo` namespace like any other workspace.
 
 ## Foundations to install
 
@@ -297,9 +299,9 @@ The backend is an `Api` with one endpoint per scene and per query, each a fixed 
 | The operator's namespace in the ESO store `conditions` | [store.yaml](../../cluster/external-secrets/store.yaml) |
 | Crossplane RBAC for `apollographql.com` Kinds | [rbac.yaml](../../cluster/crossplane/rbac.yaml) |
 | `graph-test` and `graph-prod` in the `workloads` project destinations and both namespace lists of the workspace RBAC policy | [projects.yaml](../../cluster/argocd/projects.yaml), [workspace-rbac.yaml](../../cluster/kyverno/workspace-rbac.yaml) |
-| Check-only GraphOS key as a GitHub Actions secret, and a token that can write `homelab-workspaces` | the demo repo |
-| Kyverno `ImageValidatingPolicy` verifying `main`-branch cosign signatures on `platform-graph-demo` images in both lanes, for pods and for Apollo `Subgraph` resources | `cluster/kyverno/` |
-| `graph.mattjarrett.dev` and `graph-api.mattjarrett.dev` tunnel entries for the demo SPA and its backend, before their certs | `/add-cloudflare-tunnel-hostname` |
+| A GraphOS key that can run checks, and a token that can write `homelab-workspaces`, as Actions secrets | each subgraph repo |
+| Kyverno `ImageValidatingPolicy` verifying `main`-branch cosign signatures from each subgraph repo on images in both lanes, for pods and for Apollo `Subgraph` resources | `cluster/kyverno/` |
+| `graph.mattjarrett.dev` tunnel entry for the demo page, before its cert. The backend sits behind the page's `apiProxies` and needs no hostname | `/add-cloudflare-tunnel-hostname` |
 
 ## Known limits
 
