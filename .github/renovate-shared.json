@@ -22,6 +22,11 @@
       "allowedVersions": "<5"
     },
     {
+      "description": "@apollo/server and @apollo/subgraph peer graphql ^16. Taking graphql 17 breaks every subgraph build until Apollo ships support.",
+      "matchPackageNames": ["graphql"],
+      "allowedVersions": "<17"
+    },
+    {
       "description": "minor and patch land as one reviewed-by-CI batch. github-exporter reads the automerge label to tell an update it could merge on its own from one that always needed a person, so renaming the label blanks that half of the SDLC dashboard.",
       "matchUpdateTypes": ["minor", "patch", "digest"],
       "groupName": "non-breaking",
