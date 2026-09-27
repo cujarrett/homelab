@@ -232,7 +232,7 @@ The schema lives in `schema.graphql` beside the resolvers and ships inside the i
 | Review | CODEOWNERS requests the graph team on `schema.graphql`. Branch protection requires the check and the review | |
 | Merge to main | build the ARM64 image, cosign sign it by digest, write the digest into `graph-test/records.yaml` in `homelab-workspaces` | ArgoCD syncs. Kyverno admits the signed digest |
 | Test | | the operator pulls the same digest the pod runs, reads `/schema.graphql` from it and publishes to `test`. Composition runs. The router reloads |
-| Promote | `just promote` checks against `prod` again and opens a PR moving the digest into `graph-prod/records.yaml` | |
+| Promote | CI checks against `prod` again and opens a PR moving the digest into `graph-prod/records.yaml`. Merging it is the promotion | |
 | Prod | merging that PR is the release | same flow, variant `prod`, the prod operator |
 | Rollback | revert the digest PR | ArgoCD syncs the old digest, the operator republishes |
 

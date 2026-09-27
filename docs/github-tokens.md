@@ -4,7 +4,7 @@ Two fine-grained PATs let CI push image tag bumps.
 
 | Token | Grants | Lives as |
 |---|---|---|
-| `homelab-workspaces-deploy` | Push to `homelab-workspaces` | `HOMELAB_WORKSPACES_PAT` Actions secret in workspaces app repos |
+| `homelab-workspaces-deploy` | Push to `homelab-workspaces` and open its promote pull requests (Contents and Pull requests, read and write) | `HOMELAB_WORKSPACES_PAT` Actions secret in workspaces app repos |
 | `homelab-deploy` | Push to `homelab` | `HOMELAB_DEPLOY_PAT` Actions secret in `platform-exporter`, `secret-mirror-controller` |
 
 The deploy tokens are split so repos that only touch `homelab-workspaces` can't rewrite cluster
