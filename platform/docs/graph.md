@@ -4,12 +4,23 @@ Every team ships its own small GraphQL API. A router joins them into one API tha
 
 [Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](../../docs/nothing-novel.md)
 
+## How a change moves
+
+`test` and `prod` are two fixed variants, one per environment. Nobody creates variants and nobody publishes a schema.
+
+1. A PR changes `schema.graphql` beside the resolvers. CI checks it against `test`, CODEOWNERS requests the platform team, branch protection requires both.
+2. Merge to main builds and signs the image, then writes its digest into `graph-test/<subgraph>.yaml` in `homelab-workspaces`.
+3. ArgoCD syncs, Kyverno admits the signed digest, Crossplane renders the subgraph. The test operator reads the schema from that image, publishes it to `test`, GraphOS composes, the router reloads.
+4. The same CI run checks against `prod` and opens a PR moving the digest into `graph-prod/<subgraph>.yaml`. Merging it is the release.
+5. Prod repeats step 3 with its own operator and key. Rollback is reverting the digest PR.
+
 ## Index
 
 Start with [Design](#design), then [What a team writes](#what-a-team-writes) and [The lifecycle](#the-lifecycle). Build order is [issue #240](https://github.com/cujarrett/homelab/issues/240).
 
 | Chapter | What's in it |
 |---|---|
+| [How a change moves](#how-a-change-moves) | the five steps from a PR to prod |
 | [Goals](#goals) | what this is for |
 | [Federation in five minutes](#federation-in-five-minutes) | the whole concept, no prior GraphQL needed |
 | [Design](#design) | the philosophy, then the four layers that implement it |
