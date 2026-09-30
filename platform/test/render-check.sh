@@ -141,6 +141,8 @@ PY
   # keep every rendered doc for the rbac gate; the leading --- keeps the last doc of
   # one workspace from merging into the first doc of the next
   { echo '---'; cat "$TMP/out.yaml"; } >> "$TMP/all-rendered.yaml"
+  # the crd gate reads this copy instead of rendering the XR a second time
+  mkdir -p "$TMP/rendered"; cp "$TMP/out.yaml" "$TMP/rendered/${name//\//__}.yaml"
 
   # Hold the composition at HEAD and the XR at its working copy - isolates what a
   # composition edit does to an app, including apps you did not mean to touch.
@@ -187,17 +189,12 @@ done
 # server rejects. A ManagedSecret shipped with an invented secretStringSecretRef.namespace
 # that only failed 20 minutes into a real-AWS e2e run. This is the same check, in seconds.
 echo "── crd"
-for xr in "$WORKSPACES"/*/*.yaml; do
-  kind=$(grep -m1 '^kind:' "$xr" 2>/dev/null | awk '{print $2}')
-  dir=$(comp_for "$kind")
-  [ -z "$dir" ] && continue
-  name="$(basename "$(dirname "$xr")")/$(basename "$xr" .yaml)"
-
-  crossplane render "$xr" "platform/$dir/composition.yaml" "$FUNCS" -e "$ENVCFG" \
-    > "$TMP/crd-in.yaml" 2>/dev/null || continue
+for rendered in "$TMP"/rendered/*.yaml; do
+  [ -e "$rendered" ] || continue
+  name=$(basename "$rendered" .yaml); name=${name//__//}
 
   # Drop the composite itself and the render-only metadata the API server refuses.
-  python3 - "$TMP/crd-in.yaml" "$TMP/crd-out.yaml" <<'PY2' || continue
+  python3 - "$rendered" "$TMP/crd-out.yaml" <<'PY2' || continue
 import sys, yaml
 docs = [d for d in yaml.safe_load_all(open(sys.argv[1]))
         if d and d.get('apiVersion','').startswith(('secretsmanager.','iam.','s3.','dynamodb.','elasticache.','rds.'))]

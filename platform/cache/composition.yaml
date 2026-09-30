@@ -47,7 +47,6 @@ spec:
                 {{- end }}
               {{- end }}
             {{- end }}
-            {{- $cacheRoleObs := index (.observed.resources | default dict) "cache-role" | default dict }}
             {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
             {{- $awsAccountId := index $envCtx "awsAccountId" | default "" }}
             {{- /* Public issuer, so it is hardcoded next to the trust domain rather than */ -}}

@@ -68,9 +68,10 @@ kubectl auth can-i create applications.applications.azuread.m.upbound.io \
 One command that proves the platform still works end to end after big composition changes. It inflates an Api with **every** integration - both backends where they exist - verifies each one actually works from inside the pod, tears everything down, and verifies nothing was left behind in the cluster or AWS.
 
 ```bash
-just test-e2e           # full run (~11-15 min, a few cents of AWS)
-just test-e2e-private   # in-cluster only (~2 min, free)
-just test-e2e-keep      # skip teardown, leave resources for debugging
+just test-e2e                  # full run (~11-15 min, a few cents of AWS)
+just test-e2e --private-only   # in-cluster only (~2 min, free)
+just test-e2e --keep           # skip teardown, leave resources for debugging
+just test-e2e --abort          # stop a running e2e and remove what it left
 ```
 
 ## Credentials the e2e uses
@@ -112,5 +113,5 @@ RDS `db.t4g.micro` + ElastiCache `cache.t4g.micro` for ~20 minutes ≈ a few cen
 
 ## When to run the e2e
 
-- `just test-e2e-private` after any change to `platform/api/composition.yaml` or the NATS-related compositions - fast, free
+- `just test-e2e --private-only` after any change to `platform/api/composition.yaml` or the NATS-related compositions - fast, free
 - `just test-e2e` before merging changes that touch AWS bindings, workload identity, or the sql/cache/nosql/object-storage compositions

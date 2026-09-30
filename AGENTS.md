@@ -126,7 +126,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `js-pollock` | Spa | `jspollock.mattjarrett.dev` via Cloudflare Tunnel |
 | `sump-pump` | Api ×2 + Topic + Subscription | IoT sump pump bridge + consumer + weather-exporter |
 | `launchpad` | Api | `launchpad.mattjarrett.dev` via Cloudflare Tunnel; BFF for Launchpad UI, provisions ephemeral demo sandboxes |
-| `demo-certs` | cert-manager `Certificate` objects only (no workloads) | 10 long-lived `letsencrypt-prod` certs for the 5 fixed demo sandbox slots (`demo{1-5}.mattjarrett.dev` + `demo{1-5}-api.mattjarrett.dev`); `launchpad-api` copies the resulting secrets into each sandbox namespace at creation time so cert-manager skips issuance there and Let's Encrypt's 5-certs-per-exact-hostname-per-168h limit is never hit |
+| `demo-certs` | cert-manager `Certificate` and `SecretMirror` objects only (no workloads) | 5 long-lived `letsencrypt-prod` certs, one per demo sandbox slot covering `demoN.mattjarrett.dev` and `demoN-api.mattjarrett.dev`; a `SecretMirror` copies each into whichever sandbox namespace holds that slot, so cert-manager skips issuance there and Let's Encrypt's 5-certs-per-exact-hostname-set-per-168h limit is never hit |
 | `platform-connections-demo` | Api ×3 + Spa | Service mesh walkthrough at `connections.mattjarrett.dev`; two callers run one image and differ only in what they declare |
 | `platform-graph-demo` | Api + Spa | Schema management walkthrough at `graph.mattjarrett.dev`; the backend runs fixed queries against the `graph-prod` router under a call budget and reads GitHub every ten minutes |
 | `platform-exporter` | platform-exporter | Custom Prometheus exporter for platform metrics; scraped via `platform-exporter-servicemonitor` |

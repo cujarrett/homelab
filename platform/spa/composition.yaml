@@ -67,6 +67,16 @@ spec:
             {{-   end }}
             {{- end }}
             {{- $configChecksum = $configChecksum | sha256sum | trunc 16 }}
+            {{- /* Every location that sets its own add_header needs these, because nginx */ -}}
+            {{- /* drops server-level add_header directives there.                        */ -}}
+            {{- define "security-headers" }}
+                        add_header Content-Security-Policy      "{{ .contentSecurityPolicy }}"       always;
+                        add_header X-Content-Type-Options       "nosniff"                                   always;
+                        add_header X-Frame-Options              "SAMEORIGIN"                                always;
+                        add_header X-XSS-Protection             "0"                                         always;
+                        add_header Referrer-Policy              "strict-origin-when-cross-origin"           always;
+                        add_header Permissions-Policy           "camera=(), microphone=(), geolocation=()"  always;
+            {{- end }}
             # --- nginx ConfigMap ---
             # Generated from XR params so the SPA image stays generic across instances.
             apiVersion: v1
@@ -143,12 +153,7 @@ spec:
                     # directives for any location that defines its own add_header.
                     location = /index.html {
                         add_header Cache-Control                "no-cache"                                  always;
-                        add_header Content-Security-Policy      "{{ $params.contentSecurityPolicy }}"       always;
-                        add_header X-Content-Type-Options       "nosniff"                                   always;
-                        add_header X-Frame-Options              "SAMEORIGIN"                                always;
-                        add_header X-XSS-Protection             "0"                                         always;
-                        add_header Referrer-Policy              "strict-origin-when-cross-origin"           always;
-                        add_header Permissions-Policy           "camera=(), microphone=(), geolocation=()"  always;
+                        {{- include "security-headers" $params }}
                         # Angular's media="print" onload="..." render trick is an inline event
                         # handler, blocked by strict script-src CSP. Strip it at serve time so
                         # the link becomes a plain <link rel="stylesheet"> - no unsafe-inline needed.
@@ -159,23 +164,13 @@ spec:
                     # immutable: hashed filenames change on each build
                     location ~* \.(js|css|woff2|woff)$ {
                         add_header Cache-Control                "public, max-age=31536000, immutable"       always;
-                        add_header Content-Security-Policy      "{{ $params.contentSecurityPolicy }}"       always;
-                        add_header X-Content-Type-Options       "nosniff"                                   always;
-                        add_header X-Frame-Options              "SAMEORIGIN"                                always;
-                        add_header X-XSS-Protection             "0"                                         always;
-                        add_header Referrer-Policy              "strict-origin-when-cross-origin"           always;
-                        add_header Permissions-Policy           "camera=(), microphone=(), geolocation=()"  always;
+                        {{- include "security-headers" $params }}
                     }
 
                     # no-cache: images are not content-hashed so must always revalidate
                     location ~* \.(png|jpg|jpeg|gif|ico|svg)$ {
                         add_header Cache-Control                "no-cache"                                  always;
-                        add_header Content-Security-Policy      "{{ $params.contentSecurityPolicy }}"       always;
-                        add_header X-Content-Type-Options       "nosniff"                                   always;
-                        add_header X-Frame-Options              "SAMEORIGIN"                                always;
-                        add_header X-XSS-Protection             "0"                                         always;
-                        add_header Referrer-Policy              "strict-origin-when-cross-origin"           always;
-                        add_header Permissions-Policy           "camera=(), microphone=(), geolocation=()"  always;
+                        {{- include "security-headers" $params }}
                     }
 
                     # Real static files the Angular CLI copies verbatim from public/ (robots.txt,
@@ -544,54 +539,39 @@ spec:
                     - "{{ $c.namespace }}/{{ $c.app }}.{{ $c.namespace }}.svc.cluster.local"
                     {{- end }}
                     {{- end }}
+            {{- /* apiProxies off-platform hosts and consumes hosts both need registering. */ -}}
+            {{- /* prefix keeps each one's existing resource name.                         */ -}}
+            {{- $serviceEntries := list }}
             {{- range $pr := $proxies }}
             {{- if not $pr.onPlatform }}
-            ---
-            # apiProxies: {{ $pr.authority }} - an off-platform backend still needs
-            # registering, the same as anything named in consumes.
-            apiVersion: networking.istio.io/v1
-            kind: ServiceEntry
-            metadata:
-              name: {{ $name }}-{{ $pr.authority | replace "." "-" }}
-              namespace: {{ $namespace }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: proxy-se-{{ $pr.authority | replace "." "-" }}
-                gotemplating.fn.crossplane.io/ready: "True"
-            spec:
-              hosts:
-                - {{ $pr.authority | quote }}
-              location: MESH_EXTERNAL
-              resolution: DNS
-              exportTo: ["."]
-              ports:
-                - number: 443
-                  name: tls
-                  protocol: TLS
+            {{- $serviceEntries = append $serviceEntries (dict "prefix" "proxy-se" "host" $pr.authority "port" 443 "protocol" "TLS") }}
             {{- end }}
             {{- end }}
             {{- range $c := $consumes }}
             {{- if $c.host }}
+            {{- $serviceEntries = append $serviceEntries (dict "prefix" "connection-se" "host" $c.host "port" ($c.port | default 443) "protocol" ($c.protocol | default "TLS")) }}
+            {{- end }}
+            {{- end }}
+            {{- range $se := $serviceEntries }}
             ---
-            # consumes: {{ $c.host }} - registering it is what makes it reachable.
             apiVersion: networking.istio.io/v1
             kind: ServiceEntry
             metadata:
-              name: {{ $name }}-{{ $c.host | replace "." "-" }}
+              name: {{ $name }}-{{ $se.host | replace "." "-" }}
               namespace: {{ $namespace }}
               annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: connection-se-{{ $c.host | replace "." "-" }}
+                gotemplating.fn.crossplane.io/composition-resource-name: {{ $se.prefix }}-{{ $se.host | replace "." "-" }}
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               hosts:
-                - {{ $c.host | quote }}
+                - {{ $se.host | quote }}
               location: MESH_EXTERNAL
               resolution: DNS
               exportTo: ["."]
               ports:
-                - number: {{ $c.port | default 443 }}
-                  name: {{ $c.protocol | default "TLS" | lower }}
-                  protocol: {{ $c.protocol | default "TLS" }}
-            {{- end }}
+                - number: {{ $se.port }}
+                  name: {{ $se.protocol | lower }}
+                  protocol: {{ $se.protocol }}
             {{- end }}
             {{- if $signIn }}
             {{- $redirects := list (printf "https://%s/auth/callback" $params.host) }}
