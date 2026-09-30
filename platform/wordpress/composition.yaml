@@ -24,20 +24,20 @@ spec:
             {{- $observedResources := .observed.resources | default dict }}
             {{- $size := $params.size | default "sm" }}
             # CPU requests track measured steady state, which is tens of milli-cores even on
-            # the busier site. Limits stay generous because PHP is bursty and a limit reserves
-            # nothing, where an inflated request permanently blocks scheduling on that node.
+            # the busier site. CPU limits stay generous because CPU bursts only throttle.
+            # Memory request equals limit so the scheduler never packs more onto a node than it holds.
             {{- $wpCPUReq := "50m" }}{{- $wpCPULim := "1000m" }}
-            {{- $wpMemReq := "256Mi" }}{{- $wpMemLim := "768Mi" }}
+            {{- $wpMemReq := "768Mi" }}{{- $wpMemLim := "768Mi" }}
             {{- $dbCPUReq := "50m" }}{{- $dbCPULim := "500m" }}
-            {{- $dbMemReq := "256Mi" }}{{- $dbMemLim := "512Mi" }}
+            {{- $dbMemReq := "512Mi" }}{{- $dbMemLim := "512Mi" }}
             {{- if eq $size "md" }}
             {{-   $wpCPUReq = "100m" }}{{- $wpCPULim = "1500m" }}
-            {{-   $wpMemReq = "512Mi" }}{{- $wpMemLim = "1280Mi" }}
+            {{-   $wpMemReq = "1280Mi" }}{{- $wpMemLim = "1280Mi" }}
             {{- else if eq $size "lg" }}
             {{-   $wpCPUReq = "150m" }}{{- $wpCPULim = "2000m" }}
-            {{-   $wpMemReq = "1Gi" }}{{- $wpMemLim = "2Gi" }}
+            {{-   $wpMemReq = "2Gi" }}{{- $wpMemLim = "2Gi" }}
             {{-   $dbCPUReq = "100m" }}{{- $dbCPULim = "1000m" }}
-            {{-   $dbMemReq = "512Mi" }}{{- $dbMemLim = "1Gi" }}
+            {{-   $dbMemReq = "1Gi" }}{{- $dbMemLim = "1Gi" }}
             {{- end }}
             # Each prefork child carries every active plugin, measured at roughly 128Mi on a
             # plugin-heavy site. Workers are the memory limit divided by that, less headroom

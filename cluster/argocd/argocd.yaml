@@ -26,10 +26,9 @@ spec:
             - --status-processors=5
             - --operation-processors=5
           resources:
-            # Request is set well under the limit because the controller idles near 1Gi
-            # and only approaches the ceiling during a full re-sync of every app.
+            # Request equals limit so a full re-sync of every app always has room on the node.
             requests:
-              memory: 1.5Gi
+              memory: 2.5Gi
             limits:
               memory: 2.5Gi
           affinity:
