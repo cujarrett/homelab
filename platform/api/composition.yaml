@@ -105,34 +105,57 @@ spec:
             {{- end }}
             {{- $subscriptionRefName := "" }}
             {{- if $xr.spec.parameters.subscriptionRef }}{{- $subscriptionRefName = $xr.spec.parameters.subscriptionRef.name }}{{- end }}
-            {{- /* AWS workload identity: build binding lists for sidecar + app container injection. */ -}}
-            {{- /* volumeName:mountPath:profile triples (used for volume mounts in sidecar)      */ -}}
-            {{- $awsBindings := list }}
-            {{- /* mountPath:profile pairs (used for AWS_BINDINGS env var in sidecar)            */ -}}
+            {{- /* Every service binding this Api mounts. Each entry has                   */ -}}
+            {{- /* dir: the directory under /bindings, the volume name stem and AWS profile */ -}}
+            {{- /* label: what the init container prints while it waits                    */ -}}
+            {{- /* secretName: the binding Secret mounted at dir                           */ -}}
+            {{- /* awsProfileEnv: read only for entries in $awsBindings                    */ -}}
+            {{- $objectStorage := list }}
+            {{- range $ref := $objectStorageRefs }}
+              {{- $objectStorage = append $objectStorage (dict
+                  "dir" (printf "object-storage-%s" $ref.name)
+                  "label" $ref.name
+                  "secretName" (printf "%s-%s" $name $ref.name)
+                  "awsProfileEnv" (printf "AWS_PROFILE_OBJECT_STORAGE_%s" ($ref.name | upper | replace "-" "_"))) }}
+            {{- end }}
+            {{- $sqlSecretName := $sqlRefName }}
+            {{- if eq $sqlBackend "public-cloud" }}{{- $sqlSecretName = printf "%s-sql" $name }}{{- end }}
+            {{- $sql := dict "dir" "sql" "label" "sql" "secretName" $sqlSecretName "awsProfileEnv" (printf "AWS_PROFILE_SQL_%s" ($sqlRefName | upper | replace "-" "_")) }}
+            {{- $nosql := dict "dir" "nosql" "label" "nosql" "secretName" (printf "%s-nosql" $name) "awsProfileEnv" (printf "AWS_PROFILE_NOSQL_%s" ($nosqlRefName | upper | replace "-" "_")) }}
+            {{- $cache := dict "dir" "cache" "label" "cache" "secretName" (printf "%s-cache" $name) "awsProfileEnv" "AWS_PROFILE_CACHE" }}
+            {{- $sqlOnAws := and $sqlRefName (eq $sqlBackend "public-cloud") }}
+            {{- $cacheOnAws := and $cacheEnabled (eq $cacheBackend "public-cloud") }}
+            {{- /* Mount order and sidecar order differ for sql and nosql.            */ -}}
+            {{- /* Both are baked into the pod spec, so reordering either rolls pods.  */ -}}
+            {{- $bindings := $objectStorage }}
+            {{- if $sqlRefName }}{{- $bindings = append $bindings $sql }}{{- end }}
+            {{- if $nosqlRefName }}{{- $bindings = append $bindings $nosql }}{{- end }}
+            {{- if $cacheEnabled }}{{- $bindings = append $bindings $cache }}{{- end }}
+            {{- /* The subset the credential sidecar fetches AWS keys for. */ -}}
+            {{- $awsBindings := $objectStorage }}
+            {{- if $nosqlRefName }}{{- $awsBindings = append $awsBindings $nosql }}{{- end }}
+            {{- if $sqlOnAws }}{{- $awsBindings = append $awsBindings $sql }}{{- end }}
+            {{- if $cacheOnAws }}{{- $awsBindings = append $awsBindings $cache }}{{- end }}
+            {{- /* mountPath:profile pairs for the sidecar's AWS_BINDINGS. */ -}}
             {{- $sidecarBindingParts := list }}
-            {{- range $i, $ref := $objectStorageRefs }}
-              {{- $osMountName := printf "object-storage-%s" $ref.name }}
-              {{- $awsBindings = append $awsBindings (printf "object-storage-%s-binding:/bindings/%s:%s" $ref.name $osMountName $osMountName) }}
-              {{- $sidecarBindingParts = append $sidecarBindingParts (printf "/bindings/%s:%s" $osMountName $osMountName) }}
+            {{- range $b := $awsBindings }}
+              {{- $sidecarBindingParts = append $sidecarBindingParts (printf "/bindings/%s:%s" $b.dir $b.dir) }}
             {{- end }}
-            {{- if $nosqlRefName }}
-              {{- $awsBindings = append $awsBindings "nosql-binding:/bindings/nosql:nosql" }}
-              {{- $sidecarBindingParts = append $sidecarBindingParts "/bindings/nosql:nosql" }}
-            {{- end }}
-            {{- if and $sqlRefName (eq $sqlBackend "public-cloud") }}
-              {{- $awsBindings = append $awsBindings "sql-binding:/bindings/sql:sql" }}
-              {{- $sidecarBindingParts = append $sidecarBindingParts "/bindings/sql:sql" }}
-            {{- end }}
-            {{- if and $cacheEnabled (eq $cacheBackend "public-cloud") }}
-              {{- $awsBindings = append $awsBindings (printf "cache-binding:/bindings/cache:cache") }}
-              {{- $sidecarBindingParts = append $sidecarBindingParts "/bindings/cache:cache" }}
+            {{- /* Each managed secret has a binding under /bindings and a value under /secrets. */ -}}
+            {{- $managedSecrets := list }}
+            {{- range $ref := $managedSecretRefs }}
+              {{- $managedSecrets = append $managedSecrets (dict
+                  "dir" (printf "managed-secret-%s" $ref.name)
+                  "label" $ref.name
+                  "name" $ref.name
+                  "secretName" (printf "%s-secret-%s" $name $ref.name)) }}
             {{- end }}
             {{- /* bindingDir:outputDir pairs for SECRET_BINDINGS. Two paths because the      */ -}}
             {{- /* binding is a read-only Secret volume and the fetched value has to land     */ -}}
             {{- /* somewhere writable that the app container also mounts.                     */ -}}
             {{- $secretBindingParts := list }}
-            {{- range $ref := $managedSecretRefs }}
-              {{- $secretBindingParts = append $secretBindingParts (printf "/bindings/managed-secret-%s:/secrets/%s" $ref.name $ref.name) }}
+            {{- range $ms := $managedSecrets }}
+              {{- $secretBindingParts = append $secretBindingParts (printf "/bindings/%s:/secrets/%s" $ms.dir $ms.name) }}
             {{- end }}
             {{- /* Endpoints this pod must reach because of what it bound, not because    */ -}}
             {{- /* it asked. The mesh has no idea these exist otherwise, so under         */ -}}
@@ -203,16 +226,7 @@ spec:
                 gotemplating.fn.crossplane.io/composition-resource-name: serviceaccount
                 gotemplating.fn.crossplane.io/ready: "True"
             {{- $boundSecrets := list }}
-            {{- range $objectStorageRefs }}{{- $boundSecrets = append $boundSecrets (printf "%s-%s" $name .name) }}{{- end }}
-            {{- if $sqlRefName }}
-              {{- if eq $sqlBackend "public-cloud" }}
-                {{- $boundSecrets = append $boundSecrets (printf "%s-sql" $name) }}
-              {{- else }}
-                {{- $boundSecrets = append $boundSecrets $sqlRefName }}
-              {{- end }}
-            {{- end }}
-            {{- if $nosqlRefName }}{{- $boundSecrets = append $boundSecrets (printf "%s-nosql" $name) }}{{- end }}
-            {{- if $cacheEnabled }}{{- $boundSecrets = append $boundSecrets (printf "%s-cache" $name) }}{{- end }}
+            {{- range $b := $bindings }}{{- $boundSecrets = append $boundSecrets $b.secretName }}{{- end }}
             {{- range $s := $secretsFrom }}{{- $boundSecrets = append $boundSecrets $s }}{{- end }}
             {{- if $boundSecrets }}
             ---
@@ -299,23 +313,13 @@ spec:
                     runAsGroup: 65532
                     seccompProfile:
                       type: RuntimeDefault
-                  {{- if or (gt (len $objectStorageRefs) 0) $sqlRefName $nosqlRefName $cacheEnabled (gt (len $managedSecretRefs) 0) }}
+                  {{- if or $bindings $managedSecrets }}
                   initContainers:
                     {{- /* Waits for the binding, not the value. A managed secret's value is  */}}
                     {{- /* written by the sidecar, which only starts once every init          */}}
                     {{- /* container has finished, so waiting on it here would never return.  */}}
-                    {{- $waits := list }}
-                    {{- range $ref := $managedSecretRefs }}
-                    {{- $waits = append $waits (dict "binding" (printf "managed-secret-%s" $ref.name) "label" $ref.name) }}
-                    {{- end }}
-                    {{- range $ref := $objectStorageRefs }}
-                    {{- $waits = append $waits (dict "binding" (printf "object-storage-%s" $ref.name) "label" $ref.name) }}
-                    {{- end }}
-                    {{- if $sqlRefName }}{{- $waits = append $waits (dict "binding" "sql" "label" "sql") }}{{- end }}
-                    {{- if $nosqlRefName }}{{- $waits = append $waits (dict "binding" "nosql" "label" "nosql") }}{{- end }}
-                    {{- if $cacheEnabled }}{{- $waits = append $waits (dict "binding" "cache" "label" "cache") }}{{- end }}
-                    {{- range $wait := $waits }}
-                    - name: wait-for-{{ $wait.binding }}-binding
+                    {{- range $wait := concat $managedSecrets $bindings }}
+                    - name: wait-for-{{ $wait.dir }}-binding
                       image: busybox:1.36
                       securityContext:
                         allowPrivilegeEscalation: false
@@ -325,10 +329,10 @@ spec:
                       command:
                         - sh
                         - -c
-                        - "until [ -f /bindings/{{ $wait.binding }}/type ]; do echo waiting for {{ $wait.label }} binding; sleep 5; done"
+                        - "until [ -f /bindings/{{ $wait.dir }}/type ]; do echo waiting for {{ $wait.label }} binding; sleep 5; done"
                       volumeMounts:
-                        - name: {{ $wait.binding }}-binding
-                          mountPath: /bindings/{{ $wait.binding }}
+                        - name: {{ $wait.dir }}-binding
+                          mountPath: /bindings/{{ $wait.dir }}
                           readOnly: true
                     {{- end }}
                   {{- end }}
@@ -363,22 +367,9 @@ spec:
                       {{- if gt (len $awsBindings) 0 }}
                         - name: AWS_SHARED_CREDENTIALS_FILE
                           value: /aws-credentials/credentials
-                        {{- range $i, $ref := $objectStorageRefs }}
-                        {{- $osMountNameEnv := printf "object-storage-%s" $ref.name }}
-                        - name: AWS_PROFILE_OBJECT_STORAGE_{{ $ref.name | upper | replace "-" "_" }}
-                          value: {{ $osMountNameEnv }}
-                        {{- end }}
-                        {{- if $nosqlRefName }}
-                        - name: AWS_PROFILE_NOSQL_{{ $nosqlRefName | upper | replace "-" "_" }}
-                          value: nosql
-                        {{- end }}
-                        {{- if and $sqlRefName (eq $sqlBackend "public-cloud") }}
-                        - name: AWS_PROFILE_SQL_{{ $sqlRefName | upper | replace "-" "_" }}
-                          value: sql
-                        {{- end }}
-                        {{- if and $cacheEnabled (eq $cacheBackend "public-cloud") }}
-                        - name: AWS_PROFILE_CACHE
-                          value: cache
+                        {{- range $b := $awsBindings }}
+                        - name: {{ $b.awsProfileEnv }}
+                          value: {{ $b.dir }}
                         {{- end }}
                       {{- end }}
                       {{- if $entraNeeded }}
@@ -441,25 +432,9 @@ spec:
                           mountPath: /aws-credentials
                           readOnly: true
                         {{- end }}
-                        {{- range $i, $ref := $objectStorageRefs }}
-                        {{- $osMountName := printf "object-storage-%s" $ref.name }}
-                        - name: object-storage-{{ $ref.name }}-binding
-                          mountPath: /bindings/{{ $osMountName }}
-                          readOnly: true
-                        {{- end }}
-                        {{- if $sqlRefName }}
-                        - name: sql-binding
-                          mountPath: /bindings/sql
-                          readOnly: true
-                        {{- end }}
-                        {{- if $nosqlRefName }}
-                        - name: nosql-binding
-                          mountPath: /bindings/nosql
-                          readOnly: true
-                        {{- end }}
-                        {{- if $cacheEnabled }}
-                        - name: cache-binding
-                          mountPath: /bindings/cache
+                        {{- range $b := $bindings }}
+                        - name: {{ $b.dir }}-binding
+                          mountPath: /bindings/{{ $b.dir }}
                           readOnly: true
                         {{- end }}
                         {{- if $entraNeeded }}
@@ -476,12 +451,12 @@ spec:
                         {{- end }}
                         {{- /* Same /secrets/<name>/<key> shape as secretsFrom, so an app  */}}
                         {{- /* reads a ManagedSecret exactly like a hand-created one.      */}}
-                        {{- range $ref := $managedSecretRefs }}
-                        - name: managed-secret-{{ $ref.name }}-value
-                          mountPath: /secrets/{{ $ref.name }}
+                        {{- range $ms := $managedSecrets }}
+                        - name: {{ $ms.dir }}-value
+                          mountPath: /secrets/{{ $ms.name }}
                           readOnly: true
                         {{- end }}
-                    {{- if or (gt (len $awsBindings) 0) $entraNeeded (gt (len $managedSecretRefs) 0) }}
+                    {{- if or $awsBindings $entraNeeded $managedSecrets }}
                     - name: workload-identity-sidecar
                       image: ghcr.io/cujarrett/workload-identity-sidecar:main
                       imagePullPolicy: Always
@@ -519,39 +494,23 @@ spec:
                         - name: entra-identity
                           mountPath: /entra-identity
                         {{- end }}
-                        {{- range $i, $ref := $objectStorageRefs }}
-                        {{- $osMountName := printf "object-storage-%s" $ref.name }}
-                        - name: object-storage-{{ $ref.name }}-binding
-                          mountPath: /bindings/{{ $osMountName }}
+                        {{- range $b := $awsBindings }}
+                        - name: {{ $b.dir }}-binding
+                          mountPath: /bindings/{{ $b.dir }}
                           readOnly: true
                         {{- end }}
-                        {{- if $nosqlRefName }}
-                        - name: nosql-binding
-                          mountPath: /bindings/nosql
+                        {{- range $ms := $managedSecrets }}
+                        - name: {{ $ms.dir }}-binding
+                          mountPath: /bindings/{{ $ms.dir }}
                           readOnly: true
-                        {{- end }}
-                        {{- if and $sqlRefName (eq $sqlBackend "public-cloud") }}
-                        - name: sql-binding
-                          mountPath: /bindings/sql
-                          readOnly: true
-                        {{- end }}
-                        {{- if and $cacheEnabled (eq $cacheBackend "public-cloud") }}
-                        - name: cache-binding
-                          mountPath: /bindings/cache
-                          readOnly: true
-                        {{- end }}
-                        {{- range $ref := $managedSecretRefs }}
-                        - name: managed-secret-{{ $ref.name }}-binding
-                          mountPath: /bindings/managed-secret-{{ $ref.name }}
-                          readOnly: true
-                        - name: managed-secret-{{ $ref.name }}-value
-                          mountPath: /secrets/{{ $ref.name }}
+                        - name: {{ $ms.dir }}-value
+                          mountPath: /secrets/{{ $ms.name }}
                         {{- end }}
                     {{- end }}
                   volumes:
                     - name: tmp
                       emptyDir: {}
-                    {{- if or (gt (len $awsBindings) 0) $entraNeeded (gt (len $managedSecretRefs) 0) }}
+                    {{- if or $awsBindings $entraNeeded $managedSecrets }}
                     - name: spiffe-bundle
                       csi:
                         driver: csi.spiffe.io
@@ -565,28 +524,10 @@ spec:
                     - name: entra-identity
                       emptyDir: {}
                     {{- end }}
-                    {{- range $objectStorageRefs }}
-                    - name: object-storage-{{ .name }}-binding
+                    {{- range $b := $bindings }}
+                    - name: {{ $b.dir }}-binding
                       secret:
-                        secretName: {{ $name }}-{{ .name }}
-                        optional: true
-                    {{- end }}
-                    {{- if $sqlRefName }}
-                    - name: sql-binding
-                      secret:
-                        secretName: {{ if eq $sqlBackend "public-cloud" }}{{ $name }}-sql{{ else }}{{ $sqlRefName }}{{ end }}
-                        optional: true
-                    {{- end }}
-                    {{- if $nosqlRefName }}
-                    - name: nosql-binding
-                      secret:
-                        secretName: {{ $name }}-nosql
-                        optional: true
-                    {{- end }}
-                    {{- if $cacheEnabled }}
-                    - name: cache-binding
-                      secret:
-                        secretName: {{ $name }}-cache
+                        secretName: {{ $b.secretName }}
                         optional: true
                     {{- end }}
                     {{- /* Not optional, unlike the binding volumes above. The app named   */ -}}
@@ -597,29 +538,22 @@ spec:
                       secret:
                         secretName: {{ $s }}
                     {{- end }}
-                    {{- range $ref := $managedSecretRefs }}
-                    - name: managed-secret-{{ $ref.name }}-binding
+                    {{- range $ms := $managedSecrets }}
+                    - name: {{ $ms.dir }}-binding
                       secret:
-                        secretName: {{ $name }}-secret-{{ $ref.name }}
+                        secretName: {{ $ms.secretName }}
                         optional: true
                     {{- /* The value lands here rather than in the binding volume, which is */}}
                     {{- /* a Secret and therefore read-only to the sidecar writing it.      */}}
-                    - name: managed-secret-{{ $ref.name }}-value
+                    - name: {{ $ms.dir }}-value
                       emptyDir:
                         medium: Memory
                     {{- end }}
-            {{- /* --- AWS IAM resources: one Role + Profile + binding Secret per objectStorageRef. --- */}}
-            {{- /* Role and Profile lifecycle is tied to this Api (deleted with it).                   */}}
-            {{- /* Bucket name is computed from convention: platform-{ns}-{refName}.                    */}}
-            {{- /* $hasAwsCloudBindings covers all AWS cloud resource types:                            */}}
-            {{- /*   objectStorageRefs (any entries), nosqlRef (always DynamoDB),                       */}}
-            {{- /*   managedSecretRefs (Secrets Manager),                                               */}}
-            {{- /*   cache backend=cloud (ElastiCache). Add sqlRef cloud variant when XRD supports.     */}}
-            {{- $hasAwsCloudBindings := or (gt (len $objectStorageRefs) 0) (ne $nosqlRefName "") (gt (len $managedSecretRefs) 0) (and $cacheEnabled (eq $cacheBackend "public-cloud")) (and (ne $sqlRefName "") (eq $sqlBackend "public-cloud")) }}
-            {{- if $hasAwsCloudBindings }}
+            {{- if or $awsBindings $managedSecrets }}
             {{- /* One IAM role and one binding Secret per AWS-backed ref. The Secret     */ -}}
             {{- /* carries no value, only where to find one and which role may read it.   */ -}}
-            {{- $awsBindings := list }}
+            {{- /* Both are deleted with this Api.                                        */ -}}
+            {{- $iamBindings := list }}
             {{- range $ref := $objectStorageRefs }}
             {{- $refName := $ref.name }}
             {{- $bucketName := printf "platform-%s-%s" $ns $refName }}
@@ -630,7 +564,7 @@ spec:
             {{- $roleExternalName = printf "xp-%s" ($rawRoleExternalName | sha256sum | trunc 61) }}
             {{- end }}
             {{- $policy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "s3:GetObject" "s3:PutObject" "s3:DeleteObject" "s3:ListBucket") "Resource" (list (printf "arn:aws:s3:::%s" $bucketName) (printf "arn:aws:s3:::%s/*" $bucketName)))) | toJson }}
-            {{- $awsBindings = append $awsBindings (dict
+            {{- $iamBindings = append $iamBindings (dict
                 "roleName" (printf "%s-objstorage-%s" $name $refName)
                 "roleKey" (printf "role-object-storage-%s" $refName)
                 "roleExternalName" $roleExternalName
@@ -646,7 +580,7 @@ spec:
             {{- if $nosqlRefName }}
             {{- /* No hashing fallback here - a table role name is short by construction. */}}
             {{- $policy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "dynamodb:GetItem" "dynamodb:PutItem" "dynamodb:UpdateItem" "dynamodb:DeleteItem" "dynamodb:Query" "dynamodb:Scan" "dynamodb:BatchGetItem" "dynamodb:BatchWriteItem") "Resource" (list (printf "arn:aws:dynamodb:us-east-1:*:table/%s" $nosqlRefName) (printf "arn:aws:dynamodb:us-east-1:*:table/%s/index/*" $nosqlRefName)))) | toJson }}
-            {{- $awsBindings = append $awsBindings (dict
+            {{- $iamBindings = append $iamBindings (dict
                 "roleName" (printf "%s-nosql" $name)
                 "roleKey" "role-nosql"
                 "roleExternalName" (printf "crossplane-%s-%s-nosql" $ns $name)
@@ -671,7 +605,7 @@ spec:
             {{- /* ARN is unknowable here. Six ? rather than * because ? matches one       */}}
             {{- /* character each - a trailing * would also match platform/ns/name-other.  */}}
             {{- $policy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "secretsmanager:GetSecretValue" "secretsmanager:DescribeSecret") "Resource" (list (printf "arn:aws:secretsmanager:us-east-1:%s:secret:%s-??????" $awsAccountId $secretId)))) | toJson }}
-            {{- $awsBindings = append $awsBindings (dict
+            {{- $iamBindings = append $iamBindings (dict
                 "roleName" (printf "%s-secret-%s" $name $refName)
                 "roleKey" (printf "role-managed-secret-%s" $refName)
                 "roleExternalName" $secretRoleName
@@ -684,7 +618,7 @@ spec:
                 "dataKey" "secret-id" "dataValue" $secretId
                 "roleArn" (printf "arn:aws:iam::%s:role/crossplane/%s" $awsAccountId $secretRoleName)) }}
             {{- end }}
-            {{- range $b := $awsBindings }}
+            {{- range $b := $iamBindings }}
             ---
             # Trust scoped to this Api's service account.
             apiVersion: iam.aws.m.upbound.io/v1beta1
@@ -726,7 +660,7 @@ spec:
               region: us-east-1
               role-arn: {{ $b.roleArn }}
             {{- end }}
-            {{- end }}{{- /* end hasAwsCloudBindings */}}
+            {{- end }}{{- /* end AWS IAM resources */}}
             {{- if $entraNeeded }}
             ---
             # Entra app registration for this Api. owners is required - an app created
@@ -1162,27 +1096,17 @@ spec:
             {{- /* Every platform-injected variable name, assembled the same way the      */ -}}
             {{- /* container env is above. Reading it here beats reconstructing the        */ -}}
             {{- /* derivation rules from a README.                                          */ -}}
-            {{- $bindingDirs := list }}
-            {{- range $ref := $objectStorageRefs }}{{- $bindingDirs = append $bindingDirs (printf "object-storage-%s" $ref.name) }}{{- end }}
-            {{- if $sqlRefName }}{{- $bindingDirs = append $bindingDirs "sql" }}{{- end }}
-            {{- if $nosqlRefName }}{{- $bindingDirs = append $bindingDirs "nosql" }}{{- end }}
-            {{- if $cacheEnabled }}{{- $bindingDirs = append $bindingDirs "cache" }}{{- end }}
             {{- /* The credential paths are the ones a reader cannot derive, so they belong */ -}}
             {{- /* here even though an injected variable also names each of them.           */ -}}
             {{- $mountedFiles := list }}
             {{- range $sec := $secretsFrom }}{{- $mountedFiles = append $mountedFiles (printf "/secrets/%s" $sec) }}{{- end }}
-            {{- range $ref := $managedSecretRefs }}{{- $mountedFiles = append $mountedFiles (printf "/secrets/%s" $ref.name) }}{{- end }}
+            {{- range $ms := $managedSecrets }}{{- $mountedFiles = append $mountedFiles (printf "/secrets/%s" $ms.name) }}{{- end }}
             {{- if gt (len $awsBindings) 0 }}{{- $mountedFiles = append $mountedFiles "/aws-credentials/credentials" }}{{- end }}
             {{- if $entraNeeded }}{{- $mountedFiles = append $mountedFiles "/entra-identity/token" }}{{- end }}
             {{- $injectedEnv := list "SERVICE_BINDING_ROOT" }}
             {{- if gt (len $awsBindings) 0 }}
             {{- $injectedEnv = append $injectedEnv "AWS_SHARED_CREDENTIALS_FILE" }}
-            {{- range $ref := $objectStorageRefs }}
-            {{- $injectedEnv = append $injectedEnv (printf "AWS_PROFILE_OBJECT_STORAGE_%s" ($ref.name | upper | replace "-" "_")) }}
-            {{- end }}
-            {{- if $nosqlRefName }}{{- $injectedEnv = append $injectedEnv (printf "AWS_PROFILE_NOSQL_%s" ($nosqlRefName | upper | replace "-" "_")) }}{{- end }}
-            {{- if and $sqlRefName (eq $sqlBackend "public-cloud") }}{{- $injectedEnv = append $injectedEnv (printf "AWS_PROFILE_SQL_%s" ($sqlRefName | upper | replace "-" "_")) }}{{- end }}
-            {{- if and $cacheEnabled (eq $cacheBackend "public-cloud") }}{{- $injectedEnv = append $injectedEnv "AWS_PROFILE_CACHE" }}{{- end }}
+            {{- range $b := $awsBindings }}{{- $injectedEnv = append $injectedEnv $b.awsProfileEnv }}{{- end }}
             {{- end }}
             {{- if $entraNeeded }}
             {{- $injectedEnv = append $injectedEnv "AZURE_CLIENT_ID" }}
@@ -1198,7 +1122,7 @@ spec:
             kind: Api
             status:
               config:
-                bindings: [{{ range $i, $b := $bindingDirs }}{{ if $i }}, {{ end }}{{ printf "/bindings/%s" $b | quote }}{{ end }}]
+                bindings: [{{ range $i, $b := $bindings }}{{ if $i }}, {{ end }}{{ printf "/bindings/%s" $b.dir | quote }}{{ end }}]
                 files: [{{ range $i, $f := $mountedFiles }}{{ if $i }}, {{ end }}{{ $f | quote }}{{ end }}]
                 injectedEnv: [{{ range $i, $e := $injectedEnv }}{{ if $i }}, {{ end }}{{ $e | quote }}{{ end }}]
               {{- if $entraNeeded }}
