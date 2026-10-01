@@ -1,0 +1,40 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: github
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: github
+      interval: 5m
+      rules:
+        # A bot opening PRs in the last 30 days is how a repo using Renovate is spotted.
+        # Repos left out on purpose
+        # - homelab: Renovate merges with ignoreTests, so there is no check to require
+        # - homelab-workspaces: no CI runs on its PRs
+        # - storefront-*: the auto-merge-off experiment, only until 1791331200 (2026-10-07 UTC).
+        #   After that the alert fires for them, which is the reminder to turn auto-merge on.
+        - alert: RenovateRepoCannotAutoMerge
+          expr: |
+            (
+              (
+                github_exporter_repo_allow_auto_merge{repo!~"homelab|homelab-workspaces"} == 0
+                or
+                github_exporter_repo_required_checks{repo!~"homelab|homelab-workspaces"} == 0
+              )
+              unless on (repo)
+              (github_exporter_repo_allow_auto_merge{repo=~"storefront-records|storefront-reviews"} and on () (vector(time()) < 1791331200))
+            )
+            and on (repo)
+            sum by (repo) (github_exporter_pr_opened{author="bot", window="30d"}) > 0
+          for: 2h
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.repo }} gets bot PRs but GitHub cannot auto-merge them"
+            description: >-
+              Turn on "Allow auto-merge" and require the repo's CI check on main, the
+              same as weather-exporter. Without both, Renovate merges hours late on its
+              own next visit, or without waiting on CI.
