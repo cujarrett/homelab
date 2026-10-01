@@ -129,3 +129,41 @@ spec:
           metadata:
             labels:
               platform.local.lab/workloads: "true"
+
+    # ArgoCD checks project destinations only for namespaced kinds, so a workspace commit
+    # could adopt a cluster namespace such as longhorn-system and then prune it.
+    # Adoption rewrites the tracking annotation.
+    # Workspace namespaces carry the workloads label. Guest namespaces are made by launchpad-api.
+    - name: only-workspace-namespaces-change-owner
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+            subjects:
+              - kind: ServiceAccount
+                name: argocd-application-controller
+                namespace: argocd
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: Equals
+            value: UPDATE
+      skipBackgroundRequests: true
+      validate:
+        allowExistingViolations: false
+        message: >-
+          Namespace {{ request.object.metadata.name }} is not a workspace namespace, so no
+          other ArgoCD application may take it over.
+        deny:
+          conditions:
+            all:
+              - key: "{{ request.object.metadata.annotations.\"argocd.argoproj.io/tracking-id\" || '' }}"
+                operator: NotEquals
+                value: "{{ request.oldObject.metadata.annotations.\"argocd.argoproj.io/tracking-id\" || '' }}"
+              - key: "{{ request.oldObject.metadata.labels.\"platform.local.lab/workloads\" || '' }}"
+                operator: NotEquals
+                value: "true"
+              - key: "{{ request.object.metadata.name }}"
+                operator: NotEquals
+                value: "guest-*"
