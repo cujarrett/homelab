@@ -225,8 +225,8 @@ Service label format: `{namespace}-{servicename}-{port}@kubernetes`
 
 ## 1U Display (ctrl-1)
 `ctrl-1` drives an attached 1424x280 LCD with a kiosk browser, run as a bare background process
-under the `pi` user, not systemd. The script, the Xorg config a rebuilt ctrl-1 needs, and how to
-change the URL are in [docs/kiosk/](./docs/kiosk/).
+under the `pi` user, not systemd. The script, the setup a rebuilt ctrl-1 needs, and how to change the URL
+are in [Kiosk](./docs/kiosk/README.md).
 
 Do **not** just `pkill chromium` to pick up a URL change - the `while true` loop relaunches it from
 memory. Restart `getty@tty1.service` so `.bashrc` re-sources the script.

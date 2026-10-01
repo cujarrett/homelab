@@ -88,7 +88,7 @@ doc must say plainly, or a mistake. Never leave it ambiguous.
 ```bash
 cd "$(git rev-parse --show-toplevel)"
 grep -rn "equirement [0-9]\|[Oo]ption [0-9]\|rinciple [0-9]\|[Gg]ate [0-9] above" \
-  docs/ platform/docs/ platform/*/README.md --include="*.md" | grep -v "^docs/runbooks/\|^docs/how-it-was-built"
+  docs/ platform/docs/ platform/*/README.md --include="*.md" | grep -v "^docs/runbooks/"
 ```
 
 Every hit is a defect. Replace it with the thing itself: "the requirement that a page script

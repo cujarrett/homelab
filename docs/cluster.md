@@ -179,6 +179,6 @@ stored in Git.
 
 ## Related Docs
 
-- [How it was built](./how-it-was-built.md) - step-by-step build history from bare Pi to this state
+- [How I built it](https://blog.mattjarrett.dev/homelab/) - step-by-step build history from bare Pi to this state
 - [Platform](../platform/README.md) - Crossplane-based internal developer platform
 - [Nothing Novel](./nothing-novel.md) - the public prior art behind every mechanism here
