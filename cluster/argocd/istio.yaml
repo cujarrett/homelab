@@ -79,6 +79,15 @@ spec:
             memory: 256Mi
           limits:
             memory: 512Mi
+        # Every mesh pod gets one sidecar, so the chart's 1Gi limit adds up to more than a node holds.
+        # Sidecars measure 32-60Mi. Request equals limit so the scheduler reserves what it allows.
+        global:
+          proxy:
+            resources:
+              requests:
+                memory: 128Mi
+              limits:
+                memory: 128Mi
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system

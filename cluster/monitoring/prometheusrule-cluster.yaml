@@ -80,3 +80,37 @@ spec:
               See why the retry cannot start with
               kubectl get events -n {{ $labels.namespace }} --field-selector involvedObject.name={{ $labels.job_name }}.
               The failed pod may already be gone, so its logs can be lost.
+
+        # Native sidecars (istio-proxy) report their limit as an init container, hence the "or".
+        # 75% for 30m catches steady growth before the kernel kills the container.
+        - alert: ContainerNearMemoryLimit
+          expr: |
+            max by (namespace, pod, container) (container_memory_working_set_bytes{container!=""})
+              / on (namespace, pod, container) group_left
+            max by (namespace, pod, container) (
+              kube_pod_container_resource_limits{resource="memory"}
+                or kube_pod_init_container_resource_limits{resource="memory"}
+            ) > 0.75
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }} {{ $labels.container }} is at {{ $value | humanizePercentage }} of its memory limit"
+            description: >-
+              Compare usage against the limit with
+              kubectl top pod -n {{ $labels.namespace }} {{ $labels.pod }} --containers.
+              Raise the limit in the manifest or composition that sets it.
+
+        # The kernel restarts an OOM-killed container in place, so the pod stays Running
+        # and KubePodCrashLooping only fires after several kills.
+        - alert: ContainerOOMKilled
+          expr: |
+            increase(container_oom_events_total{container!=""}[10m]) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }} {{ $labels.container }} was OOM-killed"
+            description: >-
+              The container hit its memory limit. Check recent usage with
+              kubectl top pod -n {{ $labels.namespace }} {{ $labels.pod }} --containers
+              and raise the limit in the manifest or composition that sets it.
