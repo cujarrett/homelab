@@ -14,15 +14,16 @@ spec:
         # Repos left out on purpose
         # - homelab: Renovate merges with ignoreTests, so there is no check to require
         # - homelab-workspaces: no CI runs on its PRs
+        # - js-to-go, learning-kubernetes: learning repos with no CI
         # - storefront-*: the auto-merge-off experiment, only until 1791331200 (2026-10-07 UTC).
         #   After that the alert fires for them, which is the reminder to turn auto-merge on.
         - alert: RenovateRepoCannotAutoMerge
           expr: |
             (
               (
-                github_exporter_repo_allow_auto_merge{repo!~"homelab|homelab-workspaces"} == 0
+                github_exporter_repo_allow_auto_merge{repo!~"homelab|homelab-workspaces|js-to-go|learning-kubernetes"} == 0
                 or
-                github_exporter_repo_required_checks{repo!~"homelab|homelab-workspaces"} == 0
+                github_exporter_repo_required_checks{repo!~"homelab|homelab-workspaces|js-to-go|learning-kubernetes"} == 0
               )
               unless on (repo)
               (github_exporter_repo_allow_auto_merge{repo=~"storefront-records|storefront-reviews"} and on () (vector(time()) < 1791331200))
