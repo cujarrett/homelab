@@ -30,10 +30,6 @@ data:
       "liveNow": false,
       "panels": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Share of the last 7 days of merges that nobody clicked. This is the toil number, and the only one automation is meant to move.",
           "fieldConfig": {
             "defaults": {
@@ -71,29 +67,17 @@ data:
           },
           "id": 60,
           "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
-              "values": false
+              "fields": ""
             },
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
+            "textMode": "value"
           },
           "pluginVersion": "13.2.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"7d\"}) / (sum(github_exporter_pr_merged{repo=~\"$repo\",window=\"7d\"}) > 0)",
               "range": true,
               "refId": "A"
@@ -103,10 +87,6 @@ data:
           "type": "stat"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "How many merges automation completed in the last 7 days. The share above says whether it is winning, this says whether there is enough volume for that to mean anything.",
           "fieldConfig": {
             "defaults": {
@@ -134,29 +114,18 @@ data:
           },
           "id": 61,
           "options": {
-            "colorMode": "value",
             "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
-              "values": false
+              "fields": ""
             },
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
+            "textMode": "value"
           },
           "pluginVersion": "13.2.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"7d\"}) or vector(0)",
               "instant": true,
               "refId": "A"
@@ -166,10 +135,6 @@ data:
           "type": "stat"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Share of bot pull requests that qualify for automerge at all. The remainder are majors and the named exclusions, held for a person by design, so this is coverage rather than a failure.",
           "fieldConfig": {
             "defaults": {
@@ -207,29 +172,18 @@ data:
           },
           "id": 62,
           "options": {
-            "colorMode": "value",
             "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
-              "values": false
+              "fields": ""
             },
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
+            "textMode": "value"
           },
           "pluginVersion": "13.2.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",scope=\"auto-candidate\",window=\"30d\"}) / (sum(github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",window=\"30d\"}) > 0)",
               "instant": true,
               "refId": "A"
@@ -239,10 +193,6 @@ data:
           "type": "stat"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Runs on main that passed. Automation only merges on a green required check, so a falling number here is the gate doing its job, not a broken gate.",
           "fieldConfig": {
             "defaults": {
@@ -280,29 +230,18 @@ data:
           },
           "id": 5,
           "options": {
-            "colorMode": "value",
             "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
-              "values": false
+              "fields": ""
             },
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
+            "textMode": "value"
           },
           "pluginVersion": "13.2.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum(github_exporter_workflow_runs{repo=~\"$repo\",conclusion=\"success\"}) / (sum(github_exporter_workflow_runs{repo=~\"$repo\",conclusion=~\"success|failure\"}) > 0)",
               "instant": true,
               "refId": "A"
@@ -312,10 +251,6 @@ data:
           "type": "stat"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Open pull requests with automerge armed that GitHub will not merge, almost always a failed required check. Automation is on and a person is still needed, so this is toil it did not remove.",
           "fieldConfig": {
             "defaults": {
@@ -351,29 +286,18 @@ data:
           },
           "id": 91,
           "options": {
-            "colorMode": "value",
             "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
-              "values": false
+              "fields": ""
             },
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
+            "textMode": "value"
           },
           "pluginVersion": "13.2.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum(github_exporter_pr_open_blocked{repo=~\"$repo\"}) or vector(0)",
               "instant": true,
               "refId": "A"
@@ -383,10 +307,6 @@ data:
           "type": "stat"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Deployments that blew their progress deadline. The old pods are still serving, so nothing is down, but the merge never reached the cluster.",
           "fieldConfig": {
             "defaults": {
@@ -418,29 +338,18 @@ data:
           },
           "id": 94,
           "options": {
-            "colorMode": "value",
             "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
-              "values": false
+              "fields": ""
             },
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
+            "textMode": "value"
           },
           "pluginVersion": "13.2.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum(kube_deployment_status_condition{condition=\"Progressing\",status=\"false\"} == 1) or vector(0)",
               "instant": true,
               "refId": "A"
@@ -450,10 +359,6 @@ data:
           "type": "stat"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "ArgoCD applications reporting Degraded. A merge landed in Git and the cluster could not make it real.",
           "fieldConfig": {
             "defaults": {
@@ -485,29 +390,18 @@ data:
           },
           "id": 95,
           "options": {
-            "colorMode": "value",
             "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
-              "values": false
+              "fields": ""
             },
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
+            "textMode": "value"
           },
           "pluginVersion": "13.2.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "count(argocd_app_info{health_status=\"Degraded\"}) or vector(0)",
               "instant": true,
               "refId": "A"
@@ -517,10 +411,6 @@ data:
           "type": "stat"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Repos whose GitHub poll failed in the last hour. Every count on this dashboard is a floor while this is above zero.",
           "fieldConfig": {
             "defaults": {
@@ -552,29 +442,18 @@ data:
           },
           "id": 4,
           "options": {
-            "colorMode": "value",
             "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
-              "values": false
+              "fields": ""
             },
-            "showPercentChange": false,
-            "textMode": "value",
-            "wideLayout": true
+            "textMode": "value"
           },
           "pluginVersion": "13.2.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "count(increase(github_exporter_poll_errors_total{repo=~\"$repo\"}[1h]) > 0) or vector(0)",
               "instant": true,
               "refId": "A"
@@ -584,10 +463,6 @@ data:
           "type": "stat"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Merges per day, split by whether a person clicked the button. A finished day reads the rolling 24h count as it stood at that day's midnight, which is why the offset is there. Today has no such reading yet, so its bar comes from the calendar-day count read at the dashboard's own end time. It has to be that timestamp and not the query's, because Grafana rounds the query end down to the last daily step, where the calendar count has just reset to zero. That substitution is held to days the exporter was actually running, otherwise it would paint today's number onto every day that predates the exporter.",
           "fieldConfig": {
             "defaults": {
@@ -595,37 +470,14 @@ data:
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
                 "drawStyle": "bars",
                 "fillOpacity": 80,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
                 "showPoints": "never",
-                "showValues": false,
-                "spanNulls": false,
                 "stacking": {
                   "group": "A",
                   "mode": "normal"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
                 }
               },
               "decimals": 0,
@@ -695,13 +547,8 @@ data:
               "sort": "none"
             }
           },
-          "pluginVersion": "13.2.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "editorMode": "code",
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"1d\"} offset -1d) or (sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"today\"} @ ${__to:date:seconds}) and on() sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"1d\"}))",
               "interval": "1d",
@@ -710,10 +557,6 @@ data:
               "refId": "A"
             },
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "editorMode": "code",
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"1d\"} offset -1d) or (sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"today\"} @ ${__to:date:seconds}) and on() sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"1d\"}))",
               "interval": "1d",
@@ -726,10 +569,6 @@ data:
           "type": "timeseries"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Thirty days of merges, split by whether a person spent attention on it.",
           "fieldConfig": {
             "defaults": {
@@ -816,10 +655,6 @@ data:
           "pluginVersion": "13.2.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "editorMode": "code",
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"30d\"})",
               "instant": true,
@@ -827,10 +662,6 @@ data:
               "refId": "A"
             },
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "editorMode": "code",
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"30d\"})",
               "instant": true,
@@ -842,10 +673,6 @@ data:
           "type": "bargauge"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "One row per repo. Open PRs waiting, how the last 30 days of merges reached main, and whether CI is green. Human PRs are the ones you opened yourself. Bot, not eligible are dependency bumps auto-merge was never allowed to take - majors and anything outside the grouped branches - so they sat until someone merged them by hand. Eligible is the share of the repo's bot merges that auto-merge was configured to take, which is what separates a repo with automation switched off from one whose updates were all majors.",
           "fieldConfig": {
             "defaults": {
@@ -1048,63 +875,38 @@ data:
             "showHeader": true,
             "sortBy": []
           },
-          "pluginVersion": "13.2.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum by (repo) (github_exporter_pr_open{repo=~\"$repo\"})",
               "format": "table",
               "instant": true,
               "refId": "Open"
             },
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",window=\"30d\"})",
               "format": "table",
               "instant": true,
               "refId": "Merged"
             },
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",author=\"human\",window=\"30d\"})",
               "format": "table",
               "instant": true,
               "refId": "Human"
             },
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",scope=\"excluded\",window=\"30d\"})",
               "format": "table",
               "instant": true,
               "refId": "Blocked"
             },
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",scope=\"auto-candidate\",window=\"30d\"}) / (sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",window=\"30d\"}) > 0)",
               "format": "table",
               "instant": true,
               "refId": "Eligible"
             },
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum by (repo) (github_exporter_workflow_runs{repo=~\"$repo\",conclusion=\"success\"}) / (sum by (repo) (github_exporter_workflow_runs{repo=~\"$repo\",conclusion=~\"success|failure\"}) > 0)",
               "format": "table",
               "instant": true,

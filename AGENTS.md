@@ -70,7 +70,8 @@ All workloads are defined as manifests in this repo under `cluster/`, `platform/
 GitHub repo: `https://github.com/cujarrett/homelab.git` (branch: `main`)
 
 ## Hardware & Network
-- **All nodes**: Raspberry Pi 5, NVMe SSD boot, ARM64 architecture - always use ARM64-compatible images
+- **All nodes**: Raspberry Pi 5, NVMe SSD boot, PoE+ power, ARM64 architecture. Always use ARM64-compatible images
+- **Rack**: GeeekPi DeskPi RackMate T0 Plus 10" 4U, with a 1U LCD driven by `ctrl-1`
 - **Network**: VLAN 10 (`192.168.10.0/24`) is the k3s subnet; gateway is Ubiquiti UDR7 at `192.168.1.1`
 
 | Node | Hostname | IP | Role |
@@ -93,13 +94,16 @@ SSH access: `ssh pi@192.168.10.10x`
 | Kubernetes | k3s | Lightweight distro |
 | GitOps | ArgoCD | App-of-apps pattern via `cluster/argocd/bootstrap.yaml`, recurses `cluster/` |
 | Ingress | Traefik | Deployed as DaemonSet via k3s HelmChartConfig; binds hostPorts 80/443 |
-| TLS | cert-manager | Local CA issuer (`local-lab-ca-issuer`) for `.local.lab` hosts; Let's Encrypt (staging + prod) for public hosts via HTTP-01/Traefik |
+| TLS | cert-manager | Local CA issuer (`local-lab-ca-issuer`) for `.local.lab` hosts; Let's Encrypt (staging + prod) for public hosts via HTTP-01/Traefik. Workload mTLS uses Istio's own CA (`istio-ca-secret`), not cert-manager |
 | Storage | Longhorn | Three StorageClasses: `longhorn` (default, Delete), `longhorn-retain` (Retain - use for stateful platform XRs), `longhorn-delete` (explicit Delete) |
 | DNS | AdGuard Home | Runs in `adguard` namespace, pinned to node `ctrl-1` via nodeSelector, hostPort 53 UDP |
 | External Access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; token from secret `cloudflare-tunnel-token` |
 | Platform Abstraction | Crossplane | Twelve XR types - see the Crossplane Platform section below |
 | CNI | flannel | k3s's bundled CNI, running at its defaults - no install flags, no `/etc/rancher/k3s/config.yaml`. NetworkPolicy is enforced by k3s's kube-router, also default. Mesh concerns (mTLS, connection policy) belong to Istio. |
 | Service Mesh | Istio | Sidecar mesh chained onto flannel; provides workload mTLS. Platform workloads get STRICT mTLS inbound and `REGISTRY_ONLY` egress from their declared `consumes`. Who may call an interface is an Entra grant checked by the app; see [Platform Connections](./platform/docs/connections.md). |
+| Observability | kube-prometheus-stack | Prometheus (30d retention), Grafana, Alertmanager |
+| Logs | Loki + Promtail | Loki SingleBinary, 30d retention; Promtail DaemonSet ships logs |
+| Messaging | NATS JetStream | 3-replica cluster in `nats`; NACK controller manages Stream and Consumer CRDs |
 | GraphQL | Apollo operator + router | Two installs, `apollo-operator-test` and `apollo-operator-prod`, each with its own key and watching only its own lane. Helm chart from `registry-1.docker.io/apollograph`. Joins each team's subgraph into one supergraph; see [Platform Graph](./platform/docs/graph.md). Router image is `ghcr.io/cujarrett/apollo-router-arm64`, rebuilt from source because the official image aborts on a 16K-page kernel |
 | Secrets | External Secrets Operator | Renders cluster-setup credentials from AWS SSM Parameter Store; `ClusterSecretStore` `aws-parameter-store` authenticates as the `eso-reader` IAM user, scoped read-only to the `/homelab/` path. Only `aws-eso-creds` is hand-created |
 | Workload Identity | SPIRE | `spire-server` + `spire-system` namespaces; Helm chart from `spiffe.github.io/helm-charts-hardened`. Issues X.509 SVIDs backing AWS IAM Roles Anywhere, and JWT-SVIDs published via the OIDC discovery provider at `oidc.mattjarrett.dev`
@@ -117,6 +121,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `cloudflare` | cloudflared | Cloudflare Tunnel for public ingress |
 | `cert-manager` | cert-manager | TLS issuers |
 | `crossplane-system` | Crossplane | Platform compositions, XRDs, providers |
+| `istio-system` | Istio | Control plane (`istiod`) and the `istio-cni-node` DaemonSet for the sidecar mesh |
 | `nats` | NATS + NACK | JetStream cluster (3 replicas), NACK controller for Stream/Consumer CRDs |
 | `mattjarrett-com` | WordPress (Wordpress) | `mattjarrett.com` via Cloudflare Tunnel; 7Gi wp-content, 1Gi MariaDB |
 | `kentjarrett-com` | WordPress (Wordpress) | `kentjarrett.com` via Cloudflare Tunnel; 10Gi wp-content, 2Gi MariaDB |
@@ -125,7 +130,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `my-vinyl` | Spa + Api + Cache | `myvinyl.mattjarrett.dev` via Cloudflare Tunnel |
 | `js-pollock` | Spa | `jspollock.mattjarrett.dev` via Cloudflare Tunnel |
 | `sump-pump` | Api ×2 + Topic + Subscription | IoT sump pump bridge + consumer + weather-exporter |
-| `launchpad` | Api | `launchpad.mattjarrett.dev` via Cloudflare Tunnel; BFF for Launchpad UI, provisions ephemeral demo sandboxes |
+| `launchpad` | Spa + Api | `launchpad.mattjarrett.dev` via Cloudflare Tunnel. The Spa's nginx proxies `/api/` to `launchpad-api`, a cluster-internal BFF that provisions ephemeral demo sandboxes |
 | `demo-certs` | cert-manager `Certificate` and `SecretMirror` objects only (no workloads) | 5 long-lived `letsencrypt-prod` certs, one per demo sandbox slot covering `demoN.mattjarrett.dev` and `demoN-api.mattjarrett.dev`; a `SecretMirror` copies each into whichever sandbox namespace holds that slot, so cert-manager skips issuance there and Let's Encrypt's 5-certs-per-exact-hostname-set-per-168h limit is never hit |
 | `platform-connections-demo` | Api ×3 + Spa | Service mesh walkthrough at `connections.mattjarrett.dev`; two callers run one image and differ only in what they declare |
 | `platform-graph-demo` | Api + Spa | Schema management walkthrough at `graph.mattjarrett.dev`; the backend runs fixed queries against the `graph-prod` router under a call budget and reads GitHub every ten minutes |
@@ -142,6 +147,7 @@ SSH access: `ssh pi@192.168.10.10x`
 
 All use `local-lab-ca-issuer` (self-signed CA), TLS via Traefik `websecure` entrypoint. AdGuard Home holds the wildcard rewrite `*.local.lab → 192.168.10.100`.
 
+- `adguard.local.lab`
 - `argocd.local.lab`
 - `grafana.local.lab`
 - `prometheus.local.lab`
@@ -164,7 +170,7 @@ To restore filtering without making AdGuard a hard dependency for every device, 
 - `blog.mattjarrett.dev` - Ghost blog, routed via Cloudflare Tunnel
 - `myvinyl.mattjarrett.dev` - my-vinyl SPA, routed via Cloudflare Tunnel
 - `jspollock.mattjarrett.dev` - js-pollock SPA, routed via Cloudflare Tunnel
-- `launchpad.mattjarrett.dev` - Launchpad BFF, routed via Cloudflare Tunnel
+- `launchpad.mattjarrett.dev` - Launchpad UI, with `/api/` proxied to the cluster-internal BFF, routed via Cloudflare Tunnel
 - `connections.mattjarrett.dev` - service mesh walkthrough, routed via Cloudflare Tunnel
 - `graph.mattjarrett.dev` - schema management walkthrough, routed via Cloudflare Tunnel
 - `argocd-webhook.mattjarrett.dev` - GitHub push webhooks from `homelab-workspaces` for ArgoCD; only the exact paths `/api/webhook` and `/applicationset/api/webhook` route, via Cloudflare Tunnel
@@ -235,22 +241,13 @@ memory. Restart `getty@tty1.service` so `.bashrc` re-sources the script.
 
 Crossplane core runs with `--enable-realtime-compositions` (Helm `args` in [cluster/argocd/crossplane.yaml](./cluster/argocd/crossplane.yaml)) so composite reconciliation reacts to composed-resource changes by watch rather than waiting out the 60s poll. Without it a composed resource going Ready can sit for up to a minute before its status reaches the XR.
 
-Twelve platform types are defined under `platform/`:
+Twelve platform types are defined under `platform/`, each as `<plural>.platform.local.lab`. The canonical list is [Platform → Offerings](./platform/README.md#offerings). Facts that list leaves out:
 
-| XRD | Kind | Notes |
-|---|---|---|
-| `wordpresses.platform.local.lab` | `Wordpress` | MariaDB StatefulSet + WordPress Deployment; credentials from XR UID |
-| `spas.platform.local.lab` | `Spa` | nginx + Angular SPA; nginx config generated via go-templating function - **app repos must NOT include an nginx.conf; composition owns it entirely** |
-| `apis.platform.local.lab` | `Api` | Generic REST API |
-| `caches.platform.local.lab` | `Cache` | Cache for apps |
-| `topics.platform.local.lab` | `Topic` | Pub/sub topic |
-| `subscriptions.platform.local.lab` | `Subscription` | Consumer subscription to a topic |
-| `sqls.platform.local.lab` | `Sql` | In-cluster Postgres Deployment; used by Launchpad guest demo sandboxes |
-| `nosqls.platform.local.lab` | `NoSql` | AWS DynamoDB table; used by Launchpad guest demo sandboxes - kept within AWS free tier by design |
-| `objectstorages.platform.local.lab` | `ObjectStorage` | AWS S3 bucket; used by Launchpad guest demo sandboxes - kept within AWS free tier by design |
-| `managedsecrets.platform.local.lab` | `ManagedSecret` | A value the owner sets in a cloud console, delivered to the pod as files; never a Kubernetes Secret |
-| `federatedgraphs.platform.local.lab` | `FederatedGraph` | One environment of a federated GraphQL graph; composes the namespace's subgraphs and runs the Apollo router. See [Platform Graph](./platform/docs/graph.md) |
-| `graphapis.platform.local.lab` | `GraphApi` | One team's subgraph. Nests an `Api` and publishes its schema from the same image digest to the named `FederatedGraph` |
+- `Spa`: nginx config is generated by the composition. App repos must NOT include an `nginx.conf`.
+- `Wordpress`: MariaDB StatefulSet + WordPress Deployment; credentials derive from the XR UID.
+- `Sql`, `NoSql`, `ObjectStorage`: used by Launchpad guest demo sandboxes. `NoSql` and `ObjectStorage` stay within the AWS free tier by design.
+- `ManagedSecret`: the value never becomes a Kubernetes Secret.
+- `GraphApi`: nests an `Api` and publishes its schema from the same image digest to the named `FederatedGraph`. See [Platform Graph](./platform/docs/graph.md).
 
 Which namespaces use which XR types is listed in the Namespaces & Applications table above.
 

@@ -22,7 +22,6 @@ data:
         {
           "id": 1, "type": "stat", "title": "Released PVs",
           "gridPos": { "x": 0, "y": 0, "w": 4, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": {
             "defaults": {
@@ -35,7 +34,6 @@ data:
         {
           "id": 2, "type": "stat", "title": "Failed PVs",
           "gridPos": { "x": 4, "y": 0, "w": 4, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": {
             "defaults": {
@@ -48,7 +46,6 @@ data:
         {
           "id": 3, "type": "stat", "title": "Terminating NS",
           "gridPos": { "x": 8, "y": 0, "w": 4, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": {
             "defaults": {
@@ -61,7 +58,6 @@ data:
         {
           "id": 4, "type": "stat", "title": "Degraded Apps",
           "gridPos": { "x": 12, "y": 0, "w": 4, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": {
             "defaults": {
@@ -75,7 +71,6 @@ data:
           "id": 5, "type": "timeseries", "title": "Released PVs & Container Restarts",
           "description": "Released PV count and container restart rate over time.",
           "gridPos": { "x": 16, "y": 0, "w": 8, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": {
               "unit": "short", "decimals": 0,

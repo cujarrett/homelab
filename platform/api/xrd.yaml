@@ -24,7 +24,7 @@ spec:
                   properties:
                     objectStorageRefs:
                       type: array
-                      description: "References to ObjectStorage instances to bind. Each ref creates an IAM role and binding Secret. The first ref mounts at /bindings/object-storage/, subsequent refs at /bindings/object-storage-1/, /bindings/object-storage-2/, and so on."
+                      description: "References to ObjectStorage instances to bind. Each ref creates an IAM role and binding Secret. Each ref mounts at /bindings/object-storage-<ref-name>/, so a ref named foo mounts at /bindings/object-storage-foo/."
                       items:
                         type: object
                         required: [name]

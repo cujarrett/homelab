@@ -33,10 +33,6 @@ data:
           "type": "stat",
           "title": "Entra Identities",
           "description": "Apis holding an Entra app registration. Identity only - it grants nothing on its own.",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "gridPos": {
             "h": 4,
             "w": 6,
@@ -67,21 +63,12 @@ data:
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
-              "values": false
+              "fields": ""
             },
-            "orientation": "auto",
-            "textMode": "auto",
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto"
+            "graphMode": "none"
           },
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "editorMode": "code",
               "expr": "count(platform_managed_ready{kind=\"EntraApplication\"})",
               "refId": "A",
@@ -95,10 +82,6 @@ data:
           "type": "stat",
           "title": "Roles Offered",
           "description": "App roles declared across all Apis. A role can exist and be held by nobody.",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "gridPos": {
             "h": 4,
             "w": 6,
@@ -129,21 +112,12 @@ data:
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
-              "values": false
+              "fields": ""
             },
-            "orientation": "auto",
-            "textMode": "auto",
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto"
+            "graphMode": "none"
           },
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "editorMode": "code",
               "expr": "count(platform_managed_ready{kind=\"EntraAppRole\"}) or vector(0)",
               "refId": "A",
@@ -157,10 +131,6 @@ data:
           "type": "stat",
           "title": "Grants In Force",
           "description": "Role assignments actually granting a caller something.",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "gridPos": {
             "h": 4,
             "w": 6,
@@ -191,21 +161,12 @@ data:
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
-              "values": false
+              "fields": ""
             },
-            "orientation": "auto",
-            "textMode": "auto",
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto"
+            "graphMode": "none"
           },
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "editorMode": "code",
               "expr": "count(platform_managed_ready{kind=\"EntraRoleAssignment\"}) or vector(0)",
               "refId": "A",
@@ -219,10 +180,6 @@ data:
           "type": "stat",
           "title": "Entra Objects Not Ready",
           "description": "Anything Entra that is not Ready. A grant is red for its first ~30s by design while the role replicates to its service principal - sustained red is real.",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "gridPos": {
             "h": 4,
             "w": 6,
@@ -257,21 +214,12 @@ data:
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
-              "values": false
+              "fields": ""
             },
-            "orientation": "auto",
-            "textMode": "auto",
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto"
+            "graphMode": "none"
           },
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "editorMode": "code",
               "expr": "sum(platform_managed_ready{kind=~\"EntraApplication|EntraServicePrincipal|EntraFederatedCredential|EntraAppRole|EntraRoleAssignment\"} == 0) or vector(0)",
               "refId": "A",
@@ -284,10 +232,6 @@ data:
         {
           "type": "timeseries",
           "title": "Entra Object Readiness",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Ready state per Entra object. Dips at creation are the replication lag; a flat zero is a real failure.",
           "gridPos": {
             "h": 8,
@@ -329,10 +273,6 @@ data:
           },
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "editorMode": "code",
               "expr": "platform_managed_ready{kind=~\"EntraApplication|EntraServicePrincipal|EntraFederatedCredential|EntraAppRole|EntraRoleAssignment\"}",
               "refId": "A",
@@ -346,10 +286,6 @@ data:
         {
           "type": "timeseries",
           "title": "Time To Ready",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "How long each Entra object took to become Ready. RoleAssignment is expected to be the slow one.",
           "gridPos": {
             "h": 8,
@@ -386,10 +322,6 @@ data:
           },
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "editorMode": "code",
               "expr": "platform_managed_time_to_ready_seconds_instance{kind=~\"EntraApplication|EntraServicePrincipal|EntraFederatedCredential|EntraAppRole|EntraRoleAssignment\"}",
               "refId": "A",
@@ -403,10 +335,6 @@ data:
         {
           "type": "timeseries",
           "title": "Role Checks By Outcome",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Decisions made by app code reading the roles claim, not by the mesh. Refused is not an error - it is a caller that holds a valid identity and not this role.",
           "gridPos": {
             "h": 8,
@@ -473,10 +401,6 @@ data:
           },
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "editorMode": "code",
               "expr": "sum by (outcome) (rate(demo_api_entra_decisions_total[5m]))",
               "refId": "A",

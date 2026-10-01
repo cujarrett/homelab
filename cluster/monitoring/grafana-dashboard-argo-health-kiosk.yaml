@@ -22,7 +22,6 @@ data:
         {
           "id": 1, "type": "stat", "title": "Apps Healthy",
           "gridPos": { "x": 0, "y": 0, "w": 4, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 1 }, { "color": "green", "value": 10 }] } } },
           "targets": [{ "expr": "count(argocd_app_info{health_status=\"Healthy\"})", "legendFormat": "healthy", "instant": true, "refId": "A" }]
@@ -30,7 +29,6 @@ data:
         {
           "id": 2, "type": "stat", "title": "Apps Degraded",
           "gridPos": { "x": 4, "y": 0, "w": 4, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } } },
           "targets": [{ "expr": "count(argocd_app_info{health_status=\"Degraded\"}) or vector(0)", "legendFormat": "degraded", "instant": true, "refId": "A" }]
@@ -38,7 +36,6 @@ data:
         {
           "id": 3, "type": "stat", "title": "Apps Synced",
           "gridPos": { "x": 8, "y": 0, "w": 4, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 1 }, { "color": "green", "value": 10 }] } } },
           "targets": [{ "expr": "count(argocd_app_info{sync_status=\"Synced\"})", "legendFormat": "synced", "instant": true, "refId": "A" }]
@@ -46,7 +43,6 @@ data:
         {
           "id": 4, "type": "stat", "title": "Apps OutOfSync",
           "gridPos": { "x": 12, "y": 0, "w": 4, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } } },
           "targets": [{ "expr": "count(argocd_app_info{sync_status!=\"Synced\"}) or vector(0)", "legendFormat": "out of sync", "instant": true, "refId": "A" }]
@@ -54,7 +50,6 @@ data:
         {
           "id": 5, "type": "timeseries", "title": "Reconcile Rate (ops/min)",
           "gridPos": { "x": 16, "y": 0, "w": 8, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": { "defaults": { "unit": "ops", "decimals": 1, "custom": { "lineWidth": 2, "fillOpacity": 10, "lineInterpolation": "smooth" } } },
           "options": { "legend": { "displayMode": "list", "placement": "right", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
           "targets": [

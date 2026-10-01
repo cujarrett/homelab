@@ -45,11 +45,11 @@ if not cm_file:
     print(f"ERROR: No ConfigMap found for uid={uid}", file=sys.stderr)
     sys.exit(1)
 
-# Replace the JSON block (everything after `|-`)
+# Replace the JSON block (everything after `|` or `|-`)
 with open(cm_file) as f:
     content = f.read()
 
-match = re.search(r'^(.*\.json: \|-\n)', content, re.MULTILINE)
+match = re.search(r'^(.*\.json: \|-?\n)', content, re.MULTILINE)
 if not match:
     print("ERROR: Could not find the JSON block marker in ConfigMap", file=sys.stderr)
     sys.exit(1)

@@ -23,7 +23,6 @@ data:
           "title": "Released PVs",
           "description": "PersistentVolumes in Released state - no longer bound to a PVC. Safe to delete if the data is no longer needed.",
           "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
           "fieldConfig": {
             "defaults": {
@@ -41,7 +40,6 @@ data:
           "title": "Failed PVs",
           "description": "PersistentVolumes in Failed state - provisioning or reclaim errors.",
           "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
           "fieldConfig": {
             "defaults": {
@@ -59,7 +57,6 @@ data:
           "title": "Terminating Namespaces",
           "description": "Namespaces stuck in Terminating - usually means a finalizer is blocking deletion.",
           "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
           "fieldConfig": {
             "defaults": {
@@ -77,7 +74,6 @@ data:
           "title": "Degraded ArgoCD Apps",
           "description": "ArgoCD apps in Degraded health state.",
           "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
           "fieldConfig": {
             "defaults": {
@@ -95,7 +91,6 @@ data:
           "title": "Released & Failed PVs",
           "description": "PersistentVolumes not in Bound state.",
           "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "sortBy": [{ "displayName": "phase", "desc": false }], "footer": { "show": false } },
           "fieldConfig": {
             "defaults": { "custom": { "align": "left" } },
@@ -127,7 +122,6 @@ data:
           "title": "Terminating Namespaces",
           "description": "Namespaces stuck in Terminating phase.",
           "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "footer": { "show": false } },
           "fieldConfig": {
             "defaults": { "custom": { "align": "left" } },
@@ -152,7 +146,6 @@ data:
           "title": "Released PV Count Over Time",
           "description": "Trend of Released PVs. A rising count means PVs are not being cleaned up after workspace deletion.",
           "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": {
               "unit": "short", "decimals": 0,
@@ -174,7 +167,6 @@ data:
           "title": "Container Restarts (All Namespaces)",
           "description": "Total container restart rate per namespace. Sustained restarts may indicate a stuck or crashlooping workload.",
           "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": {
               "unit": "short", "decimals": 0,
@@ -195,7 +187,6 @@ data:
           "title": "Failed Pods",
           "description": "Pods in Failed or Unknown phase, with the container that stopped and why. Unknown phase has no container reason, usually a lost node.",
           "gridPos": { "x": 0, "y": 20, "w": 24, "h": 8 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "sortBy": [{ "displayName": "namespace", "desc": false }], "footer": { "show": false } },
           "fieldConfig": {
             "defaults": { "custom": { "align": "left" } },

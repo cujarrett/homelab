@@ -58,19 +58,12 @@ data:
           "options": {
             "colorMode": "background",
             "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
+              "fields": ""
+            }
           },
           "pluginVersion": "13.0.2",
           "targets": [
@@ -113,19 +106,12 @@ data:
           "options": {
             "colorMode": "background",
             "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
+              "fields": ""
+            }
           },
           "pluginVersion": "13.0.2",
           "targets": [
@@ -168,19 +154,12 @@ data:
           "options": {
             "colorMode": "background",
             "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
+              "fields": ""
+            }
           },
           "pluginVersion": "13.0.2",
           "targets": [
@@ -214,19 +193,12 @@ data:
           "options": {
             "colorMode": "none",
             "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
+              "fields": ""
+            }
           },
           "pluginVersion": "13.0.2",
           "targets": [
@@ -285,7 +257,6 @@ data:
               }
             ]
           },
-          "pluginVersion": "13.0.2",
           "targets": [
             {
               "expr": "certmanager_certificate_ready_status{condition=\"False\"} == 1",
@@ -403,7 +374,6 @@ data:
               }
             ]
           },
-          "pluginVersion": "13.0.2",
           "targets": [
             {
               "expr": "certmanager_certificate_renewal_timestamp_seconds - time()",
@@ -564,7 +534,6 @@ data:
               }
             ]
           },
-          "pluginVersion": "13.0.2",
           "targets": [
             {
               "expr": "certmanager_certificate_ready_status",
@@ -615,38 +584,11 @@ data:
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "showValues": false,
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
+                "showPoints": "auto"
               },
               "thresholds": {
                 "mode": "absolute",
@@ -688,7 +630,6 @@ data:
               "sort": "none"
             }
           },
-          "pluginVersion": "13.0.2",
           "targets": [
             {
               "expr": "sum by (status) (rate(certmanager_http_acme_client_request_count[5m]))",

@@ -1,14 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended",
-    "github>cujarrett/homelab//.github/renovate-shared"
-  ],
-  "assignees": ["cujarrett"],
+  "extends": ["github>cujarrett/homelab//.github/renovate-shared"],
   "reviewers": ["cujarrett"],
   "enabledManagers": ["argocd", "crossplane", "kubernetes","custom.regex"],
   "ignoreTests": true,
-  "minimumReleaseAge": "7 days",
   "customManagers": [
     {
       "customType": "regex",
@@ -41,7 +36,6 @@
     },
     {
       "matchPackageNames": ["wordpress"],
-      "minimumReleaseAge": "7 days",
       "prBodyNotes": [
         "⚠️ WordPress core lives in the container filesystem, not the `wp-content` PVC. Whatever tag is pinned here is what a restarted pod runs - a self-applied update inside the pod is discarded on restart. Merging this is what makes the version durable.",
         "To take a security release before the 7-day cooldown expires, tick this update on the Renovate Dependency Dashboard under **Pending Status Checks** to force the PR immediately. Editing the tag by hand also works and is faster."

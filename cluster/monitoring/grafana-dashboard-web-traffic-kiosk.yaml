@@ -22,7 +22,6 @@ data:
         {
           "id": 1, "type": "stat", "title": "blog.mattjarrett.dev",
           "gridPos": { "x": 0, "y": 0, "w": 3, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "fixedColor": "blue", "mode": "fixed" } } },
           "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
@@ -30,7 +29,6 @@ data:
         {
           "id": 2, "type": "stat", "title": "mattjarrett.dev",
           "gridPos": { "x": 3, "y": 0, "w": 3, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "fixedColor": "purple", "mode": "fixed" } } },
           "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes|web-mattjarrett-dev.*@kubernetes\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
@@ -38,7 +36,6 @@ data:
         {
           "id": 4, "type": "stat", "title": "myvinyl.mattjarrett.dev",
           "gridPos": { "x": 6, "y": 0, "w": 3, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "fixedColor": "super-light-blue", "mode": "fixed" } } },
           "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"my-vinyl-my-vinyl.*@kubernetes\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
@@ -46,7 +43,6 @@ data:
         {
           "id": 5, "type": "stat", "title": "jspollock.mattjarrett.dev",
           "gridPos": { "x": 9, "y": 0, "w": 3, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "fixedColor": "light-purple", "mode": "fixed" } } },
           "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"js-pollock-js-pollock.*@kubernetes\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
@@ -54,7 +50,6 @@ data:
         {
           "id": 7, "type": "stat", "title": "launchpad.mattjarrett.dev",
           "gridPos": { "x": 12, "y": 0, "w": 3, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "fixedColor": "dark-blue", "mode": "fixed" } } },
           "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"launchpad-launchpad.*@kubernetes\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
@@ -62,7 +57,6 @@ data:
         {
           "id": 6, "type": "timeseries", "title": "Requests / hr - All Sites",
           "gridPos": { "x": 15, "y": 0, "w": 9, "h": 5 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": { "unit": "short", "decimals": 0, "custom": { "lineWidth": 2, "fillOpacity": 15, "lineInterpolation": "smooth" } },
             "overrides": [

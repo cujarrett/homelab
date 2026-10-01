@@ -30,10 +30,6 @@ data:
       "liveNow": false,
       "panels": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Number of live guest sandbox workspaces (max 5).",
           "fieldConfig": {
             "defaults": {
@@ -69,26 +65,16 @@ data:
             "colorMode": "background",
             "graphMode": "none",
             "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
+              "fields": ""
+            }
           },
           "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum(launchpad_guest_workspace_count)",
               "instant": true,
               "legendFormat": "workspaces",
@@ -99,10 +85,6 @@ data:
           "type": "stat"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Active guest workspace count and total resource count over time.",
           "fieldConfig": {
             "defaults": {
@@ -110,38 +92,11 @@ data:
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
                 "lineInterpolation": "smooth",
                 "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "showValues": false,
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
+                "showPoints": "auto"
               },
               "decimals": 0,
               "thresholds": {
@@ -218,22 +173,13 @@ data:
               "sort": "desc"
             }
           },
-          "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum(launchpad_guest_workspace_count)",
               "legendFormat": "workspaces",
               "refId": "A"
             },
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum(launchpad_guest_resource_count)",
               "legendFormat": "resources",
               "refId": "B"
@@ -243,10 +189,6 @@ data:
           "type": "timeseries"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Total resources across all active guest workspaces.",
           "fieldConfig": {
             "defaults": {
@@ -269,26 +211,16 @@ data:
             "colorMode": "none",
             "graphMode": "none",
             "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
+              "fields": ""
+            }
           },
           "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum(launchpad_guest_resource_count)",
               "instant": true,
               "legendFormat": "resources",
@@ -299,10 +231,6 @@ data:
           "type": "stat"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -367,10 +295,6 @@ data:
           "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum(platform_xr_time_to_ready_seconds_sum{kind!~\"X?Topic|X?Subscription\"}) by (kind, backend)\n/\nsum(platform_xr_time_to_ready_seconds_count{kind!~\"X?Topic|X?Subscription\"}) by (kind, backend)",
               "legendFormat": "{{kind}} / {{backend}}",
               "refId": "A"
@@ -380,10 +304,6 @@ data:
           "type": "bargauge"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -448,10 +368,6 @@ data:
           "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "label_replace(\n  (\n    sum by (init_container) (\n      platform_pod_init_container_seconds_sum{init_container!~\"linkerd.*|istio-proxy|wait-for-object-storage-.*-binding\"}\n    )\n    /\n    sum by (init_container) (\n      platform_pod_init_container_seconds_count{init_container!~\"linkerd.*|istio-proxy|wait-for-object-storage-.*-binding\"}\n    )\n    or\n    label_replace(\n      sum(platform_pod_init_container_seconds_sum{init_container=~\"wait-for-object-storage-.*-binding\"})\n      /\n      sum(platform_pod_init_container_seconds_count{init_container=~\"wait-for-object-storage-.*-binding\"}),\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"init_container\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n)",
               "legendFormat": "{{init_container}}",
               "refId": "A"
@@ -461,10 +377,6 @@ data:
           "type": "bargauge"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -529,10 +441,6 @@ data:
           "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "sum(platform_managed_time_to_ready_seconds_sum{kind!~\"NATS.*\"}) by (kind)\n/\nsum(platform_managed_time_to_ready_seconds_count{kind!~\"NATS.*\"}) by (kind)",
               "legendFormat": "{{kind}}",
               "refId": "A"
@@ -542,10 +450,6 @@ data:
           "type": "bargauge"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Each series is one rollout event \u2014 the line appears when that XR or pod first becomes ready, and its height is how long it took. Solid lines = total XR TTR; dashed = pod ready (init containers done); dotted = per-stage binding wait. Zoom into a provisioning window to see individual rollout shapes.",
           "fieldConfig": {
             "defaults": {
@@ -553,35 +457,12 @@ data:
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "seconds to ready",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 4,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
                 "lineInterpolation": "stepAfter",
                 "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
                 "showPoints": "never",
-                "showValues": false,
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
                 "thresholdsStyle": {
                   "mode": "line"
                 }
@@ -682,31 +563,18 @@ data:
               "sort": "desc"
             }
           },
-          "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "platform_xr_time_to_ready_seconds_instance{kind!~\"X?Topic|X?Subscription\"} < 3600",
               "legendFormat": "{{kind}} \u00b7 {{name}}",
               "refId": "A"
             },
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "platform_pod_time_to_ready_seconds_instance{exported_namespace!=\"platform-exporter\"} < 3600",
               "legendFormat": "pod \u00b7 {{exported_namespace}}",
               "refId": "B"
             },
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "label_replace(\n  (\n    platform_pod_init_container_seconds_instance{exported_namespace!=\"platform-exporter\",init_container!~\"linkerd.*|istio-proxy|wait-for-object-storage-.*-binding\"}\n    or\n    label_replace(\n      platform_pod_init_container_seconds_instance{exported_namespace!=\"platform-exporter\",init_container=~\"wait-for-object-storage-.*-binding\"},\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"stage\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n) < 3600",
               "legendFormat": "{{exported_namespace}} \u00b7 {{stage}}",
               "refId": "C"
@@ -716,10 +584,6 @@ data:
           "type": "timeseries"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "One row per XR. Ready status and provisioning time for all composite resources. TTR is set once when the XR first becomes ready and is not updated for subsequent reconciles.",
           "fieldConfig": {
             "defaults": {
@@ -883,13 +747,8 @@ data:
             "cellHeight": "sm",
             "showHeader": true
           },
-          "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "platform_xr_ready",
               "format": "table",
               "instant": true,
@@ -897,10 +756,6 @@ data:
               "refId": "A"
             },
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "platform_xr_time_to_ready_seconds_instance",
               "format": "table",
               "instant": true,
@@ -956,10 +811,6 @@ data:
           "type": "table"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Per-pod init container wait time broken down by stage. Each row is one stage for one pod. Zoom the time range to recent rollout windows for meaningful data.",
           "fieldConfig": {
             "defaults": {
@@ -1074,13 +925,8 @@ data:
             "cellHeight": "sm",
             "showHeader": true
           },
-          "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "label_replace(\n  (\n    platform_pod_init_container_seconds_instance{init_container!~\"linkerd.*|istio-proxy|wait-for-object-storage-.*-binding\"}\n    or\n    label_replace(\n      platform_pod_init_container_seconds_instance{init_container=~\"wait-for-object-storage-.*-binding\"},\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"stage\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n)",
               "format": "table",
               "instant": true,
@@ -1128,10 +974,6 @@ data:
           "type": "table"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "Active bindings between Api instances and their platform dependencies (sql, nosql, topic, subscription, object-storage).",
           "fieldConfig": {
             "defaults": {
@@ -1233,13 +1075,8 @@ data:
             "cellHeight": "sm",
             "showHeader": true
           },
-          "pluginVersion": "13.1.0",
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "expr": "platform_xr_binding",
               "format": "table",
               "instant": true,
@@ -1276,10 +1113,6 @@ data:
           "type": "table"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "description": "GitHub pushes from homelab-workspaces that ArgoCD accepted. A launchpad change shows here within seconds. Rejected requests are left out, because the reachability probe sends one every 5m.",
           "fieldConfig": {
             "defaults": {
@@ -1317,10 +1150,6 @@ data:
           },
           "targets": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
               "editorMode": "code",
               "refId": "A",
               "interval": "5m",

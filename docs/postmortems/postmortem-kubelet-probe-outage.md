@@ -81,6 +81,8 @@ so nothing in Git reflects it. A node rebuilt without it brings the bug back sil
 
 ## Actions
 
+Cilium was removed on 2026-09-06, so the Cilium pin, the `cilium-pre-merge-check` skill and the Cilium Renovate hold no longer apply.
+
 - [x] Disable k3s's NetworkPolicy controller; clear stale kube-router rules on all four nodes
 - [x] Pin Cilium to 1.19.6 until the 1.20.x verifier failure is fixed upstream
 - [x] Restore the readiness probes removed as a workaround
