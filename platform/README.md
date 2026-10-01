@@ -68,12 +68,15 @@ Credentials reach the pod via `/bindings/`, following the [servicebinding.io](ht
 
 ```
 /bindings/
-  sql/              type  host  port  database  username  password  (private-cloud)
-  sql/              type  host  port  database  username  role-arn  (public-cloud)
-  cache/            type  host  port
-  nosql/            type  table-name  region  role-arn
-  object-storage/   type  bucket  region  role-arn
+  sql/                  type  provider  host  port  database  username  password  (private-cloud)
+  sql/                  type  provider  host  port  database  username  role-arn  (public-cloud)
+  cache/                type  provider  host  port                                (private-cloud)
+  cache/                type  provider  host  port  role-arn                      (public-cloud)
+  nosql/                type  provider  table-name  region  role-arn
+  object-storage-foo/   type  provider  bucket  region  role-arn
 ```
+
+Each `objectStorageRefs` entry mounts at `object-storage-<ref-name>/`, so a ref named `foo` lands at `/bindings/object-storage-foo/`. The other kinds bind at most once per `Api` and use a fixed directory. The value of each file is in [Api → Binding secrets](./api/README.md#binding-secrets).
 
 For non-AWS resources (private-cloud SQL, in-cluster cache, NATS), the app reads credential files directly:
 

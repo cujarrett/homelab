@@ -117,5 +117,5 @@ Before telling the user to commit, always run `/security-review`. Once it confir
 Remind the user to:
 1. `cd <app-name> && go mod tidy`
 2. Create the GitHub repo and push
-3. Add the `HOMELAB_WORKSPACES_PAT` secret to the new repo - `/wire-deploy-automation` covers how to scope the token, and is also what to run if the deploy job ever needs rewiring
+3. Add the `HOMELAB_WORKSPACES_PAT` secret to the new repo. [GitHub Tokens](../../docs/github-tokens.md) covers which token to use and how to seed it. Use `--body "$VAR"` or no flag, because `gh secret set --body -` stores a one-character secret
 4. Run `argocd app sync xrs --grpc-web` after the first image is pushed and ArgoCD detects the Api

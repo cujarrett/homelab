@@ -10,16 +10,7 @@ But there's still a gap in the experience: getting those provisioned credentials
 
 ## The servicebinding.io convention
 
-A "binding" is a directory mounted into the container at `$SERVICE_BINDING_ROOT/<binding-name>/`. Each file in that directory contains one value. What actually lands there depends on the resource:
-
-```
-/bindings/
-  sql/              type  host  port  database  username  password  (private-cloud)
-  sql/              type  host  port  database  username  role-arn  (public-cloud)
-  cache/            type  host  port
-  nosql/            type  table-name  region  role-arn
-  object-storage/   type  bucket  region  role-arn
-```
+A "binding" is a directory mounted into the container at `$SERVICE_BINDING_ROOT/<binding-name>/`. Each file in that directory contains one value. The directory each kind mounts at, and the files in it, are in [Platform → Service binding](../README.md#service-binding).
 
 The app reads `os.ReadFile("/bindings/sql/host")` instead of `os.Getenv("DB_HOST")`. This is the invariant: regardless of which backend provisions the resource, the app always reads files from the same path. Whether the value behind `role-arn` came from an AWS-backed resource or `password` from an in-cluster one is a platform concern, not the app's.
 
