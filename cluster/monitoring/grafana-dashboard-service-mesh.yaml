@@ -52,13 +52,13 @@ data:
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Percent of mesh requests carried over mutual TLS. This is the platform's mTLS coverage.",
+          "description": "Percent of requests between two mesh workloads carried over mutual TLS, over the last 24 hours. Ingress and Prometheus scrapes come from outside the mesh, so they are left out.",
           "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "unit": "percent", "decimals": 1, "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 80 }, { "color": "green", "value": 100 } ] } } },
           "gridPos": { "h": 4, "w": 5, "x": 10, "y": 0 },
           "id": 3,
           "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
           "pluginVersion": "13.0.1+security-01",
-          "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(istio_requests_total{reporter=\"destination\",connection_security_policy=\"mutual_tls\"}[$__rate_interval])) / sum(rate(istio_requests_total{reporter=\"destination\"}[$__rate_interval])) * 100", "refId": "A" } ],
+          "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(increase(istio_requests_total{reporter=\"destination\",source_workload!=\"unknown\",connection_security_policy=\"mutual_tls\"}[24h])) / sum(increase(istio_requests_total{reporter=\"destination\",source_workload!=\"unknown\"}[24h])) * 100", "refId": "A" } ],
           "title": "mTLS Coverage",
           "type": "stat"
         },
@@ -128,7 +128,7 @@ data:
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Requests split by connection security. mutual_tls = protected; none/unknown = plaintext or unmeshed peer.",
+          "description": "Requests split by connection security. none is traffic from outside the mesh, mostly Traefik ingress and Prometheus scrapes on ports left permissive for them.",
           "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "fillOpacity": 30, "showPoints": "never", "stacking": { "mode": "normal" } }, "unit": "reqps" } },
           "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
           "id": 9,
