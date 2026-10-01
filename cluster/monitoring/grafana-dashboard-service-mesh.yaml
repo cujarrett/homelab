@@ -186,6 +186,17 @@ data:
           "targets": [ { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.99, sum(rate(pilot_proxy_convergence_time_bucket[$__rate_interval])) by (le))", "legendFormat": "p99 convergence", "refId": "A" } ],
           "title": "Proxy Convergence Time (p99)",
           "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Each istio-proxy sidecar against its limit. ContainerNearMemoryLimit fires at 85% for 30m.",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "max": 100, "min": 0, "unit": "percent", "decimals": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 85}]}}},
+          "gridPos": {"h": 12, "w": 24, "x": 0, "y": 34},
+          "id": 14,
+          "options": {"displayMode": "basic", "orientation": "horizontal", "showUnfilled": true, "valueMode": "color", "namePlacement": "left", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+          "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sort_desc(max by (namespace, pod) (container_memory_working_set_bytes{container=\"istio-proxy\"}) / on (namespace, pod) max by (namespace, pod) (kube_pod_container_resource_limits{container=\"istio-proxy\",resource=\"memory\"} or kube_pod_init_container_resource_limits{container=\"istio-proxy\",resource=\"memory\"}) * 100)", "instant": true, "legendFormat": "{{namespace}} / {{pod}}", "refId": "A"}],
+          "title": "Sidecar Memory % of Limit",
+          "type": "bargauge"
         }
       ],
       "preload": false,

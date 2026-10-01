@@ -1441,6 +1441,76 @@ data:
           ],
           "title": "Memory % of Limit",
           "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Each container against its own limit, sidecars included. ContainerNearMemoryLimit fires at 85% for 30m. Containers with no limit are not shown.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "max": 100,
+              "min": 0,
+              "unit": "percent",
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "red",
+                    "value": 85
+                  }
+                ]
+              }
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 29
+          },
+          "id": 15,
+          "options": {
+            "displayMode": "basic",
+            "orientation": "horizontal",
+            "showUnfilled": true,
+            "valueMode": "color",
+            "namePlacement": "left",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sort_desc(max by (pod, container) (container_memory_working_set_bytes{namespace=\"$namespace\",container!=\"\"}) / on (pod, container) max by (pod, container) (kube_pod_container_resource_limits{namespace=\"$namespace\",resource=\"memory\"} or kube_pod_init_container_resource_limits{namespace=\"$namespace\",resource=\"memory\"}) * 100)",
+              "instant": true,
+              "legendFormat": "{{pod}} / {{container}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Memory % of Limit per Container",
+          "type": "bargauge"
         }
       ],
       "preload": false,
