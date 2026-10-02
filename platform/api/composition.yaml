@@ -579,7 +579,8 @@ spec:
             {{- end }}
             {{- if $nosqlRefName }}
             {{- /* No hashing fallback here - a table role name is short by construction. */}}
-            {{- $policy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "dynamodb:GetItem" "dynamodb:PutItem" "dynamodb:UpdateItem" "dynamodb:DeleteItem" "dynamodb:Query" "dynamodb:Scan" "dynamodb:BatchGetItem" "dynamodb:BatchWriteItem") "Resource" (list (printf "arn:aws:dynamodb:us-east-1:*:table/%s" $nosqlRefName) (printf "arn:aws:dynamodb:us-east-1:*:table/%s/index/*" $nosqlRefName)))) | toJson }}
+            {{- $tableName := printf "platform-%s-%s" $ns $nosqlRefName }}
+            {{- $policy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "dynamodb:GetItem" "dynamodb:PutItem" "dynamodb:UpdateItem" "dynamodb:DeleteItem" "dynamodb:Query" "dynamodb:Scan" "dynamodb:BatchGetItem" "dynamodb:BatchWriteItem") "Resource" (list (printf "arn:aws:dynamodb:us-east-1:*:table/%s" $tableName) (printf "arn:aws:dynamodb:us-east-1:*:table/%s/index/*" $tableName)))) | toJson }}
             {{- $iamBindings = append $iamBindings (dict
                 "roleName" (printf "%s-nosql" $name)
                 "roleKey" "role-nosql"
@@ -590,7 +591,7 @@ spec:
                 "secretName" (printf "%s-nosql" $name)
                 "secretKey" "binding-secret-nosql"
                 "bindingType" "dynamodb"
-                "dataKey" "table-name" "dataValue" $nosqlRefName
+                "dataKey" "table-name" "dataValue" $tableName
                 "roleArn" (printf "arn:aws:iam::%s:role/crossplane/crossplane-%s-%s-nosql" $awsAccountId $ns $name)) }}
             {{- end }}
             {{- range $ref := $managedSecretRefs }}

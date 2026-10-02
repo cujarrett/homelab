@@ -90,5 +90,5 @@ kubectl get secret foo-nosql -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 
 # Verify table exists in AWS
-aws dynamodb describe-table --table-name foo-events --region us-east-1
+aws dynamodb describe-table --table-name platform-foo-foo-events --region us-east-1
 ```

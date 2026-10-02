@@ -635,7 +635,7 @@ if ! $PRIVATE_ONLY; then
     aws rds describe-db-instances --db-instance-identifier e2e-sql-public --region "$REGION" \
       --query 'DBInstances[].DBInstanceIdentifier' --output text
   aws_gone "DynamoDB table gone" \
-    aws dynamodb describe-table --table-name e2e-nosql --region "$REGION" \
+    aws dynamodb describe-table --table-name "platform-$NS-e2e-nosql" --region "$REGION" \
       --query 'Table.TableName' --output text
   aws_gone "S3 bucket gone" \
     aws s3api head-bucket --bucket "platform-$NS-e2e-assets" --region "$REGION"

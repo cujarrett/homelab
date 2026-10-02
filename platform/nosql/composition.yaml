@@ -25,6 +25,9 @@ spec:
             {{- $partitionKey := $xr.spec.parameters.partitionKey | default "id" }}
             {{- $partitionKeyType := $xr.spec.parameters.partitionKeyType | default "S" }}
             {{- $dataRetention := $xr.spec.parameters.dataRetention | default "retain" }}
+            {{- /* Namespace in the name so the Api policy, which builds this from its own */ -}}
+            {{- /* namespace, can only reach tables in that namespace.                   */ -}}
+            {{- $tableName := printf "platform-%s-%s" $ns $name }}
             {{- $managementPolicies := list "Observe" "Create" "Update" "LateInitialize" }}
             {{- if eq $dataRetention "delete" }}
             {{- $managementPolicies = list "*" }}
@@ -43,7 +46,7 @@ spec:
               annotations:
                 {{- /* Deterministic, so the Api inline policy can scope to the exact */}}
                 {{- /* table ARN without wildcards.                                   */}}
-                crossplane.io/external-name: {{ $name }}
+                crossplane.io/external-name: {{ $tableName }}
                 gotemplating.fn.crossplane.io/composition-resource-name: table
                 gotemplating.fn.crossplane.io/ready: {{ $ready | quote }}
             spec:
@@ -56,6 +59,6 @@ spec:
                   - name: {{ $partitionKey }}
                     type: {{ $partitionKeyType }}
                 tags:
-                  Table: {{ $name }}
+                  Table: {{ $tableName }}
                   App: {{ $name }}
                   Namespace: {{ $ns }}
