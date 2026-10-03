@@ -167,3 +167,105 @@ spec:
               - key: "{{ request.object.metadata.name }}"
                 operator: NotEquals
                 value: "guest-*"
+
+    # The AppProject allows every workspace namespace to every workspace, and a manifest
+    # that sets metadata.namespace overrides the Application's destination.
+    # The tracking annotation names the Application, which is the workspace directory.
+    - name: workspaces-stay-in-their-namespace
+      match:
+        any:
+          - resources:
+              kinds:
+                - platform.local.lab/*/*
+                - ConfigMap
+                - Service
+                - RoleBinding
+              # Mirrors the workloads AppProject destinations in
+              # cluster/argocd/projects.yaml.
+              namespaces:
+                - github-exporter
+                - graph-test
+                - graph-prod
+                - js-pollock
+                - kentjarrett-com
+                - launchpad
+                - mattjarrett-com
+                - mattjarrett-dev
+                - my-vinyl
+                - platform-connections-demo
+                - platform-graph-demo
+                - sump-pump
+                - "guest-*"
+            subjects:
+              - kind: ServiceAccount
+                name: argocd-application-controller
+                namespace: argocd
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: AnyIn
+            value: [CREATE, UPDATE]
+          # Each Apollo operator app binds its roles in the namespaces it watches.
+          # The first rule above already limits those bindings to that one shape.
+          - key: >-
+              {{ request.object.kind == 'RoleBinding'
+                 && contains(`["apollo-operator", "apollo-operator-prod"]`,
+                    split(request.object.metadata.annotations."argocd.argoproj.io/tracking-id" || '', ':')[0]) }}
+            operator: Equals
+            value: false
+      skipBackgroundRequests: true
+      validate:
+        allowExistingViolations: false
+        message: >-
+          {{ request.object.kind }} {{ request.object.metadata.name }} is synced into
+          {{ request.namespace }} by another workspace. A workspace can only deploy into
+          the namespace named after its directory.
+        deny:
+          conditions:
+            any:
+              - key: "{{ split(request.object.metadata.annotations.\"argocd.argoproj.io/tracking-id\" || '', ':')[0] }}"
+                operator: NotEquals
+                value: "{{ request.namespace }}"
+
+    # Owning a Namespace means pruning it, and everything in it, when the file goes.
+    - name: workspaces-own-only-their-namespace
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+              names:
+                - github-exporter
+                - graph-test
+                - graph-prod
+                - js-pollock
+                - kentjarrett-com
+                - launchpad
+                - mattjarrett-com
+                - mattjarrett-dev
+                - my-vinyl
+                - platform-connections-demo
+                - platform-graph-demo
+                - sump-pump
+                - "guest-*"
+            subjects:
+              - kind: ServiceAccount
+                name: argocd-application-controller
+                namespace: argocd
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: AnyIn
+            value: [CREATE, UPDATE]
+      skipBackgroundRequests: true
+      validate:
+        allowExistingViolations: false
+        message: >-
+          Namespace {{ request.object.metadata.name }} can only be synced by the workspace
+          directory of the same name.
+        deny:
+          conditions:
+            any:
+              - key: "{{ split(request.object.metadata.annotations.\"argocd.argoproj.io/tracking-id\" || '', ':')[0] }}"
+                operator: NotEquals
+                value: "{{ request.object.metadata.name }}"

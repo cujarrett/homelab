@@ -309,7 +309,7 @@ The backend is an `Api` with one endpoint per query and one for the live rows. E
 | Operator Helm chart `registry-1.docker.io/apollograph/operator-chart`, installed twice. The prod install sets `installCRDs: false` and `rbac.create: false`. The chart's CRDs ship empty lists the API server drops, so the Application needs `ignoreDifferences` on them | [apollo-operator.yaml](../../cluster/argocd/apollo-operator.yaml) |
 | The operator's namespace in the ESO store `conditions` | [store.yaml](../../cluster/external-secrets/store.yaml) |
 | Crossplane RBAC for `apollographql.com` Kinds | [rbac.yaml](../../cluster/crossplane/rbac.yaml) |
-| `graph-test` and `graph-prod` in the `workloads` project destinations and both namespace lists of the workspace RBAC policy | [projects.yaml](../../cluster/argocd/projects.yaml), [workspace-rbac.yaml](../../cluster/kyverno/workspace-rbac.yaml) |
+| `graph-test` and `graph-prod` in the `workloads` project destinations and every namespace list of the workspace RBAC policy | [projects.yaml](../../cluster/argocd/projects.yaml), [workspace-rbac.yaml](../../cluster/kyverno/workspace-rbac.yaml) |
 | A GraphOS key that can run checks, and a token that can write `homelab-workspaces`, as Actions secrets | each subgraph repo |
 | Kyverno `ImageValidatingPolicy` verifying `main`-branch cosign signatures from each subgraph repo on images in both lanes, for pods and for Apollo `Subgraph` resources | `cluster/kyverno/` |
 | `graph.mattjarrett.dev` tunnel entry for the demo page, before its cert. The backend sits behind the page's `apiProxies` and needs no hostname | `/add-cloudflare-tunnel-hostname` |
