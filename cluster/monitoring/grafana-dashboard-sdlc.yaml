@@ -67,15 +67,23 @@ data:
           },
           "id": 60,
           "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": ""
+              "fields": "",
+              "values": false
             },
-            "textMode": "value"
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
           },
-          "pluginVersion": "13.2.0",
+          "pluginVersion": "13.2.2",
           "targets": [
             {
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"7d\"}) / (sum(github_exporter_pr_merged{repo=~\"$repo\",window=\"7d\"}) > 0)",
@@ -114,16 +122,23 @@ data:
           },
           "id": 61,
           "options": {
+            "colorMode": "value",
             "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": ""
+              "fields": "",
+              "values": false
             },
-            "textMode": "value"
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
           },
-          "pluginVersion": "13.2.0",
+          "pluginVersion": "13.2.2",
           "targets": [
             {
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"7d\"}) or vector(0)",
@@ -172,16 +187,23 @@ data:
           },
           "id": 62,
           "options": {
+            "colorMode": "value",
             "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": ""
+              "fields": "",
+              "values": false
             },
-            "textMode": "value"
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
           },
-          "pluginVersion": "13.2.0",
+          "pluginVersion": "13.2.2",
           "targets": [
             {
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",scope=\"auto-candidate\",window=\"30d\"}) / (sum(github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",window=\"30d\"}) > 0)",
@@ -230,16 +252,23 @@ data:
           },
           "id": 5,
           "options": {
+            "colorMode": "value",
             "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": ""
+              "fields": "",
+              "values": false
             },
-            "textMode": "value"
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
           },
-          "pluginVersion": "13.2.0",
+          "pluginVersion": "13.2.2",
           "targets": [
             {
               "expr": "sum(github_exporter_workflow_runs{repo=~\"$repo\",conclusion=\"success\"}) / (sum(github_exporter_workflow_runs{repo=~\"$repo\",conclusion=~\"success|failure\"}) > 0)",
@@ -286,16 +315,23 @@ data:
           },
           "id": 91,
           "options": {
+            "colorMode": "value",
             "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": ""
+              "fields": "",
+              "values": false
             },
-            "textMode": "value"
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
           },
-          "pluginVersion": "13.2.0",
+          "pluginVersion": "13.2.2",
           "targets": [
             {
               "expr": "sum(github_exporter_pr_open_blocked{repo=~\"$repo\"}) or vector(0)",
@@ -338,16 +374,23 @@ data:
           },
           "id": 94,
           "options": {
+            "colorMode": "value",
             "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": ""
+              "fields": "",
+              "values": false
             },
-            "textMode": "value"
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
           },
-          "pluginVersion": "13.2.0",
+          "pluginVersion": "13.2.2",
           "targets": [
             {
               "expr": "sum(kube_deployment_status_condition{condition=\"Progressing\",status=\"false\"} == 1) or vector(0)",
@@ -390,16 +433,23 @@ data:
           },
           "id": 95,
           "options": {
+            "colorMode": "value",
             "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": ""
+              "fields": "",
+              "values": false
             },
-            "textMode": "value"
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
           },
-          "pluginVersion": "13.2.0",
+          "pluginVersion": "13.2.2",
           "targets": [
             {
               "expr": "count(argocd_app_info{health_status=\"Degraded\"}) or vector(0)",
@@ -442,16 +492,23 @@ data:
           },
           "id": 4,
           "options": {
+            "colorMode": "value",
             "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": ""
+              "fields": "",
+              "values": false
             },
-            "textMode": "value"
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
           },
-          "pluginVersion": "13.2.0",
+          "pluginVersion": "13.2.2",
           "targets": [
             {
               "expr": "count(increase(github_exporter_poll_errors_total{repo=~\"$repo\"}[1h]) > 0) or vector(0)",
@@ -470,14 +527,37 @@ data:
                 "mode": "palette-classic"
               },
               "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "bars",
                 "fillOpacity": 80,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
                 "lineInterpolation": "linear",
                 "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
                 "showPoints": "never",
+                "showValues": false,
+                "spanNulls": false,
                 "stacking": {
                   "group": "A",
                   "mode": "normal"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
                 }
               },
               "decimals": 0,
@@ -547,6 +627,7 @@ data:
               "sort": "none"
             }
           },
+          "pluginVersion": "13.2.2",
           "targets": [
             {
               "editorMode": "code",
@@ -569,6 +650,10 @@ data:
           "type": "timeseries"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "description": "Thirty days of merges, split by whether a person spent attention on it.",
           "fieldConfig": {
             "defaults": {
@@ -577,6 +662,7 @@ data:
                 "mode": "fixed"
               },
               "decimals": 0,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -652,9 +738,13 @@ data:
             "sizing": "manual",
             "valueMode": "text"
           },
-          "pluginVersion": "13.2.0",
+          "pluginVersion": "13.2.2",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "editorMode": "code",
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"30d\"})",
               "instant": true,
@@ -662,6 +752,10 @@ data:
               "refId": "A"
             },
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "editorMode": "code",
               "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"30d\"})",
               "instant": true,
@@ -875,6 +969,7 @@ data:
             "showHeader": true,
             "sortBy": []
           },
+          "pluginVersion": "13.2.2",
           "targets": [
             {
               "expr": "sum by (repo) (github_exporter_pr_open{repo=~\"$repo\"})",
@@ -935,22 +1030,22 @@ data:
                   "Time 6": true
                 },
                 "indexByName": {
-                  "repo": 0,
-                  "Value #Open": 1,
-                  "Value #Merged": 2,
-                  "Value #Human": 3,
                   "Value #Blocked": 4,
                   "Value #Eligible": 5,
-                  "Value #Pass": 6
+                  "Value #Human": 3,
+                  "Value #Merged": 2,
+                  "Value #Open": 1,
+                  "Value #Pass": 6,
+                  "repo": 0
                 },
                 "renameByName": {
-                  "repo": "Repo",
-                  "Value #Open": "Open",
-                  "Value #Merged": "Merged 30d",
-                  "Value #Human": "Human PRs",
                   "Value #Blocked": "Bot, not eligible",
                   "Value #Eligible": "Eligible",
-                  "Value #Pass": "CI pass rate"
+                  "Value #Human": "Human PRs",
+                  "Value #Merged": "Merged 30d",
+                  "Value #Open": "Open",
+                  "Value #Pass": "CI pass rate",
+                  "repo": "Repo"
                 }
               }
             },
