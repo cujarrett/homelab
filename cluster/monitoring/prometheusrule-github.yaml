@@ -33,3 +33,15 @@ spec:
               Turn on "Allow auto-merge" and require the repo's CI check on main, the
               same as weather-exporter. Without both, Renovate merges hours late on its
               own next visit, or without waiting on CI.
+        # GitHub never 401s a valid token, so one is enough to alert on.
+        - alert: LaunchpadGitHubTokenRejected
+          expr: increase(launchpad_github_auth_failures_total[10m]) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "GitHub is rejecting launchpad-api's token"
+            description: >-
+              The homelab-workspaces-launchpad token expired or was revoked, so Launchpad
+              cannot list workspaces or create sandboxes. Regenerate it on GitHub and run
+              ./scripts/github-token-rotate/github-token-rotate.sh.

@@ -12,9 +12,8 @@ manifests.
 
 ## Deploy tokens
 
-Rotate with [scripts/homelab-workspaces-deploy-token-rotate/](../scripts/homelab-workspaces-deploy-token-rotate/)
-and [scripts/homelab-deploy-token-rotate/](../scripts/homelab-deploy-token-rotate/). The scripts only
-find repos that already hold the secret, so seed a new repo once:
+Rotate with [GitHub Token Rotate](../scripts/github-token-rotate/). It only finds repos that already
+hold the secret, so seed a new repo once:
 
 ```bash
 gh secret set HOMELAB_WORKSPACES_PAT -R cujarrett/<new-repo> --body "<token>"
