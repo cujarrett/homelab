@@ -74,6 +74,11 @@ COPY --from=build /app/dist/foo/browser /usr/share/nginx/html
 EXPOSE 80
 ```
 
+The default `contentSecurityPolicy` blocks inline scripts, and a blocked script fails silently with only a browser console error. The built `index.html` must load every script from a file. Some frameworks add inline scripts by default:
+
+- Angular: set `"optimization": { "scripts": true, "styles": { "minify": true, "inlineCritical": false }, "fonts": true }` in the production configuration, or the global stylesheet never applies
+- Create React App: build with `INLINE_RUNTIME_CHUNK=false`
+
 ## Operations
 
 ```bash
