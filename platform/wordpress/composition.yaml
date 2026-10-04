@@ -365,6 +365,9 @@ spec:
                         - name: mpm-tuning
                           mountPath: /etc/apache2/conf-enabled/zz-mpm-tuning.conf
                           subPath: zz-mpm-tuning.conf
+                        - name: php-uploads
+                          mountPath: /usr/local/etc/php/conf.d/uploads.ini
+                          subPath: uploads.ini
                   volumes:
                     - name: wp-content
                       persistentVolumeClaim:
@@ -375,6 +378,9 @@ spec:
                     - name: mpm-tuning
                       configMap:
                         name: {{ $name }}-mpm-tuning
+                    - name: php-uploads
+                      configMap:
+                        name: {{ $name }}-php-uploads
             ---
             # --- wp-cron CronJob ---
             # Runs scheduled events now that DISABLE_WP_CRON stops page views doing it.
@@ -520,6 +526,22 @@ spec:
                     MinSpareServers 1
                     MaxSpareServers 3
                 </IfModule>
+            ---
+            # --- PHP upload limit ConfigMap ---
+            # The image default of 2M rejects most phone photos.
+            # 10M fits a 12MP phone photo with room to spare.
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{ $name }}-php-uploads
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: php-uploads-configmap
+                gotemplating.fn.crossplane.io/ready: "True"
+            data:
+              uploads.ini: |
+                upload_max_filesize = 10M
+                post_max_size = 10M
             ---
             # --- Security mu-plugin ConfigMap ---
             # Must-use plugin: disables XML-RPC and Application Passwords (brute-force and
