@@ -11,7 +11,7 @@
 # update is lost on restart - running and pinned are reported separately because a
 # site can serve the latest release and still be one restart from a vulnerable one.
 #
-# Usage: ./docs/wordpress/status-wordpress.sh
+# Usage: ./scripts/wordpress/status-wordpress.sh
 set -uo pipefail
 
 SITES=(mattjarrett-com kentjarrett-com)

@@ -277,7 +277,7 @@ DO NOT remove the file first - that orphans resources.
 - The `dataRetention` field in the WordPress XR controls which is used
 
 ### WordPress backup and restore
-Scripts and the full procedure are in [docs/wordpress/](./docs/wordpress/). Backups are off-repo.
+Scripts are in [scripts/wordpress/](./scripts/wordpress/) and the procedure is in [WordPress Restore Guide](./docs/wordpress/README.md). Backups are off-repo.
 
 ## ArgoCD AppProjects
 Four projects scope workloads by concern:

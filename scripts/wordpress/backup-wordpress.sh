@@ -6,10 +6,13 @@
 #   <backup-dir>/wp-content.tar.gz
 #
 # Usage:
-#   ./docs/wordpress/backup-wordpress.sh \
-#     --backup-dir  /path/to/backup \
+#   ./scripts/wordpress/backup-wordpress.sh \
 #     --namespace   mattjarrett-com \
-#     --instance    mattjarrett-com
+#     --instance    mattjarrett-com \
+#     [--backup-dir /path/to/backup]
+#
+# --backup-dir defaults to ~/Desktop/wp-backups/<instance>/<date-time>,
+# so each run gets its own folder.
 
 set -euo pipefail
 
@@ -27,7 +30,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 missing=()
-[[ -z "$BACKUP_DIR" ]] && missing+=("--backup-dir")
 [[ -z "$NAMESPACE" ]]  && missing+=("--namespace")
 [[ -z "$INSTANCE" ]]   && missing+=("--instance")
 if [[ ${#missing[@]} -gt 0 ]]; then
@@ -35,6 +37,7 @@ if [[ ${#missing[@]} -gt 0 ]]; then
   exit 1
 fi
 
+[[ -z "$BACKUP_DIR" ]] && BACKUP_DIR="$HOME/Desktop/wp-backups/$INSTANCE/$(date +%Y-%m-%d-%H%M)"
 mkdir -p "$BACKUP_DIR"
 SQL_FILE="$BACKUP_DIR/wordpress-backup.sql"
 WP_CONTENT_TAR="$BACKUP_DIR/wp-content.tar.gz"
@@ -66,4 +69,4 @@ echo "    $(du -h "$WP_CONTENT_TAR" | cut -f1), $(tar tzf "$WP_CONTENT_TAR" | wc
 
 echo ""
 echo "==> Backup complete: $BACKUP_DIR"
-echo "    Restore with: ./docs/wordpress/restore-wordpress.sh --backup-dir $BACKUP_DIR --namespace $NAMESPACE --instance $INSTANCE --old-url <url> --new-url <url>"
+echo "    Restore with: ./scripts/wordpress/restore-wordpress.sh --backup-dir $BACKUP_DIR --namespace $NAMESPACE --instance $INSTANCE --old-url <url> --new-url <url>"
