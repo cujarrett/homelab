@@ -136,6 +136,8 @@ SSH access: `ssh pi@192.168.10.10x`
 | `platform-graph-demo` | Api + Spa | Schema management walkthrough at `graph.mattjarrett.dev`; the backend runs fixed queries against the `graph-prod` router under a call budget and reads GitHub every ten minutes |
 | `platform-exporter` | platform-exporter | Custom Prometheus exporter for platform metrics; scraped via `platform-exporter-servicemonitor` |
 | `external-secrets` | External Secrets Operator | Renders cluster-setup Secrets from Parameter Store; every store and `ExternalSecret` is in `cluster/external-secrets/` |
+| `kyverno` | Kyverno | Admission, background and reports controllers; policy engine that enforces workspace and namespace rules |
+| `github-exporter` | github-exporter | Prometheus exporter for pull request, auto-merge and workflow metrics across the account's repos |
 | `reloader` | Stakater Reloader | Rolls a workload when a ConfigMap it names changes. Watches only workloads annotated `reloader.stakater.com/auto`, which the Api composition sets whenever `configFrom` is used. Secrets are ignored, since they reach apps as files kubelet refreshes in place |
 | `graph-test` | GraphApi ×2 + FederatedGraph | `records` and `reviews` subgraphs, one repo each (`storefront-records`, `storefront-reviews`), composed into `storefront-homelab@test`; router at `graph-test.local.lab` |
 | `graph-prod` | GraphApi ×2 + FederatedGraph | Same two subgraphs at the digests promoted from test by PR, composed into `storefront-homelab@prod`; router at `graph-prod.local.lab`. Published only by the prod operator in `apollo-operator-prod`, which holds its own key |
@@ -152,6 +154,10 @@ All use `local-lab-ca-issuer` (self-signed CA), TLS via Traefik `websecure` entr
 - `grafana.local.lab`
 - `prometheus.local.lab`
 - `longhorn.local.lab`
+- `graph-test.local.lab`
+- `graph-prod.local.lab`
+- `my-vinyl-api.local.lab`
+- `sump-pump-bridge.local.lab`
 
 ### How clients actually resolve
 
