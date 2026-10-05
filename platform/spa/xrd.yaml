@@ -109,12 +109,12 @@ spec:
                             type: string
                             pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
                             maxLength: 63
-                            description: "Namespace of app. Defaults to this SPA's own namespace when omitted."
+                            description: "Namespace of app. Must be this SPA's own namespace, which is also the default when omitted. A proxy cannot reach an Api in another namespace."
                           host:
                             type: string
                             pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
                             maxLength: 253
-                            description: "Off-platform destination, taken verbatim (e.g. api.weather.com)."
+                            description: "Off-platform destination, taken verbatim (e.g. api.weather.com). In-cluster names such as foo.bar.svc are refused."
                           upstreamPath:
                             type: string
                             pattern: "^/[A-Za-z0-9._~/-]*[A-Za-z0-9._~-]$"

@@ -100,6 +100,50 @@ spec:
                     operator: AnyNotIn
                     value: "{{ apis }}"
 
+    - name: apiproxies-stays-in-own-namespace
+      match:
+        any:
+          - resources:
+              kinds:
+                - platform.local.lab/v1alpha1/Spa
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: AnyIn
+            value: [CREATE, UPDATE]
+      skipBackgroundRequests: true
+      validate:
+        allowExistingViolations: false
+        message: >-
+          apiProxies can only reach an Api in this Spa's own namespace, and a host
+          cannot name an in-cluster address. A public Spa proxying another namespace's
+          Api would publish it to the internet.
+        foreach:
+          - list: "request.object.spec.parameters.apiProxies[?app]"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.namespace || '' }}"
+                    operator: NotEquals
+                    value: ""
+                  - key: "{{ element.namespace || '' }}"
+                    operator: NotEquals
+                    value: "{{ request.object.metadata.namespace }}"
+          # The host form is taken verbatim, so an in-cluster name there reaches the same Api.
+          - list: "request.object.spec.parameters.apiProxies[?host]"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ ends_with(element.host, '.svc') }}"
+                    operator: Equals
+                    value: true
+                  - key: "{{ ends_with(element.host, '.cluster.local') }}"
+                    operator: Equals
+                    value: true
+                  - key: "{{ contains(element.host, '.svc.') }}"
+                    operator: Equals
+                    value: true
+
     - name: configfrom-names-a-real-configmap
       match:
         any:
