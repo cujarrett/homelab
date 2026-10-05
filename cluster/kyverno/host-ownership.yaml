@@ -1,7 +1,7 @@
 # Two namespaces serving one host lets the second pass an HTTP-01 challenge for a
 # host the first already serves, take its private key through secretsFrom, and race
-# it for the "/" route. Seeing other namespaces' XRs needs a lookup a CEL rule
-# on the XRD cannot do.
+# it for the "/" route. Every XR host becomes an Ingress, so one Ingress lookup also
+# covers hosts no XR holds, such as blog and oidc.
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
@@ -12,10 +12,8 @@ metadata:
     policies.kyverno.io/title: Platform host ownership
     policies.kyverno.io/description: >-
       One namespace owns each host. An Spa, Api, Wordpress or FederatedGraph is denied
-      when an XR of any of those kinds in another namespace already sets the same host.
+      when an Ingress in another namespace already serves the same host.
 spec:
-  # Enforce. It only denies a host held by another namespace, and no two
-  # namespaces share one today.
   validationFailureAction: Enforce
   background: false
   rules:
@@ -28,31 +26,10 @@ spec:
                 - platform.local.lab/v1alpha1/Api
                 - platform.local.lab/v1alpha1/Wordpress
                 - platform.local.lab/v1alpha1/FederatedGraph
-      # Each list holds the namespaces, other than this XR's own, that set the same host.
-      # A same-namespace XR is skipped so an update of an existing host passes.
-      # ingressOwners also catches hosts no XR holds, such as blog and oidc.
+      # Namespaces other than this XR's own that serve the same host. Skipping the
+      # XR's own namespace lets an update of an existing host pass.
       context:
-        - name: spaOwners
-          apiCall:
-            urlPath: /apis/platform.local.lab/v1alpha1/spas
-            method: GET
-            jmesPath: "items[?spec.parameters.host == '{{ request.object.spec.parameters.host }}' && metadata.namespace != '{{ request.object.metadata.namespace }}'].metadata.namespace"
-        - name: apiOwners
-          apiCall:
-            urlPath: /apis/platform.local.lab/v1alpha1/apis
-            method: GET
-            jmesPath: "items[?spec.parameters.host == '{{ request.object.spec.parameters.host }}' && metadata.namespace != '{{ request.object.metadata.namespace }}'].metadata.namespace"
-        - name: wordpressOwners
-          apiCall:
-            urlPath: /apis/platform.local.lab/v1alpha1/wordpresses
-            method: GET
-            jmesPath: "items[?spec.parameters.host == '{{ request.object.spec.parameters.host }}' && metadata.namespace != '{{ request.object.metadata.namespace }}'].metadata.namespace"
-        - name: graphOwners
-          apiCall:
-            urlPath: /apis/platform.local.lab/v1alpha1/federatedgraphs
-            method: GET
-            jmesPath: "items[?spec.parameters.host == '{{ request.object.spec.parameters.host }}' && metadata.namespace != '{{ request.object.metadata.namespace }}'].metadata.namespace"
-        - name: ingressOwners
+        - name: otherOwners
           apiCall:
             urlPath: /apis/networking.k8s.io/v1/ingresses
             method: GET
@@ -69,40 +46,13 @@ spec:
       # what the API server stores, otherwise ArgoCD sits permanently OutOfSync.
       skipBackgroundRequests: true
       validate:
+        allowExistingViolations: false
         message: >-
           host {{ request.object.spec.parameters.host }} is already used by another namespace.
           Pick a different host.
         deny:
           conditions:
-            any:
-              - key: "{{ length(spaOwners) }}"
+            all:
+              - key: "{{ length(otherOwners) }}"
                 operator: GreaterThan
                 value: 0
-              - key: "{{ length(apiOwners) }}"
-                operator: GreaterThan
-                value: 0
-              - key: "{{ length(wordpressOwners) }}"
-                operator: GreaterThan
-                value: 0
-              - key: "{{ length(graphOwners) }}"
-                operator: GreaterThan
-                value: 0
-              - key: "{{ length(ingressOwners) }}"
-                operator: GreaterThan
-                value: 0
----
-# The lookups above run in the admission controller, and the chart binds it to "view".
-# Crossplane aggregates platform kinds into its own view role, so nothing grants the
-# read. Without it the admission controller denies every XR that sets a host.
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: kyverno:admission-controller:platform-hosts
-  labels:
-    rbac.kyverno.io/aggregate-to-admission-controller: "true"
-    rbac.kyverno.io/aggregate-to-background-controller: "true"
-    rbac.kyverno.io/aggregate-to-reports-controller: "true"
-rules:
-  - apiGroups: ["platform.local.lab"]
-    resources: ["spas", "apis", "wordpresses", "federatedgraphs"]
-    verbs: ["get", "list"]
