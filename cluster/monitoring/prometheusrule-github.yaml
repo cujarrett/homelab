@@ -33,6 +33,19 @@ spec:
               Turn on "Allow auto-merge" and require the repo's CI check on main, the
               same as weather-exporter. Without both, Renovate merges hours late on its
               own next visit, or without waiting on CI.
+        # Blocked means a required check failed or never reported.
+        # A check renamed in CI but not in branch protection never reports, so the PR waits forever.
+        - alert: AutoMergeBlocked
+          expr: github_exporter_pr_open_blocked > 0
+          for: 12h
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.repo }} has {{ $value }} PR with auto-merge armed that GitHub will not merge"
+            description: >-
+              Open the PR's checks. A failed check needs a fix or a re-run. A required
+              check stuck at "Expected" means branch protection names a job the workflow
+              no longer has, so update the required checks to match.
         # GitHub never 401s a valid token, so one is enough to alert on.
         - alert: LaunchpadGitHubTokenRejected
           expr: increase(launchpad_github_auth_failures_total[10m]) > 0
