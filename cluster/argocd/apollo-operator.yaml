@@ -29,8 +29,6 @@ spec:
               subgraph:
                 namespaces: &graphNamespaces
                   - graph-test
-                  # Rehearsal: a schema in graph-test composing a subgraph from here.
-                  - graph-xns
                 # Apollo operator bug: on expiry it re-pulls the whole image, even one pinned by digest.
                 # 60s default: 90 MB a minute per subgraph, to re-read a file that cannot change.
                 # No setting turns it off. This delays it to 30 days.
