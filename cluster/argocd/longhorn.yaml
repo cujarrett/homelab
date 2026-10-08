@@ -6,7 +6,7 @@ metadata:
 spec:
   project: cluster
   sources:
-    # Only the two non-default values the release actually needs - selfHeal is on,
+    # Only the non-default values the release actually needs - selfHeal is on,
     # so anything else added here fights the values already applied to the cluster.
     - repoURL: https://charts.longhorn.io
       chart: longhorn
@@ -17,6 +17,15 @@ spec:
           defaultSettings:
             defaultReplicaCount: 2
             storageMinimalAvailablePercentage: 10
+            # At 0, volumes stay on the old engine after a chart upgrade,
+            # and each node keeps a second instance manager running for them.
+            concurrentAutomaticEngineUpgradePerNodeLimit: 1
+          # Measured 190-230Mi steady, 420Mi peak.
+          # No limit, because an OOM-killed manager stalls every volume operation on that node.
+          longhornManager:
+            resources:
+              requests:
+                memory: 256Mi
     - repoURL: https://github.com/cujarrett/homelab.git
       targetRevision: main
       path: cluster/longhorn
