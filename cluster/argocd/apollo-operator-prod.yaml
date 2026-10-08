@@ -33,6 +33,10 @@ spec:
                 # No setting turns it off. This delays it to 30 days.
                 expirations:
                   schema: 720h
+              # Left empty, both installs render the same cluster-wide binding name,
+              # and whichever syncs second stays OutOfSync.
+              mcpServer:
+                namespaces: *graphNamespaces
               supergraph:
                 namespaces: *graphNamespaces
                 # Pinned, because the chart defaults this to busybox:latest and a

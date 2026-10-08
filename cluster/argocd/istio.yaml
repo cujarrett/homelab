@@ -81,10 +81,12 @@ spec:
             memory: 512Mi
         # Every mesh pod gets one sidecar, so the chart's 1Gi limit adds up to more than a node holds.
         # Sidecars measure 32-60Mi. Request equals limit so the scheduler reserves what it allows.
+        # CPU peaks under 7m per sidecar, against a chart default request of 100m.
         global:
           proxy:
             resources:
               requests:
+                cpu: 10m
                 memory: 128Mi
               limits:
                 memory: 128Mi
