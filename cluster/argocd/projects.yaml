@@ -87,7 +87,6 @@ spec:
     - {server: https://kubernetes.default.svc, namespace: platform-graph-demo}
     - {server: https://kubernetes.default.svc, namespace: sump-pump}
     - {server: https://kubernetes.default.svc, namespace: "guest-*"}
-    - {server: https://kubernetes.default.svc, namespace: "graph-pr-*"}
   clusterResourceWhitelist:
     - {group: "", kind: Namespace}
   # RoleBinding is for launchpad guest sandboxes, which bind secret-mirror-writer.
