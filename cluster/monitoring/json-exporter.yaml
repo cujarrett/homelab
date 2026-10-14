@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/argoproj.io/application_v1alpha1.json
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: json-exporter
+  namespace: argocd
+spec:
+  project: observability
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: prometheus-json-exporter
+    targetRevision: 0.20.1
+    helm:
+      releaseName: json-exporter
+      values: |
+        fullnameOverride: json-exporter
+        configuration:
+          # structuredConfig keeps the exporter config as YAML rather than a string.
+          # Emptying config drops the chart's example module.
+          config: ""
+          structuredConfig:
+            modules:
+              # The Marketplace's own site calls this public API. A body makes the exporter POST.
+              # filterType 8 is VS Code, 18 is the publisher, so a new extension needs no config change.
+              # flags 256 includes statistics.
+              marketplace:
+                headers:
+                  Content-Type: application/json
+                  Accept: application/json;api-version=3.0-preview.1
+                body:
+                  content: '{"filters":[{"criteria":[{"filterType":8,"value":"Microsoft.VisualStudio.Code"},{"filterType":18,"value":"cujarrett"}],"pageSize":100}],"flags":256}'
+                metrics:
+                  - name: vscode_extension
+                    type: object
+                    help: All-time installs of a VS Code Marketplace extension.
+                    path: '{.results[0].extensions[*]}'
+                    labels:
+                      extension: '{.extensionName}'
+                    values:
+                      installs: '{.statistics[?(@.statisticName=="install")].value}'
+        serviceMonitor:
+          enabled: true
+          defaults:
+            labels:
+              release: monitoring
+          targets:
+            # The Marketplace refreshes its counts a few times a day.
+            - name: vscode-marketplace
+              url: https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery
+              module: marketplace
+              interval: 1h
+              scrapeTimeout: 30s
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+          limits:
+            memory: 32Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true

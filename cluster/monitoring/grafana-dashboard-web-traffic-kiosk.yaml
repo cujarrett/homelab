@@ -22,41 +22,48 @@ data:
         {
           "id": 1, "type": "stat", "title": "blog.mattjarrett.dev",
           "gridPos": { "x": 0, "y": 0, "w": 3, "h": 5 },
-          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "fixedColor": "blue", "mode": "fixed" } } },
           "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*@kubernetes\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
         },
         {
           "id": 2, "type": "stat", "title": "mattjarrett.dev",
           "gridPos": { "x": 3, "y": 0, "w": 3, "h": 5 },
-          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "fixedColor": "purple", "mode": "fixed" } } },
           "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*@kubernetes|web-mattjarrett-dev.*@kubernetes\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
         },
         {
           "id": 4, "type": "stat", "title": "myvinyl.mattjarrett.dev",
           "gridPos": { "x": 6, "y": 0, "w": 3, "h": 5 },
-          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "fixedColor": "super-light-blue", "mode": "fixed" } } },
           "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"my-vinyl-my-vinyl.*@kubernetes\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
         },
         {
           "id": 5, "type": "stat", "title": "jspollock.mattjarrett.dev",
           "gridPos": { "x": 9, "y": 0, "w": 3, "h": 5 },
-          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "fixedColor": "light-purple", "mode": "fixed" } } },
           "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"js-pollock-js-pollock.*@kubernetes\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
         },
         {
           "id": 7, "type": "stat", "title": "launchpad.mattjarrett.dev",
           "gridPos": { "x": 12, "y": 0, "w": 3, "h": 5 },
-          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "fixedColor": "dark-blue", "mode": "fixed" } } },
           "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"launchpad-launchpad.*@kubernetes\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
         },
         {
+          "id": 8, "type": "stat", "title": "gotemplate-yaml",
+          "gridPos": { "x": 15, "y": 0, "w": 3, "h": 5 },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
+          "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "fixedColor": "text", "mode": "fixed" } } },
+          "targets": [{ "expr": "sum(vscode_extension_installs{extension=\"gotemplate-yaml\"})", "legendFormat": "installs", "instant": true, "refId": "A" }]
+        },
+        {
           "id": 6, "type": "timeseries", "title": "Requests / hr - All Sites",
-          "gridPos": { "x": 15, "y": 0, "w": 9, "h": 5 },
+          "gridPos": { "x": 18, "y": 0, "w": 6, "h": 5 },
           "fieldConfig": {
             "defaults": { "unit": "short", "decimals": 0, "custom": { "lineWidth": 2, "fillOpacity": 15, "lineInterpolation": "smooth" } },
             "overrides": [
