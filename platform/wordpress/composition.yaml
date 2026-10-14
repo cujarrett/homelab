@@ -718,7 +718,7 @@ spec:
                 sourceRange:
                   - "127.0.0.1/32"
             ---
-            # --- IngressRoute: block xmlrpc.php at priority 200 (beats the rate-limit route at 100) ---
+            # --- IngressRoute: block xmlrpc.php and direct core/upload PHP at priority 200 (beats the rate-limit route at 100) ---
             apiVersion: traefik.io/v1alpha1
             kind: IngressRoute
             metadata:
@@ -731,7 +731,9 @@ spec:
               entryPoints:
                 - websecure
               routes:
-                - match: "Host(`{{ $params.host }}`) && Path(`/xmlrpc.php`)"
+                # wp-includes: core PHP is only ever included, never requested directly.
+                # uploads: PHP there is a dropped webshell, never a real page.
+                - match: "Host(`{{ $params.host }}`) && (Path(`/xmlrpc.php`) || Path(`/wp-config-sample.php`) || Path(`/wp-settings.php`) || PathRegexp(`^/wp-(includes|content/uploads)/.*\\.php$`))"
                   kind: Rule
                   priority: 200
                   middlewares:
