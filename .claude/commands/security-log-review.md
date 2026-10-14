@@ -75,22 +75,14 @@ kubectl get ingressroute <name>-wp-security -n <namespace> -o jsonpath='{.spec.r
 
 ## Output format
 
-**Five or six bullets, nothing else.** No detail section, no per-namespace roll call, no preamble. Bullets only, verdict-first.
+**Clean run: one or two lines, nothing else.**
 
-Write one bullet per thing that is actually true of the whole review, not one per namespace:
+- Line 1: `No leaks, no compromise.` plus real coverage in hours, e.g. `Coverage 11-38h.`
+- Line 2, only if needed: one gut-check, e.g. `Confirm the 04:12 UTC mattjarrett.com admin login was you.`
 
-1. A single line covering every namespace with nothing to act on, plus the real log coverage in hours (pod age, not the requested 7 days).
-2. One line per **Action needed** item, with the fix commands inline in that same bullet.
-3. One line for any brute-force volume worth watching - counts, peak rate, and whether anything succeeded.
-4. One line confirming the rate limit binds (or does not), with the observed status sequence.
-5. One closing line for everything else, e.g. "the rest is 404'd scanner noise".
+No counts, rates, User-Agents, 429 totals, rate-limit confirmation or scanner summary on a clean run.
 
-Rules:
-
-- Never spend a bullet on a clean namespace by name. Fold them into the coverage line.
-- Never restate a finding in a detail section - if it needs a command, the command goes in the bullet.
-- Only widen past six bullets when a finding is a live compromise.
-- Say "no leaks, no compromise" when that is the answer, and let it stand without justification.
+**Something actionable: one bullet per finding**, with the fix command inline. Spend the words only there. Add more only for a live compromise.
 
 If new nginx hardening is needed (the block does not exist in source at all, not a stale-pod issue), fix it/ them, followed by the sync and restart commands:
 ```bash
