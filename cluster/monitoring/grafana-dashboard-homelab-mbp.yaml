@@ -3859,7 +3859,7 @@ data:
                 "fixedColor": "blue",
                 "mode": "fixed"
               },
-              "noValue": "None in 5 years",
+              "noValue": "None in 1 year",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -3908,7 +3908,7 @@ data:
                 "uid": "cluster-availability-archive"
               },
               "editorMode": "code",
-              "expr": "time() - max_over_time(timestamp(max(probe_success{probe_group=\"internet\"}) == 0)[1825d:30s])",
+              "expr": "time() - max_over_time(timestamp(max(probe_success{probe_group=\"internet\"}) == 0)[365d:30s])",
               "instant": true,
               "legendFormat": "Time Since Last Internet Outage",
               "refId": "A"
