@@ -44,11 +44,12 @@ spec:
             labels:
               release: monitoring
           targets:
-            # The Marketplace refreshes its counts a few times a day.
+            # Prometheus treats a series as gone 5m after its last sample.
+            # A longer interval leaves the kiosk tile blank most of the time.
             - name: vscode-marketplace
               url: https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery
               module: marketplace
-              interval: 1h
+              interval: 4m
               scrapeTimeout: 30s
         resources:
           requests:
