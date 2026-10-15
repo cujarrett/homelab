@@ -91,11 +91,12 @@ spec:
     runAsGroup: 2000
     runAsNonRoot: true
     runAsUser: 1000
+  # The Homelab dashboard's 5-year outage tile runs a subquery with 5M steps.
   resources:
     requests:
-      memory: 64Mi
-    limits:
       memory: 256Mi
+    limits:
+      memory: 1Gi
   storage:
     volumeClaimTemplate:
       spec:
