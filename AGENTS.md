@@ -325,6 +325,11 @@ Go apps in this workspace:
 | `sump-pump` | `bridge`, `consumer` | Monorepo - `cmd/bridge` publishes IoT readings to NATS, `cmd/consumer` reads them and exposes Prometheus metrics, `internal/event` holds the shared subjects and payload. Images stay `ghcr.io/cujarrett/sump-pump-bridge` and `-consumer` |
 | `weather-exporter` | `weather-exporter` | Weather Prometheus exporter |
 | `launchpad-api` | `launchpad-api` | BFF for Launchpad UI |
+| `github-exporter` | `github-exporter` | Prometheus exporter for pull request, auto-merge and workflow metrics across the account's repos |
+| `platform-exporter` | `platform-exporter` | Prometheus exporter for Crossplane XR, binding and pod readiness timings |
+| `workload-identity-sidecar` | `secret-fetcher` | Sidecar that trades a SPIFFE SVID for short-lived cloud credentials. Go code lives in `sidecar/secret-fetcher` |
+| `secret-mirror-controller` | `manager` | Kubebuilder controller for the `SecretMirror` CRD. Uses the kubebuilder `Makefile`, not `just` |
+| `platform-connections-demo` | `api`, `downstream` | Monorepo for the service mesh walkthrough. `api` runs as `upstream-api`, `downstream` runs as `authorized-api` and `unauthorized-api`. Each has its own `justfile` |
 
 ## Skills
 
