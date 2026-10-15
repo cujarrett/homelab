@@ -922,37 +922,21 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "mappings": [
-                {
-                  "options": {
-                    "0": {
-                      "color": "red",
-                      "index": 0,
-                      "text": "OutOfSync"
-                    },
-                    "1": {
-                      "color": "green",
-                      "index": 1,
-                      "text": "Synced"
-                    }
-                  },
-                  "type": "value"
-                }
-              ],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "red",
+                    "color": "green",
                     "value": 0
                   },
                   {
-                    "color": "green",
+                    "color": "red",
                     "value": 1
                   }
                 ]
               },
-              "unit": "short"
+              "unit": "short",
+              "decimals": 0
             }
           },
           "gridPos": {
@@ -982,13 +966,13 @@ data:
           "pluginVersion": "13.2.3",
           "targets": [
             {
-              "expr": "sum(argocd_app_info{sync_status=\"Synced\"}) or vector(0)",
+              "expr": "count(argocd_app_info{sync_status!=\"Synced\"}) or vector(0)",
               "instant": true,
               "legendFormat": "",
               "refId": "A"
             }
           ],
-          "title": "ArgoCD Synced",
+          "title": "ArgoCD Out of Sync",
           "type": "stat"
         },
         {
@@ -1131,37 +1115,21 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "mappings": [
-                {
-                  "options": {
-                    "0": {
-                      "color": "red",
-                      "index": 0,
-                      "text": "Degraded"
-                    },
-                    "1": {
-                      "color": "green",
-                      "index": 1,
-                      "text": "Healthy"
-                    }
-                  },
-                  "type": "value"
-                }
-              ],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "red",
+                    "color": "green",
                     "value": 0
                   },
                   {
-                    "color": "green",
+                    "color": "red",
                     "value": 1
                   }
                 ]
               },
-              "unit": "short"
+              "unit": "short",
+              "decimals": 0
             }
           },
           "gridPos": {
@@ -1191,13 +1159,13 @@ data:
           "pluginVersion": "13.2.3",
           "targets": [
             {
-              "expr": "sum(argocd_app_info{health_status=\"Healthy\"}) or vector(0)",
+              "expr": "count(argocd_app_info{health_status!=\"Healthy\"}) or vector(0)",
               "instant": true,
               "legendFormat": "",
               "refId": "A"
             }
           ],
-          "title": "ArgoCD Healthy",
+          "title": "ArgoCD Unhealthy",
           "type": "stat"
         },
         {
@@ -2061,16 +2029,11 @@ data:
                   "url": "/d/homelab-pod-health/pod-health-breakdown"
                 }
               ],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "short"
+              "unit": "short",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "blue"
+              }
             },
             "overrides": [
               {
@@ -2079,6 +2042,12 @@ data:
                   "options": "Degraded"
                 },
                 "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "thresholds"
+                    }
+                  },
                   {
                     "id": "thresholds",
                     "value": {
@@ -2149,37 +2118,15 @@ data:
                 "mode": "thresholds"
               },
               "decimals": 0,
-              "mappings": [
-                {
-                  "options": {
-                    "0": {
-                      "color": "red",
-                      "index": 0,
-                      "text": "Not Synced"
-                    }
-                  },
-                  "type": "value"
-                },
-                {
-                  "options": {
-                    "match": "null",
-                    "result": {
-                      "color": "red",
-                      "text": "No Data"
-                    }
-                  },
-                  "type": "special"
-                }
-              ],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "red",
+                    "color": "green",
                     "value": 0
                   },
                   {
-                    "color": "green",
+                    "color": "red",
                     "value": 1
                   }
                 ]
@@ -2214,15 +2161,13 @@ data:
           "pluginVersion": "13.2.3",
           "targets": [
             {
-              "editorMode": "code",
-              "expr": "sum(externalsecret_status_condition{condition=\"Ready\",status=\"True\"})",
+              "expr": "sum(externalsecret_status_condition{condition=\"Ready\",status=\"False\"}) or vector(0)",
               "instant": true,
-              "legendFormat": "__auto",
-              "range": false,
+              "legendFormat": "",
               "refId": "A"
             }
           ],
-          "title": "Secrets Synced",
+          "title": "Secrets Not Synced",
           "type": "stat"
         },
         {
@@ -2274,7 +2219,7 @@ data:
           "pluginVersion": "13.2.3",
           "targets": [
             {
-              "expr": "sum(rate(circuit_breaker_events_total{result=\"Open\"}[5m])) or vector(0)",
+              "expr": "sum(rate(circuit_breaker_opens_total[5m])) or sum(up{job=\"crossplane-metrics\"}) * 0",
               "instant": true,
               "legendFormat": "Circuit Opens/s",
               "refId": "A"
@@ -2289,19 +2234,6 @@ data:
               "color": {
                 "fixedColor": "blue",
                 "mode": "fixed"
-              },
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
               },
               "unit": "short"
             }
@@ -2333,7 +2265,7 @@ data:
           "pluginVersion": "13.2.3",
           "targets": [
             {
-              "expr": "sum(rate(controller_runtime_reconcile_total{job=\"crossplane-metrics\"}[5m])) or vector(0)",
+              "expr": "sum(rate(controller_runtime_reconcile_total{job=\"crossplane-metrics\"}[5m]))",
               "instant": true,
               "legendFormat": "Reconciles/s",
               "refId": "A"
@@ -2391,7 +2323,7 @@ data:
           "pluginVersion": "13.2.3",
           "targets": [
             {
-              "expr": "sum(rate(controller_runtime_reconcile_errors_total{job=\"crossplane-metrics\"}[5m])) or vector(0)",
+              "expr": "sum(rate(controller_runtime_reconcile_errors_total{job=\"crossplane-metrics\"}[5m]))",
               "instant": true,
               "legendFormat": "Errors/s",
               "refId": "A"
@@ -2404,16 +2336,11 @@ data:
           "fieldConfig": {
             "defaults": {
               "decimals": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "short"
+              "unit": "short",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "blue"
+              }
             },
             "overrides": [
               {
@@ -2422,6 +2349,12 @@ data:
                   "options": "Unbound"
                 },
                 "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "thresholds"
+                    }
+                  },
                   {
                     "id": "thresholds",
                     "value": {
@@ -2446,6 +2379,12 @@ data:
                   "options": "Fullest"
                 },
                 "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "thresholds"
+                    }
+                  },
                   {
                     "id": "unit",
                     "value": "percent"
@@ -2647,42 +2586,21 @@ data:
                   "url": "/d/homelab-cert-manager/cert-manager"
                 }
               ],
-              "mappings": [
-                {
-                  "options": {
-                    "0": {
-                      "color": "red",
-                      "index": 0,
-                      "text": "Not Ready"
-                    }
-                  },
-                  "type": "value"
-                },
-                {
-                  "options": {
-                    "match": "null",
-                    "result": {
-                      "color": "red",
-                      "text": "No Data"
-                    }
-                  },
-                  "type": "special"
-                }
-              ],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "red",
+                    "color": "green",
                     "value": 0
                   },
                   {
-                    "color": "green",
+                    "color": "red",
                     "value": 1
                   }
                 ]
               },
-              "unit": "short"
+              "unit": "short",
+              "decimals": 0
             }
           },
           "gridPos": {
@@ -2712,13 +2630,13 @@ data:
           "pluginVersion": "13.2.3",
           "targets": [
             {
-              "expr": "count(certmanager_certificate_ready_status{condition=\"True\"} == 1) or vector(0)",
+              "expr": "count(certmanager_certificate_ready_status{condition!=\"True\"} == 1) or vector(0)",
               "instant": true,
               "legendFormat": "",
               "refId": "A"
             }
           ],
-          "title": "Certs Ready",
+          "title": "Certs Not Ready",
           "type": "stat"
         },
         {
@@ -3081,6 +2999,183 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short",
+              "decimals": 0
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 8,
+            "x": 0,
+            "y": 29
+          },
+          "id": 930,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.3",
+          "targets": [
+            {
+              "expr": "sum(kube_pod_container_status_waiting_reason{reason=~\"CrashLoopBackOff|ImagePullBackOff|ErrImagePull|CreateContainerConfigError\"}) or vector(0)",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Pods Stuck",
+          "type": "stat"
+        },
+        {
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short",
+              "decimals": 0
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 8,
+            "x": 8,
+            "y": 29
+          },
+          "id": 931,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.3",
+          "targets": [
+            {
+              "expr": "sum(longhorn_volume_robustness{state!=\"healthy\"}) or vector(0)",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Volumes Not Healthy",
+          "type": "stat"
+        },
+        {
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short",
+              "decimals": 0
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 8,
+            "x": 16,
+            "y": 29
+          },
+          "id": 932,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.3",
+          "targets": [
+            {
+              "expr": "count(ALERTS{alertstate=\"firing\",alertname!~\"Watchdog|InfoInhibitor\"}) or vector(0)",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Alerts Firing",
+          "type": "stat"
+        },
+        {
+          "fieldConfig": {
+            "defaults": {
+              "color": {
                 "mode": "palette-classic"
               },
               "custom": {
@@ -3144,7 +3239,7 @@ data:
             "h": 5,
             "w": 8,
             "x": 0,
-            "y": 29
+            "y": 32
           },
           "id": 17,
           "options": {
@@ -3265,7 +3360,7 @@ data:
             "h": 5,
             "w": 8,
             "x": 8,
-            "y": 29
+            "y": 32
           },
           "id": 331,
           "options": {
@@ -3368,7 +3463,7 @@ data:
             "h": 5,
             "w": 8,
             "x": 16,
-            "y": 29
+            "y": 32
           },
           "id": 353,
           "options": {
@@ -3477,7 +3572,7 @@ data:
             "h": 6,
             "w": 12,
             "x": 0,
-            "y": 34
+            "y": 37
           },
           "id": 326,
           "options": {
@@ -3571,7 +3666,7 @@ data:
             "h": 6,
             "w": 12,
             "x": 12,
-            "y": 34
+            "y": 37
           },
           "id": 327,
           "options": {
@@ -3651,7 +3746,7 @@ data:
             "h": 3,
             "w": 8,
             "x": 0,
-            "y": 40
+            "y": 43
           },
           "id": 305,
           "options": {
@@ -3677,11 +3772,19 @@ data:
               "expr": "avg_over_time((clamp_max((count(up{job=\"node-exporter\"} == 1) >= bool 3) + (count(up{job=\"node-exporter\"} offset 30s == 1) >= bool 3), 1) * (max(probe_success{probe_group=\"internet\"}) == bool 1))[30d:30s]) * 100",
               "instant": true,
               "legendFormat": "30d Availability",
-              "refId": "A"
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "cluster-availability-archive"
+              }
             }
           ],
           "title": "30 Day Availability",
-          "type": "stat"
+          "type": "stat",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "cluster-availability-archive"
+          }
         },
         {
           "description": "Time since every node last booted, read from the kernel boot time. A single node rebooting for an upgrade does not move it. Only a full-cluster power cycle does.",
@@ -3712,7 +3815,7 @@ data:
             "h": 3,
             "w": 8,
             "x": 8,
-            "y": 40
+            "y": 43
           },
           "id": 350,
           "options": {
@@ -3748,7 +3851,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "cluster-availability-archive"
           },
           "fieldConfig": {
             "defaults": {
@@ -3777,7 +3880,7 @@ data:
             "h": 3,
             "w": 8,
             "x": 16,
-            "y": 40
+            "y": 43
           },
           "id": 351,
           "options": {
@@ -3802,10 +3905,10 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "cluster-availability-archive"
               },
               "editorMode": "code",
-              "expr": "time() - max_over_time(timestamp(max(probe_success{probe_group=\"internet\"}) == 0)[1825d:1m])",
+              "expr": "time() - max_over_time(timestamp(max(probe_success{probe_group=\"internet\"}) == 0)[1825d:30s])",
               "instant": true,
               "legendFormat": "Time Since Last Internet Outage",
               "refId": "A"
@@ -3978,7 +4081,7 @@ data:
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 43
+            "y": 46
           },
           "id": 360,
           "options": {
@@ -4099,7 +4202,7 @@ data:
             "h": 5,
             "w": 12,
             "x": 12,
-            "y": 43
+            "y": 46
           },
           "id": 361,
           "interval": "1h",
@@ -4204,7 +4307,7 @@ data:
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 48
+            "y": 51
           },
           "id": 323,
           "options": {

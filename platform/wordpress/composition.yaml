@@ -837,6 +837,8 @@ spec:
             # --- wp-cron NetworkPolicy ---
             # The cron pod only ever curls one URL, so it gets DNS and its own WordPress Service
             # and nothing else. Ingress is denied outright -- nothing should ever connect to it.
+            # Listing Ingress in policyTypes with no rules is the deny.
+            # An explicit `ingress: []` is dropped by the API server, so every apply is a change and trips the circuit breaker.
             apiVersion: networking.k8s.io/v1
             kind: NetworkPolicy
             metadata:
@@ -851,7 +853,6 @@ spec:
                   app: wp-cron
                   instance: {{ $name }}
               policyTypes: ["Ingress", "Egress"]
-              ingress: []
               egress:
                 - to:
                     - namespaceSelector:

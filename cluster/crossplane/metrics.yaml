@@ -24,7 +24,7 @@ metadata:
   name: crossplane
   namespace: crossplane-system
   labels:
-    release: kube-prometheus-stack
+    release: monitoring
 spec:
   selector:
     matchLabels:
@@ -44,17 +44,17 @@ metadata:
   name: crossplane-alerts
   namespace: crossplane-system
   labels:
-    release: kube-prometheus-stack
+    release: monitoring
 spec:
   groups:
     - name: crossplane.xr
       interval: 60s
       rules:
-        # Circuit breaker opened - Crossplane backed off from reconciling a resource.
-        # This is the metric that tracks WatchCircuitOpen incidents.
+        # Dropped events only happen while the breaker is open.
+        # Crossplane never reports a result named Open.
         - alert: CrossplaneCircuitBreakerOpen
           expr: |
-            rate(circuit_breaker_events_total{result="Open"}[5m]) > 0
+            rate(circuit_breaker_events_total{result="Dropped"}[5m]) > 0
           for: 5m
           labels:
             severity: warning
