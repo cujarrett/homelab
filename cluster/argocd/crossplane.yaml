@@ -24,6 +24,11 @@ spec:
             limits:
               memory: 1Gi
           rbacManager: {}
+          # Peaks at 54Mi over 30 days. The chart's 512Mi limit stays as the ceiling.
+          resourcesRBACManager:
+            requests:
+              cpu: 10m
+              memory: 96Mi
           affinity:
             nodeAffinity:
               preferredDuringSchedulingIgnoredDuringExecution:

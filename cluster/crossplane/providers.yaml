@@ -48,6 +48,27 @@ spec:
                   memory: 256Mi
 
 ---
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: worker-nodes-function
+spec:
+  deploymentTemplate:
+    spec:
+      selector: {}
+      template:
+        spec:
+          nodeSelector:
+            node-role.kubernetes.io/worker: worker
+          containers:
+            - name: package-runtime
+              # Functions peak at 70Mi over 30 days, far below the providers.
+              # No limit, so a render spike is never OOM-killed.
+              resources:
+                requests:
+                  memory: 96Mi
+
+---
 apiVersion: pkg.crossplane.io/v1
 kind: Function
 metadata:
@@ -55,7 +76,7 @@ metadata:
 spec:
   package: xpkg.upbound.io/crossplane-contrib/function-environment-configs:v0.3.0
   runtimeConfigRef:
-    name: worker-nodes
+    name: worker-nodes-function
 ---
 apiVersion: pkg.crossplane.io/v1
 kind: Function
@@ -64,7 +85,7 @@ metadata:
 spec:
   package: xpkg.upbound.io/crossplane-contrib/function-go-templating:v0.12.0
   runtimeConfigRef:
-    name: worker-nodes
+    name: worker-nodes-function
 ---
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
