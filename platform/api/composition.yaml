@@ -64,7 +64,8 @@ spec:
             {{- $consumes := $xr.spec.parameters.consumes | default list }}
             {{- /* An app that offers an interface, or calls one, needs an identity.       */ -}}
             {{- /* Nothing declares it, because the declaration already exists.            */ -}}
-            {{- /* An identity appears when a token is actually in play.                   */ -}}
+            {{- /* An Entra identity exists only when a token is in play.                  */ -}}
+            {{- /* A mesh interface carries no token, so it needs none.                    */ -}}
             {{- $entraNeeded := or (gt (len $appRoles) 0) (gt (len $delegatedScopes) 0) }}
             {{- range $c := $consumes }}
             {{- if or $c.app $c.entraApp }}{{- $entraNeeded = true }}{{- end }}
@@ -951,9 +952,9 @@ spec:
                               number: 80
             {{- end }}
             {{- /* ---------- Connections ---------- */ -}}
-            {{- /* Deny by default, allow by declaration, enforced on the way out only.   */ -}}
-            {{- /* Who may call this API is decided by Entra roles in app code, so the    */ -}}
-            {{- /* way in checks identity and nothing more.                               */ -}}
+            {{- /* Deny by default, allow by declaration.                                */ -}}
+            {{- /* Inbound: an AuthorizationPolicy built from provides.                  */ -}}
+            {{- /* Outbound: a Sidecar built from consumes.                              */ -}}
             {{- $appPort := $xr.spec.parameters.port | default 8080 }}
             ---
             # Callers must prove a real mesh identity. Two exceptions, both for unmeshed
@@ -978,6 +979,58 @@ spec:
                 {{- if $host }}
                 "{{ $appPort }}":
                   mode: PERMISSIVE
+                {{- end }}
+            ---
+            # The first ALLOW policy on a workload makes it deny by default.
+            # Every rule lives in this one object.
+            # A second ALLOW policy would be ORed in and widen access.
+            apiVersion: security.istio.io/v1
+            kind: AuthorizationPolicy
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-authz
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels: { app.kubernetes.io/instance: {{ $name }} }
+              action: ALLOW
+              rules:
+                # Prometheus is unmeshed and presents no identity to match on.
+                - to:
+                    - operation: { ports: ["{{ $metricsPort }}"] }
+                {{- if $host }}
+                # Traefik is unmeshed, so the Ingress port can't be limited by identity.
+                # tlsIssuer decides whether it reaches the internet or only the homelab network.
+                - to:
+                    - operation: { ports: ["{{ $appPort }}"] }
+                {{- end }}
+                {{- range $iface := $provides }}
+                {{- /* An interface with no callers renders no rule.                        */ -}}
+                {{- /* Istio reads an empty principals list as no condition at all.         */ -}}
+                {{- /* The ALLOW rule would then admit anyone.                              */ -}}
+                {{- if $iface.allowedCallers }}
+                # provides: {{ $iface.name }}
+                - from:
+                    - source:
+                        principals:
+                          {{- range $iface.allowedCallers }}
+                          - "cluster.local/ns/{{ .namespace }}/sa/{{ .app }}"
+                          {{- end }}
+                  {{- $m := $iface.methods | default list }}
+                  {{- $p := $iface.paths | default list }}
+                  {{- if or (gt (len $m) 0) (gt (len $p) 0) }}
+                  to:
+                    - operation:
+                        {{- if gt (len $m) 0 }}
+                        methods: [{{ range $i, $v := $m }}{{ if $i }}, {{ end }}{{ $v | quote }}{{ end }}]
+                        {{- end }}
+                        {{- if gt (len $p) 0 }}
+                        paths: [{{ range $i, $v := $p }}{{ if $i }}, {{ end }}{{ $v | quote }}{{ end }}]
+                        {{- end }}
+                  {{- end }}
+                {{- end }}
                 {{- end }}
             ---
             # REGISTRY_ONLY: only the control plane, what this XR composed, and what it

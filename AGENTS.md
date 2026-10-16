@@ -100,7 +100,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | External Access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; token from secret `cloudflare-tunnel-token` |
 | Platform Abstraction | Crossplane | Twelve XR types - see the Crossplane Platform section below |
 | CNI | flannel | k3s's bundled CNI, running at its defaults - no install flags, no `/etc/rancher/k3s/config.yaml`. NetworkPolicy is enforced by k3s's kube-router, also default. Mesh concerns (mTLS, connection policy) belong to Istio. |
-| Service Mesh | Istio | Sidecar mesh chained onto flannel; provides workload mTLS. Platform workloads get STRICT mTLS inbound and `REGISTRY_ONLY` egress from their declared `consumes`. Who may call an interface is an Entra grant checked by the app; see [Platform Connections](./platform/docs/connections.md). |
+| Service Mesh | Istio | Sidecar mesh chained onto flannel; provides workload mTLS. Platform workloads get STRICT mTLS and an `AuthorizationPolicy` inbound from their declared `provides`, and `REGISTRY_ONLY` egress from their declared `consumes`. Both sides must agree for a call to pass; see [Platform Connections](./platform/docs/connections.md). |
 | Observability | kube-prometheus-stack | Prometheus (30d retention), Grafana, Alertmanager |
 | Logs | Loki + Promtail | Loki SingleBinary, 30d retention; Promtail DaemonSet ships logs |
 | Messaging | NATS JetStream | 3-replica cluster in `nats`; NACK controller manages Stream and Consumer CRDs |

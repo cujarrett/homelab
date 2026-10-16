@@ -53,6 +53,13 @@ spec:
                 image: {{ $image }}
                 size: {{ $params.size | default "sm" }}
                 replicas: {{ $params.replicas | default 1 }}
+                # The router is the only caller.
+                # The operator runs it as the namespace's default ServiceAccount.
+                provides:
+                  - name: graphql
+                    auth: mesh
+                    allowedCallers:
+                      - { namespace: {{ $ns }}, app: default }
             ---
             # The operator reads /schema.graphql from this exact digest and publishes it.
             # Same digest as the Api above, so the registry never advertises a schema
