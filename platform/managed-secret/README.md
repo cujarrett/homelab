@@ -27,9 +27,9 @@ Files land at `/secrets/<name>/<key>`, the same shape `secretsFrom` uses, so an 
 
 ## Waiting for a value
 
-A `ManagedSecret` is created empty, because the owner sets the value out of band. Until then the platform writes no files, and an app reading one gets nothing - so check what you need at startup and fail loudly rather than running half-configured.
+A `ManagedSecret` is created empty, because the owner sets the value out of band. The app container does not start until every `ManagedSecret` it references has a value. Until then the pod shows as not ready, and any earlier pod keeps serving.
 
-The reason is in the sidecar's logs:
+The pod waits up to an hour, then the sidecar restarts and the wait begins again. The reason is in the sidecar's logs:
 
 ```bash
 kubectl logs <pod> -n <namespace> -c workload-identity-sidecar | grep waiting

@@ -314,11 +314,10 @@ spec:
                     runAsGroup: 65532
                     seccompProfile:
                       type: RuntimeDefault
-                  {{- if or $bindings $managedSecrets }}
+                  {{- if or $bindings $managedSecrets $entraNeeded }}
                   initContainers:
-                    {{- /* Waits for the binding, not the value. A managed secret's value is  */}}
-                    {{- /* written by the sidecar, which only starts once every init          */}}
-                    {{- /* container has finished, so waiting on it here would never return.  */}}
+                    {{- /* Waits for the binding Secret only.                               */}}
+                    {{- /* The sidecar below reads it, then its startupProbe waits for values. */}}
                     {{- range $wait := concat $managedSecrets $bindings }}
                     - name: wait-for-{{ $wait.dir }}-binding
                       image: busybox:1.36
@@ -335,6 +334,73 @@ spec:
                         - name: {{ $wait.dir }}-binding
                           mountPath: /bindings/{{ $wait.dir }}
                           readOnly: true
+                    {{- end }}
+                    {{- if or $awsBindings $entraNeeded $managedSecrets }}
+                    - name: workload-identity-sidecar
+                      image: ghcr.io/cujarrett/workload-identity-sidecar:main
+                      imagePullPolicy: Always
+                      # A native sidecar. Kubernetes starts the app only after this
+                      # container's startupProbe passes.
+                      restartPolicy: Always
+                      {{- if $managedSecrets }}
+                      # Passes once every ManagedSecret has a value, so the app never
+                      # starts against an empty /secrets directory.
+                      # Waits up to an hour for an owner to set a new one.
+                      startupProbe:
+                        exec:
+                          command:
+                            - sh
+                            - -c
+                            - "{{ range $i, $ms := $managedSecrets }}{{ if $i }} && {{ end }}[ -f /secrets/{{ $ms.name }}/ready ]{{ end }}"
+                        periodSeconds: 5
+                        failureThreshold: 720
+                      {{- end }}
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        readOnlyRootFilesystem: true
+                        capabilities:
+                          drop: [ALL]
+                      env:
+                        {{- if gt (len $awsBindings) 0 }}
+                        - name: AWS_BINDINGS
+                          value: {{ join "," $sidecarBindingParts | quote }}
+                        - name: CREDS_FILE
+                          value: /aws-credentials/credentials
+                        {{- end }}
+                        {{- if gt (len $secretBindingParts) 0 }}
+                        - name: SECRET_BINDINGS
+                          value: {{ join "," $secretBindingParts | quote }}
+                        {{- end }}
+                        {{- if $entraNeeded }}
+                        - name: ENTRA_FEDERATED_TOKEN_FILE
+                          value: /entra-identity/token
+                        {{- end }}
+                      volumeMounts:
+                        - name: tmp
+                          mountPath: /tmp
+                        - name: spiffe-bundle
+                          mountPath: /var/run/secrets/spiffe.io
+                          readOnly: true
+                        {{- if gt (len $awsBindings) 0 }}
+                        - name: aws-credentials
+                          mountPath: /aws-credentials
+                        {{- end }}
+                        {{- if $entraNeeded }}
+                        - name: entra-identity
+                          mountPath: /entra-identity
+                        {{- end }}
+                        {{- range $b := $awsBindings }}
+                        - name: {{ $b.dir }}-binding
+                          mountPath: /bindings/{{ $b.dir }}
+                          readOnly: true
+                        {{- end }}
+                        {{- range $ms := $managedSecrets }}
+                        - name: {{ $ms.dir }}-binding
+                          mountPath: /bindings/{{ $ms.dir }}
+                          readOnly: true
+                        - name: {{ $ms.dir }}-value
+                          mountPath: /secrets/{{ $ms.name }}
+                        {{- end }}
                     {{- end }}
                   {{- end }}
                   containers:
@@ -457,57 +523,6 @@ spec:
                           mountPath: /secrets/{{ $ms.name }}
                           readOnly: true
                         {{- end }}
-                    {{- if or $awsBindings $entraNeeded $managedSecrets }}
-                    - name: workload-identity-sidecar
-                      image: ghcr.io/cujarrett/workload-identity-sidecar:main
-                      imagePullPolicy: Always
-                      securityContext:
-                        allowPrivilegeEscalation: false
-                        readOnlyRootFilesystem: true
-                        capabilities:
-                          drop: [ALL]
-                      env:
-                        {{- if gt (len $awsBindings) 0 }}
-                        - name: AWS_BINDINGS
-                          value: {{ join "," $sidecarBindingParts | quote }}
-                        - name: CREDS_FILE
-                          value: /aws-credentials/credentials
-                        {{- end }}
-                        {{- if gt (len $secretBindingParts) 0 }}
-                        - name: SECRET_BINDINGS
-                          value: {{ join "," $secretBindingParts | quote }}
-                        {{- end }}
-                        {{- if $entraNeeded }}
-                        - name: ENTRA_FEDERATED_TOKEN_FILE
-                          value: /entra-identity/token
-                        {{- end }}
-                      volumeMounts:
-                        - name: tmp
-                          mountPath: /tmp
-                        - name: spiffe-bundle
-                          mountPath: /var/run/secrets/spiffe.io
-                          readOnly: true
-                        {{- if gt (len $awsBindings) 0 }}
-                        - name: aws-credentials
-                          mountPath: /aws-credentials
-                        {{- end }}
-                        {{- if $entraNeeded }}
-                        - name: entra-identity
-                          mountPath: /entra-identity
-                        {{- end }}
-                        {{- range $b := $awsBindings }}
-                        - name: {{ $b.dir }}-binding
-                          mountPath: /bindings/{{ $b.dir }}
-                          readOnly: true
-                        {{- end }}
-                        {{- range $ms := $managedSecrets }}
-                        - name: {{ $ms.dir }}-binding
-                          mountPath: /bindings/{{ $ms.dir }}
-                          readOnly: true
-                        - name: {{ $ms.dir }}-value
-                          mountPath: /secrets/{{ $ms.name }}
-                        {{- end }}
-                    {{- end }}
                   volumes:
                     - name: tmp
                       emptyDir: {}
