@@ -8,6 +8,7 @@ set -euo pipefail
 owner="cujarrett"
 api_ns="launchpad"
 api_secret="launchpad-github-token"
+api_secret_id="platform/${api_ns}/${api_secret}"
 api_deploy="launchpad-api"
 
 echo "Which token?"
@@ -78,7 +79,7 @@ case "$choice" in
     ;;
   2)
     can_open_pr homelab-workspaces || { echo "FAIL: cannot open pull requests. This is not homelab-workspaces-deploy."; exit 1; }
-    current=$(kubectl get secret "$api_secret" -n "$api_ns" -o jsonpath='{.data.GITHUB_TOKEN}' | base64 -d)
+    current=$(aws secretsmanager get-secret-value --secret-id "$api_secret_id" --query SecretString --output text | jq -r .GITHUB_TOKEN)
     if [ "$(hash_of "$token")" = "$(hash_of "$current")" ]; then
       echo "FAIL: this is the value Launchpad API uses. Pick option 1 for it."
       exit 1
@@ -89,15 +90,25 @@ echo "ok"
 
 echo
 if [ "$choice" = 1 ]; then
-  patched_at=$(date -u +%s)
-  printf '{"data":{"GITHUB_TOKEN":"%s"}}' "$(printf %s "$token" | base64)" \
-    | kubectl patch secret "$api_secret" -n "$api_ns" --type merge --patch-file /dev/stdin
+  want=$(hash_of "$token")
+  printf %s "$token" | jq -Rc '{GITHUB_TOKEN: .}' \
+    | aws secretsmanager put-secret-value --secret-id "$api_secret_id" --secret-string file:///dev/stdin >/dev/null
   unset token
 
-  # kubelet refreshes the mounted file within about a minute, and guest cleanup calls GitHub every minute.
-  echo "Waiting 90s for the pod to see the new file, then watching 65s of logs for a 401..."
-  sleep 155
-  since=$(date -u -r $((patched_at + 90)) +%Y-%m-%dT%H:%M:%SZ)
+  # The sidecar re-reads Secrets Manager within 15 minutes.
+  # Read through the sidecar, since the api image is distroless and has no cat.
+  echo "Waiting for the pod to see the new value (up to 16 minutes)..."
+  for _ in $(seq 1 96); do
+    got=$(kubectl exec -n "$api_ns" "deploy/${api_deploy}" -c workload-identity-sidecar -- cat "/secrets/${api_secret}/GITHUB_TOKEN" | shasum -a 256 | cut -d' ' -f1)
+    [ "$got" = "$want" ] && break
+    sleep 10
+  done
+  [ "$got" = "$want" ] || { echo "FAIL: the pod still has the old value"; exit 1; }
+
+  # Guest cleanup calls GitHub every minute.
+  echo "Watching 65s of logs for a 401..."
+  since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  sleep 65
   fails=$(kubectl logs -n "$api_ns" "deploy/${api_deploy}" --since-time="$since" | grep -c "status 401" || true)
   if [ "$fails" = 0 ]; then
     echo "PASS: no GitHub 401 from ${api_deploy} since ${since}"
