@@ -1046,6 +1046,12 @@ spec:
             spec:
               workloadSelector:
                 labels: { app.kubernetes.io/instance: {{ $name }} }
+              # Envoy must close an idle connection to the app before the app does.
+              # Go apps close at 60s, the same as the scrape interval.
+              # Reusing a connection the app is closing returns 503.
+              inboundConnectionPool:
+                http:
+                  idleTimeout: 30s
               outboundTrafficPolicy:
                 mode: REGISTRY_ONLY
               egress:
