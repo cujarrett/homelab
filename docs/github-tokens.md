@@ -13,10 +13,14 @@ manifests.
 ## Deploy tokens
 
 Rotate with [GitHub Token Rotate](../scripts/github-token-rotate/). It only finds repos that already
-hold the secret, so seed a new repo once:
+hold the secret, and a token can't be read back out of GitHub. A new repo gets a placeholder, then a
+rotation writes the real token there along with every other repo:
 
 ```bash
-gh secret set HOMELAB_WORKSPACES_PAT -R cujarrett/<new-repo> --body "<token>"
+gh secret set HOMELAB_WORKSPACES_PAT -R cujarrett/<new-repo> --body placeholder
+./scripts/github-token-rotate/github-token-rotate.sh
 ```
+
+The rotation also reruns the new repo's failed deploy, so commit its workspace file first.
 
 An expired or missing token shows as green test and build with a failed `deploy`.

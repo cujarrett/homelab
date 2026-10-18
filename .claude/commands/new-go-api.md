@@ -41,13 +41,14 @@ Also create **`./<app-name>/go.mod`**
 ```
 module github.com/cujarrett/<app-name>
 
-go 1.26
+go 1.27.0
 ```
 
 ## After scaffolding
 
 Remind the user to:
 1. `cd <app-name> && go mod tidy`
-2. Create the GitHub repo and push
-3. Add the `HOMELAB_WORKSPACES_PAT` secret to the new repo. [GitHub Tokens](../../docs/github-tokens.md) covers which token to use and how to seed it. Use `--body "$VAR"` or no flag, because `gh secret set --body -` stores a one-character secret
-4. Run `argocd app sync xrs --grpc-web` after the first image is pushed and ArgoCD detects the Api
+2. Create the GitHub repo and push. The first `deploy` job fails until steps 3 and 4 are done
+3. Commit the workspace file in `homelab-workspaces`, because `deploy` edits it
+4. Seed `HOMELAB_WORKSPACES_PAT` with a placeholder and run the rotate script, which writes the real token and reruns the failed deploy. [GitHub Tokens](../../docs/github-tokens.md) has the commands
+5. Run `argocd app sync xrs --grpc-web` after the first image is pushed and ArgoCD detects the Api

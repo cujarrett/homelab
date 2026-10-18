@@ -8,9 +8,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
@@ -21,7 +21,7 @@ jobs:
         run: go vet ./...
 
   build-and-push:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04-arm
     needs: test
     if: github.ref == 'refs/heads/main'
 
@@ -31,10 +31,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
+        uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -55,6 +52,8 @@ jobs:
           tags: |
             ghcr.io/cujarrett/APP_NAME:main
             ghcr.io/cujarrett/APP_NAME:sha-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   deploy:
     needs: build-and-push
