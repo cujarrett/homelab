@@ -47,6 +47,13 @@ spec:
                 {{- end }}
               {{- end }}
             {{- end }}
+            {{- /* Ready once Redis answers, so the platform's own timing covers the wait. */}}
+            {{- $redisReady := "False" }}
+            {{- with index (.observed.resources | default dict) "redis-deployment" }}
+              {{- if ge (int (.resource.status.readyReplicas | default 0)) 1 }}
+                {{- $redisReady = "True" }}
+              {{- end }}
+            {{- end }}
             {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
             {{- $awsAccountId := index $envCtx "awsAccountId" | default "" }}
             {{- /* Public issuer, so it is hardcoded next to the trust domain rather than */ -}}
@@ -63,8 +70,7 @@ spec:
               namespace: {{ $ns }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: redis-deployment
-                # required for native k8s resources - no Crossplane Ready condition
-                gotemplating.fn.crossplane.io/ready: "True"
+                gotemplating.fn.crossplane.io/ready: {{ $redisReady | quote }}
             spec:
               replicas: 1
               selector:
@@ -102,8 +108,7 @@ spec:
                       readinessProbe:
                         tcpSocket:
                           port: 6379
-                        initialDelaySeconds: 5
-                        periodSeconds: 10
+                        periodSeconds: 2
                       # redis writes its dump and pid under /data even with persistence off.
                       volumeMounts:
                         - name: data

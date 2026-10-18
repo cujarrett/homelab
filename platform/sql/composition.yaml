@@ -39,6 +39,13 @@ spec:
             {{- /* injected. Must match the IAM OIDC provider registered in AWS.          */ -}}
             {{- $oidcIssuerHost := "oidc.mattjarrett.dev" }}
             {{- $oidcProviderArn := printf "arn:aws:iam::%s:oidc-provider/%s" $awsAccountId $oidcIssuerHost }}
+            {{- /* Ready once Postgres accepts connections, so the platform's own timing covers the wait. */}}
+            {{- $postgresReady := "False" }}
+            {{- with index (.observed.resources | default dict) "postgres-deployment" }}
+              {{- if ge (int (.resource.status.readyReplicas | default 0)) 1 }}
+                {{- $postgresReady = "True" }}
+              {{- end }}
+            {{- end }}
             {{- $dataRetention := $xr.spec.parameters.dataRetention | default "delete" }}
             {{- /* storageClassName is frozen on first creation: once bound, a PVC's storageClassName
                  is immutable. Read back the observed value so reconciles are always no-ops. */}}
@@ -88,7 +95,7 @@ spec:
               namespace: {{ $ns }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: postgres-deployment
-                gotemplating.fn.crossplane.io/ready: "True"
+                gotemplating.fn.crossplane.io/ready: {{ $postgresReady | quote }}
             spec:
               replicas: 1
               strategy:
@@ -126,8 +133,7 @@ spec:
                       readinessProbe:
                         exec:
                           command: ["pg_isready", "-U", "app", "-d", "{{ $name }}"]
-                        initialDelaySeconds: 5
-                        periodSeconds: 10
+                        periodSeconds: 2
                       volumeMounts:
                         - name: data
                           mountPath: /var/lib/postgresql/data

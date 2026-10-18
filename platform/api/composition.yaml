@@ -421,11 +421,20 @@ spec:
                         limits:
                           cpu: {{ get $sizeResources "cpuLim" }}
                           memory: {{ get $sizeResources "memLim" }}
+                      # Checks every 2s while starting, so the pod turns Ready within
+                      # seconds of the app being able to serve.
+                      # Readiness then takes over at 10s, since a check can do real work.
+                      # The hour-long limit restarts only an app that never comes up.
+                      startupProbe:
+                        httpGet:
+                          path: {{ $healthCheckPath }}
+                          port: {{ $xr.spec.parameters.port | default 8080 }}
+                        periodSeconds: 2
+                        failureThreshold: 1800
                       readinessProbe:
                         httpGet:
                           path: {{ $healthCheckPath }}
                           port: {{ $xr.spec.parameters.port | default 8080 }}
-                        initialDelaySeconds: 5
                         periodSeconds: 10
                       env:
                         # servicebinding.io convention: $SERVICE_BINDING_ROOT/<binding>/<key>
