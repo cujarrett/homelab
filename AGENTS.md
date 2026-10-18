@@ -125,7 +125,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `nats` | NATS + NACK | JetStream cluster (3 replicas), NACK controller for Stream/Consumer CRDs |
 | `mattjarrett-com` | WordPress (Wordpress) | `mattjarrett.com` via Cloudflare Tunnel; 7Gi wp-content, 1Gi MariaDB |
 | `kentjarrett-com` | WordPress (Wordpress) | `kentjarrett.com` via Cloudflare Tunnel; 10Gi wp-content, 2Gi MariaDB |
-| `mattjarrett-dev` | Angular SPA (Spa) | `mattjarrett.dev` via Cloudflare Tunnel |
+| `mattjarrett-dev` | Angular SPA (Spa) + Api | `mattjarrett.dev` via Cloudflare Tunnel. The Spa's nginx proxies `/api/stats/` to `homelab-stats`, which serves the live homelab section |
 | `blog` | Ghost (Deployment) | `blog.mattjarrett.dev` via Cloudflare Tunnel; 2Gi content PVC |
 | `my-vinyl` | Spa + Api + Cache | `myvinyl.mattjarrett.dev` via Cloudflare Tunnel |
 | `js-pollock` | Spa | `jspollock.mattjarrett.dev` via Cloudflare Tunnel |
@@ -329,6 +329,7 @@ Go apps in this workspace:
 | `platform-exporter` | `platform-exporter` | Prometheus exporter for Crossplane XR, binding and pod readiness timings |
 | `workload-identity-sidecar` | `secret-fetcher` | Sidecar that trades a SPIFFE SVID for short-lived cloud credentials. Go code lives in `sidecar/secret-fetcher` |
 | `secret-mirror-controller` | `manager` | Kubebuilder controller for the `SecretMirror` CRD. Uses the kubebuilder `Makefile`, not `just` |
+| `homelab-stats` | `homelab-stats` | Read-only JSON for the homelab section on mattjarrett.dev, from a fixed set of Prometheus queries and the blog-stats gist |
 | `platform-connections-demo` | `api`, `downstream` | Monorepo for the service mesh walkthrough. `api` runs as `upstream-api`, `downstream` runs as `authorized-api` and `unauthorized-api`. Each has its own `justfile` |
 
 ## Skills

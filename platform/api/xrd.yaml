@@ -256,7 +256,7 @@ spec:
                             type: string
                             pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
                             maxLength: 253
-                            description: "Off-platform hostname (e.g. api.discogs.com). Anything not listed is blocked at this workload's own sidecar."
+                            description: "Hostname of a destination outside the mesh. Usually off-platform (e.g. api.discogs.com). An in-cluster service with no sidecar is named by its full service name with port and protocol HTTP (e.g. foo.bar.svc.cluster.local). Anything not listed is blocked at this workload's own sidecar."
                           port:
                             type: integer
                             description: "Port for host. Defaults to 443 when omitted."
