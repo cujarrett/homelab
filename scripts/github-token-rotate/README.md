@@ -1,17 +1,16 @@
 # github-token-rotate
 
-Rotates any of the three GitHub tokens. See [GitHub Tokens](../../docs/github-tokens.md) for what
-each one is for.
+Rotates the Launchpad API's GitHub token. See [GitHub Tokens](../../docs/github-tokens.md) for what
+it is for.
 
 ```bash
 ./github-token-rotate.sh
 ```
 
-It asks which token you are rotating, lists what uses it, and opens GitHub's token page so you can regenerate it. Then it:
+It lists what uses the token and opens GitHub's token page so you can regenerate it. Then it:
 
-1. Checks the pasted value is the token you picked, and refuses a wrong one before writing anywhere.
-2. Writes it to AWS Secrets Manager or to every repo's Actions secret.
-3. Tests it. For the Launchpad token it waits for the pod to pick up the new value, then watches the API log for GitHub 401s. For a CI token it
-   reruns any deploy that failed on the old one and waits for the result.
+1. Checks the pasted value can push to `homelab-workspaces`, and warns if it can also open pull requests.
+2. Writes it to AWS Secrets Manager.
+3. Waits for the pod to pick up the new value, then watches the API log for GitHub 401s.
 
 The token is read with echo off and never appears in shell history or the process list.

@@ -50,5 +50,5 @@ Remind the user to:
 1. `cd <app-name> && go mod tidy`
 2. Create the GitHub repo and push. The first `deploy` job fails until steps 3 and 4 are done
 3. Commit the workspace file in `homelab-workspaces`, because `deploy` edits it
-4. Seed `HOMELAB_WORKSPACES_PAT` with a placeholder and run the rotate script, which writes the real token and reruns the failed deploy. [GitHub Tokens](../../docs/github-tokens.md) has the commands
+4. Set `HOMELAB_WORKSPACES_APP_KEY` from a new App private key, then rerun the failed deploy. [GitHub Tokens → New repo](../../docs/github-tokens.md#new-repo) has the command
 5. Run `argocd app sync xrs --grpc-web` after the first image is pushed and ArgoCD detects the Api

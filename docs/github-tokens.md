@@ -1,26 +1,28 @@
 # GitHub Tokens
 
-Two fine-grained PATs let CI push image tag bumps.
+CI pushes image tag bumps as one of two GitHub Apps, so deploy commits and promote pull requests are credited to the App and signed by GitHub. Each deploy job mints a one-hour token from the App's private key.
 
-| Token | Grants | Lives as |
-|---|---|---|
-| `homelab-workspaces-deploy` | Push to `homelab-workspaces` and open its promote pull requests (Contents and Pull requests, read and write) | `HOMELAB_WORKSPACES_PAT` Actions secret in workspaces app repos |
-| `homelab-deploy` | Push to `homelab` | `HOMELAB_DEPLOY_PAT` Actions secret in `platform-exporter`, `secret-mirror-controller` |
+| App | Grants | Installed on | Key lives as |
+|---|---|---|---|
+| `homelab-workspaces-deployer` | Contents and Pull requests, read and write | `homelab-workspaces` | `HOMELAB_WORKSPACES_APP_KEY` Actions secret in workspaces app repos |
+| `cujarrett-homelab-deployer` | Contents, read and write | `homelab` | `HOMELAB_APP_KEY` Actions secret in `platform-exporter`, `secret-mirror-controller` |
 
-The deploy tokens are split so repos that only touch `homelab-workspaces` can't rewrite cluster
-manifests.
+The Apps are split so repos that only touch `homelab-workspaces` can't rewrite cluster manifests. Client IDs are written into the workflows, since they are not secret.
 
-## Deploy tokens
+## New repo
 
-Rotate with [GitHub Token Rotate](../scripts/github-token-rotate/). It only finds repos that already
-hold the secret, and a token can't be read back out of GitHub. A new repo gets a placeholder, then a
-rotation writes the real token there along with every other repo:
+Generate a private key on the App's settings page and set it as the repo's secret, then delete the downloaded file:
 
 ```bash
-gh secret set HOMELAB_WORKSPACES_PAT -R cujarrett/<new-repo> --body placeholder
-./scripts/github-token-rotate/github-token-rotate.sh
+gh secret set HOMELAB_WORKSPACES_APP_KEY -R cujarrett/<new-repo> < ~/Downloads/homelab-workspaces-deployer.*.private-key.pem
 ```
 
-The rotation also reruns the new repo's failed deploy, so commit its workspace file first.
+Commit the repo's workspace file first, because `deploy` edits it.
 
-An expired or missing token shows as green test and build with a failed `deploy`.
+## Revoking a key
+
+Delete it under **Private keys** on the App's settings page. Tokens minted from it stop working within an hour. A missing or revoked key shows as green test and build with a failed `deploy`.
+
+## Launchpad token
+
+`launchpad-api` writes guest sandbox directories with the `homelab-workspaces-launchpad` fine-grained PAT, held in AWS Secrets Manager. Rotate it with [GitHub Token Rotate](../scripts/github-token-rotate/).
