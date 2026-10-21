@@ -59,13 +59,17 @@ fi
 echo "    $(du -h "$SQL_FILE" | cut -f1) - ok"
 
 echo "==> Streaming wp-content (this can take a while for multi-GB sites)..."
-kubectl exec -n "$NAMESPACE" "$WP_POD" -- \
-  tar czf - -C /var/www/html wp-content \
+# SPDY: kubectl's default WebSocket transport drops long streams from this cluster partway.
+# rc <= 1: tar exits 1 when a live site writes files mid-read, and the archive is still complete.
+KUBECTL_REMOTE_COMMAND_WEBSOCKETS=false kubectl exec -n "$NAMESPACE" "$WP_POD" -c wordpress -- \
+  sh -c 'tar czf - -C /var/www/html wp-content; rc=$?; [ "$rc" -le 1 ] || exit "$rc"' \
   > "$WP_CONTENT_TAR"
 
 echo "==> Verifying archive..."
-tar tzf "$WP_CONTENT_TAR" > /dev/null
-echo "    $(du -h "$WP_CONTENT_TAR" | cut -f1), $(tar tzf "$WP_CONTENT_TAR" | wc -l | tr -d ' ') entries - ok"
+# macOS tar treats ._* files as Mac metadata and stops early on uploads copied from a Mac.
+# !mac-ext lists them as plain files.
+entries=$(tar --options '!mac-ext' -tzf "$WP_CONTENT_TAR" | wc -l | tr -d ' ')
+echo "    $(du -h "$WP_CONTENT_TAR" | cut -f1), $entries entries - ok"
 
 echo ""
 echo "==> Backup complete: $BACKUP_DIR"
