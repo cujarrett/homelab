@@ -6,3 +6,4 @@ Procedures for changing the cluster without breaking it. Each one is a sequence 
 |---|---|
 | [Upgrading k3s](./k3s-upgrade.md) | Moving a node to a new k3s version |
 | [Debugging Crossplane](./debugging-crossplane.md) | An XR is not syncing or not going ready |
+| [Automerge Stop](../../scripts/automerge-stop/) | A bad dependency update is landing and Renovate must stop merging everywhere |
