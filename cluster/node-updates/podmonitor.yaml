@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: node-updates
+  namespace: node-updates
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: node-updates
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: 5m
