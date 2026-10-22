@@ -6,6 +6,8 @@ metadata:
   labels:
     release: monitoring
 spec:
+  # busybox httpd sends no Content-Type for a file without an extension, which Prometheus 3 rejects.
+  fallbackScrapeProtocol: PrometheusText0.0.4
   selector:
     matchLabels:
       app: node-updates
