@@ -77,8 +77,9 @@ spec:
             requests:
               cpu: 5m
               memory: 32Mi
+            # apt builds its package cache in memory every run, peaking near 155Mi on work-1.
             limits:
-              memory: 128Mi
+              memory: 256Mi
         - name: metrics
           image: busybox:1.38
           securityContext: *locked
