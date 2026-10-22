@@ -31,7 +31,7 @@ data:
                     "value": 0
                   },
                   {
-                    "color": "red",
+                    "color": "yellow",
                     "value": 1
                   }
                 ]
@@ -73,7 +73,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Open Items",
+          "title": "Open Now",
           "type": "stat"
         },
         {
@@ -90,7 +90,7 @@ data:
                     "value": 0
                   },
                   {
-                    "color": "yellow",
+                    "color": "red",
                     "value": 1
                   }
                 ]
@@ -126,13 +126,13 @@ data:
           "pluginVersion": "13.2.3",
           "targets": [
             {
-              "expr": "count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\"})) or vector(0)",
+              "expr": "homelab:security_overdue:count",
               "instant": true,
               "legendFormat": "",
               "refId": "A"
             }
           ],
-          "title": "Images: Fixable Criticals Now",
+          "title": "Overdue",
           "type": "stat"
         },
         {
@@ -149,7 +149,66 @@ data:
                     "value": 0
                   },
                   {
-                    "color": "red",
+                    "color": "yellow",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 8,
+            "y": 0
+          },
+          "id": 2,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.3",
+          "targets": [
+            {
+              "expr": "homelab:security_open_image_cves:count",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Critical CVEs With a Fix",
+          "type": "stat"
+        },
+        {
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
                     "value": 1
                   }
                 ]
@@ -161,10 +220,10 @@ data:
           "gridPos": {
             "h": 4,
             "w": 3,
-            "x": 8,
+            "x": 12,
             "y": 0
           },
-          "id": 2,
+          "id": 3,
           "options": {
             "colorMode": "background",
             "graphMode": "none",
@@ -191,7 +250,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Nodes: Updates Overdue",
+          "title": "Nodes: Updates Pending",
           "type": "stat"
         },
         {
@@ -208,7 +267,7 @@ data:
                     "value": 0
                   },
                   {
-                    "color": "red",
+                    "color": "yellow",
                     "value": 1
                   }
                 ]
@@ -220,10 +279,10 @@ data:
           "gridPos": {
             "h": 4,
             "w": 3,
-            "x": 11,
+            "x": 15,
             "y": 0
           },
-          "id": 3,
+          "id": 4,
           "options": {
             "colorMode": "background",
             "graphMode": "none",
@@ -250,7 +309,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Nodes: Reboot Overdue",
+          "title": "Nodes: Reboot Needed",
           "type": "stat"
         },
         {
@@ -279,10 +338,10 @@ data:
           "gridPos": {
             "h": 4,
             "w": 3,
-            "x": 14,
+            "x": 18,
             "y": 0
           },
-          "id": 4,
+          "id": 5,
           "options": {
             "colorMode": "background",
             "graphMode": "none",
@@ -326,66 +385,7 @@ data:
                     "value": 0
                   },
                   {
-                    "color": "red",
-                    "value": 1
-                  }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 4,
-            "x": 17,
-            "y": 0
-          },
-          "id": 5,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.2.3",
-          "targets": [
-            {
-              "expr": "homelab:security_open_image_cves:count",
-              "instant": true,
-              "legendFormat": "",
-              "refId": "A"
-            }
-          ],
-          "title": "Images: Criticals Overdue",
-          "type": "stat"
-        },
-        {
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
+                    "color": "yellow",
                     "value": 1
                   }
                 ]
@@ -427,7 +427,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Renovate: Blocked 2d+",
+          "title": "Renovate: PRs Blocked",
           "type": "stat"
         },
         {

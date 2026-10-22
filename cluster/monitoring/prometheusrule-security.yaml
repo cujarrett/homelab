@@ -10,28 +10,19 @@ spec:
     - name: security
       interval: 5m
       rules:
-        # Each record counts only what automation has failed to fix in its own window.
-        # node security updates: unattended-upgrades runs daily, so 3 days pending means it stopped
-        # node reboot: unattended-upgrades never reboots, so 7 days means nobody did
-        # unattended run: the stamp is touched daily, so 2 days stale means the timer is broken
-        # image CVE: Renovate waits 7 days, so a fixable critical still running after 9 means it missed
-        # Renovate PR: blocked for 2 days means a fix is stuck behind a failing check
+        # homelab:security_open*  = open right now. The Homelab stat and Security dashboard show this.
+        # homelab:security_overdue* = open longer than automation needs. Only the Discord alert uses this.
         - record: homelab:security_open_node_updates:count
-          expr: count(min_over_time(node_security_updates_pending[3d]) > 0) or vector(0)
+          expr: count(node_security_updates_pending > 0) or vector(0)
         - record: homelab:security_open_node_reboot:count
-          expr: count(min_over_time(node_reboot_required[7d]) > 0) or vector(0)
+          expr: count(node_reboot_required > 0) or vector(0)
+        # The stamp is touched daily, so 2 days stale means the timer is broken.
         - record: homelab:security_open_unattended_stale:count
           expr: count(time() - node_unattended_upgrades_last_run_timestamp_seconds > 2 * 86400) or vector(0)
         - record: homelab:security_open_image_cves:count
-          expr: |
-            count(
-              count by (image_repository, vuln_id) (
-                trivy_vulnerability_id{severity="Critical", fixed_version!=""}
-                and trivy_vulnerability_id{severity="Critical", fixed_version!=""} offset 9d
-              )
-            ) or vector(0)
+          expr: count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity="Critical", fixed_version!=""})) or vector(0)
         - record: homelab:security_open_renovate_blocked:count
-          expr: count(min_over_time(github_exporter_pr_open_blocked[2d]) > 0) or vector(0)
+          expr: count(sum by (repo) (github_exporter_pr_open_blocked) > 0) or vector(0)
         - record: homelab:security_open:count
           expr: |
             homelab:security_open_node_updates:count
@@ -39,8 +30,33 @@ spec:
             + homelab:security_open_unattended_stale:count
             + homelab:security_open_image_cves:count
             + homelab:security_open_renovate_blocked:count
-        - alert: SecurityItemsOpen
-          expr: homelab:security_open:count > 0
+        # node updates: unattended-upgrades runs daily, so 3 days pending means it stopped
+        # node reboot: unattended-upgrades never reboots, so 7 days means nobody did
+        # image CVE: Renovate waits 7 days, so a fixable critical running 9 days after Trivy listed a fix means it missed
+        # Renovate PR: blocked for 2 days means a fix is stuck behind a failing check
+        - record: homelab:security_overdue_node_updates:count
+          expr: count(min_over_time(node_security_updates_pending[3d]) > 0) or vector(0)
+        - record: homelab:security_overdue_node_reboot:count
+          expr: count(min_over_time(node_reboot_required[7d]) > 0) or vector(0)
+        - record: homelab:security_overdue_image_cves:count
+          expr: |
+            count(
+              count by (image_repository, vuln_id) (
+                trivy_vulnerability_id{severity="Critical", fixed_version!=""}
+                and trivy_vulnerability_id{severity="Critical", fixed_version!=""} offset 9d
+              )
+            ) or vector(0)
+        - record: homelab:security_overdue_renovate_blocked:count
+          expr: count(min_over_time(github_exporter_pr_open_blocked[2d]) > 0) or vector(0)
+        - record: homelab:security_overdue:count
+          expr: |
+            homelab:security_overdue_node_updates:count
+            + homelab:security_overdue_node_reboot:count
+            + homelab:security_open_unattended_stale:count
+            + homelab:security_overdue_image_cves:count
+            + homelab:security_overdue_renovate_blocked:count
+        - alert: SecurityItemsOverdue
+          expr: homelab:security_overdue:count > 0
           for: 1h
           labels:
             severity: warning
