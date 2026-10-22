@@ -25,6 +25,11 @@ spec:
           extraArgs:
             - --status-processors=5
             - --operation-processors=5
+          # Live heap idles near 400Mi, but Go's default GC lets it double before collecting.
+          # 2GiB leaves 0.5Gi under the limit for non-heap memory, so GC tightens before an OOM kill.
+          env:
+            - name: GOMEMLIMIT
+              value: 2GiB
           resources:
             # Request equals limit so a full re-sync of every app always has room on the node.
             requests:
