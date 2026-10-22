@@ -27,6 +27,9 @@ spec:
           sbomGenerationEnabled: false
           # One scan job at a time keeps a cold start from saturating a node.
           scanJobsConcurrentLimit: 1
+          # Server holds one copy of the vulnerability DB.
+          # Standalone scan jobs each unpack their own copy, about 100MB/s of writes per job.
+          builtInTrivyServer: true
           # Per-CVE series carry fixed_version, which the open-items rule needs.
           metricsVulnIdEnabled: true
         trivy:
