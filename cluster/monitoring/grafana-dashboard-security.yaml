@@ -580,19 +580,19 @@ data:
           "pluginVersion": "13.2.3",
           "targets": [
             {
-              "expr": "node_security_updates_pending",
+              "expr": "max by (node) (node_security_updates_pending)",
               "format": "table",
               "instant": true,
               "refId": "A"
             },
             {
-              "expr": "node_reboot_required",
+              "expr": "max by (node) (node_reboot_required)",
               "format": "table",
               "instant": true,
               "refId": "B"
             },
             {
-              "expr": "(time() - node_unattended_upgrades_last_run_timestamp_seconds) / 3600",
+              "expr": "max by (node) (time() - node_unattended_upgrades_last_run_timestamp_seconds) / 3600",
               "format": "table",
               "instant": true,
               "refId": "C"
@@ -607,14 +607,7 @@ data:
               "id": "organize",
               "options": {
                 "excludeByName": {
-                  "Time": true,
-                  "__name__": true,
-                  "container": true,
-                  "endpoint": true,
-                  "instance": true,
-                  "job": true,
-                  "namespace": true,
-                  "pod": true
+                  "Time": true
                 },
                 "renameByName": {
                   "node": "Node",
