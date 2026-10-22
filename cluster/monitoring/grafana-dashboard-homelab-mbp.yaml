@@ -3020,7 +3020,7 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 8,
+            "w": 6,
             "x": 0,
             "y": 29
           },
@@ -3079,8 +3079,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 8,
-            "x": 8,
+            "w": 6,
+            "x": 6,
             "y": 29
           },
           "id": 931,
@@ -3138,8 +3138,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 8,
-            "x": 16,
+            "w": 6,
+            "x": 12,
             "y": 29
           },
           "id": 932,
@@ -4331,6 +4331,72 @@ data:
           ],
           "title": "Memory by Pod \u00b7 All Nodes",
           "type": "marcusolsson-treemap-panel"
+        },
+        {
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short",
+              "links": [
+                {
+                  "targetBlank": false,
+                  "title": "Security",
+                  "url": "/d/homelab-security/security"
+                }
+              ]
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 18,
+            "y": 29
+          },
+          "id": 933,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.3",
+          "targets": [
+            {
+              "expr": "homelab:security_open:count",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Security Open",
+          "type": "stat"
         }
       ],
       "preload": false,

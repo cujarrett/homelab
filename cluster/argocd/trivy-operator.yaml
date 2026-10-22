@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/argoproj.io/application_v1alpha1.json
+# Scans every running image for CVEs and exports them to Prometheus for the Security dashboard.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trivy-operator
+  namespace: argocd
+spec:
+  project: observability
+  source:
+    repoURL: https://aquasecurity.github.io/helm-charts
+    chart: trivy-operator
+    targetRevision: 0.37.0
+    helm:
+      releaseName: trivy-operator
+      values: |
+        operator:
+          # Image CVEs only. The other scanners add load on the Pis and nothing reads them.
+          configAuditScannerEnabled: false
+          rbacAssessmentScannerEnabled: false
+          infraAssessmentScannerEnabled: false
+          clusterComplianceEnabled: false
+          exposedSecretScannerEnabled: false
+          sbomGenerationEnabled: false
+          # One scan job at a time keeps a cold start from saturating a node.
+          scanJobsConcurrentLimit: 1
+          # Per-CVE series carry fixed_version, which the open-items rule needs.
+          metricsVulnIdEnabled: true
+        trivy:
+          severity: CRITICAL,HIGH
+        serviceMonitor:
+          enabled: true
+          labels:
+            release: monitoring
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: trivy-system
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true
