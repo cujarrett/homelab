@@ -90,7 +90,7 @@ data:
                     "value": 0
                   },
                   {
-                    "color": "red",
+                    "color": "yellow",
                     "value": 1
                   }
                 ]
@@ -103,6 +103,65 @@ data:
             "h": 4,
             "w": 4,
             "x": 4,
+            "y": 0
+          },
+          "id": 10,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.3",
+          "targets": [
+            {
+              "expr": "count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\"})) or vector(0)",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Images: Fixable Criticals Now",
+          "type": "stat"
+        },
+        {
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 3,
+            "x": 8,
             "y": 0
           },
           "id": 2,
@@ -132,7 +191,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Nodes: Security Updates Overdue",
+          "title": "Nodes: Updates Overdue",
           "type": "stat"
         },
         {
@@ -160,8 +219,8 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 4,
-            "x": 8,
+            "w": 3,
+            "x": 11,
             "y": 0
           },
           "id": 3,
@@ -219,8 +278,8 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 4,
-            "x": 12,
+            "w": 3,
+            "x": 14,
             "y": 0
           },
           "id": 4,
@@ -279,7 +338,7 @@ data:
           "gridPos": {
             "h": 4,
             "w": 4,
-            "x": 16,
+            "x": 17,
             "y": 0
           },
           "id": 5,
@@ -309,7 +368,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Images: Fixable Criticals Overdue",
+          "title": "Images: Criticals Overdue",
           "type": "stat"
         },
         {
@@ -337,8 +396,8 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 4,
-            "x": 20,
+            "w": 3,
+            "x": 21,
             "y": 0
           },
           "id": 6,
@@ -368,7 +427,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Renovate: PRs Blocked 2d+",
+          "title": "Renovate: Blocked 2d+",
           "type": "stat"
         },
         {
