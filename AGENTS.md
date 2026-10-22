@@ -142,7 +142,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `graph-test` | GraphApi ×2 + FederatedGraph | `records` and `reviews` subgraphs, one repo each (`storefront-records`, `storefront-reviews`), composed into `storefront-homelab@test`; router at `graph-test.local.lab` |
 | `graph-prod` | GraphApi ×2 + FederatedGraph | Same two subgraphs at the digests promoted from test by PR, composed into `storefront-homelab@prod`; router at `graph-prod.local.lab`. Published only by the prod operator in `apollo-operator-prod`, which holds its own key |
 | `secret-mirror-controller` | secret-mirror-controller | Kubebuilder controller for the `SecretMirror` CRD; copies a Secret into other namespaces |
-| `node-sysctls` | node-sysctls | DaemonSet applying sysctls against the host so they survive a node reboot |
+| `node-sysctls` | node-sysctls, k3s-env | DaemonSets writing host settings from Git. `node-sysctls` applies sysctls on every node; `k3s-env` writes a `GOMEMLIMIT` drop-in to ctrl-1's `/etc/systemd/system/k3s.service.d/`, which takes effect on the next daemon-reload and k3s restart |
 | `spire-server`, `spire-system` | SPIRE | Workload identity (SPIFFE); agent DaemonSet on all nodes; OIDC discovery provider serving `oidc.mattjarrett.dev` |
 
 ## Internal Hostnames (`.local.lab`)

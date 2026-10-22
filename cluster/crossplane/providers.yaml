@@ -15,6 +15,11 @@ spec:
             node-role.kubernetes.io/worker: worker
           containers:
             - name: package-runtime
+              # Live heap is ~150Mi, but Go's default GC lets it grow to ~300Mi first.
+              # GOMEMLIMIT is soft, so a reconcile burst past it slows GC, not the pod.
+              env:
+                - name: GOMEMLIMIT
+                  value: 256MiB
               # Providers request nothing by default while each holds 220-520Mi, so the
               # scheduler counts them as free and stacks them on one node. 384Mi is the
               # 7 day p95 across them. No limit, so a provider that briefly exceeds this

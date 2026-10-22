@@ -1,0 +1,48 @@
+# Sets GOMEMLIMIT for the k3s server on ctrl-1, so the API server collects garbage
+# before its heap doubles instead of holding ~2x its live data.
+# - Drop-in: the k3s installer rewrites k3s.service and k3s.service.env on every upgrade, never k3s.service.d/
+# - Timing: takes effect at the next daemon-reload and k3s restart. An upgrade does both
+# - No restart from here: it would restart the control plane this pod depends on
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: k3s-env
+  namespace: node-sysctls
+spec:
+  selector:
+    matchLabels:
+      app: k3s-env
+  template:
+    metadata:
+      labels:
+        app: k3s-env
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: ctrl-1
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+      containers:
+        - name: env
+          image: busybox:1.38
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              printf '[Service]\nEnvironment=GOMEMLIMIT=3GiB\n' > /host/k3s.service.d/gomemlimit.conf
+              sleep infinity
+          volumeMounts:
+            - name: k3s-dropin
+              mountPath: /host/k3s.service.d
+          resources:
+            requests:
+              cpu: 5m
+              memory: 16Mi
+            limits:
+              memory: 32Mi
+      volumes:
+        - name: k3s-dropin
+          hostPath:
+            path: /etc/systemd/system/k3s.service.d
+            type: DirectoryOrCreate
