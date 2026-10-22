@@ -742,10 +742,91 @@ data:
                 }
               }
             },
-            "overrides": []
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Critical"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-background"
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "thresholds"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "transparent",
+                          "value": 0
+                        },
+                        {
+                          "color": "red",
+                          "value": 1
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 80
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "High"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-background"
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "thresholds"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "transparent",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 1
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 80
+                  }
+                ]
+              }
+            ]
           },
           "gridPos": {
-            "h": 12,
+            "h": 14,
             "w": 24,
             "x": 0,
             "y": 11
@@ -760,15 +841,31 @@ data:
                 "sum"
               ],
               "fields": ""
-            }
+            },
+            "sortBy": [
+              {
+                "displayName": "Critical",
+                "desc": true
+              },
+              {
+                "displayName": "High",
+                "desc": true
+              }
+            ]
           },
           "pluginVersion": "13.2.3",
           "targets": [
             {
-              "expr": "count by (image_repository, image_tag, vuln_id, severity, installed_version, fixed_version) (trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version!=\"\"})",
+              "expr": "count by (resource, installed_version, fixed_version, image_repository, image_tag) (trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\"})",
               "format": "table",
               "instant": true,
               "refId": "A"
+            },
+            {
+              "expr": "count by (resource, installed_version, fixed_version, image_repository, image_tag) (trivy_vulnerability_id{severity=\"High\", fixed_version!=\"\"})",
+              "format": "table",
+              "instant": true,
+              "refId": "B"
             }
           ],
           "transformations": [
@@ -780,31 +877,32 @@ data:
               "id": "organize",
               "options": {
                 "excludeByName": {
-                  "Time": true,
-                  "Value": true
+                  "Time": true
                 },
                 "renameByName": {
-                  "image_repository": "Image",
-                  "image_tag": "Tag",
-                  "vuln_id": "CVE",
-                  "severity": "Severity",
+                  "resource": "Vulnerable package",
+                  "Value #A": "Critical",
+                  "Value #B": "High",
                   "installed_version": "Installed",
-                  "fixed_version": "Fixed in"
+                  "fixed_version": "Fixed in",
+                  "image_repository": "Image",
+                  "image_tag": "Tag"
                 },
                 "indexByName": {
-                  "severity": 0,
-                  "vuln_id": 1,
-                  "image_repository": 2,
-                  "image_tag": 3,
-                  "installed_version": 4,
-                  "fixed_version": 5
+                  "resource": 0,
+                  "Value #A": 1,
+                  "Value #B": 2,
+                  "installed_version": 3,
+                  "fixed_version": 4,
+                  "image_repository": 5,
+                  "image_tag": 6
                 }
               }
             }
           ],
-          "title": "Running Images: Critical and High CVEs With a Fix",
+          "title": "Vulnerable Packages With a Fix",
           "type": "table",
-          "description": "Whether a newer image exists is on Renovate's Dependency Dashboard, linked from this panel.",
+          "description": "One row per vulnerable package per image. Critical and High are CVE counts for that package. Updating the image, or the dependency inside it, to Fixed in clears the row. Whether a newer image exists is on Renovate's Dependency Dashboard, linked from this panel.",
           "links": [
             {
               "title": "Renovate Dependency Dashboard",
