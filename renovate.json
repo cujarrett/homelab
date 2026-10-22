@@ -35,6 +35,25 @@
       "minimumReleaseAge": "0 days"
     },
     {
+      "description": [
+        "ECR Public publishes no release dates.",
+        "Without a date, the 7-day wait never ends.",
+        "Skipping the date check lets aws-cli update."
+      ],
+      "matchPackageNames": ["public.ecr.aws/**"],
+      "minimumReleaseAgeBehaviour": "timestamp-optional"
+    },
+    {
+      "description": [
+        "xpkg.upbound.io publishes no release dates.",
+        "Skipping the date check lets Crossplane packages update.",
+        "They run Crossplane itself, so a person merges each one."
+      ],
+      "matchPackageNames": ["xpkg.upbound.io/**"],
+      "minimumReleaseAgeBehaviour": "timestamp-optional",
+      "automerge": false
+    },
+    {
       "matchPackageNames": ["wordpress"],
       "pinDigests": true,
       "prBodyNotes": [
@@ -43,7 +62,10 @@
       ]
     },
     {
-      "description": "A same-tag rebuild of the official image is how PHP and Debian security fixes arrive, so it skips the 7-day cooldown.",
+      "description": [
+        "PHP and Debian security fixes arrive as a rebuild of the same tag.",
+        "Digest updates skip the 7-day wait so those fixes land fast."
+      ],
       "matchPackageNames": ["wordpress"],
       "matchUpdateTypes": ["digest"],
       "minimumReleaseAge": "0 days"
@@ -55,18 +77,30 @@
       ]
     },
     {
-      "description": "One PR per update. A cluster change that self-applies on merge has to be revertable on its own, and a per-package automerge rule only holds when the package is alone on the branch.",
+      "description": [
+        "One PR per update.",
+        "A merge applies to the cluster, so each change must revert on its own.",
+        "Per-package automerge rules only work when the package is alone on its branch."
+      ],
       "matchUpdateTypes": ["minor", "patch", "digest"],
       "groupName": null
     },
     {
-      "description": "Merging these by hand is real work, not a rubber stamp. AdGuard has a pre-merge skill to run first, and a spire minor or major can move the agent binary out of step with the one in workload-identity-sidecar.",
+      "description": [
+        "A person merges these.",
+        "AdGuard: run /adguard-pre-pull first.",
+        "spire minor or major: can put the agent out of step with workload-identity-sidecar."
+      ],
       "matchPackageNames": ["adguard/adguardhome", "spire"],
       "automerge": false,
       "labels": []
     },
     {
-      "description": "A spire chart patch leaves appVersion alone, so the agent binary in workload-identity-sidecar cannot fall out of step. Minor and major still reach a human via the rule above.",
+      "description": [
+        "spire chart patches keep the same appVersion.",
+        "The agent stays in step with workload-identity-sidecar, so patches automerge.",
+        "Minor and major still go to a person, per the rule above."
+      ],
       "matchPackageNames": ["spire"],
       "matchUpdateTypes": ["patch"],
       "automerge": true,
