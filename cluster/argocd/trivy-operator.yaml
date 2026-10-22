@@ -5,6 +5,9 @@ kind: Application
 metadata:
   name: trivy-operator
   namespace: argocd
+  # Deleting this Application also deletes what it deployed, so a revert leaves nothing running.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: observability
   source:
