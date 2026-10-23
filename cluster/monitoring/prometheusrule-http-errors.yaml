@@ -17,7 +17,7 @@ spec:
           expr: |
             label_replace(
               sum by (exported_service) (increase(traefik_service_requests_total{code=~"5.."}[5m])),
-              "service_prefix", "$1", "exported_service", "^(.+)-http-[0-9]+@kubernetesgateway$"
+              "service_prefix", "$1", "exported_service", "^.*-svc-(.+)-[0-9]+@kubernetesgateway$"
             )
             * on(service_prefix) group_left(namespace)
             label_join(kube_service_info, "service_prefix", "-", "namespace", "service")

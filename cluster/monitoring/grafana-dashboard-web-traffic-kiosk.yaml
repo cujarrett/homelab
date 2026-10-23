@@ -24,35 +24,35 @@ data:
           "gridPos": { "x": 0, "y": 0, "w": 3, "h": 5 },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none", "textMode": "value", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "color": { "fixedColor": "blue", "mode": "fixed" } } },
-          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
+          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"(.*-svc-)?(blog-ghost.*)\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
         },
         {
           "id": 2, "type": "stat", "title": "mattjarrett.dev",
           "gridPos": { "x": 3, "y": 0, "w": 3, "h": 5 },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none", "textMode": "value", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "color": { "fixedColor": "purple", "mode": "fixed" } } },
-          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*|web-mattjarrett-dev.*\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
+          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"(.*-svc-)?(mattjarrett-dev-mattjarrett-dev.*|web-mattjarrett-dev.*)\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
         },
         {
           "id": 4, "type": "stat", "title": "myvinyl",
           "gridPos": { "x": 6, "y": 0, "w": 3, "h": 5 },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none", "textMode": "value", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "color": { "fixedColor": "super-light-blue", "mode": "fixed" } } },
-          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"my-vinyl-my-vinyl.*\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
+          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"(.*-svc-)?(my-vinyl-my-vinyl.*)\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
         },
         {
           "id": 5, "type": "stat", "title": "jspollock",
           "gridPos": { "x": 9, "y": 0, "w": 3, "h": 5 },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none", "textMode": "value", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "color": { "fixedColor": "light-purple", "mode": "fixed" } } },
-          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"js-pollock-js-pollock.*\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
+          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"(.*-svc-)?(js-pollock-js-pollock.*)\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
         },
         {
           "id": 7, "type": "stat", "title": "launchpad",
           "gridPos": { "x": 12, "y": 0, "w": 3, "h": 5 },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none", "textMode": "value", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "color": { "fixedColor": "dark-blue", "mode": "fixed" } } },
-          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"launchpad-launchpad.*\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
+          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"(.*-svc-)?(launchpad-launchpad.*)\"}[24h]))", "legendFormat": "requests 24h", "instant": true, "refId": "A" }]
         },
         {
           "id": 8, "type": "stat", "title": "gotemplate",
@@ -76,11 +76,11 @@ data:
           },
           "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false }, "tooltip": { "mode": "multi", "sort": "desc" } },
           "targets": [
-            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"blog-ghost.*\"}[1h]))", "legendFormat": "blog", "refId": "A" },
-            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"mattjarrett-dev-mattjarrett-dev.*|web-mattjarrett-dev.*\"}[1h]))", "legendFormat": "mattjarrett.dev", "refId": "B" },
-            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"my-vinyl-my-vinyl.*\"}[1h]))", "legendFormat": "myvinyl", "refId": "D" },
-            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"js-pollock-js-pollock.*\"}[1h]))", "legendFormat": "jspollock", "refId": "E" },
-            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"launchpad-launchpad.*\"}[1h]))", "legendFormat": "launchpad", "refId": "F" }
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"(.*-svc-)?(blog-ghost.*)\"}[1h]))", "legendFormat": "blog", "refId": "A" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"(.*-svc-)?(mattjarrett-dev-mattjarrett-dev.*|web-mattjarrett-dev.*)\"}[1h]))", "legendFormat": "mattjarrett.dev", "refId": "B" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"(.*-svc-)?(my-vinyl-my-vinyl.*)\"}[1h]))", "legendFormat": "myvinyl", "refId": "D" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"(.*-svc-)?(js-pollock-js-pollock.*)\"}[1h]))", "legendFormat": "jspollock", "refId": "E" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"(.*-svc-)?(launchpad-launchpad.*)\"}[1h]))", "legendFormat": "launchpad", "refId": "F" }
           ]
         }
       ]

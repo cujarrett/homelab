@@ -184,7 +184,7 @@ data:
           "pluginVersion": "13.1.0",
           "targets": [
             {
-              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"$namespace-.*\"}[5m])) or vector(0)",
+              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"(.*-svc-)?$namespace-.*\"}[5m])) or vector(0)",
               "instant": true,
               "legendFormat": "req/s",
               "refId": "A"
@@ -240,7 +240,7 @@ data:
           "pluginVersion": "13.1.0",
           "targets": [
             {
-              "expr": "(sum(rate(traefik_service_requests_total{exported_service=~\"$namespace-.*\",code=~\"5..\"}[5m])) or vector(0)) / (sum(rate(traefik_service_requests_total{exported_service=~\"$namespace-.*\"}[5m])) or vector(1))",
+              "expr": "(sum(rate(traefik_service_requests_total{exported_service=~\"(.*-svc-)?$namespace-.*\",code=~\"5..\"}[5m])) or vector(0)) / (sum(rate(traefik_service_requests_total{exported_service=~\"(.*-svc-)?$namespace-.*\"}[5m])) or vector(1))",
               "instant": true,
               "legendFormat": "Error %",
               "refId": "A"
@@ -281,7 +281,7 @@ data:
           "pluginVersion": "13.1.0",
           "targets": [
             {
-              "expr": "histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"$namespace-.*\"}[5m])) by (le)) or vector(0)",
+              "expr": "histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"(.*-svc-)?$namespace-.*\"}[5m])) by (le)) or vector(0)",
               "instant": true,
               "legendFormat": "p95",
               "refId": "A"
@@ -347,7 +347,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"$namespace-.*\"}[5m])) by (code)",
+              "expr": "sum(rate(traefik_service_requests_total{exported_service=~\"(.*-svc-)?$namespace-.*\"}[5m])) by (code)",
               "legendFormat": "{{code}}",
               "refId": "A"
             }
@@ -412,17 +412,17 @@ data:
           },
           "targets": [
             {
-              "expr": "histogram_quantile(0.50, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"$namespace-.*\"}[5m])) by (le))",
+              "expr": "histogram_quantile(0.50, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"(.*-svc-)?$namespace-.*\"}[5m])) by (le))",
               "legendFormat": "p50",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"$namespace-.*\"}[5m])) by (le))",
+              "expr": "histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"(.*-svc-)?$namespace-.*\"}[5m])) by (le))",
               "legendFormat": "p95",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"$namespace-.*\"}[5m])) by (le))",
+              "expr": "histogram_quantile(0.99, sum(rate(traefik_service_request_duration_seconds_bucket{exported_service=~\"(.*-svc-)?$namespace-.*\"}[5m])) by (le))",
               "legendFormat": "p99",
               "refId": "C"
             }

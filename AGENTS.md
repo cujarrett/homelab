@@ -224,12 +224,12 @@ stat panel targets need `"instant": true` or the range queries crash the Pi. Add
 ### Traefik Prometheus label quirk
 Prometheus renames the `service` label from Traefik metrics to `exported_service` to avoid collision. Always use `exported_service=~"..."` in Traefik queries.
 
-Service label format: `{namespace}-{servicename}-http-{port}@kubernetesgateway`. Match on the prefix so older `@kubernetes` series still count.
-- `blog.mattjarrett.dev` → `blog-ghost.*`
-- `mattjarrett.dev` → `mattjarrett-dev-mattjarrett-dev.*` or `web-mattjarrett-dev.*` (both exist; use alternation `|`)
-- `mattjarrett.com` → `mattjarrett-com-mattjarrett-com-wordpress.*`
-- `myvinyl.mattjarrett.dev` → `my-vinyl-my-vinyl.*`
-- `jspollock.mattjarrett.dev` → `js-pollock-js-pollock.*`
+Service label format: `httproute-{namespace}-{route}-gw-…-svc-{namespace}-{servicename}-{n}@kubernetesgateway`. Older series are `{namespace}-{servicename}-{port}@kubernetes`, so prefix patterns with `(.*-svc-)?` to match both.
+- `blog.mattjarrett.dev` → `(.*-svc-)?(blog-ghost.*)`
+- `mattjarrett.dev` → `(.*-svc-)?(mattjarrett-dev-mattjarrett-dev.*|web-mattjarrett-dev.*)` (both exist)
+- `mattjarrett.com` → `(.*-svc-)?(mattjarrett-com-mattjarrett-com-wordpress.*)`
+- `myvinyl.mattjarrett.dev` → `(.*-svc-)?(my-vinyl-my-vinyl.*)`
+- `jspollock.mattjarrett.dev` → `(.*-svc-)?(js-pollock-js-pollock.*)`
 
 ## 1U Display (ctrl-1)
 `ctrl-1` drives an attached 1424x280 LCD with a kiosk browser, run as a bare background process
