@@ -29,8 +29,6 @@ spec:
             {{- /* Slash-separated, so the namespace and name can never reconcatenate into */ -}}
             {{- /* another instance's path. The Api composition derives the same string.   */ -}}
             {{- $secretId := printf "platform/%s/%s" $ns $name }}
-            {{- /* A string, not a bool - the fetcher reads every property as a string. */}}
-            {{- $placeholder := dict "__unset__" "true" | toJson }}
             {{- /* An absent ready annotation leaves readiness unspecified, which never  */}}
             {{- /* counts as ready, so the XR would wait forever. Read what the managed  */}}
             {{- /* resources actually report instead, the same way Sql and Cache do.     */}}
@@ -40,15 +38,10 @@ spec:
             {{- if and (eq .type "Ready") (eq .status "True") }}{{- $secretReady = "True" }}{{- end }}
             {{- end }}
             {{- end }}
-            {{- $versionReady := "False" }}
-            {{- with index (.observed.resources | default dict) "secret-version" }}
-            {{- range (.resource.status.conditions | default list) }}
-            {{- if and (eq .type "Ready") (eq .status "True") }}{{- $versionReady = "True" }}{{- end }}
-            {{- end }}
-            {{- end }}
             ---
-            # Holds no value of its own. placeholder-value below writes one at creation, and
-            # after that only the owner does, in the console.
+            # Created with no value. Only the owner ever sets one, in the console.
+            # A composed SecretVersion would write one again after every provider restart,
+            # because the provider never records which version it made.
             apiVersion: secretsmanager.aws.m.upbound.io/v1beta1
             kind: Secret
             metadata:
@@ -67,42 +60,3 @@ spec:
                 tags:
                   App: {{ $name }}
                   Namespace: {{ $ns }}
-            ---
-            # Plaintext placeholder, held in a k8s Secret because SecretVersion only accepts the
-            # value via a secretRef, never inline. CreateSecret requires a value; there is no way
-            # to create one with genuinely nothing in it.
-            apiVersion: v1
-            kind: Secret
-            metadata:
-              name: {{ $name }}-placeholder
-              namespace: {{ $ns }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: placeholder-value
-                gotemplating.fn.crossplane.io/ready: "True"
-            type: Opaque
-            stringData:
-              value: {{ $placeholder | quote }}
-            ---
-            # Observe and Create only, so a value the owner later sets in the console
-            # survives every reconcile. Adding Update would overwrite it with this
-            # placeholder, and Create alone is rejected as a policy set.
-            apiVersion: secretsmanager.aws.m.upbound.io/v1beta1
-            kind: SecretVersion
-            metadata:
-              name: {{ $name }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: secret-version
-                gotemplating.fn.crossplane.io/ready: {{ $versionReady | quote }}
-            spec:
-              managementPolicies: ["Observe", "Create"]
-              forProvider:
-                region: {{ $region }}
-                {{- /* A reference rather than the id, so Crossplane waits for the secret to */}}
-                {{- /* exist. Naming it directly races creation and latches on async failure. */}}
-                secretIdRef:
-                  name: {{ $name }}
-                {{- /* No namespace here - this managed resource is itself namespaced, so the */}}
-                {{- /* ref resolves alongside it, and the schema rejects the field outright.  */}}
-                secretStringSecretRef:
-                  name: {{ $name }}-placeholder
-                  key: value
