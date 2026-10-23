@@ -158,7 +158,6 @@ spec:
   parameters:
     graphRef: storefront-homelab@test
     host: graph-test.local.lab
-    tlsIssuer: local-lab-ca-issuer
     replicas: 1
 ```
 

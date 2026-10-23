@@ -6,7 +6,7 @@ Ghost blog running at `blog.mattjarrett.dev` via Cloudflare Tunnel.
 
 | File | Purpose |
 |---|---|
-| `ghost.yaml` | Namespace, PVC, Deployment, Service, Ingress |
+| `ghost.yaml` | Namespace, PVC, Deployment, Service, HTTPRoute |
 | `ghost-backup.yaml` | CronJob that runs `ghost-backup.py` daily at 02:00 |
 | `ghost-backup.py` | Fetches published posts from Ghost Content API and commits them to GitHub |
 | `kustomization.yaml` | Wires `ghost-backup.py` into the `ghost-backup-script` ConfigMap |

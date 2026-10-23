@@ -18,7 +18,7 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 
 | XR | What it provisions | `private-cloud` | `public-cloud` |
 |---|---|---|---|
-| [`Api`](api/README.md) | Deployment · Service · Ingress · TLS | - | - |
+| [`Api`](api/README.md) | Deployment · Service · Route | - | - |
 | [`Spa`](spa/README.md) | Static frontend via nginx | - | - |
 | [`Wordpress`](wordpress/README.md) | WordPress site with its own database | - | - |
 | [`Sql`](sql/README.md) | Relational database | Postgres on Longhorn | AWS RDS Postgres |
@@ -38,7 +38,7 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 40, 'rankSpacing': 60}}}%%
 flowchart TD
-    api["Api\nDeployment + Service + Ingress"]
+    api["Api\nDeployment + Service + Route"]
     spa["Spa\nnginx frontend"]
     cache["Cache\nowned by Api"]
     sql["Sql\nstandalone lifecycle"]

@@ -104,7 +104,7 @@ Stopping that takes a rule the pod cannot reach, enforced at the node end of the
 
 **That layer is not built and is not planned.** It needed a CNI that enforces policy by identity and resolves egress rules by hostname, and the cluster runs flannel, which does neither. A compromised pod is out of the threat model here, so the mesh's governance is the boundary. Plain `NetworkPolicy` still works for coarse rules - the WordPress composition uses one to keep a compromised site off the LAN - but it names CIDRs, not hostnames, so it cannot express "this pod may reach one SaaS host and nothing else".
 
-**An app with an Ingress is reachable from the ingress controller** whatever its grants, because Traefik is unmeshed and presents no identity. How far that reaches depends on `tlsIssuer`.
+**An app with a `host` is reachable from the ingress controller** whatever its grants, because Traefik is unmeshed and presents no identity. A `mattjarrett.dev` host reaches the internet, a `local.lab` host the homelab network.
 
 **Nothing tests that an app can reach its backend.** Rendering is checked, behaviour is not. A workload can serve its page, report `2/2`, sync green, and still fail every call to its own API. This has already caused one outage and closing it is the most valuable work left.
 

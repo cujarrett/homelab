@@ -18,8 +18,6 @@ spec:
           - dir: blog
           - dir: cert-manager
           - dir: cloudflare
-          - dir: demo-certs
-            project: platform
           - dir: monitoring
             project: observability
           - dir: node-sysctls
@@ -28,8 +26,6 @@ spec:
             serverSideApply: true
           - dir: platform-exporter
             project: observability
-            serverSideApply: true
-          - dir: secret-mirror-controller
             serverSideApply: true
           - dir: traefik
             # Traefik is a k3s HelmChartConfig, which the k3s controller reads

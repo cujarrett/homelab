@@ -99,28 +99,15 @@ spec:
       targetPort: 3000
       name: setup
 ---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
 metadata:
   name: adguard-home
   namespace: adguard
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
-    cert-manager.io/cluster-issuer: local-lab-ca-issuer
 spec:
-  tls:
-    - hosts:
-        - adguard.local.lab
-      secretName: adguard-local-lab-tls
+  parentRefs:
+    - {name: traefik-gateway, namespace: kube-system}
+  hostnames: [adguard.local.lab]
   rules:
-    - host: adguard.local.lab
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: adguard-home
-                port:
-                  number: 80
+    - backendRefs:
+        - {name: adguard-home, port: 80}

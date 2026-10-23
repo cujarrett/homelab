@@ -1,55 +1,31 @@
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
 metadata:
   name: grafana
   namespace: monitoring
-  annotations:
-    cert-manager.io/cluster-issuer: local-lab-ca-issuer
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
 spec:
-  tls:
-    - hosts:
-        - grafana.local.lab
-      secretName: grafana-tls-cert
+  parentRefs:
+    - {name: traefik-gateway, namespace: kube-system}
+  hostnames: [grafana.local.lab]
   rules:
-    - host: grafana.local.lab
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: monitoring-grafana
-                port:
-                  number: 80
+    - backendRefs:
+        - {name: monitoring-grafana, port: 80}
 ---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
 metadata:
   name: prometheus
   namespace: monitoring
-  annotations:
-    traefik.ingress.kubernetes.io/router.middlewares: "monitoring-prometheus-basic-auth@kubernetescrd"
-    cert-manager.io/cluster-issuer: local-lab-ca-issuer
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
 spec:
-  tls:
-    - hosts:
-        - prometheus.local.lab
-      secretName: prometheus-tls-cert
+  parentRefs:
+    - {name: traefik-gateway, namespace: kube-system}
+  hostnames: [prometheus.local.lab]
   rules:
-    - host: prometheus.local.lab
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: monitoring-kube-prometheus-prometheus
-                port:
-                  number: 9090
+    - filters:
+        - type: ExtensionRef
+          extensionRef: {group: traefik.io, kind: Middleware, name: prometheus-basic-auth}
+      backendRefs:
+        - {name: monitoring-kube-prometheus-prometheus, port: 9090}
 ---
 # --- basicAuth Middleware ---
 # No native authentication, so the control sits at the proxy. Credentials live in

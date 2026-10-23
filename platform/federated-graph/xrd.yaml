@@ -32,13 +32,6 @@ spec:
                       pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
                       maxLength: 253
                       description: "Hostname clients call. If omitted, the graph is reachable only inside the cluster."
-                    tlsIssuer:
-                      type: string
-                      default: local-lab-ca-issuer
-                      enum:
-                        - local-lab-ca-issuer
-                        - letsencrypt-prod
-                      description: "Certificate issuer for host. Internal for services only on the homelab network. External for services exposed to the public internet."
                     replicas:
                       type: integer
                       default: 1
