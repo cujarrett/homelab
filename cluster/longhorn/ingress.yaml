@@ -4,15 +4,20 @@ metadata:
   name: longhorn-ui
   namespace: longhorn-system
 spec:
+  # The API server's defaults are written out.
+  # This app uses ServerSideApply, and ArgoCD's server-side diff then leaves defaults
+  # out of the predicted state, so the route shows OutOfSync forever.
   parentRefs:
-    - {name: traefik-gateway, namespace: kube-system}
+    - {group: gateway.networking.k8s.io, kind: Gateway, name: traefik-gateway, namespace: kube-system}
   hostnames: [longhorn.local.lab]
   rules:
-    - filters:
+    - matches:
+        - path: {type: PathPrefix, value: /}
+      filters:
         - type: ExtensionRef
           extensionRef: {group: traefik.io, kind: Middleware, name: longhorn-basic-auth}
       backendRefs:
-        - {name: longhorn-frontend, port: 80}
+        - {group: "", kind: Service, name: longhorn-frontend, port: 80, weight: 1}
 ---
 # --- basicAuth Middleware ---
 # No native authentication, so the control sits at the proxy. Credentials live in

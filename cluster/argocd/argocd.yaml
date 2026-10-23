@@ -57,11 +57,13 @@ spec:
             # Traefik terminates TLS and proxies plain HTTP here. Without --insecure that
             # is double TLS and the ingress breaks.
             - --insecure
+          # Idles near 60Mi.
+          # A diff of the longhorn app, with its chart CRDs, OOMKilled it at 256Mi.
           resources:
             requests:
               memory: 96Mi
             limits:
-              memory: 256Mi
+              memory: 512Mi
         applicationSet:
           resources:
             requests:
