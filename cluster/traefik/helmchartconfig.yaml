@@ -17,6 +17,22 @@ spec:
         protocol: TCP
     service:
       type: ClusterIP
+    providers:
+      kubernetesGateway:
+        enabled: true
+    # Routes attach from any namespace.
+    # web is dropped so no route is also served as plain HTTP on port 80.
+    gateway:
+      listeners:
+        web: null
+        websecure:
+          port: 8443
+          protocol: HTTPS
+          namespacePolicy:
+            from: All
+          certificateRefs:
+            - name: public-tls
+            - name: local-lab-tls
     # The chart requests nothing, so the scheduler counted Traefik as free on every node.
     resources:
       requests:

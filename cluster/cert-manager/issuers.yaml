@@ -9,9 +9,11 @@ spec:
     privateKeySecretRef:
       name: letsencrypt-staging-key
     solvers:
-      - http01:
-          ingress:
-            class: traefik
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
 ---
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -24,9 +26,11 @@ spec:
     privateKeySecretRef:
       name: letsencrypt-prod-key
     solvers:
-      - http01:
-          ingress:
-            class: traefik
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
 ---
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
