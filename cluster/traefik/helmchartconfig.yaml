@@ -20,6 +20,8 @@ spec:
     providers:
       kubernetesGateway:
         enabled: true
+      kubernetesIngress:
+        enabled: false
     # Routes attach from any namespace.
     # web is dropped so no route is also served as plain HTTP on port 80.
     gateway:
