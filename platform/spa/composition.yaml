@@ -442,40 +442,27 @@ spec:
                 sourceCriterion:
                   requestHeaderName: CF-Connecting-IP
             ---
-            # --- Ingress ---
-            # tlsIssuer: local-lab-ca-issuer for .local.lab; letsencrypt-prod for public hosts
-            # tlsSecret: skip issuance and reference a pre-existing secret (e.g. demo slot certs)
-            apiVersion: networking.k8s.io/v1
-            kind: Ingress
+            # --- HTTPRoute ---
+            apiVersion: gateway.networking.k8s.io/v1
+            kind: HTTPRoute
             metadata:
               name: {{ $name }}
               namespace: {{ $namespace }}
               annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: ingress
+                gotemplating.fn.crossplane.io/composition-resource-name: httproute
                 gotemplating.fn.crossplane.io/ready: "True"
-                traefik.ingress.kubernetes.io/router.entrypoints: websecure
-                traefik.ingress.kubernetes.io/router.tls: "true"
-                traefik.ingress.kubernetes.io/router.middlewares: "{{ $namespace }}-{{ $name }}-ratelimit@kubernetescrd"
-                {{- if not $params.tlsSecret }}
-                cert-manager.io/cluster-issuer: {{ $params.tlsIssuer | default "local-lab-ca-issuer" }}
-                {{- end }}
             spec:
-              ingressClassName: traefik
-              tls:
-                - hosts:
-                    - {{ $params.host }}
-                  secretName: {{ if $params.tlsSecret }}{{ $params.tlsSecret }}{{ else }}{{ $name }}-tls{{ end }}
+              parentRefs:
+                - {name: traefik-gateway, namespace: kube-system}
+              hostnames:
+                - {{ $params.host }}
               rules:
-                - host: {{ $params.host }}
-                  http:
-                    paths:
-                      - path: /
-                        pathType: Prefix
-                        backend:
-                          service:
-                            name: {{ $name }}
-                            port:
-                              number: 80
+                - filters:
+                    - type: ExtensionRef
+                      extensionRef: {group: traefik.io, kind: Middleware, name: {{ $name }}-ratelimit}
+                  backendRefs:
+                    - name: {{ $name }}
+                      port: 80
             {{- /* ---------- Connections ---------- */ -}}
             {{- /* apiProxies already states this SPA's dependencies, so they become     */ -}}
             {{- /* egress entries here rather than being declared a second time.         */ -}}
@@ -483,10 +470,9 @@ spec:
 
             {{- $consumes := $params.consumes | default list }}
             ---
-            # Every Spa has an Ingress, and Traefik is unmeshed, so port 8080 cannot be
-            # restricted by identity. How far that reaches depends on tlsIssuer -
-            # letsencrypt-prod means the internet, local-lab-ca-issuer means the
-            # homelab network. Either way it is wider than the mesh can narrow.
+            # Every Spa has a route, and Traefik is unmeshed, so port 8080 cannot be
+            # restricted by identity. A mattjarrett.dev host reaches the internet,
+            # a local.lab host the homelab network.
             apiVersion: security.istio.io/v1
             kind: PeerAuthentication
             metadata:

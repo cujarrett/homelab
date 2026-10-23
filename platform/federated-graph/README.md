@@ -7,7 +7,7 @@ One per environment, written by the platform team. It lists no subgraphs, so a t
 ## What it provisions
 - **Composed schema** - selects every subgraph in this namespace carrying this graph's label and composes them against the named variant. A subgraph that breaks composition is refused and the router keeps serving the last good schema.
 - **Router** - a Deployment and a ClusterIP Service named `<name>-router` on port 80. Introspection is off and requests are rate limited.
-- **Ingress** *(optional)* - Traefik `websecure` with TLS; only created when `host` is set. cert-manager issues the certificate via `tlsIssuer`.
+- **Route** *(optional)* - HTTPS on `host`; only created when `host` is set.
 - **Connection policy** - always. Inbound calls need a mesh identity, except ingress traffic when `host` is set. Outbound is limited to the subgraphs in this namespace and the schema registry.
 
 The namespace is owned by the tenant, created by `namespace.yaml` in the tenant directory. Deleting a FederatedGraph removes the router and its policy. The variant and its schema history stay in the registry.
@@ -18,7 +18,6 @@ The namespace is owned by the tenant, created by `namespace.yaml` in the tenant 
 |---|---|---|---|
 | `graphRef` | yes | - | The graph and variant this environment serves, as `graph@variant`. |
 | `host` | no | - | Hostname clients call. If omitted, the router is reachable only inside the cluster. |
-| `tlsIssuer` | no | `local-lab-ca-issuer` | cert-manager ClusterIssuer. `local-lab-ca-issuer` for internal `.local.lab` hostnames; `letsencrypt-prod` for public internet hosts. Ignored without `host`. |
 | `replicas` | no | `1` | Number of router replicas. |
 
 ## Example

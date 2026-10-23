@@ -9,7 +9,7 @@ Server-side and incremental static regeneration are not supported, those run a r
 - **Deployment** - nginx container running the pre-built SPA image
 - **Service** - ClusterIP on port 80
 - **Middleware** - Traefik rate limiter: 60 requests/min average, burst of 20, keyed per client IP (`CF-Connecting-IP` header)
-- **Ingress** - Traefik `websecure` entrypoint with cert-manager TLS; rate limit middleware applied
+- **Route** - HTTPS on `host`, rate limit applied
 - **Connection policy** - always. Refuses any call this app makes to a destination it has not declared, and any inbound call that does not carry a workload identity the platform issued. See [Platform Connections](../docs/connections.md).
 
 The namespace is owned by the tenant - created by `namespace.yaml` in the tenant directory, not by this composition.
@@ -19,11 +19,9 @@ The namespace is owned by the tenant - created by `namespace.yaml` in the tenant
 | Parameter | Required | Default | Description |
 |---|---|---|---|
 | `image` | yes | - | Container image (`ghcr.io/owner/app:sha-abc123`). CI builds on merge to main and commits the new tag back to trigger sync. |
-| `host` | yes | - | Ingress hostname (e.g. `myapp.local.lab` or `myapp.example.com`) |
+| `host` | yes | - | Hostname clients call (e.g. `foo.local.lab`). Must be under `local.lab` for the homelab network or `mattjarrett.dev` for the internet. |
 | `repo` | no | - | GitHub repository URL for this app's source code. |
 | `size` | no | `sm` | Compute tier for the nginx container: `xs=25m/100m CPU, 32Mi/64Mi mem` · `sm=50m/200m CPU, 64Mi/128Mi mem` · `md=100m/500m CPU, 128Mi/256Mi mem` · `lg=250m/1000m CPU, 256Mi/512Mi mem`. |
-| `tlsIssuer` | no | `local-lab-ca-issuer` | cert-manager ClusterIssuer. `local-lab-ca-issuer` for internal `.local.lab` hostnames; `letsencrypt-prod` for public internet hosts. Ignored when `tlsSecret` is set. |
-| `tlsSecret` | no | - | Name of a pre-existing TLS Secret in the app namespace. When set, the Ingress references it directly and cert-manager issuance is skipped. Used by sandbox slots to reuse long-lived demo certs. |
 | `contentSecurityPolicy` | no | `default-src 'self'; frame-ancestors 'none'; base-uri 'self';` | CSP header value. Override with app-specific origins (Google Fonts, external APIs, etc.). |
 | `replicas` | no | `1` | Number of nginx replicas. Stateless - safe to scale freely. |
 | `apiProxies` | no | - | Array of path prefixes to proxy to a backend, keeping on-platform APIs off the public internet. Each entry requires `path` and exactly one of `app` (on-platform, address derived) or `host` (off-platform, verbatim, never an in-cluster name). `namespace` defaults to this SPA's own and cannot name another namespace. The prefix is stripped before proxying, so set `upstreamPath` when the backend registered its routes under one. |
@@ -91,6 +89,6 @@ kubectl get spa foo -n foo -o jsonpath='{.status.conditions}' | python3 -m json.
 # Pod status
 kubectl get pods -n foo
 
-# Hit the Ingress
+# Hit the route
 curl https://foo.local.lab/healthz
 ```

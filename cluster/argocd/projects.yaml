@@ -90,9 +90,7 @@ spec:
     - {server: https://kubernetes.default.svc, namespace: "guest-*"}
   clusterResourceWhitelist:
     - {group: "", kind: Namespace}
-  # RoleBinding is for launchpad guest sandboxes, which bind secret-mirror-writer.
   namespaceResourceWhitelist:
     - {group: platform.local.lab, kind: "*"}
     - {group: "", kind: ConfigMap}
     - {group: "", kind: Service}
-    - {group: rbac.authorization.k8s.io, kind: RoleBinding}

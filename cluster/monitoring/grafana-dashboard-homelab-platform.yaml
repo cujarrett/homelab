@@ -1153,7 +1153,7 @@ data:
               "editorMode": "code",
               "refId": "A",
               "interval": "5m",
-              "expr": "sum by (handler) (label_replace(increase(traefik_router_requests_total{router=~\"argocd-argocd-(applicationset-)?webhook-.*\",code=~\"2..\"}[5m]), \"handler\", \"$1\", \"router\", \"argocd-argocd-(applicationset-webhook|webhook)-.*\"))",
+              "expr": "sum by (handler) (label_replace(increase(traefik_router_requests_total{router=~\"httproute-argocd-argocd-(applicationset-)?webhook-gw-.*\",code=~\"2..\"}[5m]), \"handler\", \"$1\", \"router\", \"httproute-argocd-argocd-(applicationset-webhook|webhook)-gw-.*\"))",
               "legendFormat": "{{handler}}"
             }
           ],

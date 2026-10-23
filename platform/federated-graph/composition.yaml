@@ -23,7 +23,6 @@ spec:
             {{- $params := $xr.spec.parameters }}
             {{- $graphRef := $params.graphRef }}
             {{- $host := $params.host | default "" }}
-            {{- $tlsIssuer := $params.tlsIssuer | default "local-lab-ca-issuer" }}
             {{- $replicas := $params.replicas | default 1 }}
             {{- $service := printf "%s-router" $name }}
             {{- /* The operator labels every router pod with this. Mesh policy selects on it. */ -}}
@@ -114,38 +113,27 @@ spec:
                         memory: 256Mi
             {{- if $host }}
             ---
-            apiVersion: networking.k8s.io/v1
-            kind: Ingress
+            apiVersion: gateway.networking.k8s.io/v1
+            kind: HTTPRoute
             metadata:
               name: {{ $service }}
               namespace: {{ $ns }}
               annotations:
-                traefik.ingress.kubernetes.io/router.entrypoints: websecure
-                traefik.ingress.kubernetes.io/router.tls: "true"
-                cert-manager.io/cluster-issuer: {{ $tlsIssuer }}
-                gotemplating.fn.crossplane.io/composition-resource-name: ingress
+                gotemplating.fn.crossplane.io/composition-resource-name: httproute
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
-              ingressClassName: traefik
-              tls:
-                - hosts:
-                    - {{ $host }}
-                  secretName: {{ $service }}-tls
+              parentRefs:
+                - {name: traefik-gateway, namespace: kube-system}
+              hostnames:
+                - {{ $host }}
               rules:
-                - host: {{ $host }}
-                  http:
-                    paths:
-                      - path: /
-                        pathType: Prefix
-                        backend:
-                          service:
-                            name: {{ $service }}
-                            port:
-                              number: 80
+                - backendRefs:
+                    - name: {{ $service }}
+                      port: 80
             {{- end }}
             ---
             # Callers must prove a mesh identity. Traefik is unmeshed, so when host is set
-            # the router port takes plain traffic from it, and reach is decided by tlsIssuer.
+            # the router port takes plain traffic from it, and reach is decided by the host.
             apiVersion: security.istio.io/v1
             kind: PeerAuthentication
             metadata:

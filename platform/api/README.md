@@ -8,7 +8,7 @@ Crossplane composition that deploys an API server (Go, Node, GraphQL, etc.) with
 - **ServiceAccount** - dedicated per-instance SA; pods do not use the namespace default SA
 - **Role + RoleBinding** - least-privilege RBAC: `get` only on the exact Secrets this instance mounts
 - **ServiceMonitor** - Prometheus scrape target on the metrics port
-- **Ingress** *(optional)* - Traefik `websecure` with TLS; only created when `host` is set. cert-manager issues a certificate via `tlsIssuer` unless `tlsSecret` points to a pre-existing Secret, in which case issuance is skipped.
+- **Route** *(optional)* - HTTPS on `host`; only created when `host` is set. A public host also gets a rate limit.
 - **Cache** *(optional)* - short-lived cache cluster owned by this Api; created and deleted alongside it
 - **Connection policy** - always. Refuses any call this API makes to a destination it has not declared, and any inbound call whose workload identity is not named in `provides`. Metrics scraping and, when `host` is set, ingress traffic stay reachable - neither carries a workload identity to match on. See [Platform Connections](../docs/connections.md).
 - **Entra identity** *(optional)* - only when an interface sets `auth: workload` or `auth: user`, or this API consumes another app. See [App Configuration](../docs/app-configuration.md).
@@ -28,9 +28,7 @@ The namespace is owned by the tenant - created by `namespace.yaml` in the tenant
 | `scrapeInterval` | no | `60s` | Prometheus scrape interval. Reduce for apps that emit short-lived state changes. |
 | `replicas` | no | `1` | Number of API replicas. |
 | `size` | no | `sm` | Compute tier: `xs=25m/100m CPU, 32Mi/64Mi mem` · `sm=50m/200m CPU, 64Mi/128Mi mem` · `md=100m/500m CPU, 128Mi/256Mi mem` · `lg=250m/1000m CPU, 256Mi/512Mi mem`. |
-| `host` | no | - | Hostname for the Ingress. If omitted, no Ingress is created. |
-| `tlsIssuer` | no | `local-lab-ca-issuer` | cert-manager ClusterIssuer. `local-lab-ca-issuer` for internal `.local.lab` hostnames; `letsencrypt-prod` for public internet hosts. Ignored when `tlsSecret` is set. |
-| `tlsSecret` | no | - | Name of a pre-existing TLS Secret in the app namespace. When set, the Ingress references it directly and cert-manager issuance is skipped. Used by sandbox slots to reuse long-lived demo certs. |
+| `host` | no | - | Hostname clients call. Must be under `local.lab` for the homelab network or `mattjarrett.dev` for the internet. If omitted, no route is created. |
 | `readinessCheckPath` | no | `/healthz` | HTTP path the readiness probe hits. Set to `/readyz` for apps that gate readiness on external dependencies. |
 | `cache.enabled` | no | `false` | Provision a cache cluster owned by this Api. |
 | `cache.backend` | no | `private-cloud` | `private-cloud`=in-cluster Redis, `public-cloud`=AWS ElastiCache. |
@@ -88,7 +86,7 @@ Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 
 A [`Spa`](../spa/) can proxy a path prefix to this API, so the browser only ever talks to the SPA's hostname. The Spa declares it with `apiProxies` - a path and this API's in-cluster address - and nothing is set here. Four things follow for this API:
 
-- **No `host` needed.** Skip it and the API gets no Ingress, no public hostname, and no certificate. It stays reachable only inside the cluster. Setting `host` anyway leaves it reachable from the ingress controller regardless of `provides`.
+- **No `host` needed.** Skip it and the API gets no route and no hostname. It stays reachable only inside the cluster. Setting `host` anyway leaves it reachable from the ingress controller regardless of `provides`.
 - **The prefix is stripped.** A browser request to `/api/baz` arrives here as `/baz`. Route on the bare path.
 - **Still gated.** Being proxied grants nothing. `provides.allowedCallers` must name the Spa or the call is refused with a 403.
 - **Client details move to headers.** The connecting peer is the Spa, so read `X-Forwarded-For` for the client address, `X-Forwarded-Host` for the hostname the browser used, and `X-Forwarded-Proto` for the scheme.
@@ -233,6 +231,6 @@ kubectl get pods -n foo
 kubectl get secret foo-foo-assets -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 
-# Hit the Ingress
+# Hit the route
 curl https://foo.local.lab/healthz
 ```

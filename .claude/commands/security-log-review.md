@@ -67,9 +67,9 @@ Both `mattjarrett-com` and `kentjarrett-com` have MFA enabled (Two-Factor plugin
 
 5. **Rate-limit effectiveness** - both WordPress instances have a Traefik rate-limit Middleware on `/wp-login.php`, `/xmlrpc.php`, `/wp-json/wp/v2/users` (see [platform/wordpress/composition.yaml](../../platform/wordpress/composition.yaml), keyed on the `CF-Connecting-IP` header). If a brute-force burst's request count exceeds the configured `burst`/`average` thresholds with no corresponding 429s in the log, flag it - the middleware may not be binding correctly (e.g., header not reaching Traefik as expected) rather than assume it's providing protection.
 
-   The rate limit is attached to a dedicated `<name>-wp-security` IngressRoute, not to the main Ingress - that Ingress's `router.middlewares` annotation lists only the headers middleware, so its absence there is not evidence the limit is unbound. Confirm with:
+   The rate limit is attached to its own rule in the `<name>-wordpress` HTTPRoute, not to the catch-all `/` rule, so its absence on that rule is not evidence the limit is unbound. Confirm with:
 ```bash
-kubectl get ingressroute <name>-wp-security -n <namespace> -o jsonpath='{.spec.routes}'
+kubectl get httproute <name>-wordpress -n <namespace> -o jsonpath='{.spec.rules}'
 ```
    The `www.` host does not bypass it - Cloudflare 301s to the apex before the request reaches Traefik.
 

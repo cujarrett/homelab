@@ -29,8 +29,8 @@ resulting tokens because `iss` does not match what it registered.
 
 Cloudflare's bot protection returns 403 to datacenter callers on this zone, so AWS and
 Entra cannot fetch anything here. Requests under `/.well-known/` are let through, so the
-JWKS is published there and rewritten back to the provider's real `/keys` path by a Traefik
-middleware in [cluster/spire/oidc-jwks-ingress.yaml](../cluster/spire/oidc-jwks-ingress.yaml).
+JWKS is published there and rewritten back to the provider's real `/keys` path by the
+HTTPRoute in [cluster/spire/oidc-jwks-ingress.yaml](../cluster/spire/oidc-jwks-ingress.yaml).
 `config.jwksUri` points the discovery document at the rewritten URL.
 
 The signature of this failing is specific: the origin log shows the cloud fetching

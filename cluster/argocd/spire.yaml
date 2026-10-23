@@ -86,25 +86,7 @@ spec:
               # Advertise the /.well-known/ path that Cloudflare lets datacenter callers reach.
               # Traefik rewrites it back to /keys - see cluster/spire/oidc-jwks-ingress.yaml.
               jwksUri: https://oidc.mattjarrett.dev/.well-known/keys
-            ingress:
-              enabled: true
-              className: traefik
-              # Suppresses the chart's nginx-specific annotations - ours are set below.
-              controllerType: other
-              annotations:
-                traefik.ingress.kubernetes.io/router.entrypoints: websecure
-                traefik.ingress.kubernetes.io/router.tls: "true"
-                cert-manager.io/cluster-issuer: letsencrypt-prod
-              hosts:
-                - host: oidc.mattjarrett.dev
-                  paths:
-                    - path: /
-                      pathType: Prefix
-              tls:
-                - secretName: oidc-mattjarrett-dev-tls
-                  hosts:
-                    - oidc.mattjarrett.dev
-    # The JWKS ingress rewrite - see cluster/spire/oidc-jwks-ingress.yaml.
+    # The HTTPRoute and its JWKS rewrite - see cluster/spire/oidc-jwks-ingress.yaml.
     - repoURL: https://github.com/cujarrett/homelab.git
       targetRevision: main
       path: cluster/spire

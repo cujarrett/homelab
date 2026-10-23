@@ -87,8 +87,6 @@ spec:
             {{- if $xr.spec.parameters.sqlRef }}{{- $sqlBackend = $xr.spec.parameters.sqlRef.backend | default "private-cloud" }}{{- end }}
             {{- $cacheEnabled := and $xr.spec.parameters.cache $xr.spec.parameters.cache.enabled }}
             {{- $host := $xr.spec.parameters.host | default "" }}
-            {{- $tlsIssuer := $xr.spec.parameters.tlsIssuer | default "local-lab-ca-issuer" }}
-            {{- $tlsSecret := $xr.spec.parameters.tlsSecret | default "" }}
             {{- $metricsPort := $xr.spec.parameters.metricsPort | default 9090 }}
             {{- $scrapeInterval := $xr.spec.parameters.scrapeInterval | default "60s" }}
             {{- $replicas := $xr.spec.parameters.replicas | default 1 }}
@@ -887,10 +885,8 @@ spec:
                       regex: "go_.*|process_.*|promhttp_.*"
                       action: drop
             {{- if $host }}
-            {{- /* Public means reachable from the internet through the tunnel - either a  */ -}}
-            {{- /* letsencrypt-prod cert or a pre-issued demo slot secret. Internal hosts  */ -}}
-            {{- /* stay off the rate limiter on purpose, see the Middleware comment below. */ -}}
-            {{- $isPublic := or (eq $tlsIssuer "letsencrypt-prod") (ne $tlsSecret "") }}
+            {{- /* Internal hosts stay off the rate limiter, see the Middleware comment below. */ -}}
+            {{- $isPublic := not (hasSuffix ".local.lab" $host) }}
             ---
             # --- Security response headers Middleware ---
             # An Api serves its own responses with no nginx in front, so these come from
@@ -939,41 +935,32 @@ spec:
                   requestHeaderName: CF-Connecting-IP
             {{- end }}
             ---
-            # tlsIssuer: local-lab-ca-issuer for .local.lab; letsencrypt-prod for public hosts
-            # tlsSecret: skip issuance and reference a pre-existing secret (e.g. demo slot certs)
-            apiVersion: networking.k8s.io/v1
-            kind: Ingress
+            apiVersion: gateway.networking.k8s.io/v1
+            kind: HTTPRoute
             metadata:
               name: {{ $name }}
               namespace: {{ $ns }}
               annotations:
-                traefik.ingress.kubernetes.io/router.entrypoints: websecure
-                traefik.ingress.kubernetes.io/router.tls: "true"
-                # Headers first - a 429 from the rate limiter short-circuits the rest of
-                # the chain, and the response still needs the security headers on it.
-                traefik.ingress.kubernetes.io/router.middlewares: "{{ $ns }}-{{ $name }}-security-headers@kubernetescrd{{ if $isPublic }},{{ $ns }}-{{ $name }}-ratelimit@kubernetescrd{{ end }}"
-                {{- if not $tlsSecret }}
-                cert-manager.io/cluster-issuer: {{ $tlsIssuer }}
-                {{- end }}
-                gotemplating.fn.crossplane.io/composition-resource-name: ingress
+                gotemplating.fn.crossplane.io/composition-resource-name: httproute
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
-              ingressClassName: traefik
-              tls:
-                - hosts:
-                    - {{ $host }}
-                  secretName: {{ if $tlsSecret }}{{ $tlsSecret }}{{ else }}{{ $name }}-tls{{ end }}
+              parentRefs:
+                - {name: traefik-gateway, namespace: kube-system}
+              hostnames:
+                - {{ $host }}
               rules:
-                - host: {{ $host }}
-                  http:
-                    paths:
-                      - path: /
-                        pathType: Prefix
-                        backend:
-                          service:
-                            name: {{ $name }}
-                            port:
-                              number: 80
+                # Headers first - a 429 from the rate limiter short-circuits the rest of
+                # the chain, and the response still needs the security headers on it.
+                - filters:
+                    - type: ExtensionRef
+                      extensionRef: {group: traefik.io, kind: Middleware, name: {{ $name }}-security-headers}
+                    {{- if $isPublic }}
+                    - type: ExtensionRef
+                      extensionRef: {group: traefik.io, kind: Middleware, name: {{ $name }}-ratelimit}
+                    {{- end }}
+                  backendRefs:
+                    - name: {{ $name }}
+                      port: 80
             {{- end }}
             {{- /* ---------- Connections ---------- */ -}}
             {{- /* Deny by default, allow by declaration.                                */ -}}
@@ -1025,8 +1012,8 @@ spec:
                 - to:
                     - operation: { ports: ["{{ $metricsPort }}"] }
                 {{- if $host }}
-                # Traefik is unmeshed, so the Ingress port can't be limited by identity.
-                # tlsIssuer decides whether it reaches the internet or only the homelab network.
+                # Traefik is unmeshed, so the routed port can't be limited by identity.
+                # The host decides whether it reaches the internet or only the homelab network.
                 - to:
                     - operation: { ports: ["{{ $appPort }}"] }
                 {{- end }}

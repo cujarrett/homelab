@@ -154,58 +154,28 @@ spec:
       requestHeaderName: CF-Connecting-IP
 ---
 # Everything else, readers and the admin app alike, gets the headers only. Traefik ranks
-# a longer path prefix first, so the sign-in router below wins for that one path.
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+# a longer path prefix first, so the sign-in rule wins for that one path.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
 metadata:
   name: ghost
   namespace: blog
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
-    traefik.ingress.kubernetes.io/router.middlewares: "blog-ghost-security-headers@kubernetescrd"
 spec:
-  ingressClassName: traefik
-  tls:
-    - hosts:
-        - blog.mattjarrett.dev
-      secretName: ghost-tls
+  parentRefs:
+    - {name: traefik-gateway, namespace: kube-system}
+  hostnames: [blog.mattjarrett.dev]
   rules:
-    - host: blog.mattjarrett.dev
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: ghost
-                port:
-                  number: 80
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: ghost-signin
-  namespace: blog
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
-    traefik.ingress.kubernetes.io/router.middlewares: "blog-ghost-security-headers@kubernetescrd,blog-ghost-signin-ratelimit@kubernetescrd"
-spec:
-  ingressClassName: traefik
-  tls:
-    - hosts:
-        - blog.mattjarrett.dev
-      secretName: ghost-tls
-  rules:
-    - host: blog.mattjarrett.dev
-      http:
-        paths:
-          - path: /ghost/api/admin/session
-            pathType: Prefix
-            backend:
-              service:
-                name: ghost
-                port:
-                  number: 80
+    - filters:
+        - type: ExtensionRef
+          extensionRef: {group: traefik.io, kind: Middleware, name: ghost-security-headers}
+      backendRefs:
+        - {name: ghost, port: 80}
+    - matches:
+        - path: {type: PathPrefix, value: /ghost/api/admin/session}
+      filters:
+        - type: ExtensionRef
+          extensionRef: {group: traefik.io, kind: Middleware, name: ghost-security-headers}
+        - type: ExtensionRef
+          extensionRef: {group: traefik.io, kind: Middleware, name: ghost-signin-ratelimit}
+      backendRefs:
+        - {name: ghost, port: 80}

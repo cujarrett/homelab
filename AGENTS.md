@@ -8,7 +8,7 @@
 - **Give `git add` and the commit as two separate steps, listing every file explicitly** - never `git add .`, `git add -A`, or a bare directory. Group related files onto one `git add` line. One `git add` + one commit message per repository, each under its own heading when more than one repo changed.
 - **Always precede `git add` with the `cd` to that repo's absolute path**, so the commands can be pasted from anywhere without landing in the wrong repo.
 - **Never output a `git push` command.** The user pushes as a deliberate human step.
-- **Never end a YAML comment with `:`.** Editors highlight the trailing colon as a key and mis-colour the rest of the block. Reword instead, `# depends on tlsIssuer, letsencrypt-prod means...`. Mid-line colons (`# curl: raw curl without browser UA`) are fine.
+- **Never end a YAML comment with `:`.** Editors highlight the trailing colon as a key and mis-colour the rest of the block. Reword instead, `# depends on host, a .local.lab host means...`. Mid-line colons (`# curl: raw curl without browser UA`) are fine.
 - **Always use `k` instead of `kubectl` in commands shown to the user in chat. Use kubectl in all doc files.**
 - **Never wrap `kubectl`/`k` commands in `ssh pi@...` - the user's local machine has Tailscale and kubeconfig configured. Run `kubectl` commands directly in the terminal.**
 - **When debugging, always list every command used** - show the command, what it does, and why - so the user can learn the debugging workflow. Do this inline as you debug, not as a summary at the end.
@@ -93,8 +93,8 @@ SSH access: `ssh pi@192.168.10.10x`
 |---|---|---|
 | Kubernetes | k3s | Lightweight distro |
 | GitOps | ArgoCD | App-of-apps pattern via `cluster/argocd/bootstrap.yaml`, recurses `cluster/` |
-| Ingress | Traefik | Deployed as DaemonSet via k3s HelmChartConfig; binds hostPorts 80/443 |
-| TLS | cert-manager | Local CA issuer (`local-lab-ca-issuer`) for `.local.lab` hosts; Let's Encrypt (staging + prod) for public hosts via HTTP-01/Traefik. Workload mTLS uses Istio's own CA (`istio-ca-secret`), not cert-manager |
+| Ingress | Traefik | Deployed as DaemonSet via k3s HelmChartConfig; binds hostPorts 80/443. Every route is a Gateway API `HTTPRoute` on the shared `traefik-gateway` in `kube-system`, which serves one HTTPS listener with the certs in [cluster/traefik/certificates.yaml](./cluster/traefik/certificates.yaml) |
+| TLS | cert-manager | Local CA issuer (`local-lab-ca-issuer`) for `.local.lab` hosts; Let's Encrypt (staging + prod) for public hosts via a Cloudflare DNS-01 challenge. One wildcard per zone, held by the Gateway, so workloads issue no certs. Workload mTLS uses Istio's own CA (`istio-ca-secret`), not cert-manager |
 | Storage | Longhorn | Three StorageClasses: `longhorn` (default, Delete), `longhorn-retain` (Retain - use for stateful platform XRs), `longhorn-delete` (explicit Delete) |
 | DNS | AdGuard Home | Runs in `adguard` namespace, pinned to node `ctrl-1` via nodeSelector, hostPort 53 UDP |
 | External Access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in `cloudflare` namespace; token from secret `cloudflare-tunnel-token` |
@@ -131,7 +131,6 @@ SSH access: `ssh pi@192.168.10.10x`
 | `js-pollock` | Spa | `jspollock.mattjarrett.dev` via Cloudflare Tunnel |
 | `sump-pump` | Api ×2 + Topic + Subscription | IoT sump pump bridge + consumer + weather-exporter |
 | `launchpad` | Spa + Api | `launchpad.mattjarrett.dev` via Cloudflare Tunnel. The Spa's nginx proxies `/api/` to `launchpad-api`, a cluster-internal BFF that provisions ephemeral demo sandboxes |
-| `demo-certs` | cert-manager `Certificate` and `SecretMirror` objects only (no workloads) | 5 long-lived `letsencrypt-prod` certs, one per demo sandbox slot covering `demoN.mattjarrett.dev` and `demoN-api.mattjarrett.dev`; a `SecretMirror` copies each into whichever sandbox namespace holds that slot, so cert-manager skips issuance there and Let's Encrypt's 5-certs-per-exact-hostname-set-per-168h limit is never hit |
 | `platform-connections-demo` | Api ×3 + Spa | Service mesh walkthrough at `connections.mattjarrett.dev`; two callers run one image and differ only in what they declare |
 | `platform-graph-demo` | Api + Spa | Schema management walkthrough at `graph.mattjarrett.dev`; the backend runs fixed queries against the `graph-prod` router under a call budget and reads GitHub every ten minutes |
 | `platform-exporter` | platform-exporter | Custom Prometheus exporter for platform metrics; scraped via `platform-exporter-servicemonitor` |
@@ -141,7 +140,6 @@ SSH access: `ssh pi@192.168.10.10x`
 | `reloader` | Stakater Reloader | Rolls a workload when a ConfigMap it names changes. Watches only workloads annotated `reloader.stakater.com/auto`, which the Api composition sets whenever `configFrom` is used. Secrets are ignored, since they reach apps as files kubelet refreshes in place |
 | `graph-test` | GraphApi ×2 + FederatedGraph | `records` and `reviews` subgraphs, one repo each (`storefront-records`, `storefront-reviews`), composed into `storefront-homelab@test`; router at `graph-test.local.lab` |
 | `graph-prod` | GraphApi ×2 + FederatedGraph | Same two subgraphs at the digests promoted from test by PR, composed into `storefront-homelab@prod`; router at `graph-prod.local.lab`. Published only by the prod operator in `apollo-operator-prod`, which holds its own key |
-| `secret-mirror-controller` | secret-mirror-controller | Kubebuilder controller for the `SecretMirror` CRD; copies a Secret into other namespaces |
 | `node-sysctls` | node-sysctls, k3s-env | DaemonSets writing host settings from Git. `node-sysctls` applies sysctls on every node; `k3s-env` writes a `GOMEMLIMIT` drop-in to ctrl-1's `/etc/systemd/system/k3s.service.d/`, which takes effect on the next daemon-reload and k3s restart |
 | `spire-server`, `spire-system` | SPIRE | Workload identity (SPIFFE); agent DaemonSet on all nodes; OIDC discovery provider serving `oidc.mattjarrett.dev` |
 
@@ -192,8 +190,6 @@ fetch the current ingress array, append, then PUT it all back, which is what the
 - WordPress hosts use `noTLSVerify: false` + `originServerName: <hostname>`; everything else uses
   `noTLSVerify: true`. A hostname can only flip to verified once its `letsencrypt-prod` cert is
   issued and served, otherwise the tunnel 502s, so new hostnames start unverified
-- **The tunnel entry must exist before the cert request**, or the HTTP-01 self-check fails. If a
-  cert is stuck pending, `kubectl delete certificaterequest -n <namespace> --all` forces a retry
 - The token in `cloudflare-tunnel-token` is a double-base64 JSON blob with `a` (account), `t`
   (tunnel) and `s` (secret). API token needs Zero Trust -> Argo Tunnel (Legacy) -> Edit
 
@@ -228,12 +224,12 @@ stat panel targets need `"instant": true` or the range queries crash the Pi. Add
 ### Traefik Prometheus label quirk
 Prometheus renames the `service` label from Traefik metrics to `exported_service` to avoid collision. Always use `exported_service=~"..."` in Traefik queries.
 
-Service label format: `{namespace}-{servicename}-{port}@kubernetes`
-- `blog.mattjarrett.dev` → `blog-ghost.*@kubernetes`
-- `mattjarrett.dev` → `mattjarrett-dev-mattjarrett-dev.*@kubernetes` or `web-mattjarrett-dev.*@kubernetes` (both exist; use alternation `|`)
-- `mattjarrett.com` → `mattjarrett-com-mattjarrett-com-wordpress.*@kubernetes`
-- `myvinyl.mattjarrett.dev` → `my-vinyl-my-vinyl.*@kubernetes`
-- `jspollock.mattjarrett.dev` → `js-pollock-js-pollock.*@kubernetes`
+Service label format: `{namespace}-{servicename}-http-{port}@kubernetesgateway`. Match on the prefix so older `@kubernetes` series still count.
+- `blog.mattjarrett.dev` → `blog-ghost.*`
+- `mattjarrett.dev` → `mattjarrett-dev-mattjarrett-dev.*` or `web-mattjarrett-dev.*` (both exist; use alternation `|`)
+- `mattjarrett.com` → `mattjarrett-com-mattjarrett-com-wordpress.*`
+- `myvinyl.mattjarrett.dev` → `my-vinyl-my-vinyl.*`
+- `jspollock.mattjarrett.dev` → `js-pollock-js-pollock.*`
 
 ## 1U Display (ctrl-1)
 `ctrl-1` drives an attached 1424x280 LCD with a kiosk browser, run as a bare background process
@@ -258,7 +254,7 @@ Twelve platform types are defined under `platform/`, each as `<plural>.platform.
 Which namespaces use which XR types is listed in the Namespaces & Applications table above.
 
 ### GitOps flow for XR instances
-1. For a new workspace, add its namespace to the `workloads` project `destinations` in [cluster/argocd/projects.yaml](./cluster/argocd/projects.yaml) and to every namespace list in [cluster/kyverno/workspace-rbac.yaml](./cluster/kyverno/workspace-rbac.yaml), then let it sync. The project allows only `platform.local.lab` kinds, ConfigMap, Service, RoleBinding and Namespace
+1. For a new workspace, add its namespace to the `workloads` project `destinations` in [cluster/argocd/projects.yaml](./cluster/argocd/projects.yaml) and to every namespace list in [cluster/kyverno/workspace-rbac.yaml](./cluster/kyverno/workspace-rbac.yaml), then let it sync. The project allows only `platform.local.lab` kinds, ConfigMap, Service and Namespace
 2. Commit XR files to a top-level directory in the `homelab-workspaces` repo (e.g. `mattjarrett-com/mattjarrett-com.yaml`)
 3. `xrs` ApplicationSet (`cluster/argocd/xrs-appset.yaml`) generates one ArgoCD Application per directory, deployed into a namespace named after the directory
 4. ArgoCD applies the XR to the cluster
@@ -299,8 +295,7 @@ Four projects scope workloads by concern:
 - ArgoCD `automated: { prune: true, selfHeal: true }` on all apps - cluster converges to repo state automatically
 - `ServerSideApply: true` used on most apps
 - Never hand-create a cluster-setup Secret and never commit one. Add a parameter and an `ExternalSecret` - see [External Secrets](./docs/external-secrets.md). Controller-generated Secrets (cert-manager TLS, Crossplane provider TLS, webhook CAs) are not credentials anyone chose and stay in-cluster
-- Traefik annotations on all Ingresses: `traefik.ingress.kubernetes.io/router.entrypoints: websecure` and `traefik.ingress.kubernetes.io/router.tls: "true"`
-- cert-manager annotation on all Ingresses: `cert-manager.io/cluster-issuer: local-lab-ca-issuer` (internal) or `letsencrypt-prod` (public) - Spa and Api expose this via the `tlsIssuer` parameter (default `local-lab-ca-issuer`); the WordPress composition hardcodes `letsencrypt-prod` since WordPress sites are always public
+- Every `HTTPRoute` has `parentRefs: [{name: traefik-gateway, namespace: kube-system}]`. Traefik Middlewares attach as `ExtensionRef` filters. A host outside `*.local.lab`, `*.mattjarrett.dev`, `mattjarrett.com` and `kentjarrett.com` needs its name added to [cluster/traefik/certificates.yaml](./cluster/traefik/certificates.yaml)
 - Spa compositions use `gotemplating.fn.crossplane.io/ready: "True"` on go-templating resources to avoid false `Ready=False` on the XR
 
 ## Go App Conventions
@@ -328,7 +323,6 @@ Go apps in this workspace:
 | `github-exporter` | `github-exporter` | Prometheus exporter for pull request, auto-merge and workflow metrics across the account's repos |
 | `platform-exporter` | `platform-exporter` | Prometheus exporter for Crossplane XR, binding and pod readiness timings |
 | `workload-identity-sidecar` | `secret-fetcher` | Sidecar that trades a SPIFFE SVID for short-lived cloud credentials. Go code lives in `sidecar/secret-fetcher` |
-| `secret-mirror-controller` | `manager` | Kubebuilder controller for the `SecretMirror` CRD. Uses the kubebuilder `Makefile`, not `just` |
 | `homelab-stats` | `homelab-stats` | Read-only JSON for the homelab section on mattjarrett.dev, from a fixed set of Prometheus queries and the blog-stats gist |
 | `platform-connections-demo` | `api`, `downstream` | Monorepo for the service mesh walkthrough. `api` runs as `upstream-api`, `downstream` runs as `authorized-api` and `unauthorized-api`. Each has its own `justfile` |
 

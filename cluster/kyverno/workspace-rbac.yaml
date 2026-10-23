@@ -1,6 +1,5 @@
-# The workloads AppProject can allow RoleBinding as a kind but not limit its roleRef,
-# and launchpad-api's internet-facing GitHub token can commit to homelab-workspaces.
-# This limits what that commit can grant to the one binding guest sandboxes need.
+# launchpad-api's internet-facing GitHub token can commit to homelab-workspaces.
+# These limit what that commit can do to namespaces and to other workspaces.
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
@@ -10,82 +9,12 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
     policies.kyverno.io/title: Platform workspace RBAC
     policies.kyverno.io/description: >-
-      A RoleBinding synced from homelab-workspaces may only give secret-mirror-controller
-      the secret-mirror-writer role inside a guest sandbox, or the Apollo operator its
-      own roles in a namespace it watches.
+      A workspace synced from homelab-workspaces keeps its namespace labelled, owns only
+      its own namespace, and deploys only into it.
 spec:
-  # Enforce from the start because nothing legitimate matches except the guest binding.
-  # Api compositions create their own RoleBindings as Crossplane, not ArgoCD.
   validationFailureAction: Enforce
   background: false
   rules:
-    - name: only-guest-secret-mirror-binding
-      match:
-        any:
-          - resources:
-              kinds:
-                - RoleBinding
-              # Mirrors the workloads AppProject destinations in
-              # cluster/argocd/projects.yaml. A label selector would let a workspace
-              # commit relabel its namespace out of scope.
-              namespaces:
-                - github-exporter
-                - graph-test
-                - graph-prod
-                - js-pollock
-                - kentjarrett-com
-                - launchpad
-                - mattjarrett-com
-                - mattjarrett-dev
-                - my-vinyl
-                - platform-connections-demo
-                - platform-graph-demo
-                - sump-pump
-                - "guest-*"
-            subjects:
-              - kind: ServiceAccount
-                name: argocd-application-controller
-                namespace: argocd
-      preconditions:
-        all:
-          - key: "{{ request.operation || 'BACKGROUND' }}"
-            operator: AnyIn
-            value: [CREATE, UPDATE]
-          # Each Apollo operator binds the shared ClusterRoles to its own ServiceAccount
-          # in every namespace it watches. A workspace commit copying that shape
-          # grants the operator nothing it lacks, and grants the committer nothing.
-          - key: >-
-              {{ request.object.roleRef.kind == 'ClusterRole'
-                 && starts_with(request.object.roleRef.name, 'apollo-operator:')
-                 && length(request.object.subjects || `[]`) == `1`
-                 && request.object.subjects[0].kind == 'ServiceAccount'
-                 && request.object.subjects[0].name == 'apollo-operator'
-                 && contains(`["apollo-operator-test", "apollo-operator-prod"]`, request.object.subjects[0].namespace) }}
-            operator: Equals
-            value: false
-      # Kyverno defaults both of these on write. Stated here so the repo matches
-      # what the API server stores, otherwise ArgoCD sits permanently OutOfSync.
-      skipBackgroundRequests: true
-      validate:
-        # An UPDATE to a binding that already fails, such as one an Api composition
-        # created, would otherwise be admitted and could rewrite its subjects.
-        allowExistingViolations: false
-        message: >-
-          RoleBinding {{ request.object.metadata.name }} in {{ request.namespace }} is not
-          the guest secret-mirror-writer binding. Workspaces cannot grant other roles.
-        deny:
-          conditions:
-            any:
-              - key: "{{ request.namespace }}"
-                operator: NotEquals
-                value: "guest-*"
-              - key: "{{ request.object.roleRef.kind }}/{{ request.object.roleRef.name }}"
-                operator: NotEquals
-                value: ClusterRole/secret-mirror-writer
-              - key: "{{ request.object.subjects[].join('/', [kind, namespace || '', name]) }}"
-                operator: NotEquals
-                value: ["ServiceAccount/secret-mirror-controller/secret-mirror-controller"]
-
     # Every other platform policy selects on this label, so a workspace commit that
     # relabels its namespace would switch them all off. Guest namespaces are left
     # out because launchpad-api renders them without the label.
@@ -179,7 +108,6 @@ spec:
                 - platform.local.lab/*/*
                 - ConfigMap
                 - Service
-                - RoleBinding
               # Mirrors the workloads AppProject destinations in
               # cluster/argocd/projects.yaml.
               namespaces:
@@ -205,14 +133,6 @@ spec:
           - key: "{{ request.operation || 'BACKGROUND' }}"
             operator: AnyIn
             value: [CREATE, UPDATE]
-          # Each Apollo operator app binds its roles in the namespaces it watches.
-          # The first rule above already limits those bindings to that one shape.
-          - key: >-
-              {{ request.object.kind == 'RoleBinding'
-                 && contains(`["apollo-operator", "apollo-operator-prod"]`,
-                    split(request.object.metadata.annotations."argocd.argoproj.io/tracking-id" || '', ':')[0]) }}
-            operator: Equals
-            value: false
       skipBackgroundRequests: true
       validate:
         allowExistingViolations: false

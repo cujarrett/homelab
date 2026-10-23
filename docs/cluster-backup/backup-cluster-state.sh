@@ -63,9 +63,7 @@ done
 
 # ── Every secret in the cluster ───────────────────────────────────────────────
 # Safety net for the targeted dumps above. ~9MB, and it means a secret added to a
-# new namespace is never silently missing from a backup. Includes the demo-certs
-# TLS secrets, which matter because Let's Encrypt allows only 5 certs per exact
-# hostname per 168h - reissuing all ten would take days.
+# new namespace is never silently missing from a backup.
 echo "==> Every secret in the cluster"
 kubectl get secrets -A -o yaml > "$OUT/all-secrets.yaml" \
   && ok "all-secrets.yaml" || fail "all-secrets.yaml"
