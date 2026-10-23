@@ -187,9 +187,9 @@ Use the `/add-cloudflare-tunnel-hostname` skill. The API is a full replace, so a
 fetch the current ingress array, append, then PUT it all back, which is what the skill does.
 
 - Every hostname routes to `https://192.168.10.101:443`
-- WordPress hosts use `noTLSVerify: false` + `originServerName: <hostname>`; everything else uses
-  `noTLSVerify: true`. A hostname can only flip to verified once its `letsencrypt-prod` cert is
-  issued and served, otherwise the tunnel 502s, so new hostnames start unverified
+- Every hostname uses `noTLSVerify: false` + `originServerName: <hostname>`. The Gateway already serves
+  a cert for any `*.mattjarrett.dev` name, so a new one starts verified. A new zone needs its name in
+  [cluster/traefik/certificates.yaml](./cluster/traefik/certificates.yaml) first, or the tunnel 502s
 - The token in `cloudflare-tunnel-token` is a double-base64 JSON blob with `a` (account), `t`
   (tunnel) and `s` (secret). API token needs Zero Trust -> Argo Tunnel (Legacy) -> Edit
 

@@ -9,15 +9,16 @@ differently:
 
 | | What it does | Missing it looks like |
 |---|---|---|
-| **DNS record** | tells the internet the hostname exists and points it at the tunnel | `NXDOMAIN` - nothing connects, and cert-manager's HTTP-01 self-check fails with `no such host` |
+| **DNS record** | tells the internet the hostname exists and points it at the tunnel | `NXDOMAIN` - nothing connects |
 | **Tunnel ingress entry** | tells `cloudflared` where to send traffic once it arrives | hostname resolves, then returns the tunnel's catch-all 404 |
 
 Existing hostnames already have their DNS records, which is why only the ingress half is
 usually visible. A genuinely new hostname needs both.
 
-All hostnames route to `https://192.168.10.101:443`. A new one must start with
-`noTLSVerify: true` - it can only flip to verified once its Let's Encrypt cert is issued
-and being served, otherwise the tunnel 502s.
+All hostnames route to `https://192.168.10.101:443` with `noTLSVerify: false` and
+`originServerName` set to the hostname. The Gateway already serves a cert for any
+`*.mattjarrett.dev` name. A new zone needs its name in
+[cluster/traefik/certificates.yaml](../../cluster/traefik/certificates.yaml) first, or the tunnel 502s.
 
 ## Inputs
 
@@ -53,9 +54,8 @@ CF_TOKEN=$(tr -d ' \n\r' < local-only/cloudflare.txt)
 ```
 
 The API is a **full replace** - fetch, insert, PUT the whole array back. Do it
-programmatically so existing entries keep their exact `originRequest` settings; the
-WordPress hosts use `noTLSVerify: false` with `originServerName`, and retyping them by
-hand takes those sites down.
+programmatically so existing entries keep their exact `originRequest` settings. Retyping
+them by hand risks dropping `originServerName`, which takes that site down.
 
 ```bash
 curl -s "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/configurations" \
@@ -68,7 +68,7 @@ cfg = d['result']['config']
 ing = cfg['ingress']
 assert ing[-1].get('service') == 'http_status:404', "catch-all not last - aborting"
 new = {"hostname": "<new-hostname>", "service": "https://192.168.10.101:443",
-       "originRequest": {"noTLSVerify": True}}
+       "originRequest": {"noTLSVerify": False, "originServerName": "<new-hostname>"}}
 cfg['ingress'] = ing[:-1] + [new] + [ing[-1]]
 json.dump({"config": cfg}, open('/tmp/cf-put.json', 'w'))
 print(f"{len(ing)} -> {len(cfg['ingress'])} entries")
@@ -106,28 +106,15 @@ curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_recor
 
 Otherwise the user adds it in the dashboard under **DNS → Add record**.
 
-## 3. Order, and the DNS caching trap
-
-Both Cloudflare halves must exist **before** the Kubernetes Ingress or Certificate. The
-HTTP-01 challenge resolves the hostname from inside the cluster, so it fails if either is
-missing.
+## 3. The DNS caching trap
 
 If anything looked the hostname up while it was still `NXDOMAIN`, that negative answer is
 cached and outlives the fix - the resolvers keep saying `no such host` after the record
-exists. Public DNS resolving while the cluster still fails is the signature.
+exists. Public DNS resolving while the LAN still fails is the signature.
 
 ```bash
 dig +short <hostname> @1.1.1.1     # public - should answer
 dig +short <hostname>              # local resolver - may still be empty
-```
-
-Clear it, then retry the cert. cert-manager backs off after failures and will not
-re-check promptly on its own:
-
-```bash
-kubectl rollout restart deployment adguard-home -n adguard
-kubectl rollout restart deployment coredns -n kube-system
-kubectl delete certificaterequest -n <namespace> --all
 ```
 
 ## 4. Verify
@@ -138,7 +125,6 @@ Test with a browser user-agent. The `Spa` composition's nginx returns **403** to
 ```bash
 UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/126.0 Safari/537.36"
 curl -s -o /dev/null -w "%{http_code}\n" -A "$UA" https://<hostname>/
-kubectl get certificate -n <namespace>
 ```
 
 Then add the hostname to the **Public Hostnames** list in `AGENTS.md`.
