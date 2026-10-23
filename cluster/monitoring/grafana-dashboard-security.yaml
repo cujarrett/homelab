@@ -768,7 +768,7 @@ data:
                       "steps": [
                         {
                           "color": "transparent",
-                          "value": 0
+                          "value": null
                         },
                         {
                           "color": "red",
@@ -779,7 +779,7 @@ data:
                   },
                   {
                     "id": "custom.width",
-                    "value": 80
+                    "value": 70
                   }
                 ]
               },
@@ -808,7 +808,7 @@ data:
                       "steps": [
                         {
                           "color": "transparent",
-                          "value": 0
+                          "value": null
                         },
                         {
                           "color": "yellow",
@@ -819,14 +819,50 @@ data:
                   },
                   {
                     "id": "custom.width",
-                    "value": 80
+                    "value": 70
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Status"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "Fix released": {
+                            "color": "yellow",
+                            "index": 0
+                          },
+                          "No fix released": {
+                            "color": "blue",
+                            "index": 1
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 130
                   }
                 ]
               }
             ]
           },
           "gridPos": {
-            "h": 14,
+            "h": 16,
             "w": 24,
             "x": 0,
             "y": 11
@@ -856,13 +892,13 @@ data:
           "pluginVersion": "13.2.3",
           "targets": [
             {
-              "expr": "count by (resource, installed_version, fixed_version, image_repository, image_tag) (trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\"})",
+              "expr": "count by (namespace, kind, workload, resource, installed_version, fixed_version, status, image_repository) (label_replace(label_replace((label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\")), \"status\", \"Fix released\", \"fixed_version\", \".+\"), \"status\", \"No fix released\", \"fixed_version\", \"\"))",
               "format": "table",
               "instant": true,
               "refId": "A"
             },
             {
-              "expr": "count by (resource, installed_version, fixed_version, image_repository, image_tag) (trivy_vulnerability_id{severity=\"High\", fixed_version!=\"\"})",
+              "expr": "count by (namespace, kind, workload, resource, installed_version, fixed_version, status, image_repository) (label_replace(label_replace((label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\")), \"status\", \"Fix released\", \"fixed_version\", \".+\"), \"status\", \"No fix released\", \"fixed_version\", \"\"))",
               "format": "table",
               "instant": true,
               "refId": "B"
@@ -880,29 +916,35 @@ data:
                   "Time": true
                 },
                 "renameByName": {
+                  "namespace": "Namespace",
+                  "kind": "Kind",
+                  "workload": "Workload",
                   "resource": "Vulnerable package",
-                  "Value #A": "Critical",
-                  "Value #B": "High",
                   "installed_version": "Installed",
                   "fixed_version": "Fixed in",
+                  "status": "Status",
                   "image_repository": "Image",
-                  "image_tag": "Tag"
+                  "Value #A": "Critical",
+                  "Value #B": "High"
                 },
                 "indexByName": {
-                  "resource": 0,
-                  "Value #A": 1,
-                  "Value #B": 2,
-                  "installed_version": 3,
-                  "fixed_version": 4,
-                  "image_repository": 5,
-                  "image_tag": 6
+                  "namespace": 0,
+                  "workload": 1,
+                  "kind": 2,
+                  "resource": 3,
+                  "Value #A": 4,
+                  "Value #B": 5,
+                  "status": 6,
+                  "installed_version": 7,
+                  "fixed_version": 8,
+                  "image_repository": 9
                 }
               }
             }
           ],
-          "title": "Vulnerable Packages With a Fix",
+          "title": "Vulnerable Packages by Workload",
           "type": "table",
-          "description": "One row per vulnerable package per image. Critical and High are CVE counts for that package. Updating the image, or the dependency inside it, to Fixed in clears the row. Whether a newer image exists is on Renovate's Dependency Dashboard, linked from this panel.",
+          "description": "One row per vulnerable package in each workload.\nCritical and High: CVE counts for that package.\nStatus, Fix released: update the image or package to Fixed in. Renovate PRs it, or check the linked Dependency Dashboard for why it is waiting.\nStatus, No fix released: nothing to update to yet. Waiting on upstream.",
           "links": [
             {
               "title": "Renovate Dependency Dashboard",
