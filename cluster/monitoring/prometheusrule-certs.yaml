@@ -39,8 +39,8 @@ spec:
               If this is local-lab-ca, every .local.lab host loses TLS together
               when it lapses - ArgoCD, Grafana, Prometheus and Longhorn at once.
 
-        # Catches a wedged cert before expiry does - usually HTTP-01 failing because
-        # the hostname is missing from the tunnel config.
+        # Catches a wedged cert before expiry does - usually the DNS-01 challenge failing,
+        # for example an expired Cloudflare token.
         - alert: CertificateNotReady
           expr: |
             certmanager_certificate_ready_status{condition="True"} == 0

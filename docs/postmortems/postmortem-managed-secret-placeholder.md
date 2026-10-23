@@ -34,4 +34,4 @@ Nothing alerted. The overwrite was found by chance a day later, by a stuck rollo
       value, so nothing the platform owns can write one.
 - [x] secret-fetcher treats a secret with no version as "waiting for value", replacing the
       placeholder check
-- [ ] Alert when a pod sits in `Init` on `workload-identity-sidecar` for more than 10 minutes
+- [x] `ManagedSecretWaiting` fires when `workload-identity-sidecar` runs unready for 10 minutes
