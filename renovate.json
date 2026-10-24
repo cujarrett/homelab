@@ -81,6 +81,15 @@
       ]
     },
     {
+      "description": [
+        "11.8 is LTS, supported until 2030-02.",
+        "12.3 LTS ends sooner, and 13 is a rolling release.",
+        "Lift this when an LTS outlasts 11.8."
+      ],
+      "matchPackageNames": ["mariadb"],
+      "allowedVersions": "<12"
+    },
+    {
       "matchPackageNames": ["mariadb"],
       "matchUpdateTypes": ["major"],
       "prBodyNotes": [
