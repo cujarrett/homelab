@@ -9,6 +9,7 @@ Back up a running site with a script, then restore a backup into the homelab `Wo
 | [Prerequisites](#prerequisites) | What a restore needs |
 | [Run the restore script](#run-the-restore-script) | Import a backup into the `Wordpress` XR |
 | [Verify](#verify) | Check the site is serving |
+| [Upgrade MariaDB](#upgrade-mariadb) | Take a MariaDB major with a backup first |
 | [Notes](#notes) | What the restore rewrites |
 | [Gotchas](#gotchas) | Traefik, and a wiped cluster |
 
@@ -86,6 +87,21 @@ curl -sk https://mattjarrett.com | grep -i wordpress
 ```
 
 Log in at `https://mattjarrett.com/wp-admin` with your original credentials.
+
+## Upgrade MariaDB
+
+One image line in [the Wordpress composition](../../platform/wordpress/composition.yaml) sets MariaDB for every site, so a major update restarts every site's database at once. The databases are down for about a minute.
+
+1. Check the new major is a Long Term Support release on [MariaDB's release list](https://mariadb.org/mariadb/all-releases/). Rolling releases lose support when the next one ships.
+2. Back up every site, using the [backup script](#back-up-the-cluster) once per site.
+3. Merge the Renovate PR. `MARIADB_AUTO_UPGRADE` upgrades the system tables on first start.
+4. Confirm the version and that each site serves:
+   ```bash
+   kubectl exec -n mattjarrett-com mattjarrett-com-mariadb-0 -- mariadb --version
+   curl -s -o /dev/null -w '%{http_code}\n' https://mattjarrett.com
+   ```
+
+Data files from a new major do not open on the old one. To go back, revert the image, delete the site's `<instance>-mariadb-data` PVC and then its `<instance>-mariadb-0` pod so Crossplane creates an empty volume, then [run the restore script](#run-the-restore-script) with the backup from step 2.
 
 ---
 

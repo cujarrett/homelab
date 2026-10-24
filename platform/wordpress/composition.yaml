@@ -202,6 +202,10 @@ spec:
                             secretKeyRef:
                               name: {{ $name }}-mariadb
                               key: password
+                        # A new major starts on old system tables without this.
+                        # The entrypoint backs those tables up inside the volume first.
+                        - name: MARIADB_AUTO_UPGRADE
+                          value: "1"
                       ports:
                         - containerPort: 3306
                           name: mysql

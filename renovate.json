@@ -81,6 +81,13 @@
       ]
     },
     {
+      "matchPackageNames": ["mariadb"],
+      "matchUpdateTypes": ["major"],
+      "prBodyNotes": [
+        "⚠️ This restarts the database of every WordPress site. Follow [Upgrade MariaDB](https://github.com/cujarrett/homelab/blob/main/docs/wordpress/README.md#upgrade-mariadb) before merging: confirm the new major is LTS, then back up every site."
+      ]
+    },
+    {
       "description": [
         "PHP and Debian security fixes arrive as a rebuild of the same tag.",
         "Digest updates skip the 7-day wait so those fixes land fast."
