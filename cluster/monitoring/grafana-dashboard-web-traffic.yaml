@@ -21,18 +21,18 @@ data:
           {
             "type": "query",
             "name": "app",
-            "label": "App",
+            "label": "Site",
             "multi": true,
             "includeAll": true,
             "current": { "selected": true, "text": "All", "value": "$__all" },
             "datasource": { "type": "prometheus", "uid": "prometheus" },
-            "definition": "label_values(traefik_service_requests_total{exported_service!~\".*(argocd|monitoring|longhorn-system|cert-manager|crossplane-system|external-secrets|spire-system|spire-server|nats-|kube-system|adguard|prometheus-sump-pump).*\"}, exported_service)",
+            "definition": "label_values(traefik_service_requests_total{exported_service!~\"httproute-(argocd|monitoring|spire-server|guest-.*)-.*\"}, exported_service)",
             "query": {
-              "query": "label_values(traefik_service_requests_total{exported_service!~\".*(argocd|monitoring|longhorn-system|cert-manager|crossplane-system|external-secrets|spire-system|spire-server|nats-|kube-system|adguard|prometheus-sump-pump).*\"}, exported_service)",
+              "query": "label_values(traefik_service_requests_total{exported_service!~\"httproute-(argocd|monitoring|spire-server|guest-.*)-.*\"}, exported_service)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,
-            "regex": "/(?<value>.*-svc-(?<text>.+)-\\d+@kubernetesgateway)/",
+            "regex": "/^httproute-(?<value>.+?)-gw-kube-system-/",
             "sort": 1,
             "skipUrlSync": false,
             "hide": 0
@@ -66,13 +66,13 @@ data:
           "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
           "options": { "reduceOptions": { "calcs": ["sum"] }, "colorMode": "none", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 } },
-          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"$app\",code=~\"$status_code\"}[$__range]))", "legendFormat": "requests", "instant": true }]
+          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"httproute-${app:regex}-gw-.*\",code=~\"$status_code\"}[$__range]))", "legendFormat": "requests", "instant": true }]
         },
         {
           "id": 10,
           "type": "timeseries",
           "title": "Requests per Hour",
-          "description": "Each point shows requests in the previous 1-hour window. Use the App dropdown to focus on a single site - other sites' lines disappear.",
+          "description": "Each point shows requests in the previous 1-hour window. Use the Site dropdown to show fewer sites.",
           "gridPos": { "x": 0, "y": 4, "w": 24, "h": 9 },
           "fieldConfig": {
             "defaults": { "unit": "short", "decimals": 0, "custom": { "lineWidth": 2, "fillOpacity": 15, "lineInterpolation": "smooth" } }
@@ -82,7 +82,7 @@ data:
             "tooltip": { "mode": "multi", "sort": "desc" }
           },
           "targets": [
-            { "expr": "sum by (exported_service) (increase(traefik_service_requests_total{exported_service=~\"$app\",code=~\"$status_code\"}[1h]))", "legendFormat": "{{exported_service}}" }
+            { "expr": "sum by (site) (label_replace(increase(traefik_service_requests_total{exported_service=~\"httproute-${app:regex}-gw-.*\",code=~\"$status_code\"}[1h]), \"site\", \"$1\", \"exported_service\", \"httproute-(.+?)-gw-.*\"))", "legendFormat": "{{site}}" }
           ]
         },
         {
@@ -93,7 +93,7 @@ data:
           "gridPos": { "x": 0, "y": 13, "w": 4, "h": 4 },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" },
           "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 1, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 0.9 }, { "color": "green", "value": 0.99 }] } } },
-          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"$app\",code!~\"5..\"}[$__range])) / sum(increase(traefik_service_requests_total{exported_service=~\"$app\"}[$__range]))", "legendFormat": "Success Rate", "instant": true }]
+          "targets": [{ "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"httproute-${app:regex}-gw-.*\",code!~\"5..\"}[$__range])) / sum(increase(traefik_service_requests_total{exported_service=~\"httproute-${app:regex}-gw-.*\"}[$__range]))", "legendFormat": "Success Rate", "instant": true }]
         },
         {
           "id": 20,
@@ -115,10 +115,10 @@ data:
             "tooltip": { "mode": "multi", "sort": "desc" }
           },
           "targets": [
-            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"$app\",code=~\"2..\"}[1h]))", "legendFormat": "2xx", "refId": "A" },
-            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"$app\",code=~\"3..\"}[1h]))", "legendFormat": "3xx", "refId": "B" },
-            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"$app\",code=~\"4..\"}[1h]))", "legendFormat": "4xx", "refId": "C" },
-            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"$app\",code=~\"5..\"}[1h]))", "legendFormat": "5xx", "refId": "D" }
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"httproute-${app:regex}-gw-.*\",code=~\"2..\"}[1h]))", "legendFormat": "2xx", "refId": "A" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"httproute-${app:regex}-gw-.*\",code=~\"3..\"}[1h]))", "legendFormat": "3xx", "refId": "B" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"httproute-${app:regex}-gw-.*\",code=~\"4..\"}[1h]))", "legendFormat": "4xx", "refId": "C" },
+            { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"httproute-${app:regex}-gw-.*\",code=~\"5..\"}[1h]))", "legendFormat": "5xx", "refId": "D" }
           ]
         },
         {
