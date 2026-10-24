@@ -1,0 +1,43 @@
+name: ci
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  render-check:
+    runs-on: ubuntu-latest
+    env:
+      # renovate: datasource=helm depName=crossplane registryUrl=https://charts.crossplane.io/stable
+      CROSSPLANE_VERSION: 2.4.2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: cujarrett/homelab-workspaces
+          path: workspaces
+      - name: Install crossplane CLI
+        run: |
+          curl -sSfL -o crossplane https://releases.crossplane.io/stable/v${CROSSPLANE_VERSION}/bin/linux_amd64/crossplane
+          sudo install crossplane /usr/local/bin/crossplane
+      - run: WORKSPACES="$GITHUB_WORKSPACE/workspaces" ./platform/test/render-check.sh
+
+  kubeconform:
+    runs-on: ubuntu-latest
+    env:
+      # renovate: datasource=github-releases depName=yannh/kubeconform
+      KUBECONFORM_VERSION: v0.7.0
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install kubeconform
+        run: |
+          curl -sSfL https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz | tar xz
+          sudo install kubeconform /usr/local/bin/kubeconform
+      # The catalog supplies schemas for CRDs (Argo CD, Crossplane, Istio); kinds in neither source are skipped.
+      - run: >
+          kubeconform -summary -ignore-missing-schemas -ignore-filename-pattern '\.json$'
+          -schema-location default
+          -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+          cluster platform

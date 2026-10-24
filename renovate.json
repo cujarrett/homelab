@@ -2,7 +2,7 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["github>cujarrett/homelab//.github/renovate-shared"],
   "reviewers": ["cujarrett"],
-  "enabledManagers": ["argocd", "crossplane", "kubernetes","custom.regex"],
+  "enabledManagers": ["argocd", "crossplane", "kubernetes", "github-actions", "custom.regex"],
   "ignoreTests": true,
   "customManagers": [
     {
@@ -26,6 +26,13 @@
       ],
       "datasourceTemplate": "docker",
       "versioningTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: registryUrl=(?<registryUrl>\\S+))?\\n\\s+\\w+: (?<currentValue>\\S+)"
+      ]
     }
   ],
   "packageRules": [
@@ -117,7 +124,8 @@
   },
   "crossplane": {
     "managerFilePatterns": [
-      "/cluster/crossplane/.+\\.yaml$/"
+      "/cluster/crossplane/.+\\.yaml$/",
+      "/platform/test/fixtures/render-functions\\.yaml$/"
     ]
   },
   "kubernetes": {
