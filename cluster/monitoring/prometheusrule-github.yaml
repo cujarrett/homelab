@@ -33,6 +33,44 @@ spec:
               Turn on "Allow auto-merge" and require the repo's CI check on main, the
               same as weather-exporter. Without both, Renovate merges hours late on its
               own next visit, or without waiting on CI.
+        # The alerts above and below read settings gauges that go missing, not zero, when the token loses access.
+        - alert: GitHubExporterCannotSeeSettings
+          expr: count(github_exporter_repo_settings_visible == 0) > 0
+          for: 2h
+          labels:
+            severity: warning
+          annotations:
+            summary: "github-exporter cannot read settings for {{ $value }} repos"
+            description: >-
+              The exporter's fine-grained token needs Administration read on all
+              repositories. Until it has it, alerts on auto-merge and Dependabot alerts
+              stay silent for those repos.
+        # Renovate's security fast path reads Dependabot alerts. With them off, a fix waits the full release age.
+        - alert: RenovateRepoVulnerabilityAlertsOff
+          expr: |
+            github_exporter_repo_vulnerability_alerts == 0
+            and on (repo)
+            sum by (repo) (github_exporter_pr_opened{author="bot", window="30d"}) > 0
+          for: 2h
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.repo }} gets Renovate PRs but has Dependabot alerts off"
+            description: >-
+              Run gh api -X PUT repos/cujarrett/{{ $labels.repo }}/vulnerability-alerts.
+              Without alerts, Renovate cannot fast-track security fixes in this repo.
+        # An errored update never becomes a PR, so it is invisible everywhere except the dashboard issue.
+        - alert: RenovateUpdateErrored
+          expr: github_exporter_renovate_errored > 0
+          for: 6h
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.repo }} has {{ $value }} Renovate update that keeps failing"
+            description: >-
+              Open the repo's Dependency Dashboard issue and the Mend log it links to find
+              why the branch fails to build. Renovate retries each run, so 6h means it
+              is not clearing on its own.
         # Blocked means a required check failed or never reported.
         # A check renamed in CI but not in branch protection never reports, so the PR waits forever.
         - alert: AutoMergeBlocked
