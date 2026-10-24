@@ -38,6 +38,11 @@
       "labels": ["automerge"]
     },
     {
+      "description": "Debian and Alpine security fixes arrive as a rebuild of the same base tag. A digest pin makes each rebuild a PR, which rebuilds and redeploys the app image.",
+      "matchManagers": ["dockerfile"],
+      "pinDigests": true
+    },
+    {
       "description": "A major reaches a human on its own",
       "matchUpdateTypes": ["major"],
       "automerge": false
