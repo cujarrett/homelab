@@ -61,6 +61,14 @@
       "automerge": false
     },
     {
+      "description": [
+        "Each Upbound AWS provider requires provider-family-aws at its own exact version.",
+        "Bumped one at a time, the newer provider never starts and its resources stop reconciling."
+      ],
+      "matchPackageNames": ["xpkg.upbound.io/upbound/provider-family-aws", "xpkg.upbound.io/upbound/provider-aws-*"],
+      "groupName": "upbound aws providers"
+    },
+    {
       "matchPackageNames": ["wordpress"],
       "pinDigests": true,
       "prBodyNotes": [
