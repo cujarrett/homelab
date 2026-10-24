@@ -1,31 +1,20 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>cujarrett/homelab//.github/renovate-shared"],
+  "extends": [
+    "github>cujarrett/homelab//.github/renovate-shared",
+    "helpers:pinGitHubActionDigestsToSemver"
+  ],
   "reviewers": ["cujarrett"],
   "enabledManagers": ["argocd", "crossplane", "kubernetes", "github-actions", "custom.regex"],
   "ignoreTests": true,
   "customManagers": [
     {
       "customType": "regex",
-      "managerFilePatterns": [
-        "/platform/api/composition\\.yaml/"
-      ],
+      "managerFilePatterns": ["/platform/.+/composition\\.yaml$/"],
       "matchStrings": [
-        "image: ghcr\\.io/cujarrett/workload-identity-sidecar:(?<currentValue>[^\\s@]+)(@(?<currentDigest>sha256:[0-9a-f]+))?"
+        "image: (?<depName>[a-z][^\\s:@{]*):(?<currentValue>[^\\s@]+)(@(?<currentDigest>sha256:[0-9a-f]+))?"
       ],
-      "depNameTemplate": "ghcr.io/cujarrett/workload-identity-sidecar",
       "datasourceTemplate": "docker"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/platform/wordpress/composition\\.yaml/"
-      ],
-      "matchStrings": [
-        "image: (?<depName>wordpress):(?<currentValue>[^\\s@]+)(@(?<currentDigest>sha256:[0-9a-f]+))?"
-      ],
-      "datasourceTemplate": "docker",
-      "versioningTemplate": "docker"
     },
     {
       "customType": "regex",
@@ -36,6 +25,12 @@
     }
   ],
   "packageRules": [
+    {
+      "description": "A re-pushed tag cannot change what the cluster runs. Helm charts and Crossplane packages cannot carry a digest, so they are left out.",
+      "matchDatasources": ["docker"],
+      "matchManagers": ["custom.regex", "kubernetes"],
+      "pinDigests": true
+    },
     {
       "matchPackageNames": ["ghcr.io/cujarrett/workload-identity-sidecar"],
       "pinDigests": true,
@@ -70,7 +65,6 @@
     },
     {
       "matchPackageNames": ["wordpress"],
-      "pinDigests": true,
       "prBodyNotes": [
         "⚠️ WordPress core lives in the container filesystem, not the `wp-content` PVC. Whatever tag is pinned here is what a restarted pod runs - a self-applied update inside the pod is discarded on restart. Merging this is what makes the version durable.",
         "To take a security release before the 7-day cooldown expires, tick this update on the Renovate Dependency Dashboard under **Pending Status Checks** to force the PR immediately. Editing the tag by hand also works and is faster."
