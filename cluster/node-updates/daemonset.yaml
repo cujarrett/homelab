@@ -28,7 +28,7 @@ spec:
       containers:
         - name: apt-check
           # Same Debian release as the nodes, so apt reads their package lists the same way.
-          image: debian:trixie-slim
+          image: debian:trixie-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
           securityContext: &locked
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -81,7 +81,7 @@ spec:
             limits:
               memory: 256Mi
         - name: metrics
-          image: busybox:1.38
+          image: busybox:1.38@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e
           securityContext: *locked
           command: ["httpd", "-f", "-p", "9101", "-h", "/www"]
           ports:
