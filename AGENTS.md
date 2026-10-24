@@ -8,6 +8,7 @@
 - **Give `git add` and the commit as two separate steps, listing every file explicitly** - never `git add .`, `git add -A`, or a bare directory. Group related files onto one `git add` line. One `git add` + one commit message per repository, each under its own heading when more than one repo changed.
 - **Always precede `git add` with the `cd` to that repo's absolute path**, so the commands can be pasted from anywhere without landing in the wrong repo.
 - **Never output a `git push` command.** The user pushes as a deliberate human step.
+- **`storefront-records` and `storefront-reviews` require a PR to main.** Start their commands with `git checkout -b <branch>`. Before editing any sibling repo, read its `AGENTS.md`.
 - **Never end a YAML comment with `:`.** Editors highlight the trailing colon as a key and mis-colour the rest of the block. Reword instead, `# depends on host, a .local.lab host means...`. Mid-line colons (`# curl: raw curl without browser UA`) are fine.
 - **Always use `k` instead of `kubectl` in commands shown to the user in chat. Use kubectl in all doc files.**
 - **Never wrap `kubectl`/`k` commands in `ssh pi@...` - the user's local machine has Tailscale and kubeconfig configured. Run `kubectl` commands directly in the terminal.**
