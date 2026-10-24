@@ -3,6 +3,8 @@
 # - Drop-in: the k3s installer rewrites k3s.service and k3s.service.env on every upgrade, never k3s.service.d/
 # - Timing: takes effect at the next daemon-reload and k3s restart. An upgrade does both
 # - No restart from here: it would restart the control plane this pod depends on
+# - 4608MiB: live heap ~1.8GB plus runtime overhead passed 3GiB, and GC took over half of k3s CPU
+# - Integer only: Go rejects a fractional GOMEMLIMIT like 4.5GiB
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -30,7 +32,7 @@ spec:
             - -c
             - |
               set -e
-              printf '[Service]\nEnvironment=GOMEMLIMIT=3GiB\n' > /host/k3s.service.d/gomemlimit.conf
+              printf '[Service]\nEnvironment=GOMEMLIMIT=4608MiB\n' > /host/k3s.service.d/gomemlimit.conf
               sleep infinity
           volumeMounts:
             - name: k3s-dropin

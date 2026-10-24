@@ -23,9 +23,25 @@ spec:
               memory: 640Mi
             limits:
               memory: 1Gi
-          # Every active type uses API server memory on ctrl-1, and only namespaced ones are used.
+          # Every active type is a CRD held in API server memory on ctrl-1.
+          # - Listed: the kinds platform/ compositions create. A new kind there needs adding here
+          # - Active is one-way: an MRD dropped from this list stays Active until deleted by hand
           provider:
-            defaultActivations: ["*.m.upbound.io"]
+            defaultActivations:
+              - applications.applications.azuread.m.upbound.io
+              - approles.applications.azuread.m.upbound.io
+              - federatedidentitycredentials.applications.azuread.m.upbound.io
+              - principals.serviceprincipals.azuread.m.upbound.io
+              - permissiongrants.serviceprincipaldelegated.azuread.m.upbound.io
+              - roleassignments.app.azuread.m.upbound.io
+              - roles.iam.aws.m.upbound.io
+              - secrets.secretsmanager.aws.m.upbound.io
+              - tables.dynamodb.aws.m.upbound.io
+              - buckets.s3.aws.m.upbound.io
+              - instances.rds.aws.m.upbound.io
+              - replicationgroups.elasticache.aws.m.upbound.io
+              - usergroups.elasticache.aws.m.upbound.io
+              - users.elasticache.aws.m.upbound.io
           rbacManager: {}
           # Peaks at 54Mi over 30 days. The chart's 512Mi limit stays as the ceiling.
           resourcesRBACManager:

@@ -52,8 +52,12 @@ spec:
                 memory: 160Mi
               limits:
                 memory: 192Mi
+          # Admission reports record every allowed request, ~11 API calls/s from Crossplane applies alone.
+          # Enforce already rejects a bad request, so only background results become PolicyReports.
+          features:
+            admissionReports:
+              enabled: false
           # Nothing here generates resources, so cleanup stays off.
-          # Reports stays on, so policy results are visible as PolicyReport objects.
           cleanupController:
             enabled: false
           reportsController:
