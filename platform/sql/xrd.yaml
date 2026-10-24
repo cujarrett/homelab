@@ -22,7 +22,12 @@ spec:
               properties:
                 parameters:
                   type: object
-                  required: []
+                  # No default, so every owner picks a size knowingly.
+                  # Too big holds capacity forever, since a volume can grow but never shrink.
+                  required: [storageSize]
+                  x-kubernetes-validations:
+                    - rule: "self.backend != 'public-cloud' || quantity(self.storageSize).compareTo(quantity('20Gi')) >= 0"
+                      message: "a public-cloud Sql needs storageSize of at least 20Gi"
                   properties:
                     size:
                       type: string
@@ -39,6 +44,11 @@ spec:
                       default: delete
                       enum: [retain, delete]
                       description: "PVC reclaim behavior when the XR is deleted. retain=longhorn-retain (PVC survives XR deletion, data recoverable); delete=longhorn-delete (PVC wiped on XR deletion, data is unrecoverable). Intentionally destructive when set to delete."
+                    storageSize:
+                      type: string
+                      # Whole Gi only, 1Gi to 100Gi, so the pattern alone caps the size.
+                      pattern: "^([1-9][0-9]?|100)Gi$"
+                      description: "Size of the database storage, 1Gi to 100Gi (e.g. 1Gi). public-cloud needs at least 20Gi. Can be raised later, never lowered."
                     consumerServiceAccounts:
                       type: array
                       items:

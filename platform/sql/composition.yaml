@@ -47,6 +47,7 @@ spec:
               {{- end }}
             {{- end }}
             {{- $dataRetention := $xr.spec.parameters.dataRetention | default "delete" }}
+            {{- $storageSize := $xr.spec.parameters.storageSize }}
             {{- /* storageClassName is frozen on first creation: once bound, a PVC's storageClassName
                  is immutable. Read back the observed value so reconciles are always no-ops. */}}
             {{- $storageClass := "longhorn-retain" }}
@@ -86,7 +87,7 @@ spec:
               storageClassName: {{ $storageClass }}
               resources:
                 requests:
-                  storage: 5Gi
+                  storage: {{ $storageSize }}
             ---
             apiVersion: apps/v1
             kind: Deployment
@@ -222,7 +223,7 @@ spec:
                 engine: postgres
                 engineVersion: "16"
                 instanceClass: {{ $instanceClass }}
-                allocatedStorage: 20
+                allocatedStorage: {{ $storageSize | trimSuffix "Gi" | atoi }}
                 # WARNING: skipFinalSnapshot=true means deleting this XR drops the RDS instance
                 # with no snapshot. Intentional for homelab cost management - data is unrecoverable.
                 skipFinalSnapshot: true

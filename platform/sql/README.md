@@ -42,6 +42,7 @@ Multiple consumers' secrets coexist in the same namespace but each Api's RBAC Ro
 | `backend` | no | `private-cloud` | `public-cloud` provisions AWS RDS Postgres; `private-cloud` provisions in-cluster Postgres. |
 | `size` | no | `sm` | T-shirt size for the RDS instance (public-cloud only): `xs=db.t4g.micro`, `sm=db.t4g.small`, `md=db.t4g.medium`, `lg=db.t4g.large` |
 | `dataRetention` | no | `delete` | Longhorn PVC reclaim (private-cloud only): `retain` (PVC survives XR deletion, data recoverable) or `delete` (PVC wiped on deletion, data unrecoverable). |
+| `storageSize` | yes | - | Size of the database storage, `1Gi` to `100Gi`, e.g. `1Gi`. `public-cloud` needs at least `20Gi`. Can be raised later but never lowered, so a lower value fails to apply. |
 | `consumerServiceAccounts` | public-cloud | - | List of Api names that will bind this database. Each entry gets its own IAM role and binding secret scoped to that SA's exact SPIFFE ID. Each entry must match an Api `metadata.name`. |
 
 ## Example
@@ -55,6 +56,7 @@ metadata:
 spec:
   parameters:
     backend: private-cloud   # in-cluster Postgres - no AWS resources provisioned
+    storageSize: 1Gi
 ```
 
 ```yaml
@@ -67,6 +69,7 @@ spec:
   parameters:
     backend: public-cloud   # provisions AWS RDS Postgres
     size: sm   # xs=db.t4g.micro | sm=db.t4g.small | md=db.t4g.medium | lg=db.t4g.large
+    storageSize: 20Gi
     consumerServiceAccounts:
       - foo-api   # each entry gets its own IAM role and binding secret
 ```
