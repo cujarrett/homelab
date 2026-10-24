@@ -1002,6 +1002,17 @@ data:
                             "color": "yellow"
                           }
                         }
+                      },
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "Unknown\\|(.*)",
+                          "result": {
+                            "index": 2,
+                            "text": "$1",
+                            "color": "purple"
+                          }
+                        }
                       }
                     ]
                   },
@@ -1056,7 +1067,7 @@ data:
           "pluginVersion": "13.2.4",
           "targets": [
             {
-              "expr": "count by (cve, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_join(label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version!=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version!=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"), \"cve\", \"|\", \"severity\", \"vuln_id\"))",
+              "expr": "count by (cve, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_join(label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High|Unknown\", fixed_version!=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High|Unknown\", fixed_version!=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"), \"cve\", \"|\", \"severity\", \"vuln_id\"))",
               "format": "table",
               "instant": true,
               "refId": "A"
