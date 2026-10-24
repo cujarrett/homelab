@@ -822,50 +822,14 @@ data:
                     "value": 70
                   }
                 ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Status"
-                },
-                "properties": [
-                  {
-                    "id": "custom.cellOptions",
-                    "value": {
-                      "type": "color-text"
-                    }
-                  },
-                  {
-                    "id": "mappings",
-                    "value": [
-                      {
-                        "type": "value",
-                        "options": {
-                          "Fix released": {
-                            "color": "yellow",
-                            "index": 0
-                          },
-                          "No fix released": {
-                            "color": "blue",
-                            "index": 1
-                          }
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "id": "custom.width",
-                    "value": 130
-                  }
-                ]
               }
             ]
           },
           "gridPos": {
-            "h": 16,
+            "h": 14,
             "w": 24,
             "x": 0,
-            "y": 11
+            "y": 19
           },
           "id": 9,
           "options": {
@@ -892,13 +856,13 @@ data:
           "pluginVersion": "13.2.3",
           "targets": [
             {
-              "expr": "count by (namespace, kind, workload, resource, installed_version, fixed_version, status, image_repository) (label_replace(label_replace((label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\")), \"status\", \"Fix released\", \"fixed_version\", \".+\"), \"status\", \"No fix released\", \"fixed_version\", \"\"))",
+              "expr": "count by (namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"))",
               "format": "table",
               "instant": true,
               "refId": "A"
             },
             {
-              "expr": "count by (namespace, kind, workload, resource, installed_version, fixed_version, status, image_repository) (label_replace(label_replace((label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\")), \"status\", \"Fix released\", \"fixed_version\", \".+\"), \"status\", \"No fix released\", \"fixed_version\", \"\"))",
+              "expr": "count by (namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", fixed_version!=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", fixed_version!=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"))",
               "format": "table",
               "instant": true,
               "refId": "B"
@@ -922,7 +886,6 @@ data:
                   "resource": "Vulnerable package",
                   "installed_version": "Installed",
                   "fixed_version": "Fixed in",
-                  "status": "Status",
                   "image_repository": "Image",
                   "Value #A": "Critical",
                   "Value #B": "High"
@@ -934,17 +897,16 @@ data:
                   "resource": 3,
                   "Value #A": 4,
                   "Value #B": 5,
-                  "status": 6,
-                  "installed_version": 7,
-                  "fixed_version": 8,
-                  "image_repository": 9
+                  "installed_version": 6,
+                  "fixed_version": 7,
+                  "image_repository": 8
                 }
               }
             }
           ],
-          "title": "Vulnerable Packages by Workload",
+          "title": "Fix Available: Vulnerable Packages by Workload",
           "type": "table",
-          "description": "One row per vulnerable package in each workload.\nCritical and High: CVE counts for that package.\nStatus, Fix released: update the image or package to Fixed in. Renovate PRs it, or check the linked Dependency Dashboard for why it is waiting.\nStatus, No fix released: nothing to update to yet. Waiting on upstream.",
+          "description": "One row per vulnerable package in each workload.\nA fixed version exists. Update the image or package to Fixed in.\nRenovate PRs it, or the linked Dependency Dashboard shows why it is waiting.",
           "links": [
             {
               "title": "Renovate Dependency Dashboard",
@@ -952,6 +914,313 @@ data:
               "targetBlank": true
             }
           ]
+        },
+        {
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "text"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                }
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Critical"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-background"
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "thresholds"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "transparent",
+                          "value": null
+                        },
+                        {
+                          "color": "red",
+                          "value": 1
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 70
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "High"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-background"
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "thresholds"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "transparent",
+                          "value": null
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 1
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 70
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 33
+          },
+          "id": 12,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "footer": {
+              "show": false,
+              "reducer": [
+                "sum"
+              ],
+              "fields": ""
+            },
+            "sortBy": [
+              {
+                "displayName": "Critical",
+                "desc": true
+              },
+              {
+                "displayName": "High",
+                "desc": true
+              }
+            ]
+          },
+          "pluginVersion": "13.2.3",
+          "targets": [
+            {
+              "expr": "count by (namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"))",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            },
+            {
+              "expr": "count by (namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", fixed_version=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", fixed_version=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"))",
+              "format": "table",
+              "instant": true,
+              "refId": "B"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "fixed_version": true
+                },
+                "renameByName": {
+                  "namespace": "Namespace",
+                  "kind": "Kind",
+                  "workload": "Workload",
+                  "resource": "Vulnerable package",
+                  "installed_version": "Installed",
+                  "fixed_version": "Fixed in",
+                  "image_repository": "Image",
+                  "Value #A": "Critical",
+                  "Value #B": "High"
+                },
+                "indexByName": {
+                  "namespace": 0,
+                  "workload": 1,
+                  "kind": 2,
+                  "resource": 3,
+                  "Value #A": 4,
+                  "Value #B": 5,
+                  "installed_version": 6,
+                  "fixed_version": 7,
+                  "image_repository": 8
+                }
+              }
+            }
+          ],
+          "title": "No Fix Released Yet: Waiting on Upstream",
+          "type": "table",
+          "description": "Vulnerable packages with no fixed version anywhere yet.\nNothing to update to. They move to the table above once upstream ships a fix."
+        },
+        {
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "blue"
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 4,
+            "x": 0,
+            "y": 11
+          },
+          "id": 13,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.3",
+          "targets": [
+            {
+              "expr": "count(count by (image_repository, vuln_id) (max_over_time(trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version!=\"\"}[7d])) unless count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version!=\"\"})) or vector(0)",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Cleared in Last 7 Days",
+          "type": "stat",
+          "description": "Critical and high CVEs, counted per image, that ran at some point in the last 7 days and are gone now."
+        },
+        {
+          "id": 14,
+          "type": "timeseries",
+          "title": "Open Critical and High CVEs With a Fix",
+          "description": "Counted per image and CVE. Falls as fixes land, rises as new CVEs are published.",
+          "gridPos": {
+            "h": 8,
+            "w": 20,
+            "x": 4,
+            "y": 11
+          },
+          "targets": [
+            {
+              "expr": "count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\"}))",
+              "legendFormat": "Critical",
+              "refId": "A"
+            },
+            {
+              "expr": "count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=\"High\", fixed_version!=\"\"}))",
+              "legendFormat": "High",
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "never"
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Critical"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "red"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "High"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "yellow"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "timeFrom": "30d"
         }
       ],
       "preload": false,
