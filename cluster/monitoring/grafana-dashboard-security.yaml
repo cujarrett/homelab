@@ -975,96 +975,49 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Critical"
-                },
-                "properties": [
-                  {
-                    "id": "custom.cellOptions",
-                    "value": {
-                      "type": "color-background"
-                    }
-                  },
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "thresholds"
-                    }
-                  },
-                  {
-                    "id": "thresholds",
-                    "value": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "transparent",
-                          "value": 0
-                        },
-                        {
-                          "color": "red",
-                          "value": 1
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "id": "custom.width",
-                    "value": 70
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "High"
-                },
-                "properties": [
-                  {
-                    "id": "custom.cellOptions",
-                    "value": {
-                      "type": "color-background"
-                    }
-                  },
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "thresholds"
-                    }
-                  },
-                  {
-                    "id": "thresholds",
-                    "value": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "transparent",
-                          "value": 0
-                        },
-                        {
-                          "color": "yellow",
-                          "value": 1
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "id": "custom.width",
-                    "value": 70
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
                   "options": "CVE"
                 },
                 "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "Critical\\|(.*)",
+                          "result": {
+                            "index": 0,
+                            "text": "$1",
+                            "color": "red"
+                          }
+                        }
+                      },
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "High\\|(.*)",
+                          "result": {
+                            "index": 1,
+                            "text": "$1",
+                            "color": "yellow"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
                   {
                     "id": "links",
                     "value": [
                       {
                         "targetBlank": true,
-                        "title": "${__value.raw} on cve.org",
-                        "url": "https://www.cve.org/CVERecord?id=${__value.raw}"
+                        "title": "${__value.text} on cve.org",
+                        "url": "https://www.cve.org/CVERecord?id=${__value.text}"
                       }
                     ]
                   },
@@ -1095,28 +1048,18 @@ data:
             "showHeader": true,
             "sortBy": [
               {
-                "desc": true,
-                "displayName": "Critical"
-              },
-              {
-                "desc": true,
-                "displayName": "High"
+                "desc": false,
+                "displayName": "CVE"
               }
             ]
           },
           "pluginVersion": "13.2.4",
           "targets": [
             {
-              "expr": "count by (vuln_id, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"))",
+              "expr": "count by (cve, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_join(label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version!=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version!=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"), \"cve\", \"|\", \"severity\", \"vuln_id\"))",
               "format": "table",
               "instant": true,
               "refId": "A"
-            },
-            {
-              "expr": "count by (vuln_id, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", fixed_version!=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", fixed_version!=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"))",
-              "format": "table",
-              "instant": true,
-              "refId": "B"
             }
           ],
           "title": "Fix Available: Vulnerable Packages by Workload",
@@ -1129,24 +1072,21 @@ data:
               "id": "organize",
               "options": {
                 "excludeByName": {
-                  "Time": true
+                  "Time": true,
+                  "Value": true
                 },
                 "indexByName": {
-                  "vuln_id": 0,
-                  "Value #A": 5,
-                  "Value #B": 6,
-                  "fixed_version": 8,
-                  "image_repository": 9,
-                  "installed_version": 7,
-                  "kind": 3,
+                  "cve": 0,
                   "namespace": 1,
+                  "workload": 2,
+                  "kind": 3,
                   "resource": 4,
-                  "workload": 2
+                  "installed_version": 5,
+                  "fixed_version": 6,
+                  "image_repository": 7
                 },
                 "renameByName": {
-                  "vuln_id": "CVE",
-                  "Value #A": "Critical",
-                  "Value #B": "High",
+                  "cve": "CVE",
                   "fixed_version": "Fixed in",
                   "image_repository": "Image",
                   "installed_version": "Installed",
@@ -1196,96 +1136,49 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Critical"
-                },
-                "properties": [
-                  {
-                    "id": "custom.cellOptions",
-                    "value": {
-                      "type": "color-background"
-                    }
-                  },
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "thresholds"
-                    }
-                  },
-                  {
-                    "id": "thresholds",
-                    "value": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "transparent",
-                          "value": 0
-                        },
-                        {
-                          "color": "red",
-                          "value": 1
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "id": "custom.width",
-                    "value": 70
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "High"
-                },
-                "properties": [
-                  {
-                    "id": "custom.cellOptions",
-                    "value": {
-                      "type": "color-background"
-                    }
-                  },
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "thresholds"
-                    }
-                  },
-                  {
-                    "id": "thresholds",
-                    "value": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "transparent",
-                          "value": 0
-                        },
-                        {
-                          "color": "yellow",
-                          "value": 1
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "id": "custom.width",
-                    "value": 70
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
                   "options": "CVE"
                 },
                 "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "Critical\\|(.*)",
+                          "result": {
+                            "index": 0,
+                            "text": "$1",
+                            "color": "red"
+                          }
+                        }
+                      },
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "High\\|(.*)",
+                          "result": {
+                            "index": 1,
+                            "text": "$1",
+                            "color": "yellow"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
                   {
                     "id": "links",
                     "value": [
                       {
                         "targetBlank": true,
-                        "title": "${__value.raw} on cve.org",
-                        "url": "https://www.cve.org/CVERecord?id=${__value.raw}"
+                        "title": "${__value.text} on cve.org",
+                        "url": "https://www.cve.org/CVERecord?id=${__value.text}"
                       }
                     ]
                   },
@@ -1309,28 +1202,18 @@ data:
             "showHeader": true,
             "sortBy": [
               {
-                "desc": true,
-                "displayName": "Critical"
-              },
-              {
-                "desc": true,
-                "displayName": "High"
+                "desc": false,
+                "displayName": "CVE"
               }
             ]
           },
           "pluginVersion": "13.2.4",
           "targets": [
             {
-              "expr": "count by (vuln_id, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"))",
+              "expr": "count by (cve, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_join(label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"), \"cve\", \"|\", \"severity\", \"vuln_id\"))",
               "format": "table",
               "instant": true,
               "refId": "A"
-            },
-            {
-              "expr": "count by (vuln_id, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", fixed_version=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", fixed_version=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"))",
-              "format": "table",
-              "instant": true,
-              "refId": "B"
             }
           ],
           "title": "No Fix Released Yet: Waiting on Upstream",
@@ -1344,24 +1227,21 @@ data:
               "options": {
                 "excludeByName": {
                   "Time": true,
-                  "fixed_version": true
+                  "fixed_version": true,
+                  "Value": true
                 },
                 "indexByName": {
-                  "vuln_id": 0,
-                  "Value #A": 5,
-                  "Value #B": 6,
-                  "fixed_version": 8,
-                  "image_repository": 9,
-                  "installed_version": 7,
-                  "kind": 3,
+                  "cve": 0,
                   "namespace": 1,
+                  "workload": 2,
+                  "kind": 3,
                   "resource": 4,
-                  "workload": 2
+                  "installed_version": 5,
+                  "fixed_version": 6,
+                  "image_repository": 7
                 },
                 "renameByName": {
-                  "vuln_id": "CVE",
-                  "Value #A": "Critical",
-                  "Value #B": "High",
+                  "cve": "CVE",
                   "fixed_version": "Fixed in",
                   "image_repository": "Image",
                   "installed_version": "Installed",
