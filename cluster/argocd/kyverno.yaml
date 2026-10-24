@@ -65,9 +65,9 @@ spec:
             resources:
               requests:
                 cpu: 25m
-                memory: 160Mi
-              limits:
                 memory: 192Mi
+              limits:
+                memory: 256Mi
     - repoURL: https://github.com/cujarrett/homelab.git
       targetRevision: main
       path: cluster/kyverno
