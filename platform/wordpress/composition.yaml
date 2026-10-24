@@ -172,7 +172,7 @@ spec:
                       type: RuntimeDefault
                   containers:
                     - name: mariadb
-                      image: mariadb:11
+                      image: mariadb:11@sha256:f16d7a344413e519dff518f27bdb221388f84b0d274c97c4fb5f2cb0dc1b34fa
                       securityContext:
                         allowPrivilegeEscalation: false
                         capabilities:
@@ -427,7 +427,7 @@ spec:
                           type: RuntimeDefault
                       containers:
                         - name: curl
-                          image: curlimages/curl:8.22.0
+                          image: curlimages/curl:8.22.0@sha256:58adaa4e8dca9c988bae2aba4ab3434a0bb2da16bbe3f92dec39ec7785166777
                           securityContext:
                             allowPrivilegeEscalation: false
                             readOnlyRootFilesystem: true

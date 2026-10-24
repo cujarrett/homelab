@@ -318,7 +318,7 @@ spec:
                     {{- /* The sidecar below reads it, then its startupProbe waits for values. */}}
                     {{- range $wait := concat $managedSecrets $bindings }}
                     - name: wait-for-{{ $wait.dir }}-binding
-                      image: busybox:1.38
+                      image: busybox:1.38@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e
                       securityContext:
                         allowPrivilegeEscalation: false
                         readOnlyRootFilesystem: true
@@ -335,7 +335,7 @@ spec:
                     {{- end }}
                     {{- if or $awsBindings $entraNeeded $managedSecrets }}
                     - name: workload-identity-sidecar
-                      image: ghcr.io/cujarrett/workload-identity-sidecar:main
+                      image: ghcr.io/cujarrett/workload-identity-sidecar:main@sha256:63c1e070c4ac02385c45fddcab07f6a8f432299e1522ac00f8581889df8fb537
                       imagePullPolicy: Always
                       # A native sidecar. Kubernetes starts the app only after this
                       # container's startupProbe passes.
