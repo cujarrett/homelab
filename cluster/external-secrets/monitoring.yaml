@@ -36,10 +36,10 @@ spec:
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
-  name: promtail-visitor-salt
+  name: visitor-salt
   namespace: monitoring
 spec:
   secretStoreRef: {kind: ClusterSecretStore, name: aws-parameter-store}
   data:
     - secretKey: salt
-      remoteRef: {key: /homelab/monitoring/promtail-visitor-salt}
+      remoteRef: {key: /homelab/monitoring/visitor-salt}

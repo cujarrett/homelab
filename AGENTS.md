@@ -103,7 +103,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | CNI | flannel | k3s's bundled CNI, running at its defaults - no install flags, no `/etc/rancher/k3s/config.yaml`. NetworkPolicy is enforced by k3s's kube-router, also default. Mesh concerns (mTLS, connection policy) belong to Istio. |
 | Service Mesh | Istio | Sidecar mesh chained onto flannel; provides workload mTLS. Platform workloads get STRICT mTLS and an `AuthorizationPolicy` inbound from their declared `provides`, and `REGISTRY_ONLY` egress from their declared `consumes`. Both sides must agree for a call to pass; see [Platform Connections](./platform/docs/connections.md). |
 | Observability | kube-prometheus-stack | Prometheus (30d retention), Grafana, Alertmanager |
-| Logs | Loki + Promtail | Loki SingleBinary, 30d retention; Promtail DaemonSet ships logs |
+| Logs | Loki + Alloy | Loki SingleBinary, 30d retention; Alloy DaemonSet ships logs |
 | Messaging | NATS JetStream | 3-replica cluster in `nats`; NACK controller manages Stream and Consumer CRDs |
 | GraphQL | Apollo operator + router | Two installs, `apollo-operator-test` and `apollo-operator-prod`, each with its own key and watching only its own lane. Helm chart from `registry-1.docker.io/apollograph`. Joins each team's subgraph into one supergraph; see [Platform Graph](./platform/docs/graph.md). Router image is `ghcr.io/cujarrett/apollo-router-arm64`, rebuilt from source because the official image aborts on a 16K-page kernel |
 | Secrets | External Secrets Operator | Renders cluster-setup credentials from AWS SSM Parameter Store; `ClusterSecretStore` `aws-parameter-store` authenticates as the `eso-reader` IAM user, scoped read-only to the `/homelab/` path. Only `aws-eso-creds` is hand-created |
@@ -116,7 +116,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `monitoring` | kube-prometheus-stack | Prometheus (30d retention, 35Gi), Grafana (2Gi), Alertmanager (2Gi) |
 | `monitoring` | prometheus-sump-pump | Dedicated long-term Prometheus for sump pump + weather data (18250d retention, 2Gi PVC, `longhorn-retain`, no node pinning); Grafana datasource UID `sump-pump-archive` |
 | `monitoring` | Loki | SingleBinary mode, filesystem storage, 5Gi PVC, 30d retention (365d for the `log_type` visitor and sandbox streams) |
-| `monitoring` | Promtail | DaemonSet log shipper → Loki at `http://loki.monitoring.svc.cluster.local:3100` |
+| `monitoring` | Alloy | DaemonSet log shipper → Loki at `http://loki.monitoring.svc.cluster.local:3100` |
 | `longhorn-system` | Longhorn | Ingress at `longhorn.local.lab` |
 | `adguard` | AdGuard Home | DNS ad-blocking/resolver |
 | `cloudflare` | cloudflared | Cloudflare Tunnel for public ingress |
@@ -199,7 +199,7 @@ fetch the current ingress array, append, then PUT it all back, which is what the
 - **Prometheus (sump-pump)**: `prometheus-sump-pump`, port 9090, 18250d retention, 2Gi PVC (`longhorn-retain`, no node pinning); scrapes sump-pump-bridge, sump-pump-consumer, weather-exporter; Grafana datasource UID `sump-pump-archive`; **PVC mounts at `prometheus-db/` subdirectory** - migration jobs must write blocks there, not to the PVC root
 - **Grafana**: admin secret `grafana-admin-secret`, anonymous viewer access enabled, Loki datasource configured, dashboards loaded via sidecar from all namespaces; the kiosk playlist is managed in the Grafana UI (not provisioned from Git)
 - **Loki**: StatefulSet `loki`, SingleBinary, filesystem, 5Gi PVC (`storage-loki-0`), 30d retention, compactor enabled. Streams labelled `log_type="access"` (US visitors) and `log_type="sandbox"` (sandbox launches) are kept 365 days for the visitor maps. Query results are cached in-process, split by day, so a repeat year-long query only computes today. `argocd` is ~80% of all log volume - check it first if the PVC fills.
-- **Promtail**: DaemonSet, ships logs to Loki. Drops every Traefik access log line that is not a US visitor or comes from a bot or script, and replaces the visitor IP with a salted hash (salt from `/homelab/monitoring/promtail-visitor-salt`)
+- **Alloy**: DaemonSet, ships logs to Loki. Drops every Traefik access log line that is not a US visitor or comes from a bot or script, and replaces the visitor IP with a salted hash (salt from `/homelab/monitoring/visitor-salt`)
 - **Alertmanager**: 2Gi PVC
 
 ### Resizing a StatefulSet PVC
@@ -288,7 +288,7 @@ Four projects scope workloads by concern:
 |---|---|---|
 | `platform` | homelab git + `argoproj.github.io/argo-helm` + `charts.crossplane.io/stable` | ArgoCD, Crossplane, compositions, bootstrap |
 | `cluster` | homelab git + `nats-io.github.io/k8s/helm/charts` + `charts.jetstack.io` + `spiffe.github.io/helm-charts-hardened` + `registry-1.docker.io/apollograph` | Longhorn, Traefik, cert-manager, AdGuard, Cloudflare, NATS + NACK, SPIRE, Apollo operator |
-| `observability` | homelab git + `prometheus-community.github.io/helm-charts` + `grafana.github.io/helm-charts` | kube-prometheus-stack, Loki, Promtail, platform-exporter |
+| `observability` | homelab git + `prometheus-community.github.io/helm-charts` + `grafana.github.io/helm-charts` | kube-prometheus-stack, Loki, Alloy, platform-exporter |
 | `workloads` | homelab git + homelab-workspaces git | All workspace apps (one Application per homelab-workspaces directory) + blog |
 
 

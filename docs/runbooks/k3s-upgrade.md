@@ -90,7 +90,7 @@ kubectl cordon <node>
 kubectl drain <node> --ignore-daemonsets --delete-emptydir-data --timeout=180s
 ```
 
-`--ignore-daemonsets` is required for Istio's CNI agent, Traefik and Promtail.
+`--ignore-daemonsets` is required for Istio's CNI agent, Traefik and Alloy.
 Longhorn's `instance-manager` refuses eviction for a minute or two on its disruption budget then
 succeeds - normal, not a stuck drain.
 

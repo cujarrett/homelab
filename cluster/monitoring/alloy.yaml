@@ -1,0 +1,193 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/argoproj.io/application_v1alpha1.json
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alloy
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: observability
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: alloy
+    targetRevision: 1.14.3
+    helm:
+      releaseName: alloy
+      values: |
+        alloy:
+          configMap:
+            content: |
+              discovery.kubernetes "pods" {
+                role = "pod"
+                selectors {
+                  role  = "pod"
+                  field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+                }
+              }
+
+              discovery.relabel "pods" {
+                targets = discovery.kubernetes.pods.targets
+
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_controller_name"]
+                  regex         = "([0-9a-z-.]+?)(-[0-9a-f]{8,10})?"
+                  target_label  = "__tmp_controller_name"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name", "__meta_kubernetes_pod_label_app", "__tmp_controller_name", "__meta_kubernetes_pod_name"]
+                  regex         = "^;*([^;]+)(;.*)?$"
+                  target_label  = "app"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_instance", "__meta_kubernetes_pod_label_instance"]
+                  regex         = "^;*([^;]+)(;.*)?$"
+                  target_label  = "instance"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_component", "__meta_kubernetes_pod_label_component"]
+                  regex         = "^;*([^;]+)(;.*)?$"
+                  target_label  = "component"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_node_name"]
+                  target_label  = "node_name"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace"]
+                  target_label  = "namespace"
+                }
+                rule {
+                  source_labels = ["namespace", "app"]
+                  separator     = "/"
+                  target_label  = "job"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_name"]
+                  target_label  = "pod"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_container_name"]
+                  target_label  = "container"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+                  separator     = "/"
+                  target_label  = "__path__"
+                  replacement   = "/var/log/pods/*$1/*.log"
+                }
+              }
+
+              loki.source.file "pods" {
+                targets    = discovery.relabel.pods.output
+                forward_to = [loki.process.pods.receiver]
+                file_match {
+                  enabled = true
+                }
+                // Picks up where Promtail stopped, so the cutover neither skips nor repeats lines.
+                legacy_positions_file = "/run/promtail/positions.yaml"
+              }
+
+              loki.process "pods" {
+                forward_to = [loki.write.default.receiver]
+
+                stage.cri { }
+
+                // Traefik access logs, kept only for US visitors arriving through Cloudflare.
+                // LAN traffic carries no Cf-Ipcountry, so it is dropped here too.
+                stage.match {
+                  selector            = `{namespace="kube-system", app="traefik"} |= "\"RequestHost\"" != "\"request_Cf-Ipcountry\":\"US\""`
+                  action              = "drop"
+                  drop_counter_reason = "traefik_access_not_us"
+                }
+
+                // Bots and scripts never reach Loki, which keeps the year-long visitor views small.
+                // A browser always sends a User-Agent, so a request without one is a script.
+                stage.match {
+                  selector            = `{namespace="kube-system", app="traefik"} |= "\"RequestHost\"" |~ "\"request_User-Agent\":\"[^\"]*(?i:bot|crawl|spider|slurp|curl|wget|python|go-http|headless|okhttp|java/|libwww|scrapy|httpclient|axios|node-fetch|preview)"`
+                  action              = "drop"
+                  drop_counter_reason = "traefik_access_bot"
+                }
+                stage.match {
+                  selector            = `{namespace="kube-system", app="traefik"} |= "\"RequestHost\"" != "\"request_User-Agent\""`
+                  action              = "drop"
+                  drop_counter_reason = "traefik_access_no_user_agent"
+                }
+
+                // Salted hash, so Loki can count unique visitors without holding an IP.
+                // log_type gives these lines their own streams, which Loki keeps 365 days.
+                stage.match {
+                  selector = `{namespace="kube-system", app="traefik"} |= "\"request_Cf-Ipcountry\":\"US\""`
+
+                  // The chart runs this file through Helm's tpl.
+                  // A Helm raw string carries the template through to Alloy untouched.
+                  stage.replace {
+                    expression = `"request_Cf-Connecting-Ip":"([^"]+)"`
+                    replace    = "{{`{{ Sha2Hash (env \"VISITOR_SALT\") .Value | trunc 16 }}`}}"
+                  }
+                  stage.static_labels {
+                    values = { log_type = "access" }
+                  }
+
+                  // A launched sandbox. Its own stream keeps the year-long sandbox map query small.
+                  stage.match {
+                    selector = `{log_type="access"} |= "\"DownstreamStatus\":201" |= "\"RequestHost\":\"launchpad.mattjarrett.dev\"" |= "\"RequestMethod\":\"POST\"" |= "\"RequestPath\":\"/api/guest/workspaces\""`
+                    stage.static_labels {
+                      values = { log_type = "sandbox" }
+                    }
+                  }
+                }
+              }
+
+              loki.write "default" {
+                endpoint {
+                  url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+                }
+              }
+          # Positions live on the node, so a restarted pod resumes instead of re-reading every log.
+          storagePath: /var/lib/alloy
+          mounts:
+            varlog: true
+            extra:
+              - name: storage
+                mountPath: /var/lib/alloy
+              - name: promtail-positions
+                mountPath: /run/promtail
+                readOnly: true
+          # optional, so a missing salt never stops log shipping
+          extraEnv:
+            - name: VISITOR_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: visitor-salt
+                  key: salt
+                  optional: true
+          resources:
+            requests:
+              memory: 160Mi
+        controller:
+          type: daemonset
+          volumes:
+            extra:
+              - name: storage
+                hostPath:
+                  path: /var/lib/alloy
+                  type: DirectoryOrCreate
+              - name: promtail-positions
+                hostPath:
+                  path: /run/promtail
+                  type: DirectoryOrCreate
+        serviceMonitor:
+          enabled: true
+          additionalLabels:
+            release: monitoring
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true

@@ -56,7 +56,7 @@ spec:
         maxUnavailable: 1
         maxSurge: 0
     # Access logs feed the visitor and sandbox maps (Web Traffic, Platform, Launchpad).
-    # Promtail drops every line that is not a US visitor and hashes the IP before Loki stores it.
+    # Alloy drops every line that is not a US visitor and hashes the IP before Loki stores it.
     # Cf-* headers are set by Cloudflare's "Add visitor location headers" managed transform.
     accessLog:
       enabled: true
