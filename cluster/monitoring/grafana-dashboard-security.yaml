@@ -9,13 +9,25 @@ data:
   security.json: |
     {
       "annotations": {
-        "list": []
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
       },
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 1,
       "liveNow": false,
-      "links": [],
       "panels": [
         {
           "fieldConfig": {
@@ -37,12 +49,11 @@ data:
                 ]
               },
               "unit": "short"
-            },
-            "overrides": []
+            }
           },
           "gridPos": {
             "h": 4,
-            "w": 4,
+            "w": 3,
             "x": 0,
             "y": 0
           },
@@ -64,7 +75,7 @@ data:
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "13.2.3",
+          "pluginVersion": "13.2.4",
           "targets": [
             {
               "expr": "homelab:security_open:count",
@@ -96,13 +107,12 @@ data:
                 ]
               },
               "unit": "short"
-            },
-            "overrides": []
+            }
           },
           "gridPos": {
             "h": 4,
-            "w": 4,
-            "x": 4,
+            "w": 3,
+            "x": 3,
             "y": 0
           },
           "id": 10,
@@ -123,7 +133,7 @@ data:
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "13.2.3",
+          "pluginVersion": "13.2.4",
           "targets": [
             {
               "expr": "homelab:security_overdue:count",
@@ -155,13 +165,12 @@ data:
                 ]
               },
               "unit": "short"
-            },
-            "overrides": []
+            }
           },
           "gridPos": {
             "h": 4,
-            "w": 4,
-            "x": 8,
+            "w": 3,
+            "x": 6,
             "y": 0
           },
           "id": 2,
@@ -182,7 +191,7 @@ data:
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "13.2.3",
+          "pluginVersion": "13.2.4",
           "targets": [
             {
               "expr": "homelab:security_open_image_cves:count",
@@ -192,6 +201,66 @@ data:
             }
           ],
           "title": "Critical CVEs With a Fix",
+          "type": "stat"
+        },
+        {
+          "description": "Critical and high CVEs, counted per image, that ran at some point in the last 7 days and are gone now.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "blue",
+                "mode": "fixed"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 3,
+            "x": 9,
+            "y": 0
+          },
+          "id": 13,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.4",
+          "targets": [
+            {
+              "expr": "count(count by (image_repository, vuln_id) (max_over_time(trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version!=\"\"}[7d])) unless count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version!=\"\"})) or vector(0)",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Cleared in Last 7 Days",
           "type": "stat"
         },
         {
@@ -214,8 +283,7 @@ data:
                 ]
               },
               "unit": "short"
-            },
-            "overrides": []
+            }
           },
           "gridPos": {
             "h": 4,
@@ -241,7 +309,7 @@ data:
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "13.2.3",
+          "pluginVersion": "13.2.4",
           "targets": [
             {
               "expr": "homelab:security_open_node_updates:count",
@@ -273,8 +341,7 @@ data:
                 ]
               },
               "unit": "short"
-            },
-            "overrides": []
+            }
           },
           "gridPos": {
             "h": 4,
@@ -300,7 +367,7 @@ data:
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "13.2.3",
+          "pluginVersion": "13.2.4",
           "targets": [
             {
               "expr": "homelab:security_open_node_reboot:count",
@@ -332,8 +399,7 @@ data:
                 ]
               },
               "unit": "short"
-            },
-            "overrides": []
+            }
           },
           "gridPos": {
             "h": 4,
@@ -359,7 +425,7 @@ data:
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "13.2.3",
+          "pluginVersion": "13.2.4",
           "targets": [
             {
               "expr": "homelab:security_open_unattended_stale:count",
@@ -391,8 +457,7 @@ data:
                 ]
               },
               "unit": "short"
-            },
-            "overrides": []
+            }
           },
           "gridPos": {
             "h": 4,
@@ -418,7 +483,7 @@ data:
             "textMode": "auto",
             "wideLayout": true
           },
-          "pluginVersion": "13.2.3",
+          "pluginVersion": "13.2.4",
           "targets": [
             {
               "expr": "homelab:security_open_renovate_blocked:count",
@@ -434,14 +499,31 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "fixed",
-                "fixedColor": "text"
+                "fixedColor": "text",
+                "mode": "fixed"
               },
               "custom": {
                 "align": "auto",
                 "cellOptions": {
                   "type": "auto"
-                }
+                },
+                "footer": {
+                  "reducers": []
+                },
+                "inspect": false
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
               }
             },
             "overrides": [
@@ -568,16 +650,9 @@ data:
           "id": 7,
           "options": {
             "cellHeight": "sm",
-            "showHeader": true,
-            "footer": {
-              "show": false,
-              "reducer": [
-                "sum"
-              ],
-              "fields": ""
-            }
+            "showHeader": true
           },
-          "pluginVersion": "13.2.3",
+          "pluginVersion": "13.2.4",
           "targets": [
             {
               "expr": "max by (node) (node_security_updates_pending)",
@@ -598,6 +673,7 @@ data:
               "refId": "C"
             }
           ],
+          "title": "Nodes",
           "transformations": [
             {
               "id": "merge",
@@ -609,36 +685,52 @@ data:
                 "excludeByName": {
                   "Time": true
                 },
-                "renameByName": {
-                  "node": "Node",
-                  "Value #A": "Security updates pending",
-                  "Value #B": "Reboot required",
-                  "Value #C": "Hours since last auto-update"
-                },
                 "indexByName": {
-                  "node": 0,
                   "Value #A": 1,
                   "Value #B": 2,
-                  "Value #C": 3
+                  "Value #C": 3,
+                  "node": 0
+                },
+                "renameByName": {
+                  "Value #A": "Security updates pending",
+                  "Value #B": "Reboot required",
+                  "Value #C": "Hours since last auto-update",
+                  "node": "Node"
                 }
               }
             }
           ],
-          "title": "Nodes",
           "type": "table"
         },
         {
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "fixed",
-                "fixedColor": "text"
+                "fixedColor": "text",
+                "mode": "fixed"
               },
               "custom": {
                 "align": "auto",
                 "cellOptions": {
                   "type": "auto"
-                }
+                },
+                "footer": {
+                  "reducers": []
+                },
+                "inspect": false
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
               }
             },
             "overrides": [
@@ -689,16 +781,9 @@ data:
           "id": 8,
           "options": {
             "cellHeight": "sm",
-            "showHeader": true,
-            "footer": {
-              "show": false,
-              "reducer": [
-                "sum"
-              ],
-              "fields": ""
-            }
+            "showHeader": true
           },
-          "pluginVersion": "13.2.3",
+          "pluginVersion": "13.2.4",
           "targets": [
             {
               "expr": "sum by (repo) (github_exporter_pr_open_blocked) > 0",
@@ -707,6 +792,7 @@ data:
               "refId": "A"
             }
           ],
+          "title": "Renovate PRs Blocked",
           "transformations": [
             {
               "id": "merge",
@@ -719,27 +805,170 @@ data:
                   "Time": true
                 },
                 "renameByName": {
-                  "repo": "Repo",
-                  "Value": "Blocked PRs"
+                  "Value": "Blocked PRs",
+                  "repo": "Repo"
                 }
               }
             }
           ],
-          "title": "Renovate PRs Blocked",
           "type": "table"
         },
         {
+          "description": "Counted per image and CVE. Falls as fixes land, rises as new CVEs are published.",
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "fixed",
-                "fixedColor": "text"
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Critical"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "red",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "High"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "yellow",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 11
+          },
+          "id": 14,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "13.2.4",
+          "targets": [
+            {
+              "expr": "count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\"}))",
+              "legendFormat": "Critical",
+              "refId": "A"
+            },
+            {
+              "expr": "count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=\"High\", fixed_version!=\"\"}))",
+              "legendFormat": "High",
+              "refId": "B"
+            }
+          ],
+          "timeFrom": "30d",
+          "title": "Open Critical and High CVEs With a Fix",
+          "type": "timeseries"
+        },
+        {
+          "description": "One row per vulnerable package in each workload.\nA fixed version exists. Update the image or package to Fixed in.\nRenovate PRs it, or the linked Dependency Dashboard shows why it is waiting.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "text",
+                "mode": "fixed"
               },
               "custom": {
                 "align": "auto",
                 "cellOptions": {
                   "type": "auto"
-                }
+                },
+                "footer": {
+                  "reducers": []
+                },
+                "inspect": false
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
               }
             },
             "overrides": [
@@ -768,7 +997,7 @@ data:
                       "steps": [
                         {
                           "color": "transparent",
-                          "value": null
+                          "value": 0
                         },
                         {
                           "color": "red",
@@ -808,7 +1037,7 @@ data:
                       "steps": [
                         {
                           "color": "transparent",
-                          "value": null
+                          "value": 0
                         },
                         {
                           "color": "yellow",
@@ -832,28 +1061,28 @@ data:
             "y": 19
           },
           "id": 9,
+          "links": [
+            {
+              "targetBlank": true,
+              "title": "Renovate Dependency Dashboard",
+              "url": "https://github.com/cujarrett/homelab/issues/3"
+            }
+          ],
           "options": {
             "cellHeight": "sm",
             "showHeader": true,
-            "footer": {
-              "show": false,
-              "reducer": [
-                "sum"
-              ],
-              "fields": ""
-            },
             "sortBy": [
               {
-                "displayName": "Critical",
-                "desc": true
+                "desc": true,
+                "displayName": "Critical"
               },
               {
-                "displayName": "High",
-                "desc": true
+                "desc": true,
+                "displayName": "High"
               }
             ]
           },
-          "pluginVersion": "13.2.3",
+          "pluginVersion": "13.2.4",
           "targets": [
             {
               "expr": "count by (namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"))",
@@ -868,6 +1097,7 @@ data:
               "refId": "B"
             }
           ],
+          "title": "Fix Available: Vulnerable Packages by Workload",
           "transformations": [
             {
               "id": "merge",
@@ -879,54 +1109,63 @@ data:
                 "excludeByName": {
                   "Time": true
                 },
-                "renameByName": {
-                  "namespace": "Namespace",
-                  "kind": "Kind",
-                  "workload": "Workload",
-                  "resource": "Vulnerable package",
-                  "installed_version": "Installed",
-                  "fixed_version": "Fixed in",
-                  "image_repository": "Image",
-                  "Value #A": "Critical",
-                  "Value #B": "High"
-                },
                 "indexByName": {
-                  "namespace": 0,
-                  "workload": 1,
-                  "kind": 2,
-                  "resource": 3,
                   "Value #A": 4,
                   "Value #B": 5,
-                  "installed_version": 6,
                   "fixed_version": 7,
-                  "image_repository": 8
+                  "image_repository": 8,
+                  "installed_version": 6,
+                  "kind": 2,
+                  "namespace": 0,
+                  "resource": 3,
+                  "workload": 1
+                },
+                "renameByName": {
+                  "Value #A": "Critical",
+                  "Value #B": "High",
+                  "fixed_version": "Fixed in",
+                  "image_repository": "Image",
+                  "installed_version": "Installed",
+                  "kind": "Kind",
+                  "namespace": "Namespace",
+                  "resource": "Vulnerable package",
+                  "workload": "Workload"
                 }
               }
             }
           ],
-          "title": "Fix Available: Vulnerable Packages by Workload",
-          "type": "table",
-          "description": "One row per vulnerable package in each workload.\nA fixed version exists. Update the image or package to Fixed in.\nRenovate PRs it, or the linked Dependency Dashboard shows why it is waiting.",
-          "links": [
-            {
-              "title": "Renovate Dependency Dashboard",
-              "url": "https://github.com/cujarrett/homelab/issues/3",
-              "targetBlank": true
-            }
-          ]
+          "type": "table"
         },
         {
+          "description": "Vulnerable packages with no fixed version anywhere yet.\nNothing to update to. They move to the table above once upstream ships a fix.",
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "fixed",
-                "fixedColor": "text"
+                "fixedColor": "text",
+                "mode": "fixed"
               },
               "custom": {
                 "align": "auto",
                 "cellOptions": {
                   "type": "auto"
-                }
+                },
+                "footer": {
+                  "reducers": []
+                },
+                "inspect": false
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
               }
             },
             "overrides": [
@@ -955,7 +1194,7 @@ data:
                       "steps": [
                         {
                           "color": "transparent",
-                          "value": null
+                          "value": 0
                         },
                         {
                           "color": "red",
@@ -995,7 +1234,7 @@ data:
                       "steps": [
                         {
                           "color": "transparent",
-                          "value": null
+                          "value": 0
                         },
                         {
                           "color": "yellow",
@@ -1022,25 +1261,18 @@ data:
           "options": {
             "cellHeight": "sm",
             "showHeader": true,
-            "footer": {
-              "show": false,
-              "reducer": [
-                "sum"
-              ],
-              "fields": ""
-            },
             "sortBy": [
               {
-                "displayName": "Critical",
-                "desc": true
+                "desc": true,
+                "displayName": "Critical"
               },
               {
-                "displayName": "High",
-                "desc": true
+                "desc": true,
+                "displayName": "High"
               }
             ]
           },
-          "pluginVersion": "13.2.3",
+          "pluginVersion": "13.2.4",
           "targets": [
             {
               "expr": "count by (namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"))",
@@ -1055,6 +1287,7 @@ data:
               "refId": "B"
             }
           ],
+          "title": "No Fix Released Yet: Waiting on Upstream",
           "transformations": [
             {
               "id": "merge",
@@ -1067,160 +1300,32 @@ data:
                   "Time": true,
                   "fixed_version": true
                 },
-                "renameByName": {
-                  "namespace": "Namespace",
-                  "kind": "Kind",
-                  "workload": "Workload",
-                  "resource": "Vulnerable package",
-                  "installed_version": "Installed",
-                  "fixed_version": "Fixed in",
-                  "image_repository": "Image",
-                  "Value #A": "Critical",
-                  "Value #B": "High"
-                },
                 "indexByName": {
-                  "namespace": 0,
-                  "workload": 1,
-                  "kind": 2,
-                  "resource": 3,
                   "Value #A": 4,
                   "Value #B": 5,
-                  "installed_version": 6,
                   "fixed_version": 7,
-                  "image_repository": 8
+                  "image_repository": 8,
+                  "installed_version": 6,
+                  "kind": 2,
+                  "namespace": 0,
+                  "resource": 3,
+                  "workload": 1
+                },
+                "renameByName": {
+                  "Value #A": "Critical",
+                  "Value #B": "High",
+                  "fixed_version": "Fixed in",
+                  "image_repository": "Image",
+                  "installed_version": "Installed",
+                  "kind": "Kind",
+                  "namespace": "Namespace",
+                  "resource": "Vulnerable package",
+                  "workload": "Workload"
                 }
               }
             }
           ],
-          "title": "No Fix Released Yet: Waiting on Upstream",
-          "type": "table",
-          "description": "Vulnerable packages with no fixed version anywhere yet.\nNothing to update to. They move to the table above once upstream ships a fix."
-        },
-        {
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "fixed",
-                "fixedColor": "blue"
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 4,
-            "x": 0,
-            "y": 11
-          },
-          "id": 13,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.2.3",
-          "targets": [
-            {
-              "expr": "count(count by (image_repository, vuln_id) (max_over_time(trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version!=\"\"}[7d])) unless count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version!=\"\"})) or vector(0)",
-              "instant": true,
-              "legendFormat": "",
-              "refId": "A"
-            }
-          ],
-          "title": "Cleared in Last 7 Days",
-          "type": "stat",
-          "description": "Critical and high CVEs, counted per image, that ran at some point in the last 7 days and are gone now."
-        },
-        {
-          "id": 14,
-          "type": "timeseries",
-          "title": "Open Critical and High CVEs With a Fix",
-          "description": "Counted per image and CVE. Falls as fixes land, rises as new CVEs are published.",
-          "gridPos": {
-            "h": 8,
-            "w": 20,
-            "x": 4,
-            "y": 11
-          },
-          "targets": [
-            {
-              "expr": "count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\"}))",
-              "legendFormat": "Critical",
-              "refId": "A"
-            },
-            {
-              "expr": "count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=\"High\", fixed_version!=\"\"}))",
-              "legendFormat": "High",
-              "refId": "B"
-            }
-          ],
-          "fieldConfig": {
-            "defaults": {
-              "unit": "short",
-              "custom": {
-                "lineWidth": 2,
-                "fillOpacity": 10,
-                "showPoints": "never"
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Critical"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "fixed",
-                      "fixedColor": "red"
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "High"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "mode": "fixed",
-                      "fixedColor": "yellow"
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "timeFrom": "30d"
+          "type": "table"
         }
       ],
       "preload": false,
@@ -1234,7 +1339,20 @@ data:
         "from": "now-24h",
         "to": "now"
       },
-      "timepicker": {},
+      "timepicker": {
+        "refresh_intervals": [
+          "5s",
+          "10s",
+          "30s",
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ]
+      },
       "timezone": "browser",
       "title": "Security",
       "uid": "homelab-security"
