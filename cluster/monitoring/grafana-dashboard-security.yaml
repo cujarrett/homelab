@@ -1051,6 +1051,28 @@ data:
                     "value": 70
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CVE"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "${__value.raw} on cve.org",
+                        "url": "https://www.cve.org/CVERecord?id=${__value.raw}"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 150
+                  }
+                ]
               }
             ]
           },
@@ -1085,13 +1107,13 @@ data:
           "pluginVersion": "13.2.4",
           "targets": [
             {
-              "expr": "count by (namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"))",
+              "expr": "count by (vuln_id, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"))",
               "format": "table",
               "instant": true,
               "refId": "A"
             },
             {
-              "expr": "count by (namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", fixed_version!=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", fixed_version!=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"))",
+              "expr": "count by (vuln_id, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", fixed_version!=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", fixed_version!=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"))",
               "format": "table",
               "instant": true,
               "refId": "B"
@@ -1110,17 +1132,19 @@ data:
                   "Time": true
                 },
                 "indexByName": {
-                  "Value #A": 4,
-                  "Value #B": 5,
-                  "fixed_version": 7,
-                  "image_repository": 8,
-                  "installed_version": 6,
-                  "kind": 2,
-                  "namespace": 0,
-                  "resource": 3,
-                  "workload": 1
+                  "vuln_id": 0,
+                  "Value #A": 5,
+                  "Value #B": 6,
+                  "fixed_version": 8,
+                  "image_repository": 9,
+                  "installed_version": 7,
+                  "kind": 3,
+                  "namespace": 1,
+                  "resource": 4,
+                  "workload": 2
                 },
                 "renameByName": {
+                  "vuln_id": "CVE",
                   "Value #A": "Critical",
                   "Value #B": "High",
                   "fixed_version": "Fixed in",
@@ -1248,6 +1272,28 @@ data:
                     "value": 70
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CVE"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "${__value.raw} on cve.org",
+                        "url": "https://www.cve.org/CVERecord?id=${__value.raw}"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 150
+                  }
+                ]
               }
             ]
           },
@@ -1275,13 +1321,13 @@ data:
           "pluginVersion": "13.2.4",
           "targets": [
             {
-              "expr": "count by (namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"))",
+              "expr": "count by (vuln_id, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"Critical\", fixed_version=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"))",
               "format": "table",
               "instant": true,
               "refId": "A"
             },
             {
-              "expr": "count by (namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", fixed_version=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", fixed_version=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"))",
+              "expr": "count by (vuln_id, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", fixed_version=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=\"High\", fixed_version=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"))",
               "format": "table",
               "instant": true,
               "refId": "B"
@@ -1301,17 +1347,19 @@ data:
                   "fixed_version": true
                 },
                 "indexByName": {
-                  "Value #A": 4,
-                  "Value #B": 5,
-                  "fixed_version": 7,
-                  "image_repository": 8,
-                  "installed_version": 6,
-                  "kind": 2,
-                  "namespace": 0,
-                  "resource": 3,
-                  "workload": 1
+                  "vuln_id": 0,
+                  "Value #A": 5,
+                  "Value #B": 6,
+                  "fixed_version": 8,
+                  "image_repository": 9,
+                  "installed_version": 7,
+                  "kind": 3,
+                  "namespace": 1,
+                  "resource": 4,
+                  "workload": 2
                 },
                 "renameByName": {
+                  "vuln_id": "CVE",
                   "Value #A": "Critical",
                   "Value #B": "High",
                   "fixed_version": "Fixed in",
