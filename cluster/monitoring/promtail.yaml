@@ -12,6 +12,10 @@ spec:
     helm:
       releaseName: promtail
       values: |
+        # The chart's default image trails upstream releases.
+        image:
+          # renovate: datasource=docker depName=docker.io/grafana/promtail
+          tag: 3.6.11
         config:
           clients:
             - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push

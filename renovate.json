@@ -38,7 +38,8 @@
         "Chart values hold the tag and the digest as separate keys.",
         "The renovate comment rewrites only the tag."
       ],
-      "matchPackageNames": ["docker.io/kiwigrid/k8s-sidecar"],
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": ["cluster/**"],
       "pinDigests": false
     },
     {

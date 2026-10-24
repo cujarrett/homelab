@@ -73,6 +73,14 @@ spec:
           # Required before any workload can consume its identity for AWS credential exchange.
           spiffe-csi-driver:
             enabled: true
+            # The chart's default images trail upstream releases.
+            image:
+              # renovate: datasource=docker depName=ghcr.io/spiffe/spiffe-csi-driver
+              tag: 0.2.13
+            nodeDriverRegistrar:
+              image:
+                # renovate: datasource=docker depName=registry.k8s.io/sig-storage/csi-node-driver-registrar
+                tag: v2.18.0
 
           # Publishes the JWT-SVID signing keys so AWS and Entra can validate them.
           # Public by necessity - both clouds fetch the discovery doc and JWKS from the internet.
