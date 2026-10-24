@@ -38,6 +38,9 @@ spec:
                 period: 8760h
             # Lets a map query reach back the full year those streams are kept.
             max_query_length: 8784h
+            # The US Visitors map groups by visitor before counting per location.
+            # The 500 default is about six hours of visitors.
+            max_query_series: 100000
             # The chart's 15m split turns a year-long query into 35,000 subqueries on one Pi.
             # A single binary gains nothing from splitting finer than a day.
             # A day split is also the cache key, so a repeat year view only computes today.
