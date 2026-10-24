@@ -109,9 +109,22 @@ spec:
                   labels:
                     app: {{ $name }}-postgres
                 spec:
+                  # Meets the restricted Pod Security level. 70 is the postgres user in the alpine image.
+                  # fsGroup makes the Longhorn volume writable without running as root.
+                  securityContext:
+                    runAsNonRoot: true
+                    runAsUser: 70
+                    runAsGroup: 70
+                    fsGroup: 70
+                    seccompProfile:
+                      type: RuntimeDefault
                   containers:
                     - name: postgres
                       image: postgres:16-alpine
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        capabilities:
+                          drop: [ALL]
                       ports:
                         - containerPort: 5432
                       env:
