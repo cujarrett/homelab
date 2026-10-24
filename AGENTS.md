@@ -114,7 +114,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `argocd` | ArgoCD | Ingress at `argocd.local.lab` |
 | `monitoring` | kube-prometheus-stack | Prometheus (30d retention, 35Gi), Grafana (2Gi), Alertmanager (2Gi) |
 | `monitoring` | prometheus-sump-pump | Dedicated long-term Prometheus for sump pump + weather data (18250d retention, 2Gi PVC, `longhorn-retain`, no node pinning); Grafana datasource UID `sump-pump-archive` |
-| `monitoring` | Loki | SingleBinary mode, filesystem storage, 5Gi PVC, 30d retention |
+| `monitoring` | Loki | SingleBinary mode, filesystem storage, 5Gi PVC, 30d retention (365d for the `log_type` visitor and sandbox streams) |
 | `monitoring` | Promtail | DaemonSet log shipper → Loki at `http://loki.monitoring.svc.cluster.local:3100` |
 | `longhorn-system` | Longhorn | Ingress at `longhorn.local.lab` |
 | `adguard` | AdGuard Home | DNS ad-blocking/resolver |
@@ -197,8 +197,8 @@ fetch the current ingress array, append, then PUT it all back, which is what the
 - **Prometheus (main)**: `monitoring-kube-prometheus-prometheus`, port 9090, 30d retention, 35Gi PVC
 - **Prometheus (sump-pump)**: `prometheus-sump-pump`, port 9090, 18250d retention, 2Gi PVC (`longhorn-retain`, no node pinning); scrapes sump-pump-bridge, sump-pump-consumer, weather-exporter; Grafana datasource UID `sump-pump-archive`; **PVC mounts at `prometheus-db/` subdirectory** - migration jobs must write blocks there, not to the PVC root
 - **Grafana**: admin secret `grafana-admin-secret`, anonymous viewer access enabled, Loki datasource configured, dashboards loaded via sidecar from all namespaces; the kiosk playlist is managed in the Grafana UI (not provisioned from Git)
-- **Loki**: StatefulSet `loki`, SingleBinary, filesystem, 5Gi PVC (`storage-loki-0`), 30d retention, compactor enabled. `argocd` is ~80% of all log volume - check it first if the PVC fills.
-- **Promtail**: DaemonSet, ships logs to Loki
+- **Loki**: StatefulSet `loki`, SingleBinary, filesystem, 5Gi PVC (`storage-loki-0`), 30d retention, compactor enabled. Streams labelled `log_type="access"` (US visitors) and `log_type="sandbox"` (sandbox launches) are kept 365 days for the visitor maps. Query results are cached in-process, split by day, so a repeat year-long query only computes today. `argocd` is ~80% of all log volume - check it first if the PVC fills.
+- **Promtail**: DaemonSet, ships logs to Loki. Drops every Traefik access log line that is not a US visitor or comes from a bot or script, and replaces the visitor IP with a salted hash (salt from `/homelab/monitoring/promtail-visitor-salt`)
 - **Alertmanager**: 2Gi PVC
 
 ### Resizing a StatefulSet PVC

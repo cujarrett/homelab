@@ -32,3 +32,14 @@ spec:
   data:
     - secretKey: users
       remoteRef: {key: /homelab/monitoring/prometheus-basic-auth-htpasswd}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: promtail-visitor-salt
+  namespace: monitoring
+spec:
+  secretStoreRef: {kind: ClusterSecretStore, name: aws-parameter-store}
+  data:
+    - secretKey: salt
+      remoteRef: {key: /homelab/monitoring/promtail-visitor-salt}

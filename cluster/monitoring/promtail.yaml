@@ -15,6 +15,49 @@ spec:
         config:
           clients:
             - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+          snippets:
+            pipelineStages:
+              - cri: {}
+              # Traefik access logs, kept only for US visitors arriving through Cloudflare.
+              # LAN traffic carries no Cf-Ipcountry, so it is dropped here too.
+              - match:
+                  selector: '{namespace="kube-system", app="traefik"} |= "\"RequestHost\"" != "\"request_Cf-Ipcountry\":\"US\""'
+                  action: drop
+                  drop_counter_reason: traefik_access_not_us
+              # Bots and scripts never reach Loki, which keeps the year-long visitor views small.
+              # A browser always sends a User-Agent, so a request without one is a script.
+              - match:
+                  selector: '{namespace="kube-system", app="traefik"} |= "\"RequestHost\"" |~ "\"request_User-Agent\":\"[^\"]*(?i:bot|crawl|spider|slurp|curl|wget|python|go-http|headless|okhttp|java/|libwww|scrapy|httpclient|axios|node-fetch|preview)"'
+                  action: drop
+                  drop_counter_reason: traefik_access_bot
+              - match:
+                  selector: '{namespace="kube-system", app="traefik"} |= "\"RequestHost\"" != "\"request_User-Agent\""'
+                  action: drop
+                  drop_counter_reason: traefik_access_no_user_agent
+              # Salted hash, so Loki can count unique visitors without holding an IP.
+              # log_type gives these lines their own streams, which Loki keeps 365 days.
+              - match:
+                  selector: '{namespace="kube-system", app="traefik"} |= "\"request_Cf-Ipcountry\":\"US\""'
+                  stages:
+                    - replace:
+                        expression: '"request_Cf-Connecting-Ip":"([^"]+)"'
+                        replace: '{{ Sha2Hash (env "VISITOR_SALT") .Value | trunc 16 }}'
+                    - static_labels:
+                        log_type: access
+                    # A launched sandbox. Its own stream keeps the year-long sandbox map query small.
+                    - match:
+                        selector: '{log_type="access"} |= "\"DownstreamStatus\":201" |= "\"RequestHost\":\"launchpad.mattjarrett.dev\"" |= "\"RequestMethod\":\"POST\"" |= "\"RequestPath\":\"/api/guest/workspaces\""'
+                        stages:
+                          - static_labels:
+                              log_type: sandbox
+        # optional, so a missing salt never stops log shipping
+        extraEnv:
+          - name: VISITOR_SALT
+            valueFrom:
+              secretKeyRef:
+                name: promtail-visitor-salt
+                key: salt
+                optional: true
         serviceMonitor:
           enabled: true
           labels:

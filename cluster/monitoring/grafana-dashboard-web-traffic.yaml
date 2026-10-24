@@ -120,6 +120,35 @@ data:
             { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"$app\",code=~\"4..\"}[1h]))", "legendFormat": "4xx", "refId": "C" },
             { "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"$app\",code=~\"5..\"}[1h]))", "legendFormat": "5xx", "refId": "D" }
           ]
+        },
+        {
+          "id": 30,
+          "type": "geomap",
+          "title": "US Visitors",
+          "description": "One pin per visitor location across every public site, with unique visitors in the tooltip. US only. Bots and scripts are dropped before storage. Visitors in the same city share a pin, since Cloudflare places them at the same point.",
+          "gridPos": { "x": 0, "y": 27, "w": 24, "h": 14 },
+          "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+          "targets": [
+            { "expr": "count by (city, region, postal, lat, lon) (sum by (visitor, city, region, postal, lat, lon) (count_over_time({log_type=~\"access|sandbox\"} | json | label_format visitor=request_Cf_Connecting_Ip, city=request_Cf_Ipcity, region=request_Cf_Region_Code, postal=request_Cf_Postal_Code, lat=request_Cf_Iplatitude, lon=request_Cf_Iplongitude [$__range])))", "queryType": "instant", "legendFormat": "Visitors", "refId": "A" }
+          ],
+          "transformations": [
+            { "id": "labelsToFields", "options": { "mode": "columns" } },
+            { "id": "merge", "options": {} },
+            { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "lat", "destinationType": "number" }, { "targetField": "lon", "destinationType": "number" }] } },
+            { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "city": "City", "region": "State", "postal": "Postal code" } } }
+          ],
+          "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+          "options": {
+            "view": { "id": "coords", "lat": 39.5, "lon": -98.35, "zoom": 3.8 },
+            "controls": { "showZoom": true, "mouseWheelZoom": false },
+            "basemap": { "type": "carto", "config": { "theme": "dark", "showLabels": true } },
+            "layers": [{
+              "type": "markers", "name": "Visitors", "tooltip": true,
+              "location": { "mode": "coords", "latitude": "lat", "longitude": "lon" },
+              "config": { "showLegend": false, "style": { "size": { "fixed": 7 }, "color": { "fixed": "blue" }, "opacity": 0.75 } }
+            }],
+            "tooltip": { "mode": "details" }
+          }
         }
       ]
     }

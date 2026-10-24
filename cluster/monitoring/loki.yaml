@@ -31,6 +31,36 @@ spec:
           auth_enabled: false
           limits_config:
             retention_period: 30d
+            # US visitor and sandbox access logs, for the maps.
+            retention_stream:
+              - selector: '{log_type=~"access|sandbox"}'
+                priority: 1
+                period: 8760h
+            # Lets a map query reach back the full year those streams are kept.
+            max_query_length: 8784h
+            # The chart's 15m split turns a year-long query into 35,000 subqueries on one Pi.
+            # A single binary gains nothing from splitting finer than a day.
+            # A day split is also the cache key, so a repeat year view only computes today.
+            split_queries_by_interval: 24h
+            split_instant_metric_queries_by_interval: 24h
+          # In-process caches, so no memcached pod is needed.
+          # Data newer than 10m is never cached, so today's numbers stay live.
+          query_range:
+            cache_results: true
+            results_cache:
+              cache:
+                embedded_cache:
+                  enabled: true
+                  max_size_mb: 64
+                  ttl: 24h
+            cache_instant_metric_results: true
+            instant_metric_query_split_align: true
+            instant_metric_results_cache:
+              cache:
+                embedded_cache:
+                  enabled: true
+                  max_size_mb: 64
+                  ttl: 24h
           compactor:
             retention_enabled: true
             delete_request_store: filesystem
@@ -40,9 +70,10 @@ spec:
         singleBinary:
           replicas: 1
           # The chart requests nothing, so the scheduler counted Loki as free.
+          # 320Mi working set plus up to 128Mi of query caches.
           resources:
             requests:
-              memory: 320Mi
+              memory: 448Mi
           affinity:
             nodeAffinity:
               requiredDuringSchedulingIgnoredDuringExecution:

@@ -55,6 +55,32 @@ spec:
       rollingUpdate:
         maxUnavailable: 1
         maxSurge: 0
+    # Access logs feed the visitor and sandbox maps (Web Traffic, Platform, Launchpad).
+    # Promtail drops every line that is not a US visitor and hashes the IP before Loki stores it.
+    # Cf-* headers are set by Cloudflare's "Add visitor location headers" managed transform.
+    accessLog:
+      enabled: true
+      format: json
+      fields:
+        defaultMode: drop
+        names:
+          RequestHost: keep
+          RequestMethod: keep
+          RequestPath: keep
+          DownstreamStatus: keep
+        queryParameters:
+          defaultMode: drop
+        headers:
+          defaultMode: drop
+          names:
+            Cf-Connecting-Ip: keep
+            Cf-Ipcountry: keep
+            Cf-Region-Code: keep
+            Cf-Ipcity: keep
+            Cf-Postal-Code: keep
+            Cf-Iplatitude: keep
+            Cf-Iplongitude: keep
+            User-Agent: keep
     metrics:
       prometheus:
         entryPoint: metrics

@@ -231,6 +231,203 @@ data:
           "type": "stat"
         },
         {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "gridPos": {
+            "h": 13,
+            "w": 16,
+            "x": 0,
+            "y": 6
+          },
+          "id": 15,
+          "timeFrom": "1y",
+          "title": "Guest Sandboxes by Location",
+          "type": "geomap",
+          "description": "Where guest sandboxes were launched from. US only. Kept a year.",
+          "targets": [
+            {
+              "refId": "A",
+              "editorMode": "code",
+              "queryType": "instant",
+              "legendFormat": "Sandboxes",
+              "expr": "sum by (city, region, postal, lat, lon) (count_over_time({log_type=\"sandbox\"} | json | label_format city=request_Cf_Ipcity, region=request_Cf_Region_Code, postal=request_Cf_Postal_Code, lat=request_Cf_Iplatitude, lon=request_Cf_Iplongitude [$__range]))"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "labelsToFields",
+              "options": {
+                "mode": "columns"
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "convertFieldType",
+              "options": {
+                "conversions": [
+                  {
+                    "targetField": "lat",
+                    "destinationType": "number"
+                  },
+                  {
+                    "targetField": "lon",
+                    "destinationType": "number"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "renameByName": {
+                  "city": "City",
+                  "region": "State",
+                  "postal": "Postal code"
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "purple"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "view": {
+              "id": "coords",
+              "lat": 39.5,
+              "lon": -98.35,
+              "zoom": 3.8
+            },
+            "controls": {
+              "showZoom": true,
+              "mouseWheelZoom": false
+            },
+            "basemap": {
+              "type": "carto",
+              "config": {
+                "theme": "dark",
+                "showLabels": true
+              }
+            },
+            "layers": [
+              {
+                "type": "markers",
+                "name": "Sandboxes",
+                "tooltip": true,
+                "location": {
+                  "mode": "coords",
+                  "latitude": "lat",
+                  "longitude": "lon"
+                },
+                "config": {
+                  "showLegend": false,
+                  "style": {
+                    "size": {
+                      "fixed": 7
+                    },
+                    "color": {
+                      "fixed": "purple"
+                    },
+                    "opacity": 0.75
+                  }
+                }
+              }
+            ],
+            "tooltip": {
+              "mode": "details"
+            }
+          }
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "gridPos": {
+            "h": 13,
+            "w": 8,
+            "x": 16,
+            "y": 6
+          },
+          "id": 16,
+          "timeFrom": "1y",
+          "title": "Guest Sandboxes by State",
+          "type": "table",
+          "targets": [
+            {
+              "refId": "A",
+              "editorMode": "code",
+              "queryType": "instant",
+              "legendFormat": "Sandboxes",
+              "expr": "sort_desc(sum by (region) (count_over_time({log_type=\"sandbox\"} | json | label_format region=request_Cf_Region_Code [$__range])))"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "labelsToFields",
+              "options": {
+                "mode": "columns"
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "renameByName": {
+                  "region": "State",
+                  "Value #A": "Sandboxes"
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "sort": [
+                  {
+                    "field": "Sandboxes",
+                    "desc": true
+                  }
+                ]
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "text"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "showHeader": true
+          }
+        },
+        {
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -260,7 +457,7 @@ data:
             "h": 6,
             "w": 8,
             "x": 0,
-            "y": 6
+            "y": 19
           },
           "id": 10,
           "options": {
@@ -333,7 +530,7 @@ data:
             "h": 6,
             "w": 8,
             "x": 8,
-            "y": 6
+            "y": 19
           },
           "id": 11,
           "options": {
@@ -406,7 +603,7 @@ data:
             "h": 6,
             "w": 8,
             "x": 16,
-            "y": 6
+            "y": 19
           },
           "id": 8,
           "options": {
@@ -541,7 +738,7 @@ data:
             "h": 6,
             "w": 24,
             "x": 0,
-            "y": 12
+            "y": 25
           },
           "id": 12,
           "options": {
@@ -740,7 +937,7 @@ data:
             "h": 10,
             "w": 24,
             "x": 0,
-            "y": 18
+            "y": 31
           },
           "id": 4,
           "options": {
@@ -918,7 +1115,7 @@ data:
             "h": 9,
             "w": 14,
             "x": 0,
-            "y": 28
+            "y": 41
           },
           "id": 13,
           "options": {
@@ -1068,7 +1265,7 @@ data:
             "h": 9,
             "w": 10,
             "x": 14,
-            "y": 28
+            "y": 41
           },
           "id": 5,
           "options": {
@@ -1136,7 +1333,7 @@ data:
             "h": 5,
             "w": 24,
             "x": 0,
-            "y": 37
+            "y": 50
           },
           "id": 14,
           "options": {
