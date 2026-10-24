@@ -39,6 +39,15 @@
       "pinDigests": true
     },
     {
+      "description": "A pin locks the digest the tag serves today. Any pod pulling that tag gets the same image, so waiting adds nothing.",
+      "matchUpdateTypes": ["pin", "pinDigest"],
+      "minimumReleaseAge": null,
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true,
+      "labels": ["automerge"]
+    },
+    {
       "description": "A major reaches a human on its own",
       "matchUpdateTypes": ["major"],
       "automerge": false
