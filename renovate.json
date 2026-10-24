@@ -14,11 +14,13 @@
       "matchStrings": [
         "image: (?<depName>[a-z][^\\s:@{]*):(?<currentValue>[^\\s@]+)(@(?<currentDigest>sha256:[0-9a-f]+))?"
       ],
+      "description": "Without a template, a regex manager can only replace a digest that is already there, so pinning fails.",
+      "autoReplaceStringTemplate": "image: {{{depName}}}:{{{newValue}}}{{#if newDigest}}@{{{newDigest}}}{{/if}}",
       "datasourceTemplate": "docker"
     },
     {
       "customType": "regex",
-      "managerFilePatterns": ["/\\.github/workflows/ci\\.yml$/"],
+      "managerFilePatterns": ["/\\.github/workflows/ci\\.yml$/", "/cluster/.+\\.yaml$/"],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: registryUrl=(?<registryUrl>\\S+))?\\n\\s+\\w+: (?<currentValue>\\S+)"
       ]
@@ -30,6 +32,14 @@
       "matchDatasources": ["docker"],
       "matchManagers": ["custom.regex", "kubernetes"],
       "pinDigests": true
+    },
+    {
+      "description": [
+        "Chart values hold the tag and the digest as separate keys.",
+        "The renovate comment rewrites only the tag."
+      ],
+      "matchPackageNames": ["docker.io/kiwigrid/k8s-sidecar"],
+      "pinDigests": false
     },
     {
       "matchPackageNames": ["ghcr.io/cujarrett/workload-identity-sidecar"],
