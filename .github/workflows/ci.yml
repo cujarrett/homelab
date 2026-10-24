@@ -10,8 +10,8 @@ jobs:
   render-check:
     runs-on: ubuntu-latest
     env:
-      # renovate: datasource=helm depName=crossplane registryUrl=https://charts.crossplane.io/stable
-      CROSSPLANE_VERSION: 2.4.2
+      # renovate: datasource=github-releases depName=crossplane/cli
+      CROSSPLANE_VERSION: v2.5.0
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -20,7 +20,7 @@ jobs:
           path: workspaces
       - name: Install crossplane CLI
         run: |
-          curl -sSfL -o crossplane https://releases.crossplane.io/stable/v${CROSSPLANE_VERSION}/bin/linux_amd64/crossplane
+          curl -sSfL -o crossplane https://cli.crossplane.io/stable/${CROSSPLANE_VERSION}/bin/linux_amd64/crossplane
           sudo install crossplane /usr/local/bin/crossplane
       - run: WORKSPACES="$GITHUB_WORKSPACE/workspaces" ./platform/test/render-check.sh
 
