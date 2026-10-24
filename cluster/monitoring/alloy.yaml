@@ -84,8 +84,6 @@ spec:
                 file_match {
                   enabled = true
                 }
-                // Picks up where Promtail stopped, so the cutover neither skips nor repeats lines.
-                legacy_positions_file = "/run/promtail/positions.yaml"
               }
 
               loki.process "pods" {
@@ -151,9 +149,6 @@ spec:
             extra:
               - name: storage
                 mountPath: /var/lib/alloy
-              - name: promtail-positions
-                mountPath: /run/promtail
-                readOnly: true
           # optional, so a missing salt never stops log shipping
           extraEnv:
             - name: VISITOR_SALT
@@ -172,10 +167,6 @@ spec:
               - name: storage
                 hostPath:
                   path: /var/lib/alloy
-                  type: DirectoryOrCreate
-              - name: promtail-positions
-                hostPath:
-                  path: /run/promtail
                   type: DirectoryOrCreate
         serviceMonitor:
           enabled: true
