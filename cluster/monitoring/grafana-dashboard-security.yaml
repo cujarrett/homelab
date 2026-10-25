@@ -940,7 +940,7 @@ data:
           "type": "timeseries"
         },
         {
-          "description": "One row per vulnerable package in each workload.\nA fixed version exists. Update the image or package to Fixed in.\nRenovate PRs it, or the linked Dependency Dashboard shows why it is waiting.",
+          "description": "One row per vulnerable package in each workload.\nThe package has a fixed release, but the image still ships the old one.\nRenovate opens a PR once the image publisher ships a rebuilt image. Updates already found are in the table below.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1073,7 +1073,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Fix Available: Vulnerable Packages by Workload",
+          "title": "Package Fixed: Waiting on Image Rebuild",
           "transformations": [
             {
               "id": "merge",
@@ -1105,6 +1105,94 @@ data:
                   "namespace": "Namespace",
                   "resource": "Vulnerable package",
                   "workload": "Workload"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "description": "Updates Renovate has found and holds until they are 7 days old.\nEach opens its own PR when the hold ends. To open one now, tick its box on the repo's Dependency Dashboard.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "text",
+                "mode": "fixed"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Repo"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "${__value.raw} Dependency Dashboard",
+                        "url": "https://github.com/cujarrett/${__value.raw}/issues?q=is%3Aissue+is%3Aopen+%22Dependency+Dashboard%22"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 220
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 33
+          },
+          "id": 15,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": false,
+                "displayName": "Repo"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "max by (repo, update) (github_exporter_renovate_pending)",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Updates Found: Waiting Out the 7-Day Hold",
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Value": true
+                },
+                "indexByName": {
+                  "repo": 0,
+                  "update": 1
+                },
+                "renameByName": {
+                  "repo": "Repo",
+                  "update": "Update"
                 }
               }
             }
@@ -1205,7 +1293,7 @@ data:
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 33
+            "y": 41
           },
           "id": 12,
           "options": {
