@@ -89,7 +89,7 @@ spec:
               deployment:
                 podTemplate:
                   # Apollo's image aborts on the Pi's 16K-page kernel. Same source, one build flag.
-                  image: ghcr.io/cujarrett/apollo-router-arm64:2.17.0@sha256:c8ea1900823fc300155563539626becf6037d5698063c143d14e46d872d56616
+                  image: ghcr.io/cujarrett/apollo-router-arm64:2.18.0@sha256:cd4ae70d5a38e5bfd124b4a54b72e118a21ac519cdd12d896467d5be61b4a984
                   nodeSelector:
                     node-role.kubernetes.io/worker: worker
                   # Workspace namespaces enforce the restricted PodSecurity profile. The image's
