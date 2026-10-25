@@ -6,7 +6,6 @@
   ],
   "reviewers": ["cujarrett"],
   "enabledManagers": ["argocd", "crossplane", "kubernetes", "github-actions", "custom.regex"],
-  "ignoreTests": true,
   "customManagers": [
     {
       "customType": "regex",
@@ -58,21 +57,16 @@
     },
     {
       "description": [
-        "xpkg.upbound.io publishes no release dates.",
-        "Skipping the date check lets Crossplane packages update.",
-        "They run Crossplane itself, so a person merges each one."
+        "xpkg.upbound.io publishes no release dates, so minimumReleaseAge cannot count.",
+        "The 7 days count from the branch's last commit instead.",
+        "CI runs only on pull requests, so the branch stays pending and the PR opens after prNotPendingHours.",
+        "rebaseWhen conflicted: a rebase is a new commit and would restart the 7 days."
       ],
       "matchPackageNames": ["xpkg.upbound.io/**"],
       "minimumReleaseAgeBehaviour": "timestamp-optional",
-      "automerge": false
-    },
-    {
-      "description": [
-        "Each Upbound AWS provider requires provider-family-aws at its own exact version.",
-        "Bumped one at a time, the newer provider never starts and its resources stop reconciling."
-      ],
-      "matchPackageNames": ["xpkg.upbound.io/upbound/provider-family-aws", "xpkg.upbound.io/upbound/provider-aws-*"],
-      "groupName": "upbound aws providers"
+      "prCreation": "not-pending",
+      "prNotPendingHours": 168,
+      "rebaseWhen": "conflicted"
     },
     {
       "matchPackageNames": ["wordpress"],
@@ -123,6 +117,15 @@
     },
     {
       "description": [
+        "Each Upbound AWS provider requires provider-family-aws at its own exact version.",
+        "Bumped one at a time, the newer provider never starts and its resources stop reconciling.",
+        "Placed after the groupName null rule, which would otherwise split the group."
+      ],
+      "matchPackageNames": ["xpkg.upbound.io/upbound/provider-family-aws", "xpkg.upbound.io/upbound/provider-aws-*"],
+      "groupName": "upbound aws providers"
+    },
+    {
+      "description": [
         "A person merges these.",
         "AdGuard: run /adguard-pre-pull first.",
         "spire minor or major: can put the agent out of step with workload-identity-sidecar."
@@ -143,8 +146,20 @@
       "automergeType": "pr",
       "platformAutomerge": true,
       "labels": ["automerge"]
+    },
+    {
+      "description": [
+        "main has no required checks, so GitHub auto-merge would merge before CI finishes.",
+        "Renovate merges instead, and only once render-check and kubeconform pass.",
+        "Last so it overrides every platformAutomerge above."
+      ],
+      "matchPackageNames": ["*"],
+      "platformAutomerge": false
     }
   ],
+  "vulnerabilityAlerts": {
+    "platformAutomerge": false
+  },
   "argocd": {
     "managerFilePatterns": [
       "/cluster/argocd/.+\\.yaml$/",
