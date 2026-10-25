@@ -77,6 +77,15 @@
     },
     {
       "description": [
+        "Operator 1.6.0 never rolls an existing router Deployment when the Supergraph pod template changes.",
+        "It also fails with 404 when it has to create a missing one, so a deleted router stays down.",
+        "Lift this once a release fixes both."
+      ],
+      "matchPackageNames": ["registry-1.docker.io/apollograph/operator-chart"],
+      "allowedVersions": "<1.6.0"
+    },
+    {
+      "description": [
         "11.8 is LTS, supported until 2030-02.",
         "12.3 LTS ends sooner, and 13 is a rolling release.",
         "Lift this when an LTS outlasts 11.8."
