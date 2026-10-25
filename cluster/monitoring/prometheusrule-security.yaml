@@ -34,10 +34,11 @@ spec:
         # node reboot: unattended-upgrades never reboots, so 7 days means nobody did
         # image CVE: Renovate waits 7 days, so a fixable critical running 9 days after Trivy listed a fix means it missed
         # Renovate PR: blocked for 2 days means a fix is stuck behind a failing check
+        # node rules: max by node first, so a node-updates pod rollout does not leave the old pod's last value in the window
         - record: homelab:security_overdue_node_updates:count
-          expr: count(min_over_time(node_security_updates_pending[3d]) > 0) or vector(0)
+          expr: count(min_over_time(max by (node) (node_security_updates_pending)[3d:5m]) > 0) or vector(0)
         - record: homelab:security_overdue_node_reboot:count
-          expr: count(min_over_time(node_reboot_required[7d]) > 0) or vector(0)
+          expr: count(min_over_time(max by (node) (node_reboot_required)[7d:5m]) > 0) or vector(0)
         - record: homelab:security_overdue_image_cves:count
           expr: |
             count(
