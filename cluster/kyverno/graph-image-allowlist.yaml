@@ -32,7 +32,7 @@ spec:
             deny:
               conditions:
                 all:
-                  - key: "{{ regex_match('^(ghcr\\.io/cujarrett/storefront-[a-z0-9-]+@sha256:[a-f0-9]{64}|ghcr\\.io/cujarrett/apollo-router-arm64:[0-9.]+|registry\\.istio\\.io/release/proxyv2:[0-9.]+)$', '{{ element.image }}') }}"
+                  - key: "{{ regex_match('^(ghcr\\.io/cujarrett/storefront-[a-z0-9-]+@sha256:[a-f0-9]{64}|ghcr\\.io/cujarrett/apollo-router-arm64:[0-9.]+(@sha256:[a-f0-9]{64})?|registry\\.istio\\.io/release/proxyv2:[0-9.]+)$', '{{ element.image }}') }}"
                     operator: Equals
                     value: false
     - name: subgraphs-publish-from-storefront-images
