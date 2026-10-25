@@ -1,0 +1,54 @@
+# Archives unattended-upgrades installs from, on every node.
+# - Debian-Security: security fixes only, no point releases
+# - Raspberry Pi Foundation: glibc, Chromium and firmware come only from here
+# - Tailscale: ctrl-1 only. Each release restarts tailscaled, dropping remote access to VLAN 10 briefly between 06:00 and 07:00 Central
+# - Kernel updates: set /run/reboot-required for node-updates
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: apt-origins
+  namespace: node-sysctls
+spec:
+  selector:
+    matchLabels:
+      app: apt-origins
+  template:
+    metadata:
+      labels:
+        app: apt-origins
+    spec:
+      automountServiceAccountToken: false
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+      containers:
+        - name: origins
+          image: busybox:1.38@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              cat > /host/apt.conf.d/52unattended-upgrades-security-only <<'EOF'
+              #clear Unattended-Upgrade::Origins-Pattern;
+              Unattended-Upgrade::Origins-Pattern {
+                "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
+                "origin=Raspberry Pi Foundation,codename=${distro_codename},label=Raspberry Pi Foundation";
+                "origin=Tailscale,codename=${distro_codename},label=Tailscale";
+              };
+              EOF
+              sleep infinity
+          volumeMounts:
+            - name: apt-conf
+              mountPath: /host/apt.conf.d
+          resources:
+            requests:
+              cpu: 5m
+              memory: 16Mi
+            limits:
+              memory: 32Mi
+      volumes:
+        - name: apt-conf
+          hostPath:
+            path: /etc/apt/apt.conf.d
+            type: Directory

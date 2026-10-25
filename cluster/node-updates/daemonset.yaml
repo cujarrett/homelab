@@ -45,6 +45,7 @@ spec:
             - |
               while true; do
                 # Simulation only. Every path apt would write points at the pod's emptyDir.
+                # Counts every archive that updates itself, so a pending line here means automation missed it.
                 pending=$(apt-get -s -o Debug::NoLocking=1 \
                   -o Dir::State::status=/host/var/lib/dpkg/status \
                   -o Dir::State::Lists=/host/var/lib/apt/lists \
@@ -52,7 +53,7 @@ spec:
                   -o Dir::Etc::sourceparts=/host/etc/apt/sources.list.d \
                   -o Dir::Cache=/tmp/apt -o Dir::Cache::pkgcache= -o Dir::Cache::srcpkgcache= \
                   -o Dir::State::extended_states=/tmp/apt/extended_states -o Dir::Log=/tmp/apt \
-                  upgrade 2>/dev/null | grep -c '^Inst .*-security')
+                  upgrade 2>/dev/null | grep -cE '^Inst .*(-security|Raspberry Pi Foundation|Tailscale)')
                 reboot=0; [ -f /host/run/reboot-required ] && reboot=1
                 stamp=$(stat -c %Y /host/var/lib/apt/periodic/unattended-upgrades-stamp 2>/dev/null || echo 0)
                 {
