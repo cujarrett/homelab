@@ -47,15 +47,15 @@ printf %s "$token" | jq -Rc '{GITHUB_TOKEN: .}' \
   | aws secretsmanager put-secret-value --secret-id "$api_secret_id" --secret-string file:///dev/stdin >/dev/null
 unset token
 
-# The sidecar re-reads Secrets Manager within 15 minutes.
+# The sidecar only re-reads Secrets Manager every 15 minutes, and GitHub killed the old value on regenerate.
+# A new pod fetches at start, so restarting ends the 401s in about a minute.
+echo "Restarting ${api_deploy} so it fetches the new value..."
+kubectl rollout restart -n "$api_ns" "deploy/${api_deploy}"
+kubectl rollout status -n "$api_ns" "deploy/${api_deploy}" --timeout=5m
+
 # Read through the sidecar, since the api image is distroless and has no cat.
-echo "Waiting for the pod to see the new value (up to 16 minutes)..."
-for _ in $(seq 1 96); do
-  got=$(kubectl exec -n "$api_ns" "deploy/${api_deploy}" -c workload-identity-sidecar -- cat "/secrets/${api_secret}/GITHUB_TOKEN" | shasum -a 256 | cut -d' ' -f1)
-  [ "$got" = "$want" ] && break
-  sleep 10
-done
-[ "$got" = "$want" ] || { echo "FAIL: the pod still has the old value"; exit 1; }
+got=$(kubectl exec -n "$api_ns" "deploy/${api_deploy}" -c workload-identity-sidecar -- cat "/secrets/${api_secret}/GITHUB_TOKEN" | shasum -a 256 | cut -d' ' -f1)
+[ "$got" = "$want" ] || { echo "FAIL: the new pod has the old value"; exit 1; }
 
 # Guest cleanup calls GitHub every minute.
 echo "Watching 65s of logs for a 401..."
