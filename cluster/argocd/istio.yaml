@@ -90,6 +90,9 @@ spec:
                 memory: 128Mi
               limits:
                 memory: 128Mi
+          # No shell or OS packages in the proxy and pilot images.
+          # cluster/monitoring/istio-proxy-scan.yaml and the graph-lane Kyverno allow list expect this tag.
+          variant: distroless
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
@@ -135,6 +138,9 @@ spec:
         chained: true
         cniBinDir: /var/lib/rancher/k3s/data/cni
         cniConfDir: /var/lib/rancher/k3s/agent/etc/cni/net.d
+        # No shell or OS packages in the install-cni image.
+        global:
+          variant: distroless
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system

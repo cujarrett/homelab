@@ -101,6 +101,12 @@
       "minimumReleaseAge": "0 days"
     },
     {
+      "matchPackageNames": ["spire"],
+      "prBodyNotes": [
+        "⚠️ `cluster/argocd/spire.yaml` overrides the spire-agent `socketAlternate` image for CVE-2026-111497. If this chart's default `chainguard/bash` digest ships Brotli 1.2.1 or newer, delete the override in this PR. The check is in #362."
+      ]
+    },
+    {
       "matchPackageNames": ["adguard/adguardhome"],
       "prBodyNotes": [
         "⚠️ **Before merging:** run `/adguard-pre-pull` - AdGuard's `Recreate` rollout strategy plus `ctrl-1`'s DNS pointing only at AdGuard itself means a cold image pull will fail with `ImagePullBackOff`."
@@ -123,6 +129,19 @@
       ],
       "matchPackageNames": ["xpkg.upbound.io/upbound/provider-family-aws", "xpkg.upbound.io/upbound/provider-aws-*"],
       "groupName": "upbound aws providers"
+    },
+    {
+      "description": [
+        "cluster/monitoring/istio-proxy-scan.yaml scans the proxy image istiod injects.",
+        "One PR moves the three Istio charts and that image together, so the scan never checks a version no pod runs.",
+        "Placed after the groupName null rule, which would otherwise split the group."
+      ],
+      "matchRegistryUrls": ["https://istio-release.storage.googleapis.com/charts"],
+      "groupName": "istio"
+    },
+    {
+      "matchPackageNames": ["registry.istio.io/release/proxyv2"],
+      "groupName": "istio"
     },
     {
       "description": [

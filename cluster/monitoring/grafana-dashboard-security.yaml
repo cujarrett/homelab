@@ -1353,6 +1353,79 @@ data:
             }
           ],
           "type": "table"
+        },
+        {
+          "description": "Running containers with no vulnerability report, so nothing else on this dashboard covers them.\nAn Istio sidecar is listed when no report exists for the proxy version it runs. Restarting the workload moves it to the current one.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "text",
+                "mode": "fixed"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "footer": {
+                  "reducers": []
+                },
+                "inspect": false
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 49
+          },
+          "id": 16,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": false,
+                "displayName": "Namespace"
+              }
+            ]
+          },
+          "pluginVersion": "13.2.4",
+          "targets": [
+            {
+              "expr": "count by (namespace, owner_name, container, image_spec) ((kube_pod_container_info or kube_pod_init_container_info{container!~\"istio-proxy|istio-validation\"}) * on (namespace, pod) group_left (owner_name) kube_pod_owner{owner_kind!=\"Job\"} unless on (namespace, owner_name, container) label_replace(label_replace(trivy_image_vulnerabilities, \"owner_name\", \"$1\", \"resource_name\", \"(.*)\"), \"container\", \"$1\", \"container_name\", \"(.*)\")) or count by (namespace, owner_name, container, image_spec) (label_replace(kube_pod_init_container_info{container=\"istio-proxy\"} or kube_pod_container_info{container=\"istio-proxy\"}, \"image\", \"$1\", \"image_spec\", \"([^@]+).*\") * on (namespace, pod) group_left (owner_name) kube_pod_owner{owner_kind!=\"Job\"} unless on (image) label_join(label_join(trivy_image_vulnerabilities{image_repository=\"release/proxyv2\"}, \"image\", \"/\", \"image_registry\", \"image_repository\"), \"image\", \":\", \"image\", \"image_tag\"))",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Running but Not Scanned",
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Value": true
+                },
+                "indexByName": {
+                  "namespace": 0,
+                  "owner_name": 1,
+                  "container": 2,
+                  "image_spec": 3
+                },
+                "renameByName": {
+                  "container": "Container",
+                  "image_spec": "Image",
+                  "namespace": "Namespace",
+                  "owner_name": "Owner"
+                }
+              }
+            }
+          ],
+          "type": "table"
         }
       ],
       "preload": false,

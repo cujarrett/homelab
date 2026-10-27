@@ -34,6 +34,11 @@ spec:
           metricsVulnIdEnabled: true
         trivy:
           severity: CRITICAL,HIGH
+          # Trivy pulls linux/amd64 unless told otherwise.
+          # That fails on the arm64-only ghcr images and scans the wrong variant of multi-arch ones.
+          configFile:
+            image:
+              platform: linux/arm64
         serviceMonitor:
           enabled: true
           labels:
