@@ -48,14 +48,16 @@ def github_commit(file_path, encoded_content, message):
     print(f"  {'updated' if sha else 'created'} {file_path}")
 
 
-def fetch_images(html, slug):
-    # Find every <img src="..."> in the post HTML and download the image from Ghost.
-    # Returns a dict mapping original src → (repo-relative path, raw bytes).
-    srcs = re.findall(r'<img[^>]+src=["\']([^"\']+)["\']', html)
+failed_images = []
+
+
+def fetch_images(srcs, dest_dir):
+    # Download each Ghost-hosted image in srcs.
+    # Returns a dict mapping original src → (repo path under dest_dir, raw bytes).
     images = {}
 
     for src in srcs:
-        if "/content/images/" not in src:
+        if not src or "/content/images/" not in src:
             continue  # skip external images (e.g. embedded from other sites)
 
         # Ghost serves resized variants at /content/images/size/w{n}/...
@@ -70,29 +72,57 @@ def fetch_images(html, slug):
                 img_bytes = r.read()
         except Exception as e:
             print(f"  warning: could not fetch {src}: {e}")
+            failed_images.append(src)
             continue
 
-        # Store the image under posts/{slug}/images/YYYY/MM/filename.ext,
-        # preserving the date path Ghost uses to avoid name collisions across months.
+        # Keep Ghost's YYYY/MM path, so names can't collide across months.
         rel_path = img_path.replace("/content/images/", "")  # e.g. 2024/01/photo.jpg
-        repo_path = f"posts/{slug}/images/{rel_path}"
+        repo_path = f"{dest_dir}/images/{rel_path}"
         images[src] = (repo_path, img_bytes)
 
     return images
 
 
+def ghost_get(resource, query=""):
+    # Cloudflare blocks Python's default user agent - use a neutral one.
+    url = f"{ghost_url}/ghost/api/content/{resource}/?key={content_key}{query}"
+    req = urllib.request.Request(url, headers={"User-Agent": "blog-backup/1.0"})
+    with urllib.request.urlopen(req) as r:
+        return json.load(r)[resource]
+
+
+def commit_images(images, message):
+    for repo_path, img_bytes in images.values():
+        github_commit(
+            file_path=repo_path,
+            encoded_content=base64.b64encode(img_bytes).decode(),
+            message=message,
+        )
+
+
+# Site-wide setup that lives only in Ghost Admin, outside any post.
+# The theme is stock Casper from the pinned ghost image, so it needs no copy.
+settings = ghost_get("settings")
+github_commit(
+    file_path="site/settings.json",
+    encoded_content=base64.b64encode(json.dumps(settings, indent=2).encode()).decode(),
+    message="backup: site settings",
+)
+for name in ("codeinjection_head", "codeinjection_foot"):
+    github_commit(
+        file_path=f"site/{name}.html",
+        encoded_content=base64.b64encode((settings.get(name) or "").encode()).decode(),
+        message="backup: site code injection",
+    )
+site_srcs = [settings.get(k) for k in ("logo", "icon", "cover_image", "og_image", "twitter_image")]
+site_srcs += [a.get(k) for a in ghost_get("authors") for k in ("profile_image", "cover_image")]
+commit_images(fetch_images(site_srcs, "site"), "backup: site images")
+
 # Fetch every published post from Ghost in one request.
 # formats=html gives us the rendered post body (Ghost stores content internally
 # as Lexical JSON, not markdown - html is the closest human-readable export).
 # include=tags pulls tag names into the same response so we can write them to frontmatter.
-url = (
-    f"{ghost_url}/ghost/api/content/posts/"
-    f"?key={content_key}&formats=html&limit=all&include=tags"
-)
-# Cloudflare blocks Python's default user agent - use a neutral one.
-req = urllib.request.Request(url, headers={"User-Agent": "blog-backup/1.0"})
-with urllib.request.urlopen(req) as r:
-    posts = json.load(r)["posts"]
+posts = ghost_get("posts", "&formats=html&limit=all&include=tags")
 
 print(f"Found {len(posts)} published posts")
 
@@ -104,16 +134,20 @@ for post in posts:
     url_val      = post.get("url", "")   # full public URL on blog.mattjarrett.dev
     tags         = [t["name"] for t in post.get("tags", [])]
     html         = post.get("html") or ""
+    feature      = post.get("feature_image") or ""  # the cover photo, outside the html
 
     print(f"Processing: {slug}")
 
     # Download images and rewrite their src attributes in the HTML to relative paths
     # so the backed-up index.md links to the images sitting next to it in the repo.
-    images = fetch_images(html, slug)
+    srcs = re.findall(r'<img[^>]+src=["\']([^"\']+)["\']', html) + [feature]
+    images = fetch_images(srcs, f"posts/{slug}")
     for original_src, (repo_path, _) in images.items():
         # rel_path is relative from posts/{slug}/ to the image, e.g. ./images/2024/01/photo.jpg
         rel_path = repo_path.replace(f"posts/{slug}/", "./")
         html = html.replace(original_src, rel_path)
+        if original_src == feature:
+            feature = rel_path
 
     # Build the file: YAML frontmatter block followed by the post HTML.
     # The "---" delimiters are the standard frontmatter convention (used by Jekyll,
@@ -126,6 +160,7 @@ for post in posts:
         f"slug: {slug}\n"
         f"url: {url_val}\n"
         f"tags: {json.dumps(tags)}\n"
+        f"feature_image: {feature}\n"
         f"---\n\n"
         f"{html}\n"
     )
@@ -137,10 +172,8 @@ for post in posts:
         message=f"backup: {slug}",
     )
 
-    # Commit each image alongside the post.
-    for repo_path, img_bytes in (v for v in images.values()):
-        github_commit(
-            file_path=repo_path,
-            encoded_content=base64.b64encode(img_bytes).decode(),
-            message=f"backup: {slug} images",
-        )
+    commit_images(images, f"backup: {slug} images")
+
+# Fail the Job, so a missing image shows up in ArgoCD and alerts, not only in logs.
+if failed_images:
+    raise SystemExit(f"{len(failed_images)} image(s) failed to download")
