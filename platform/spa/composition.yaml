@@ -222,7 +222,7 @@ spec:
                     # terminator alongside "/" so /actuator;/env cannot slip past, _profiler has
                     # no ^ anchor so it matches nested paths, and id_rsa and friends have no
                     # extension for the dotted default-deny below to catch.
-                    location ~* "(^|/)(credentials|var/log)(/|$)|/(id_rsa|id_dsa|id_ecdsa|id_ed25519)(\.pub)?$" {
+                    location ~* "(^|/)([a-z0-9_-]*credentials|secrets|var/log|wp-json|stats/prometheus)(/|$)|/(id_rsa|id_dsa|id_ecdsa|id_ed25519)(\.pub)?$" {
                         return 404;
                     }
 
