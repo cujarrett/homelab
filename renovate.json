@@ -165,20 +165,8 @@
       "automergeType": "pr",
       "platformAutomerge": true,
       "labels": ["automerge"]
-    },
-    {
-      "description": [
-        "main has no required checks, so GitHub auto-merge would merge before CI finishes.",
-        "Renovate merges instead, and only once render-check and kubeconform pass.",
-        "Last so it overrides every platformAutomerge above."
-      ],
-      "matchPackageNames": ["*"],
-      "platformAutomerge": false
     }
   ],
-  "vulnerabilityAlerts": {
-    "platformAutomerge": false
-  },
   "argocd": {
     "managerFilePatterns": [
       "/cluster/argocd/.+\\.yaml$/",
