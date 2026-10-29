@@ -54,18 +54,10 @@ spec:
               spec:
                 nodeSelector:
                   node-role.kubernetes.io/worker: worker
+          # Nothing uses the toolbox pod.
+          # Start a temporary nats-box pod when one is needed.
           natsBox:
-            container:
-              merge:
-                resources:
-                  limits:
-                    cpu: "50m"
-                    memory: "32Mi"
-            podTemplate:
-              merge:
-                spec:
-                  nodeSelector:
-                    node-role.kubernetes.io/worker: worker
+            enabled: false
     - repoURL: https://github.com/cujarrett/homelab.git
       targetRevision: main
       path: cluster/nats
