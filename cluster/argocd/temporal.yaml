@@ -89,6 +89,10 @@ spec:
           admintools:
             enabled: false
           web:
+            # Chart 1.7.0 ships UI 2.54.1, which carries a critical echo advisory. 2.57.0 scans clean.
+            # Delete this override once the chart's own UI tag reaches 2.57.0, or it pins an older UI.
+            image:
+              tag: 2.57.0
             replicaCount: 1
             nodeSelector:
               node-role.kubernetes.io/worker: worker
