@@ -287,7 +287,7 @@ spec:
                       type: RuntimeDefault
                   initContainers:
                     - name: init-wp-content
-                      image: wordpress:7.1.3-php8.5-apache@sha256:69ae07c7644201fc3af59bafef8cece591399020964b4d4f998c8ed907205e1b
+                      image: wordpress:7.1.3-php8.5-apache@sha256:89e44e84974773a97b5ca5fa21b95377d372956fc9d7d1ad363e9fe062d5fe56
                       securityContext:
                         allowPrivilegeEscalation: false
                         capabilities:
@@ -310,7 +310,7 @@ spec:
                       # Pinned to an exact patch - core lives in the container filesystem, not
                       # the PVC, so whatever this tag ships is what every restart runs. Renovate
                       # bumps it. The php8.5 suffix keeps PHP fixed across those bumps.
-                      image: wordpress:7.1.3-php8.5-apache@sha256:69ae07c7644201fc3af59bafef8cece591399020964b4d4f998c8ed907205e1b
+                      image: wordpress:7.1.3-php8.5-apache@sha256:89e44e84974773a97b5ca5fa21b95377d372956fc9d7d1ad363e9fe062d5fe56
                       securityContext:
                         allowPrivilegeEscalation: false
                         capabilities:
