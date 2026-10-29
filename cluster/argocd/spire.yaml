@@ -70,7 +70,6 @@ spec:
                 memory: 128Mi
             # The chart's pinned digest ships brotli 1.2.0, open to CVE-2026-111497.
             # Drop this once the chart's own digest ships brotli 1.2.1 or newer.
-            # Tracked in https://github.com/cujarrett/homelab/issues/362
             socketAlternate:
               image:
                 tag: latest@sha256:a93eed832b139af32b39d78a5ac1d9c708647dda1fe52ebd800e2b684d0fb0c7
