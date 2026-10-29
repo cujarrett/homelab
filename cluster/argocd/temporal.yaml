@@ -94,6 +94,9 @@ spec:
               node-role.kubernetes.io/worker: worker
             securityContext:
               runAsNonRoot: true
+              # The image names its user rather than numbering it, so the kubelet can't check runAsNonRoot without this.
+              runAsUser: 1000
+              runAsGroup: 1000
               seccompProfile:
                 type: RuntimeDefault
             containerSecurityContext: *restricted
