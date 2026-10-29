@@ -86,7 +86,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: scan
-              image: public.ecr.aws/aws-cli/aws-cli:2.39.0@sha256:6014c77975a4ae237395924cc821333f20bf87c91964a45dd4ed5f3b13b424f5
+              image: public.ecr.aws/aws-cli/aws-cli:2.39.1@sha256:3517c17b5f01637df3b6184a4280fbcc36e4ea38105954cade628ff17bb9a7b9
               command: ["bash", "/scripts/scan.sh"]
               env:
                 - name: AWS_SHARED_CREDENTIALS_FILE
