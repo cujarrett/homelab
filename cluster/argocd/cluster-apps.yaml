@@ -27,6 +27,8 @@ spec:
           - dir: platform-exporter
             project: observability
             serverSideApply: true
+          - dir: temporal-controller
+            serverSideApply: true
           - dir: traefik
             # Traefik is a k3s HelmChartConfig, which the k3s controller reads
             # from kube-system only.

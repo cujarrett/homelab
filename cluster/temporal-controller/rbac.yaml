@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: temporal-controller
+  namespace: temporal-controller
+---
+# Matches config/rbac/role.yaml in temporal-controller, which controller-gen writes from its markers.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: temporal-controller
+rules:
+  - apiGroups: ["temporal.local.lab"]
+    resources: ["temporalnamespaces"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: ["temporal.local.lab"]
+    resources: ["temporalnamespaces/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["temporal.local.lab"]
+    resources: ["temporalnamespaces/finalizers"]
+    verbs: ["update"]
+  - apiGroups: ["events.k8s.io"]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: temporal-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: temporal-controller
+subjects:
+  - kind: ServiceAccount
+    name: temporal-controller
+    namespace: temporal-controller
+---
+# With --leader-elect the manager holds a Lease in its own namespace.
+# Without this Role it starts, never gets the lock, and reconciles nothing.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: temporal-controller-leader-election
+  namespace: temporal-controller
+rules:
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: temporal-controller-leader-election
+  namespace: temporal-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: temporal-controller-leader-election
+subjects:
+  - kind: ServiceAccount
+    name: temporal-controller
+    namespace: temporal-controller

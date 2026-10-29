@@ -1,0 +1,93 @@
+# One Postgres holds both of Temporal's databases, temporal and temporal_visibility.
+# The schema job creates them, so POSTGRES_DB stays the built-in postgres database.
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal-postgres
+  namespace: temporal
+spec:
+  selector:
+    app: temporal-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: temporal-postgres
+  namespace: temporal
+  annotations:
+    # Healthy before the schema job and Temporal start, in wave 0.
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  serviceName: temporal-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: temporal-postgres
+  template:
+    metadata:
+      labels:
+        app: temporal-postgres
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: worker
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: postgres:17.11
+          env:
+            - name: POSTGRES_USER
+              value: temporal
+            - name: POSTGRES_DB
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: temporal-postgres
+                  key: password
+            # The volume root holds lost+found, and initdb refuses a non-empty directory.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - name: postgres
+              containerPort: 5432
+          readinessProbe:
+            exec:
+              command: [pg_isready, -U, temporal, -d, postgres]
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: run
+              mountPath: /var/run/postgresql
+      volumes:
+        - name: run
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: longhorn-retain
+        resources:
+          requests:
+            storage: 5Gi

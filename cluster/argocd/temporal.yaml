@@ -1,0 +1,136 @@
+# Temporal server and UI, plus the Postgres, route and namespace in cluster/temporal.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: temporal
+  namespace: argocd
+spec:
+  project: cluster
+  sources:
+    - repoURL: https://go.temporal.io/helm-charts
+      chart: temporal
+      targetRevision: 1.7.0
+      helm:
+        releaseName: temporal
+        values: |
+          server:
+            replicaCount: 1
+            nodeSelector:
+              node-role.kubernetes.io/worker: worker
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 1000
+              runAsGroup: 1000
+              fsGroup: 1000
+              seccompProfile:
+                type: RuntimeDefault
+            config:
+              logLevel: info
+              persistence:
+                # Fixed for the life of the cluster. Changing it means a new database.
+                # 64 is plenty for a homelab's workflow volume.
+                numHistoryShards: 64
+                datastores:
+                  default:
+                    sql:
+                      createDatabase: true
+                      manageSchema: true
+                      pluginName: postgres12
+                      driverName: postgres12
+                      databaseName: temporal
+                      connectAddr: temporal-postgres.temporal.svc.cluster.local:5432
+                      connectProtocol: tcp
+                      user: temporal
+                      existingSecret: temporal-postgres
+                      secretKey: password
+                      maxConns: 10
+                      maxIdleConns: 10
+                  visibility:
+                    sql:
+                      createDatabase: true
+                      manageSchema: true
+                      pluginName: postgres12
+                      driverName: postgres12
+                      databaseName: temporal_visibility
+                      connectAddr: temporal-postgres.temporal.svc.cluster.local:5432
+                      connectProtocol: tcp
+                      user: temporal
+                      existingSecret: temporal-postgres
+                      secretKey: password
+                      maxConns: 5
+                      maxIdleConns: 5
+              # temporal-controller creates every namespace, so the chart creates none.
+              namespaces:
+                create: false
+            frontend:
+              containerSecurityContext: &restricted
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
+              resources:
+                requests: {cpu: 50m, memory: 128Mi}
+                limits: {memory: 512Mi}
+            history:
+              containerSecurityContext: *restricted
+              resources:
+                requests: {cpu: 50m, memory: 256Mi}
+                limits: {memory: 1Gi}
+            matching:
+              containerSecurityContext: *restricted
+              resources:
+                requests: {cpu: 50m, memory: 128Mi}
+                limits: {memory: 512Mi}
+            worker:
+              containerSecurityContext: *restricted
+              resources:
+                requests: {cpu: 25m, memory: 64Mi}
+                limits: {memory: 256Mi}
+          # Nothing uses the toolbox pod. Run the temporal CLI from a laptop instead.
+          admintools:
+            enabled: false
+          web:
+            replicaCount: 1
+            nodeSelector:
+              node-role.kubernetes.io/worker: worker
+            securityContext:
+              runAsNonRoot: true
+              seccompProfile:
+                type: RuntimeDefault
+            containerSecurityContext: *restricted
+            resources:
+              requests: {cpu: 10m, memory: 32Mi}
+              limits: {memory: 128Mi}
+          schema:
+            # Helm hooks become ArgoCD PreSync hooks, which run before Postgres exists and never finish.
+            # As an ArgoCD Sync hook, the job runs after Postgres (sync wave -1) is healthy.
+            useHelmHooks: false
+            jobAnnotations:
+              argocd.argoproj.io/hook: Sync
+              argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 1000
+              seccompProfile:
+                type: RuntimeDefault
+            containerSecurityContext: *restricted
+    - repoURL: https://github.com/cujarrett/homelab.git
+      targetRevision: main
+      path: cluster/temporal
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: temporal
+  ignoreDifferences:
+    # Kubernetes adds status.phase to volumeClaimTemplates at runtime.
+    # The manifest doesn't include it, causing a perpetual OutOfSync loop.
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/volumeClaimTemplates
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true

@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal-controller
+  namespace: temporal-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: temporal-controller
+  template:
+    metadata:
+      labels:
+        app: temporal-controller
+    spec:
+      serviceAccountName: temporal-controller
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: manager
+          # temporal-controller's CI replaces this with each main build's sha tag.
+          image: ghcr.io/cujarrett/temporal-controller:main
+          args:
+            - --temporal-address=temporal-frontend.temporal.svc.cluster.local:7233
+            - --health-probe-bind-address=:8081
+            - --leader-elect
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi

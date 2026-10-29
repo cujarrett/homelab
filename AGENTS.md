@@ -123,6 +123,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | GraphQL | Apollo operator + router | Two installs, `apollo-operator-test` and `apollo-operator-prod`. Each has its own key and watches only its own lane. Helm chart from `registry-1.docker.io/apollograph`. Joins each team's subgraph into one supergraph. See [Platform Graph](./platform/docs/graph.md). The router image is `ghcr.io/cujarrett/apollo-router-arm64`, rebuilt from source because the official image aborts on a 16K-page kernel |
 | Secrets | External Secrets Operator | Renders cluster-setup credentials from AWS SSM Parameter Store. The `ClusterSecretStore` `aws-parameter-store` signs in as the `eso-reader` IAM user, which can only read the `/homelab/` path. `aws-eso-creds` is the only hand-created Secret |
 | Workload Identity | SPIRE | `spire-server` and `spire-system` namespaces. Helm chart from `spiffe.github.io/helm-charts-hardened`. Issues X.509 SVIDs for AWS IAM Roles Anywhere, and JWT-SVIDs that the OIDC discovery provider publishes at `oidc.mattjarrett.dev` |
+| Workflows | Temporal | Server and UI from the official Helm chart, with one Postgres StatefulSet holding both of its databases. `temporal-controller` creates each Temporal namespace from a `TemporalNamespace` resource |
 | Vulnerability Scanning | Trivy operator | Scans every workload image for CVEs as `linux/arm64` and feeds the Security dashboard. Istio sidecars are injected at pod creation, so `cluster/monitoring/istio-proxy-scan.yaml` gives Trivy their image to scan |
 
 ## Namespaces & Applications
@@ -160,6 +161,8 @@ SSH access: `ssh pi@192.168.10.10x`
 | `node-sysctls` | node-sysctls, k3s-env | DaemonSets that write host settings from Git. `node-sysctls` applies sysctls on every node. `k3s-env` writes a `GOMEMLIMIT` drop-in to ctrl-1's `/etc/systemd/system/k3s.service.d/`. It takes effect on the next daemon-reload and k3s restart |
 | `spire-server`, `spire-system` | SPIRE | Workload identity (SPIFFE). Agent DaemonSet on all nodes. OIDC discovery provider serving `oidc.mattjarrett.dev` |
 | `trivy-system` | Trivy operator | Image CVE scans for the Security dashboard |
+| `temporal` | Temporal | Frontend, history, matching, worker and UI, plus `temporal-postgres` (5Gi on `longhorn-retain`). UI at `temporal.local.lab` behind basic auth |
+| `temporal-controller` | temporal-controller | Kubebuilder controller that creates, corrects and deletes Temporal namespaces from `TemporalNamespace` resources |
 
 ## Internal Hostnames (`.local.lab`)
 
@@ -174,6 +177,7 @@ All use `local-lab-ca-issuer` (a self-signed CA), with TLS on Traefik's `websecu
 - `graph-prod.local.lab`
 - `my-vinyl-api.local.lab`
 - `sump-pump-bridge.local.lab`
+- `temporal.local.lab`
 
 ### How clients actually resolve
 
@@ -317,7 +321,7 @@ Four projects group workloads by concern:
 | Project | Allowed source repos | Contents |
 |---|---|---|
 | `platform` | homelab git + `argoproj.github.io/argo-helm` + `charts.crossplane.io/stable` | ArgoCD, Crossplane, compositions, bootstrap |
-| `cluster` | homelab git + `nats-io.github.io/k8s/helm/charts` + `charts.jetstack.io` + `spiffe.github.io/helm-charts-hardened` + `registry-1.docker.io/apollograph` | Longhorn, Traefik, cert-manager, AdGuard, Cloudflare, NATS + NACK, SPIRE, Apollo operator |
+| `cluster` | homelab git + `nats-io.github.io/k8s/helm/charts` + `charts.jetstack.io` + `spiffe.github.io/helm-charts-hardened` + `registry-1.docker.io/apollograph` + `go.temporal.io/helm-charts` | Longhorn, Traefik, cert-manager, AdGuard, Cloudflare, NATS + NACK, SPIRE, Apollo operator, Temporal, temporal-controller |
 | `observability` | homelab git + `prometheus-community.github.io/helm-charts` + `grafana.github.io/helm-charts` | kube-prometheus-stack, Loki, Alloy, platform-exporter |
 | `workloads` | homelab git + homelab-workspaces git | All workspace apps (one Application per homelab-workspaces directory) + blog |
 
@@ -362,6 +366,7 @@ Go apps in this workspace:
 | `platform-exporter` | `platform-exporter` | Prometheus exporter for Crossplane XR, binding and pod readiness timings |
 | `workload-identity-sidecar` | `secret-fetcher` | Sidecar that trades a SPIFFE SVID for short-lived cloud credentials. Go code lives in `sidecar/secret-fetcher` |
 | `homelab-stats` | `homelab-stats` | Read-only JSON for the homelab section on mattjarrett.dev, built from a fixed set of Prometheus queries and the blog-stats gist |
+| `temporal-controller` | `manager` | Kubebuilder controller for the `TemporalNamespace` CRD. Uses the kubebuilder `Makefile`, not `just` |
 | `platform-connections-demo` | `api`, `downstream` | Monorepo for the service mesh walkthrough. `api` runs as `upstream-api`. `downstream` runs as `authorized-api` and `unauthorized-api`. Each has its own `justfile` |
 
 ## Skills
