@@ -30,22 +30,6 @@ spec:
             + homelab:security_open_unattended_stale:count
             + homelab:security_open_image_cves:count
             + homelab:security_open_renovate_blocked:count
-        # needs_you: only a person can clear these. Reboots and blocked PRs never fix themselves,
-        #   and an overdue item has outlived the automation meant to fix it. The Security dashboard leads with this.
-        # waiting: automation or an upstream release will clear these without anyone acting.
-        - record: homelab:security_needs_you:count
-          expr: |
-            homelab:security_open_node_reboot:count
-            + homelab:security_open_unattended_stale:count
-            + homelab:security_open_renovate_blocked:count
-            + homelab:security_overdue_node_updates:count
-            + homelab:security_overdue_image_cves:count
-        - record: homelab:security_waiting:count
-          expr: |
-            (homelab:security_open_node_updates:count - homelab:security_overdue_node_updates:count)
-            + (homelab:security_open_image_cves:count - homelab:security_overdue_image_cves:count)
-        # node updates: unattended-upgrades runs daily, so 3 days pending means it stopped
-        # node reboot: unattended-upgrades never reboots, so 7 days means nobody did
         # image CVE: Jobs are left out. A finished Job's image no longer runs, but its report stays while the Job object exists.
         # image CVE: Renovate waits 7 days, so a fixable critical running 9 days after Trivy listed a fix means it missed
         # Renovate PR: blocked for 2 days means a fix is stuck behind a failing check
@@ -71,6 +55,23 @@ spec:
             + homelab:security_open_unattended_stale:count
             + homelab:security_overdue_image_cves:count
             + homelab:security_overdue_renovate_blocked:count
+        # Defined after the open and overdue rules, so one evaluation computes all of them in order.
+        # needs_you: only a person can clear these. Reboots and blocked PRs never fix themselves,
+        #   and an overdue item has outlived the automation meant to fix it. The Security dashboard leads with this.
+        # waiting: automation or an upstream release will clear these without anyone acting.
+        - record: homelab:security_needs_you:count
+          expr: |
+            homelab:security_open_node_reboot:count
+            + homelab:security_open_unattended_stale:count
+            + homelab:security_open_renovate_blocked:count
+            + homelab:security_overdue_node_updates:count
+            + homelab:security_overdue_image_cves:count
+        - record: homelab:security_waiting:count
+          expr: |
+            (homelab:security_open_node_updates:count - homelab:security_overdue_node_updates:count)
+            + (homelab:security_open_image_cves:count - homelab:security_overdue_image_cves:count)
+        # node updates: unattended-upgrades runs daily, so 3 days pending means it stopped
+        # node reboot: unattended-upgrades never reboots, so 7 days means nobody did
         - alert: SecurityItemsOverdue
           expr: homelab:security_overdue:count > 0
           for: 1h
