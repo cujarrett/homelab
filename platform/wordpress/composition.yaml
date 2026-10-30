@@ -569,7 +569,7 @@ spec:
                 post_max_size = 10M
             ---
             # --- Security mu-plugin ConfigMap ---
-            # Must-use plugin: disables XML-RPC and Application Passwords (brute-force and
+            # Must-use plugin: turns off Jetpack's site accelerator, disables XML-RPC and Application Passwords (brute-force and
             # credential-stuffing vectors), removes /wp/v2/users, and spam-flags affiliate-referral comments.
             apiVersion: v1
             kind: ConfigMap
@@ -594,6 +594,9 @@ spec:
                         }
                     }
                 });
+                // Keep Jetpack's site accelerator off, so core JavaScript is served by this site, not c0.wp.com.
+                // A script from another host runs with the admin's session, so a breach there could take over the site.
+                add_filter('jetpack_force_disable_site_accelerator', '__return_true');
                 // Disable XML-RPC
                 add_filter('xmlrpc_enabled', '__return_false');
                 // Disable Application Passwords so REST API basic-auth is rejected outright.
