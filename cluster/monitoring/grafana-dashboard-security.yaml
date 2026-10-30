@@ -53,8 +53,8 @@ data:
           },
           "description": "Items only a person can clear: a node waiting on a reboot, auto-updates that stopped, a Renovate PR stuck on a failing check, or anything automation has failed to fix in its window. 0 means nothing needs you.",
           "gridPos": {
-            "h": 4,
-            "w": 3,
+            "h": 5,
+            "w": 8,
             "x": 0,
             "y": 0
           },
@@ -108,9 +108,9 @@ data:
           },
           "description": "Items that clear without anyone acting: node updates that apply each morning, and fixable CVEs waiting on Renovate's 7-day hold or an upstream image rebuild. The tables below list each one.",
           "gridPos": {
-            "h": 4,
-            "w": 3,
-            "x": 3,
+            "h": 5,
+            "w": 8,
+            "x": 8,
             "y": 0
           },
           "id": 10,
@@ -144,64 +144,6 @@ data:
           "type": "stat"
         },
         {
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 1
-                  }
-                ]
-              },
-              "unit": "short"
-            }
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 3,
-            "x": 6,
-            "y": 0
-          },
-          "id": 2,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.2.4",
-          "targets": [
-            {
-              "expr": "homelab:security_open_image_cves:count",
-              "instant": true,
-              "legendFormat": "",
-              "refId": "A"
-            }
-          ],
-          "title": "Critical CVEs With a Fix",
-          "type": "stat"
-        },
-        {
           "description": "Critical and high CVEs, counted per image, that ran at some point in the last 7 days and are gone now.",
           "fieldConfig": {
             "defaults": {
@@ -213,12 +155,8 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "blue",
                     "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
                   }
                 ]
               },
@@ -226,9 +164,9 @@ data:
             }
           },
           "gridPos": {
-            "h": 4,
-            "w": 3,
-            "x": 9,
+            "h": 5,
+            "w": 8,
+            "x": 16,
             "y": 0
           },
           "id": 13,
@@ -258,7 +196,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Cleared in Last 7 Days",
+          "title": "Cleared This Week",
           "type": "stat"
         },
         {
@@ -275,7 +213,7 @@ data:
                     "value": 0
                   },
                   {
-                    "color": "yellow",
+                    "color": "red",
                     "value": 1
                   }
                 ]
@@ -284,68 +222,10 @@ data:
             }
           },
           "gridPos": {
-            "h": 4,
-            "w": 3,
-            "x": 12,
-            "y": 0
-          },
-          "id": 3,
-          "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "justifyMode": "center",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "13.2.4",
-          "targets": [
-            {
-              "expr": "homelab:security_open_node_updates:count",
-              "instant": true,
-              "legendFormat": "",
-              "refId": "A"
-            }
-          ],
-          "title": "Nodes: Updates Pending",
-          "type": "stat"
-        },
-        {
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 1
-                  }
-                ]
-              },
-              "unit": "short"
-            }
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 3,
-            "x": 15,
-            "y": 0
+            "h": 3,
+            "w": 4,
+            "x": 0,
+            "y": 5
           },
           "id": 4,
           "options": {
@@ -374,7 +254,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Nodes: Reboot Needed",
+          "title": "Reboots Needed",
           "type": "stat"
         },
         {
@@ -400,10 +280,10 @@ data:
             }
           },
           "gridPos": {
-            "h": 4,
-            "w": 3,
-            "x": 18,
-            "y": 0
+            "h": 3,
+            "w": 4,
+            "x": 4,
+            "y": 5
           },
           "id": 5,
           "options": {
@@ -432,7 +312,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Nodes: Auto-Update Stopped",
+          "title": "Auto-Update Off",
           "type": "stat"
         },
         {
@@ -449,7 +329,7 @@ data:
                     "value": 0
                   },
                   {
-                    "color": "yellow",
+                    "color": "red",
                     "value": 1
                   }
                 ]
@@ -458,10 +338,10 @@ data:
             }
           },
           "gridPos": {
-            "h": 4,
-            "w": 3,
-            "x": 21,
-            "y": 0
+            "h": 3,
+            "w": 4,
+            "x": 8,
+            "y": 5
           },
           "id": 6,
           "options": {
@@ -490,7 +370,174 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Renovate: PRs Blocked",
+          "title": "PRs Blocked",
+          "type": "stat"
+        },
+        {
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 4,
+            "x": 12,
+            "y": 5
+          },
+          "id": 17,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.4",
+          "targets": [
+            {
+              "expr": "homelab:security_overdue:count",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Overdue",
+          "type": "stat",
+          "description": "Items automation failed to fix in its window. This drives the Discord alert."
+        },
+        {
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 4,
+            "x": 16,
+            "y": 5
+          },
+          "id": 2,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.4",
+          "targets": [
+            {
+              "expr": "homelab:security_open_image_cves:count",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "CVEs Waiting",
+          "type": "stat"
+        },
+        {
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 4,
+            "x": 20,
+            "y": 5
+          },
+          "id": 3,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.4",
+          "targets": [
+            {
+              "expr": "homelab:security_open_node_updates:count",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Node Updates Waiting",
           "type": "stat"
         },
         {
@@ -643,7 +690,7 @@ data:
             "h": 7,
             "w": 12,
             "x": 0,
-            "y": 4
+            "y": 8
           },
           "id": 7,
           "options": {
@@ -774,7 +821,7 @@ data:
             "h": 7,
             "w": 12,
             "x": 12,
-            "y": 4
+            "y": 8
           },
           "id": 8,
           "options": {
@@ -904,7 +951,7 @@ data:
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 11
+            "y": 15
           },
           "id": 14,
           "options": {
@@ -1042,7 +1089,7 @@ data:
             "h": 14,
             "w": 24,
             "x": 0,
-            "y": 19
+            "y": 23
           },
           "id": 9,
           "links": [
@@ -1154,7 +1201,7 @@ data:
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 33
+            "y": 37
           },
           "id": 15,
           "options": {
@@ -1291,7 +1338,7 @@ data:
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 41
+            "y": 45
           },
           "id": 12,
           "options": {
@@ -1377,7 +1424,7 @@ data:
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 49
+            "y": 53
           },
           "id": 16,
           "options": {
