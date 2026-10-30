@@ -63,6 +63,13 @@ spec:
               namespaces:
                 create: false
             frontend:
+              # The only Temporal service in the mesh, so callers' tokens cross the network encrypted.
+              # Its calls to the other services and Postgres skip the sidecar and stay inside the namespace.
+              podLabels:
+                sidecar.istio.io/inject: "true"
+              podAnnotations:
+                traffic.sidecar.istio.io/excludeInboundPorts: "6933"
+                traffic.sidecar.istio.io/excludeOutboundPorts: "5432,6933,6934,6935,6936,6939,7234,7235,7236"
               containerSecurityContext: &restricted
                 allowPrivilegeEscalation: false
                 capabilities:
@@ -80,6 +87,13 @@ spec:
               resources:
                 requests: {cpu: 50m, memory: 128Mi}
                 limits: {memory: 512Mi}
+            # Temporal's own worker service calls this instead of the meshed frontend.
+            internal-frontend:
+              enabled: true
+              containerSecurityContext: *restricted
+              resources:
+                requests: {cpu: 25m, memory: 96Mi}
+                limits: {memory: 384Mi}
             worker:
               containerSecurityContext: *restricted
               resources:
@@ -89,6 +103,10 @@ spec:
           admintools:
             enabled: false
           web:
+            # Meshed so its calls to the frontend use mTLS. Traefik reaches it in plain text,
+            # because web keeps the default permissive mode.
+            podLabels:
+              sidecar.istio.io/inject: "true"
             # Chart 1.7.0 ships UI 2.54.1, which carries a critical echo advisory. 2.57.0 scans clean.
             # Delete this override once the chart's own UI tag reaches 2.57.0, or it pins an older UI.
             image:
