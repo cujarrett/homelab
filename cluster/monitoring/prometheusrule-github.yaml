@@ -84,6 +84,19 @@ spec:
               Open the PR's checks. A failed check needs a fix or a re-run. A required
               check stuck at "Expected" means branch protection names a job the workflow
               no longer has, so update the required checks to match.
+        # The newest finished run on main decides it, so a passing re-run clears the alert.
+        # Covers scheduled checks too, such as platform-connections-demo's hourly pin-check.
+        - alert: WorkflowFailingOnMain
+          expr: github_exporter_workflow_latest_failed == 1
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.repo }}'s {{ $labels.workflow }} workflow is failing on main"
+            description: >-
+              Open the repo's Actions tab and read the latest {{ $labels.workflow }} run.
+              For pin-check, repin the failing blocks in spa/src/app/cases.ts at the
+              current homelab commit, since the page explains code main no longer runs.
         # GitHub never 401s a valid token, so one is enough to alert on.
         - alert: LaunchpadGitHubTokenRejected
           expr: increase(launchpad_github_auth_failures_total[10m]) > 0
