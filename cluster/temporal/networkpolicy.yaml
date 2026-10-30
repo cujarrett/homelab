@@ -1,0 +1,47 @@
+# Temporal's frontend and Postgres take requests with no auth, so only named callers reach them.
+# Any pod in the cluster could otherwise register namespaces, terminate workflows or read the database.
+#
+# temporal namespace: the services call each other, and all of them call Postgres.
+# temporal-controller: the frontend on 7233, to manage namespaces.
+# kube-system: Traefik, for the UI on 8080. Basic auth sits in front of it.
+# Node cni0 addresses: kubelet probes. kube-router matches on address alone, so these are each
+#   node's cni0 bridge, the first address of its pod CIDR. Re-check them if a node is rebuilt.
+#
+# A platform workload that runs workflows needs a rule here for the frontend.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: temporal-callers
+  namespace: temporal
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector: {}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: temporal-controller
+      ports:
+        - protocol: TCP
+          port: 7233
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - protocol: TCP
+          port: 8080
+    - from:
+        - ipBlock:
+            cidr: 10.42.0.1/32
+        - ipBlock:
+            cidr: 10.42.1.1/32
+        - ipBlock:
+            cidr: 10.42.3.1/32
+        - ipBlock:
+            cidr: 10.42.5.1/32
