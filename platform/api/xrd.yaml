@@ -158,6 +158,16 @@ spec:
                           pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
                           maxLength: 63
                           description: "metadata.name of the Subscription instance (e.g. foo-consumer)."
+                    workflowRef:
+                      type: object
+                      description: "Optional reference to a Workflow in this namespace. When set, the platform wires this API to it, for running workflows or starting them."
+                      required: [name]
+                      properties:
+                        name:
+                          type: string
+                          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                          maxLength: 63
+                          description: "metadata.name of the Workflow instance (e.g. foo-workflows)."
                     replicas:
                       type: integer
                       default: 1

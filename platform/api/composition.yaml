@@ -104,6 +104,8 @@ spec:
             {{- end }}
             {{- $subscriptionRefName := "" }}
             {{- if $xr.spec.parameters.subscriptionRef }}{{- $subscriptionRefName = $xr.spec.parameters.subscriptionRef.name }}{{- end }}
+            {{- $workflowRefName := "" }}
+            {{- if $xr.spec.parameters.workflowRef }}{{- $workflowRefName = $xr.spec.parameters.workflowRef.name }}{{- end }}
             {{- /* Every service binding this Api mounts. Each entry has                   */ -}}
             {{- /* dir: the directory under /bindings, the volume name stem and AWS profile */ -}}
             {{- /* label: what the init container prints while it waits                    */ -}}
@@ -301,6 +303,10 @@ spec:
                   labels:
                     app: api
                     app.kubernetes.io/instance: {{ $name }}
+                    {{- if $workflowRefName }}
+                    # The temporal NetworkPolicy admits these pods. Teams can't create pods, so only workflowRef sets it.
+                    platform.local.lab/uses-workflow: "true"
+                    {{- end }}
                 spec:
                   serviceAccountName: {{ $name }}
                   # runAsUser overrides the image's own USER, since kubelet refuses
@@ -490,6 +496,13 @@ spec:
                         {{- end }}
                         - name: NATS_CONSUMER
                           value: {{ $subscriptionRefName | quote }}
+                      {{- end }}
+                      {{- if $workflowRefName }}
+                        # The Workflow names its Temporal namespace after itself.
+                        - name: TEMPORAL_ADDRESS
+                          value: "temporal-frontend.temporal.svc.cluster.local:7233"
+                        - name: TEMPORAL_NAMESPACE
+                          value: {{ $workflowRefName | quote }}
                       {{- end }}
                       {{- if $configFrom }}
                       envFrom:
@@ -1080,6 +1093,10 @@ spec:
                     # the other half of that. Unmeshed, so there is no inbound gate.
                     - "nats/nats.nats.svc.cluster.local"
                     {{- end }}
+                    {{- if $workflowRefName }}
+                    # Matches TEMPORAL_ADDRESS.
+                    - "temporal/temporal-frontend.temporal.svc.cluster.local"
+                    {{- end }}
                     {{- range $h := $derivedHosts }}
                     # Implied by a binding on this XR, so the app never declares it.
                     - "./{{ $h }}"
@@ -1188,6 +1205,7 @@ spec:
             {{- if or $topicRefName $subscriptionRefName }}{{- $injectedEnv = append $injectedEnv "NATS_URL" }}{{- end }}
             {{- if $topicRefName }}{{- $injectedEnv = append $injectedEnv "NATS_STREAM" }}{{- end }}
             {{- if $subscriptionRefName }}{{- $injectedEnv = append $injectedEnv "NATS_CONSUMER" }}{{- end }}
+            {{- if $workflowRefName }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_ADDRESS" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_NAMESPACE" }}{{- end }}
             ---
             apiVersion: platform.local.lab/v1alpha1
             kind: Api

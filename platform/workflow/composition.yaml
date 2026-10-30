@@ -1,0 +1,51 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: workflow
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: Workflow
+  mode: Pipeline
+  pipeline:
+    - step: render-namespace
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $ns := $xr.metadata.namespace }}
+            {{- $params := $xr.spec.parameters | default dict }}
+            {{- /* Ready only when temporal-controller reports Ready. A name clash stays not ready. */ -}}
+            {{- $ready := "False" }}
+            {{- $observed := index (.observed.resources | default dict) "temporal-namespace" }}
+            {{- if $observed }}
+            {{- range (($observed.resource.status | default dict).conditions | default list) }}
+            {{- if and (eq .type "Ready") (eq .status "True") }}{{- $ready = "True" }}{{- end }}
+            {{- end }}
+            {{- end }}
+            # --- TemporalNamespace ---
+            # temporal-controller creates it in Temporal, where names are global across workspaces.
+            apiVersion: temporal.local.lab/v1alpha1
+            kind: TemporalNamespace
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: temporal-namespace
+                gotemplating.fn.crossplane.io/ready: {{ $ready | quote }}
+            spec:
+              retention: {{ $params.retention | default "72h" | quote }}
+              {{- with $params.description }}
+              description: {{ . | quote }}
+              {{- end }}
+            ---
+            apiVersion: platform.local.lab/v1alpha1
+            kind: Workflow
+            status:
+              namespace: {{ $name | quote }}

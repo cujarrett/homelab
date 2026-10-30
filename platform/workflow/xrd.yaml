@@ -1,0 +1,46 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: workflows.platform.local.lab
+spec:
+  group: platform.local.lab
+  scope: Namespaced
+  names:
+    kind: Workflow
+    plural: workflows
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  default: {}
+                  properties:
+                    backend:
+                      type: string
+                      default: private-cloud
+                      enum: [private-cloud]
+                      description: "Where the workflow service runs. private-cloud runs it in the cluster."
+                    retention:
+                      type: string
+                      default: "72h"
+                      pattern: "^[0-9]+(h|m|s)$"
+                      maxLength: 16
+                      description: "How long the history of finished workflows is kept, as a Go duration such as 72h. At least 24h."
+                    description:
+                      type: string
+                      maxLength: 255
+                      description: "Shown next to this workflow space in the workflow UI."
+            status:
+              type: object
+              properties:
+                namespace:
+                  type: string
+                  description: "The workflow namespace an Api referencing this Workflow is given."
