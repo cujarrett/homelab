@@ -43,7 +43,7 @@ data:
                     "value": 0
                   },
                   {
-                    "color": "yellow",
+                    "color": "red",
                     "value": 1
                   }
                 ]
@@ -51,6 +51,7 @@ data:
               "unit": "short"
             }
           },
+          "description": "Items only a person can clear: a node waiting on a reboot, auto-updates that stopped, a Renovate PR stuck on a failing check, or anything automation has failed to fix in its window. 0 means nothing needs you.",
           "gridPos": {
             "h": 4,
             "w": 3,
@@ -78,13 +79,13 @@ data:
           "pluginVersion": "13.2.4",
           "targets": [
             {
-              "expr": "homelab:security_open:count",
+              "expr": "homelab:security_needs_you:count",
               "instant": true,
               "legendFormat": "",
               "refId": "A"
             }
           ],
-          "title": "Open Now",
+          "title": "Needs You",
           "type": "stat"
         },
         {
@@ -97,18 +98,15 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "blue",
                     "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 1
                   }
                 ]
               },
               "unit": "short"
             }
           },
+          "description": "Items that clear without anyone acting: node updates that apply each morning, and fixable CVEs waiting on Renovate's 7-day hold or an upstream image rebuild. The tables below list each one.",
           "gridPos": {
             "h": 4,
             "w": 3,
@@ -136,13 +134,13 @@ data:
           "pluginVersion": "13.2.4",
           "targets": [
             {
-              "expr": "homelab:security_overdue:count",
+              "expr": "homelab:security_waiting:count",
               "instant": true,
               "legendFormat": "",
               "refId": "A"
             }
           ],
-          "title": "Overdue",
+          "title": "Waiting on Others",
           "type": "stat"
         },
         {
@@ -254,7 +252,7 @@ data:
           "pluginVersion": "13.2.4",
           "targets": [
             {
-              "expr": "count(count by (image_repository, vuln_id) (max_over_time(trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version!=\"\"}[7d])) unless count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version!=\"\"})) or vector(0)",
+              "expr": "count(count by (image_repository, vuln_id) (max_over_time(trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version!=\"\", resource_kind!=\"Job\"}[7d])) unless count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version!=\"\", resource_kind!=\"Job\"})) or vector(0)",
               "instant": true,
               "legendFormat": "",
               "refId": "A"
@@ -925,12 +923,12 @@ data:
           "pluginVersion": "13.2.4",
           "targets": [
             {
-              "expr": "count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\"}))",
+              "expr": "count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=\"Critical\", fixed_version!=\"\", resource_kind!=\"Job\"}))",
               "legendFormat": "Critical",
               "refId": "A"
             },
             {
-              "expr": "count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=\"High\", fixed_version!=\"\"}))",
+              "expr": "count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=\"High\", fixed_version!=\"\", resource_kind!=\"Job\"}))",
               "legendFormat": "High",
               "refId": "B"
             }
@@ -1067,7 +1065,7 @@ data:
           "pluginVersion": "13.2.4",
           "targets": [
             {
-              "expr": "count by (cve, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_join(label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High|Unknown\", fixed_version!=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High|Unknown\", fixed_version!=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"), \"cve\", \"|\", \"severity\", \"vuln_id\"))",
+              "expr": "count by (cve, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_join(label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High|Unknown\", fixed_version!=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High|Unknown\", fixed_version!=\"\", resource_kind!~\"ReplicaSet|Job\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"), \"cve\", \"|\", \"severity\", \"vuln_id\"))",
               "format": "table",
               "instant": true,
               "refId": "A"
@@ -1309,7 +1307,7 @@ data:
           "pluginVersion": "13.2.4",
           "targets": [
             {
-              "expr": "count by (cve, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_join(label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version=\"\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"), \"cve\", \"|\", \"severity\", \"vuln_id\"))",
+              "expr": "count by (cve, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_join(label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version=\"\", resource_kind!~\"ReplicaSet|Job\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"), \"cve\", \"|\", \"severity\", \"vuln_id\"))",
               "format": "table",
               "instant": true,
               "refId": "A"

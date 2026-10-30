@@ -20,7 +20,7 @@ spec:
         - record: homelab:security_open_unattended_stale:count
           expr: count(time() - node_unattended_upgrades_last_run_timestamp_seconds > 2 * 86400) or vector(0)
         - record: homelab:security_open_image_cves:count
-          expr: count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity="Critical", fixed_version!=""})) or vector(0)
+          expr: count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity="Critical", fixed_version!="", resource_kind!="Job"})) or vector(0)
         - record: homelab:security_open_renovate_blocked:count
           expr: count(sum by (repo) (github_exporter_pr_open_blocked) > 0) or vector(0)
         - record: homelab:security_open:count
@@ -30,8 +30,23 @@ spec:
             + homelab:security_open_unattended_stale:count
             + homelab:security_open_image_cves:count
             + homelab:security_open_renovate_blocked:count
+        # needs_you: only a person can clear these. Reboots and blocked PRs never fix themselves,
+        #   and an overdue item has outlived the automation meant to fix it. The Security dashboard leads with this.
+        # waiting: automation or an upstream release will clear these without anyone acting.
+        - record: homelab:security_needs_you:count
+          expr: |
+            homelab:security_open_node_reboot:count
+            + homelab:security_open_unattended_stale:count
+            + homelab:security_open_renovate_blocked:count
+            + homelab:security_overdue_node_updates:count
+            + homelab:security_overdue_image_cves:count
+        - record: homelab:security_waiting:count
+          expr: |
+            (homelab:security_open_node_updates:count - homelab:security_overdue_node_updates:count)
+            + (homelab:security_open_image_cves:count - homelab:security_overdue_image_cves:count)
         # node updates: unattended-upgrades runs daily, so 3 days pending means it stopped
         # node reboot: unattended-upgrades never reboots, so 7 days means nobody did
+        # image CVE: Jobs are left out. A finished Job's image no longer runs, but its report stays while the Job object exists.
         # image CVE: Renovate waits 7 days, so a fixable critical running 9 days after Trivy listed a fix means it missed
         # Renovate PR: blocked for 2 days means a fix is stuck behind a failing check
         # node rules: max by node first, so a node-updates pod rollout does not leave the old pod's last value in the window
@@ -43,8 +58,8 @@ spec:
           expr: |
             count(
               count by (image_repository, vuln_id) (
-                trivy_vulnerability_id{severity="Critical", fixed_version!=""}
-                and trivy_vulnerability_id{severity="Critical", fixed_version!=""} offset 9d
+                trivy_vulnerability_id{severity="Critical", fixed_version!="", resource_kind!="Job"}
+                and trivy_vulnerability_id{severity="Critical", fixed_version!="", resource_kind!="Job"} offset 9d
               )
             ) or vector(0)
         - record: homelab:security_overdue_renovate_blocked:count
