@@ -6,6 +6,7 @@
 # Pods labelled platform.local.lab/uses-workflow in a workload namespace: the frontend on 7233.
 #   The Api composition sets that label from workflowRef.
 # kube-system: Traefik, for the UI on 8080. Basic auth sits in front of it.
+# monitoring: Prometheus, for the meshed pods' sidecar metrics on 15020.
 # Node cni0 addresses: kubelet probes. kube-router matches on address alone, so these are each
 #   node's cni0 bridge, the first address of its pod CIDR. Re-check them if a node is rebuilt.
 apiVersion: networking.k8s.io/v1
@@ -46,6 +47,13 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 15020
     - from:
         - ipBlock:
             cidr: 10.42.0.1/32

@@ -42,7 +42,7 @@ The namespace is owned by the tenant - created by `namespace.yaml` in the tenant
 | `topicRef.name` | no | - | Name of an `Topic` this API publishes to. Injects `NATS_URL` and `NATS_STREAM` env vars. |
 | `topicRef.streamName` | no | - | NATS stream name from the Topic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the Topic's streamName differs from its metadata.name. |
 | `subscriptionRef.name` | no | - | Name of an `Subscription` this API consumes from. Injects `NATS_URL` and `NATS_CONSUMER` env vars. |
-| `workflowRef.name` | no | - | Name of a `Workflow` in this namespace. Injects `TEMPORAL_ADDRESS` and `TEMPORAL_NAMESPACE` and allows traffic to the workflow service. See [Workflow](../workflow/README.md). |
+| `workflowRef.name` | no | - | Name of a `Workflow` in this namespace. Injects `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE` and `TEMPORAL_TOKEN_SCOPE`, grants this API's workload identity the Workflow's permission, and allows traffic to the workflow service. See [Workflow](../workflow/README.md). |
 | `provides` | no | - | Interfaces this API exposes, and which apps may call each one. Required to accept any call at all. Each entry requires `name`, `auth` and `allowedCallers`; each caller requires `namespace` and `app`. |
 | `provides[].auth` | yes | - | What a caller must prove. `mesh` = its workload identity is enough, no token, no Entra object. Required rather than defaulted, so every interface states it. `workload` = it must also carry an Entra app role, read from the `roles` claim. `user` = it must carry a delegated scope, read from `scp`, which is what on-behalf-of produces. |
 | `provides[].methods` | no | - | HTTP methods this interface accepts. Omit to accept all. |

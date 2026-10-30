@@ -70,11 +70,14 @@ spec:
             {{- range $c := $consumes }}
             {{- if or $c.app $c.entraApp }}{{- $entraNeeded = true }}{{- end }}
             {{- end }}
+            {{- /* A workflowRef means a token for Temporal, so it needs an identity too. */ -}}
+            {{- if $xr.spec.parameters.workflowRef }}{{- $entraNeeded = true }}{{- end }}
             {{- /* crossplane-entra's own service principal object ID - set as owner on   */ -}}
             {{- /* everything it creates, or it can create but never delete/update again.  */ -}}
             {{- /* See cluster/crossplane/azuread-permissions.md.                          */ -}}
             {{- $crossplaneEntraSpId := index $envCtx "crossplaneEntraServicePrincipalId" | default "" }}
             {{- $entraTenantId := index $envCtx "entraTenantId" | default "" }}
+            {{- $temporalSpObjectId := index $envCtx "temporalEntraSpObjectId" | default "" }}
             {{- $observedResources := .observed.resources | default dict }}
             {{- $entraAppObs := index $observedResources "entra-application" | default dict }}
             {{- $entraClientId := "" }}
@@ -503,6 +506,9 @@ spec:
                           value: "temporal-frontend.temporal.svc.cluster.local:7233"
                         - name: TEMPORAL_NAMESPACE
                           value: {{ $workflowRefName | quote }}
+                        # Request an Entra token for this scope, and send it to Temporal as a bearer token.
+                        - name: TEMPORAL_TOKEN_SCOPE
+                          value: {{ printf "api://%s/platform-temporal/.default" $entraTenantId | quote }}
                       {{- end }}
                       {{- if $configFrom }}
                       envFrom:
@@ -857,6 +863,26 @@ spec:
                   name: {{ $caller.namespace }}-{{ $caller.app }}-entra
             {{- end }}
             {{- end }}
+            {{- if $workflowRefName }}
+            {{- /* Same derivation as the Workflow composition, from this Api's own namespace. */ -}}
+            {{- $wfRoleHash := printf "%s/%s/temporal-writer" $ns $workflowRefName | sha256sum }}
+            {{- $wfRoleId := printf "%s-%s-4%s-a%s-%s" (substr 0 8 $wfRoleHash) (substr 8 12 $wfRoleHash) (substr 13 16 $wfRoleHash) (substr 17 20 $wfRoleHash) (substr 20 32 $wfRoleHash) }}
+            ---
+            # Grants this Api the Workflow's role, so its Entra token can use that Temporal namespace.
+            apiVersion: app.azuread.m.upbound.io/v1beta1
+            kind: RoleAssignment
+            metadata:
+              name: {{ $ns }}-{{ $name }}-temporal-grant
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: temporal-grant
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              forProvider:
+                appRoleId: {{ $wfRoleId }}
+                principalObjectIdRef:
+                  name: {{ $ns }}-{{ $name }}-entra
+                resourceObjectId: {{ $temporalSpObjectId | quote }}
+            {{- end }}
             {{- end }}{{- /* end entraNeeded */}}
             {{- if $cacheEnabled }}
             ---
@@ -1205,7 +1231,7 @@ spec:
             {{- if or $topicRefName $subscriptionRefName }}{{- $injectedEnv = append $injectedEnv "NATS_URL" }}{{- end }}
             {{- if $topicRefName }}{{- $injectedEnv = append $injectedEnv "NATS_STREAM" }}{{- end }}
             {{- if $subscriptionRefName }}{{- $injectedEnv = append $injectedEnv "NATS_CONSUMER" }}{{- end }}
-            {{- if $workflowRefName }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_ADDRESS" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_NAMESPACE" }}{{- end }}
+            {{- if $workflowRefName }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_ADDRESS" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_NAMESPACE" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_TOKEN_SCOPE" }}{{- end }}
             ---
             apiVersion: platform.local.lab/v1alpha1
             kind: Api

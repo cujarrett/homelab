@@ -8,6 +8,17 @@ spec:
     kind: Workflow
   mode: Pipeline
   pipeline:
+    - step: load-environment-configs
+      functionRef:
+        name: function-environment-configs
+      input:
+        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+        kind: Input
+        spec:
+          environmentConfigs:
+            - type: Reference
+              ref:
+                name: aws-platform-config
     - step: render-namespace
       functionRef:
         name: function-go-templating
@@ -21,6 +32,12 @@ spec:
             {{- $name := $xr.metadata.name }}
             {{- $ns := $xr.metadata.namespace }}
             {{- $params := $xr.spec.parameters | default dict }}
+            {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
+            {{- $temporalAppObjectId := index $envCtx "temporalEntraAppObjectId" | default "" }}
+            {{- /* The Api composition derives the same GUID from its own namespace and workflowRef. */ -}}
+            {{- /* An Api in another namespace derives a GUID that matches no role, so its grant fails. */ -}}
+            {{- $roleHash := printf "%s/%s/temporal-writer" $ns $name | sha256sum }}
+            {{- $roleId := printf "%s-%s-4%s-a%s-%s" (substr 0 8 $roleHash) (substr 8 12 $roleHash) (substr 13 16 $roleHash) (substr 17 20 $roleHash) (substr 20 32 $roleHash) }}
             {{- /* Ready only when temporal-controller reports Ready. A name clash stays not ready. */ -}}
             {{- $ready := "False" }}
             {{- $observed := index (.observed.resources | default dict) "temporal-namespace" }}
@@ -44,6 +61,26 @@ spec:
               {{- with $params.description }}
               description: {{ . | quote }}
               {{- end }}
+            ---
+            # The permission to use this Temporal namespace, on the shared Temporal app registration.
+            # Temporal reads the value from the token's roles claim.
+            # Entra refuses a second role with the same value, so a name clash fails here too.
+            apiVersion: applications.azuread.m.upbound.io/v1beta1
+            kind: AppRole
+            metadata:
+              name: {{ $ns }}-{{ $name }}-temporal-writer
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: temporal-role
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              forProvider:
+                applicationId: /applications/{{ $temporalAppObjectId }}
+                roleId: {{ $roleId }}
+                value: {{ printf "Temporal.%s.writer" $name | quote }}
+                displayName: {{ printf "Temporal.%s.writer" $name | quote }}
+                description: {{ printf "Start and run workflows in %s" $name | quote }}
+                allowedMemberTypes:
+                  - Application
             ---
             apiVersion: platform.local.lab/v1alpha1
             kind: Workflow

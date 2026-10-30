@@ -1,0 +1,33 @@
+# The one Entra app registration that stands for Temporal. Its app ID URI is the audience
+# Temporal checks, and every Workflow's app role hangs off it.
+# owners is crossplane-entra's service principal, or it can create this but never update or delete it.
+# Once it exists, copy its object ID and its service principal's object ID into the
+# aws-platform-config EnvironmentConfig as temporalEntraAppObjectId and temporalEntraSpObjectId.
+apiVersion: applications.azuread.m.upbound.io/v1beta1
+kind: Application
+metadata:
+  name: temporal-entra
+  namespace: temporal
+spec:
+  forProvider:
+    displayName: platform-temporal
+    api:
+      # v2 tokens, issued by login.microsoftonline.com/<tenant>/v2.0, which is what Temporal validates.
+      requestedAccessTokenVersion: 2
+    identifierUris:
+      - api://7f4c1900-e63c-456b-ab5f-898189b24ec4/platform-temporal
+    owners:
+      - 57f4959a-6c64-4a71-b66e-d9255c4e6b5e
+---
+# Role assignments target the service principal, not the app registration.
+apiVersion: serviceprincipals.azuread.m.upbound.io/v1beta1
+kind: Principal
+metadata:
+  name: temporal-entra
+  namespace: temporal
+spec:
+  forProvider:
+    clientIdRef:
+      name: temporal-entra
+    owners:
+      - 57f4959a-6c64-4a71-b66e-d9255c4e6b5e
