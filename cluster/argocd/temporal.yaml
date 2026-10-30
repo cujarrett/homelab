@@ -113,7 +113,8 @@ spec:
             useHelmHooks: false
             jobAnnotations:
               argocd.argoproj.io/hook: Sync
-              argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+              # Deleted once it succeeds, so Trivy stops reporting CVEs in an image nothing runs.
+              argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
             securityContext:
               runAsNonRoot: true
               runAsUser: 1000
