@@ -388,7 +388,7 @@ data:
             "type": "loki",
             "uid": "P8E80F9AEF21F6940"
           },
-          "description": "One pin per visitor location across every public site, with unique visitors in the tooltip. US only. Bots and scripts are dropped before storage. Visitors in the same city share a pin, since Cloudflare places them at the same point.",
+          "description": "One pin per site and visitor location, with the site and unique visitors in the tooltip. Where one city visited several sites, the pins stack and the tooltip pages through them. US only. Bots and scripts are dropped before storage. Visitors in the same city share a pin, since Cloudflare places them at the same point.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -473,7 +473,7 @@ data:
                 "type": "loki",
                 "uid": "P8E80F9AEF21F6940"
               },
-              "expr": "count by (city, region, postal, lat, lon) (sum by (visitor, city, region, postal, lat, lon) (count_over_time({log_type=~\"access|sandbox\"} | json | label_format visitor=request_Cf_Connecting_Ip, city=request_Cf_Ipcity, region=request_Cf_Region_Code, postal=request_Cf_Postal_Code, lat=request_Cf_Iplatitude, lon=request_Cf_Iplongitude [$__range])))",
+              "expr": "count by (site, city, region, postal, lat, lon) (sum by (visitor, site, city, region, postal, lat, lon) (count_over_time({log_type=~\"access|sandbox\"} | json | label_format visitor=request_Cf_Connecting_Ip, site=RequestHost, city=request_Cf_Ipcity, region=request_Cf_Region_Code, postal=request_Cf_Postal_Code, lat=request_Cf_Iplatitude, lon=request_Cf_Iplongitude [$__range])))",
               "legendFormat": "Visitors",
               "queryType": "instant",
               "refId": "A"
@@ -514,6 +514,7 @@ data:
                 },
                 "renameByName": {
                   "city": "City",
+                  "site": "Site",
                   "postal": "Postal code",
                   "region": "State"
                 }
