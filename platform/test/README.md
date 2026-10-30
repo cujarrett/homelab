@@ -72,6 +72,7 @@ just test-e2e                  # full run (~11-15 min, a few cents of AWS)
 just test-e2e --private-only   # in-cluster only (~2 min, free)
 just test-e2e --keep           # skip teardown, leave resources for debugging
 just test-e2e --abort          # stop a running e2e and remove what it left
+just test-e2e-workflow         # Workflow only, a Workflow plus an Api using it (~2 min, free)
 ```
 
 ## Credentials the e2e uses
@@ -115,3 +116,4 @@ RDS `db.t4g.micro` + ElastiCache `cache.t4g.micro` for ~20 minutes ≈ a few cen
 
 - `just test-e2e --private-only` after any change to `platform/api/composition.yaml` or the NATS-related compositions - fast, free
 - `just test-e2e` before merging changes that touch AWS bindings, workload identity, or the sql/cache/nosql/object-storage compositions
+- `just test-e2e-workflow` after any change to the workflow composition, `workflowRef`, or Temporal's cluster setup. The full `just test-e2e` runs it too

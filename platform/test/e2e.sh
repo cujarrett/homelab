@@ -11,6 +11,8 @@
 #   ./platform/test/e2e.sh --private-only  # in-cluster only (~5 min, no AWS)
 #   ./platform/test/e2e.sh --keep          # skip teardown, leave resources for debugging
 #
+# Ends by running e2e-workflow.sh, so the full suite covers Workflow too.
+#
 # XRs are applied directly with kubectl (never via ArgoCD), so GitOps state stays
 # untouched. RDS/ElastiCache are VPC-internal and unreachable from the cluster by
 # design, so those check provisioning plus the SPIFFE -> OIDC -> STS chain only ("identity-only").
@@ -107,27 +109,9 @@ fi
 # ---------------------------------------------------------------------------
 # Result collection
 # ---------------------------------------------------------------------------
-RESULTS=()
-FAILURES=0
-
-record() { # phase check status detail
-  RESULTS+=("$1|$2|$3|$4")
-  [[ "$3" == FAIL* ]] && FAILURES=$((FAILURES + 1))
-  printf '  [%s] %s - %s%s\n' "$3" "$2" "$1" "${4:+ ($4)}"
-}
-
-report() {
-  echo
-  echo "============================ E2E REPORT ============================"
-  printf '%s\n' "PHASE|CHECK|RESULT|DETAIL" "${RESULTS[@]}" | column -t -s'|'
-  echo "====================================================================="
-  if (( FAILURES > 0 )); then
-    echo "VERDICT: FAIL ($FAILURES check(s) failed)"
-  else
-    echo "VERDICT: PASS"
-  fi
-  echo "Total time: $(( ($(date +%s) - RUN_START) / 60 ))m $(( ($(date +%s) - RUN_START) % 60 ))s"
-}
+REPORT_TITLE="E2E REPORT"
+# shellcheck source=lib.sh
+source "$SCRIPT_DIR/lib.sh"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -263,7 +247,6 @@ aws_gone() { # check_name command...
 # ---------------------------------------------------------------------------
 # Phase 0 - preflight
 # ---------------------------------------------------------------------------
-RUN_START=$(date +%s)
 echo "== Phase 0: preflight"
 
 kubectl get nodes >/dev/null 2>&1 \
@@ -521,6 +504,18 @@ if $INFLATE_OK; then
 else
   echo "== Skipping contract + data-plane checks (inflate failed)"
   record contract "skipped" SKIP "inflate failed"
+fi
+
+# ---------------------------------------------------------------------------
+# Workflow suite - its own namespace and teardown, so it runs before --keep can exit
+# ---------------------------------------------------------------------------
+echo "== Workflow suite"
+WF_ARGS=()
+$KEEP && WF_ARGS+=(--keep)
+if "$SCRIPT_DIR/e2e-workflow.sh" "${WF_ARGS[@]}"; then
+  record workflow "e2e-workflow.sh" PASS ""
+else
+  record workflow "e2e-workflow.sh" FAIL "see the Workflow report above"
 fi
 
 # ---------------------------------------------------------------------------

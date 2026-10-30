@@ -11,3 +11,9 @@ render-check:
 # Full e2e: inflates every integration including real AWS (~15-25 min, a few cents)
 test-e2e *args:
     ./test/e2e.sh {{args}}
+
+# Workflow only: a Workflow plus an Api that uses it, in-cluster and Entra (~3 min, free)
+#   --keep  skip teardown, leave resources up for debugging
+# The full test-e2e runs this too.
+test-e2e-workflow *args:
+    ./test/e2e-workflow.sh {{args}}
