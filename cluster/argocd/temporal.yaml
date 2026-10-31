@@ -127,8 +127,9 @@ spec:
               - name: TEMPORAL_AUTH_CALLBACK_URL
                 value: https://temporal.local.lab/auth/sso/callback
               # The last scope makes the access token one Temporal accepts, carrying the user's roles.
+              # It names the app by client ID, because Entra refuses an app asking for itself by its api:// URI.
               - name: TEMPORAL_AUTH_SCOPES
-                value: openid,profile,email,api://7f4c1900-e63c-456b-ab5f-898189b24ec4/platform-temporal/.default
+                value: openid,profile,email,aaa9a694-3d1e-40d7-9f9e-8db46c54fbdd/.default
             replicaCount: 1
             nodeSelector:
               node-role.kubernetes.io/worker: worker
