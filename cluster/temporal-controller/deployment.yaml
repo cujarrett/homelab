@@ -28,6 +28,11 @@ spec:
             - --temporal-address=temporal-frontend.temporal.svc.cluster.local:7233
             - --health-probe-bind-address=:8081
             - --leader-elect
+            # Sign in to Temporal with an Entra token traded for this pod's SPIFFE SVID.
+            # The client ID is temporal-controller-entra's, from cluster/temporal-controller/entra.yaml.
+            - --entra-tenant-id=7f4c1900-e63c-456b-ab5f-898189b24ec4
+            - --entra-client-id=3b4815e2-c1d2-4f4e-af2d-2b6c0f09015b
+            - --temporal-token-scope=api://7f4c1900-e63c-456b-ab5f-898189b24ec4/platform-temporal/.default
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
