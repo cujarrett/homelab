@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/argoproj.io/application_v1alpha1.json
+# cert-manager itself. The issuers live in cluster/cert-manager, synced by the cluster-apps ApplicationSet.
+# Kept as its own Application so the issuers app stays as it is.
+# No finalizer, because deleting this Application would delete the CRDs and every Certificate with them.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager-chart
+  namespace: argocd
+spec:
+  project: cluster
+  source:
+    repoURL: https://charts.jetstack.io
+    chart: cert-manager
+    targetRevision: v1.20.5
+    helm:
+      releaseName: cert-manager
+      values: |
+        crds:
+          enabled: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  # cainjector writes the CA into both webhooks at runtime.
+  # Ignored here, or ArgoCD shows drift and selfHeal blanks it.
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions:
+        - '.webhooks[].clientConfig.caBundle'
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jqPathExpressions:
+        - '.webhooks[].clientConfig.caBundle'
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true

@@ -105,6 +105,13 @@ spec:
             tls:
               spire:
                 enabled: false
+            # The chart's nginx tag trails upstream patch releases.
+            # This nginx is the public face of oidc.mattjarrett.dev.
+            insecureScheme:
+              nginx:
+                image:
+                  # renovate: datasource=docker depName=nginxinc/nginx-unprivileged
+                  tag: 1.30.6-alpine
             config:
               # Advertise the /.well-known/ path that Cloudflare lets datacenter callers reach.
               # Traefik rewrites it back to /keys - see cluster/spire/oidc-jwks-ingress.yaml.
