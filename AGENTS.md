@@ -364,7 +364,7 @@ Go apps in this workspace:
 | `launchpad-api` | `launchpad-api` | BFF (backend for the frontend) for the Launchpad UI |
 | `github-exporter` | `github-exporter` | Prometheus exporter for pull request, auto-merge and workflow metrics across the account's repos |
 | `platform-exporter` | `platform-exporter` | Prometheus exporter for Crossplane XR, binding and pod readiness timings |
-| `workload-identity-sidecar` | `secret-fetcher` | Sidecar that trades a SPIFFE SVID for short-lived cloud credentials. Go code lives in `sidecar/secret-fetcher` |
+| `workload-identity-sidecar` | `workload-identity-sidecar` | Sidecar that trades a SPIFFE SVID for short-lived cloud credentials. Go code lives in `sidecar/` |
 | `homelab-stats` | `homelab-stats` | Read-only JSON for the homelab section on mattjarrett.dev, built from a fixed set of Prometheus queries and the blog-stats gist |
 | `temporal-controller` | `manager` | Kubebuilder controller for the `TemporalNamespace` CRD. Uses the kubebuilder `Makefile`, not `just` |
 | `platform-connections-demo` | `api`, `downstream` | Monorepo for the service mesh walkthrough. `api` runs as `upstream-api`. `downstream` runs as `authorized-api` and `unauthorized-api`. Each has its own `justfile` |
