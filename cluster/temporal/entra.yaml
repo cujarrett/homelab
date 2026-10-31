@@ -14,6 +14,17 @@ spec:
     api:
       # v2 tokens, issued by login.microsoftonline.com/<tenant>/v2.0, which is what Temporal validates.
       requestedAccessTokenVersion: 2
+      # The UI asks for this scope to get an access token for Temporal on the user's behalf.
+      # Entra hands out such a token only for a scope the app exposes.
+      oauth2PermissionScope:
+        - id: 69f122f8-d249-4bce-8629-976a105be4b5
+          value: Temporal.Use
+          type: User
+          enabled: true
+          adminConsentDisplayName: Use Temporal
+          adminConsentDescription: Lets the Temporal UI call Temporal as the signed-in user.
+          userConsentDisplayName: Use Temporal
+          userConsentDescription: Lets the Temporal UI call Temporal as you.
     identifierUris:
       - api://7f4c1900-e63c-456b-ab5f-898189b24ec4/platform-temporal
     # The Temporal UI signs people in through this app, and gets back a token for it.
