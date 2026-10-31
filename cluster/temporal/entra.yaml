@@ -27,6 +27,14 @@ spec:
           userConsentDescription: Lets the Temporal UI call Temporal as you.
     identifierUris:
       - api://7f4c1900-e63c-456b-ab5f-898189b24ec4/platform-temporal
+    # The UI signs in as this app and asks for a token for this app.
+    # Entra allows that only through the .default scope.
+    # .default gives only the permissions listed here, so Temporal.Use is listed.
+    requiredResourceAccess:
+      - resourceAppId: aaa9a694-3d1e-40d7-9f9e-8db46c54fbdd
+        resourceAccess:
+          - id: 69f122f8-d249-4bce-8629-976a105be4b5
+            type: Scope
     # The Temporal UI signs people in through this app, and gets back a token for it.
     web:
       redirectUris:
