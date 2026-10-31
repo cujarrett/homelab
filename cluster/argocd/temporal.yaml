@@ -62,6 +62,21 @@ spec:
               # temporal-controller creates every namespace, so the chart creates none.
               namespaces:
                 create: false
+              # Every call needs an Entra token. Its roles claim decides which namespaces the caller may use.
+              # Role values look like Temporal.<namespace>.<role>, such as Temporal.foo.writer.
+              # Temporal's own worker service calls the internal frontend, which skips this.
+              authorization:
+                jwtKeyProvider:
+                  keySourceURIs:
+                    - https://login.microsoftonline.com/7f4c1900-e63c-456b-ab5f-898189b24ec4/discovery/v2.0/keys
+                  refreshInterval: 1h
+                # Microsoft signs every tenant's tokens with the same keys, and Temporal never checks the issuer.
+                # The audience is the Temporal app's client ID. Only this tenant can issue tokens for it.
+                audience: aaa9a694-3d1e-40d7-9f9e-8db46c54fbdd
+                permissionsClaimName: roles
+                permissionsRegex: '^Temporal\.(?P<namespace>.+)\.(?P<role>[a-z]+)$'
+                authorizer: default
+                claimMapper: default
             frontend:
               # The only Temporal service in the mesh, so callers' tokens cross the network encrypted.
               # Its calls to the other services and Postgres skip the sidecar and stay inside the namespace.

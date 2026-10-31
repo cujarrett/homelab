@@ -52,6 +52,8 @@ spec:
   forProvider:
     clientIdRef:
       name: temporal-entra
+    # Entra gives a token only to people and apps holding one of its roles.
+    appRoleAssignmentRequired: true
     owners:
       - 57f4959a-6c64-4a71-b66e-d9255c4e6b5e
 ---

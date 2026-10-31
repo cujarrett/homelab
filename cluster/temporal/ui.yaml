@@ -13,22 +13,5 @@ spec:
   rules:
     - matches:
         - path: {type: PathPrefix, value: /}
-      filters:
-        - type: ExtensionRef
-          extensionRef: {group: traefik.io, kind: Middleware, name: temporal-basic-auth}
       backendRefs:
         - {group: "", kind: Service, name: temporal-web, port: 8080, weight: 1}
----
-# The UI can terminate and signal workflows and has no login of its own, so the control sits at the proxy.
-# Credentials live in temporal-basic-auth (key users, a bcrypt htpasswd line), rendered by External Secrets.
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: temporal-basic-auth
-  namespace: temporal
-spec:
-  basicAuth:
-    secret: temporal-basic-auth
-    # Strip the Authorization header once Traefik has checked it.
-    # The UI has no use for it.
-    removeHeader: true

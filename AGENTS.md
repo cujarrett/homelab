@@ -161,7 +161,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `node-sysctls` | node-sysctls, k3s-env | DaemonSets that write host settings from Git. `node-sysctls` applies sysctls on every node. `k3s-env` writes a `GOMEMLIMIT` drop-in to ctrl-1's `/etc/systemd/system/k3s.service.d/`. It takes effect on the next daemon-reload and k3s restart |
 | `spire-server`, `spire-system` | SPIRE | Workload identity (SPIFFE). Agent DaemonSet on all nodes. OIDC discovery provider serving `oidc.mattjarrett.dev` |
 | `trivy-system` | Trivy operator | Image CVE scans for the Security dashboard |
-| `temporal` | Temporal | Frontend, history, matching, worker and UI, plus `temporal-postgres` (5Gi on `longhorn-retain`). UI at `temporal.local.lab` behind basic auth |
+| `temporal` | Temporal | Frontend, history, matching, worker and UI, plus `temporal-postgres` (5Gi on `longhorn-retain`). UI at `temporal.local.lab`, signed in through Entra |
 | `temporal-controller` | temporal-controller | Kubebuilder controller that creates, corrects and deletes Temporal namespaces from `TemporalNamespace` resources |
 
 ## Internal Hostnames (`.local.lab`)

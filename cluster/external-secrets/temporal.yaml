@@ -8,14 +8,3 @@ spec:
   data:
     - secretKey: password
       remoteRef: {key: /homelab/temporal/postgres-password}
----
-apiVersion: external-secrets.io/v1
-kind: ExternalSecret
-metadata:
-  name: temporal-basic-auth
-  namespace: temporal
-spec:
-  secretStoreRef: {kind: ClusterSecretStore, name: aws-parameter-store}
-  data:
-    - secretKey: users
-      remoteRef: {key: /homelab/temporal/basic-auth-htpasswd}
