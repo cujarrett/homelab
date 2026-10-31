@@ -6,6 +6,13 @@ A space for durable workflows: steps that keep their progress through crashes, r
 
 - **Workflow namespace:** named after the `Workflow`, with the retention you set. Names are shared across the whole platform, so a name another workspace already uses leaves this `Workflow` not ready.
 
+## Access
+
+- **Same workspace:** an `Api` with `workflowRef` can start and run workflows here.
+- **Other workspaces:** an `Api` elsewhere cannot, even with the same `workflowRef` name.
+- **Tokens:** every call needs a token. Calls without one are refused.
+- **Name clash:** access is granted only once the workflow namespace is ready, so a clash grants nothing.
+
 ## Parameters
 
 | Parameter | Required | Default | Description |

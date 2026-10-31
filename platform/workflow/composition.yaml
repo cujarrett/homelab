@@ -61,10 +61,12 @@ spec:
               {{- with $params.description }}
               description: {{ . | quote }}
               {{- end }}
+            {{- /* The role waits for Ready, so a name clash never grants use of another workspace's namespace. */ -}}
+            {{- /* Once created it stays, so a brief not-ready never revokes a working grant. */ -}}
+            {{- if or (eq $ready "True") (index (.observed.resources | default dict) "temporal-role") }}
             ---
             # The permission to use this Temporal namespace, on the shared Temporal app registration.
             # Temporal reads the value from the token's roles claim.
-            # Entra refuses a second role with the same value, so a name clash fails here too.
             apiVersion: applications.azuread.m.upbound.io/v1beta1
             kind: AppRole
             metadata:
@@ -81,6 +83,7 @@ spec:
                 description: {{ printf "Start and run workflows in %s" $name | quote }}
                 allowedMemberTypes:
                   - Application
+            {{- end }}
             ---
             apiVersion: platform.local.lab/v1alpha1
             kind: Workflow
