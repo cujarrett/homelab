@@ -33,6 +33,11 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: [ALL]
+          volumeMounts:
+            # The SPIRE agent's socket, for the JWT-SVID the controller trades for an Entra token.
+            - name: spiffe
+              mountPath: /var/run/secrets/spiffe.io
+              readOnly: true
           readinessProbe:
             httpGet:
               path: /readyz
@@ -48,3 +53,8 @@ spec:
             limits:
               cpu: 200m
               memory: 128Mi
+      volumes:
+        - name: spiffe
+          csi:
+            driver: csi.spiffe.io
+            readOnly: true

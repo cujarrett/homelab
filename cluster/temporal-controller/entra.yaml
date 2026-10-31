@@ -1,0 +1,72 @@
+# temporal-controller's Entra identity. It trades the pod's SPIFFE JWT-SVID for an Entra
+# token, which Temporal reads as namespace admin. No client secret exists anywhere.
+# owners is crossplane-entra's service principal, or it can create these but never update or delete them.
+apiVersion: applications.azuread.m.upbound.io/v1beta1
+kind: Application
+metadata:
+  name: temporal-controller-entra
+  namespace: temporal-controller
+spec:
+  forProvider:
+    displayName: platform-temporal-controller
+    owners:
+      - 57f4959a-6c64-4a71-b66e-d9255c4e6b5e
+---
+apiVersion: serviceprincipals.azuread.m.upbound.io/v1beta1
+kind: Principal
+metadata:
+  name: temporal-controller-entra
+  namespace: temporal-controller
+spec:
+  forProvider:
+    clientIdRef:
+      name: temporal-controller-entra
+    owners:
+      - 57f4959a-6c64-4a71-b66e-d9255c4e6b5e
+---
+# Trusts a JWT-SVID for exactly this pod identity, issued by this cluster's SPIRE.
+apiVersion: applications.azuread.m.upbound.io/v1beta1
+kind: FederatedIdentityCredential
+metadata:
+  name: temporal-controller-entra
+  namespace: temporal-controller
+spec:
+  forProvider:
+    applicationIdRef:
+      name: temporal-controller-entra
+    displayName: workload-identity
+    issuer: https://oidc.mattjarrett.dev
+    subject: spiffe://homelab.local/ns/temporal-controller/sa/temporal-controller
+    audiences:
+      - api://AzureADTokenExchange
+---
+# Temporal treats temporal-system admin as admin of every namespace.
+# The controller needs it to create and delete them.
+apiVersion: applications.azuread.m.upbound.io/v1beta1
+kind: AppRole
+metadata:
+  name: temporal-system-admin
+  namespace: temporal-controller
+spec:
+  forProvider:
+    # The shared platform-temporal app registration in cluster/temporal/entra.yaml.
+    applicationId: /applications/d2e3b1a2-0e41-4b0f-b9d7-b5fcd8aeabea
+    roleId: cf5f035a-0cd7-4fb0-bcd5-31652af1bb5f
+    value: Temporal.temporal-system.admin
+    displayName: Temporal.temporal-system.admin
+    description: Create, update and delete every Temporal namespace
+    allowedMemberTypes:
+      - Application
+---
+apiVersion: app.azuread.m.upbound.io/v1beta1
+kind: RoleAssignment
+metadata:
+  name: temporal-controller-admin
+  namespace: temporal-controller
+spec:
+  forProvider:
+    appRoleId: cf5f035a-0cd7-4fb0-bcd5-31652af1bb5f
+    principalObjectIdRef:
+      name: temporal-controller-entra
+    # The platform-temporal service principal.
+    resourceObjectId: 8e72d411-99ad-44d9-9d96-306c6ba1a7f3

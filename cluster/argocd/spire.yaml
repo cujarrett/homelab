@@ -61,6 +61,16 @@ spec:
                           operator: In
                           values:
                             - api
+                  # temporal-controller trades its SVID for an Entra token to sign in to Temporal.
+                  # Pinned to its own namespace and pod label, so no other pod gets this ID.
+                  temporal-controller:
+                    spiffeIDTemplate: spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}
+                    namespaceSelector:
+                      matchLabels:
+                        kubernetes.io/metadata.name: temporal-controller
+                    podSelector:
+                      matchLabels:
+                        app: temporal-controller
 
           spire-agent:
             logLevel: INFO
