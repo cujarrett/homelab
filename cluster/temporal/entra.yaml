@@ -16,6 +16,10 @@ spec:
       requestedAccessTokenVersion: 2
     identifierUris:
       - api://7f4c1900-e63c-456b-ab5f-898189b24ec4/platform-temporal
+    # The Temporal UI signs people in through this app, and gets back a token for it.
+    web:
+      redirectUris:
+        - https://temporal.local.lab/auth/sso/callback
     owners:
       - 57f4959a-6c64-4a71-b66e-d9255c4e6b5e
 ---
@@ -31,3 +35,33 @@ spec:
       name: temporal-entra
     owners:
       - 57f4959a-6c64-4a71-b66e-d9255c4e6b5e
+---
+# The Temporal UI's client secret. The UI is not SPIFFE-aware, so it cannot use a federated credential.
+# Crossplane writes it to the temporal-ui-entra Secret and renews it a month before it expires.
+apiVersion: applications.azuread.m.upbound.io/v1beta1
+kind: Password
+metadata:
+  name: temporal-ui
+  namespace: temporal
+spec:
+  forProvider:
+    applicationIdRef:
+      name: temporal-entra
+    displayName: temporal-ui
+    endDateRelative: 8760h
+  writeConnectionSecretToRef:
+    name: temporal-ui-entra
+---
+# Lets Matt use every Temporal namespace from the UI.
+apiVersion: app.azuread.m.upbound.io/v1beta1
+kind: RoleAssignment
+metadata:
+  name: temporal-ui-admin-matt
+  namespace: temporal
+spec:
+  forProvider:
+    # Temporal.temporal-system.admin, defined in cluster/temporal-controller/entra.yaml.
+    appRoleId: cf5f035a-0cd7-4fb0-bcd5-31652af1bb5f
+    principalObjectId: c685712a-a11c-40a0-9972-c250f7eac347
+    resourceObjectIdRef:
+      name: temporal-entra

@@ -55,8 +55,10 @@ spec:
     value: Temporal.temporal-system.admin
     displayName: Temporal.temporal-system.admin
     description: Create, update and delete every Temporal namespace
+    # Application for the controller. User for people signing in to the Temporal UI.
     allowedMemberTypes:
       - Application
+      - User
 ---
 apiVersion: app.azuread.m.upbound.io/v1beta1
 kind: RoleAssignment

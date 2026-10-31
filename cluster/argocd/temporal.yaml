@@ -111,6 +111,24 @@ spec:
             # Delete this override once the chart's own UI tag reaches 2.57.0, or it pins an older UI.
             image:
               tag: 2.57.0
+            # Sign in through Entra. The UI sends the signed-in user's token to Temporal.
+            additionalEnv:
+              - name: TEMPORAL_AUTH_ENABLED
+                value: "true"
+              - name: TEMPORAL_AUTH_PROVIDER_URL
+                value: https://login.microsoftonline.com/7f4c1900-e63c-456b-ab5f-898189b24ec4/v2.0
+              - name: TEMPORAL_AUTH_CLIENT_ID
+                value: aaa9a694-3d1e-40d7-9f9e-8db46c54fbdd
+              - name: TEMPORAL_AUTH_CLIENT_SECRET
+                valueFrom:
+                  secretKeyRef:
+                    name: temporal-ui-entra
+                    key: attribute.value
+              - name: TEMPORAL_AUTH_CALLBACK_URL
+                value: https://temporal.local.lab/auth/sso/callback
+              # The last scope makes the access token one Temporal accepts, carrying the user's roles.
+              - name: TEMPORAL_AUTH_SCOPES
+                value: openid,profile,email,api://7f4c1900-e63c-456b-ab5f-898189b24ec4/platform-temporal/.default
             replicaCount: 1
             nodeSelector:
               node-role.kubernetes.io/worker: worker
