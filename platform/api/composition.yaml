@@ -310,6 +310,13 @@ spec:
                     # The temporal NetworkPolicy admits these pods. Teams can't create pods, so only workflowRef sets it.
                     platform.local.lab/uses-workflow: "true"
                     {{- end }}
+                  {{- if $xr.spec.parameters.callsClusterApi }}
+                  annotations:
+                    # Calls to the Kubernetes API go around the sidecar.
+                    # The sidecar drops long-running watches.
+                    # 10.43.0.1 is the Kubernetes API address on k3s by default.
+                    traffic.sidecar.istio.io/excludeOutboundIPRanges: "10.43.0.1/32"
+                  {{- end }}
                 spec:
                   serviceAccountName: {{ $name }}
                   # runAsUser overrides the image's own USER, since kubelet refuses

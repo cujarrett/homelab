@@ -173,6 +173,10 @@ spec:
                       default: 1
                       minimum: 1
                       description: "Number of API replicas."
+                    callsClusterApi:
+                      type: boolean
+                      default: false
+                      description: "Set when this API calls the cluster's own control API, for example to watch platform resources. Keeps those long-lived connections direct and unbroken."
                     readinessCheckPath:
                       type: string
                       pattern: "^/[A-Za-z0-9._~/-]*$"

@@ -29,6 +29,7 @@ The namespace is owned by the tenant - created by `namespace.yaml` in the tenant
 | `replicas` | no | `1` | Number of API replicas. |
 | `size` | no | `sm` | Compute tier: `xs=25m/100m CPU, 32Mi/64Mi mem` · `sm=50m/200m CPU, 64Mi/128Mi mem` · `md=100m/500m CPU, 128Mi/256Mi mem` · `lg=250m/1000m CPU, 256Mi/512Mi mem`. |
 | `host` | no | - | Hostname clients call. Must be under `local.lab` for the homelab network or `mattjarrett.dev` for the internet. If omitted, no route is created. |
+| `callsClusterApi` | no | `false` | Set when this API calls the cluster's own control API, for example to watch platform resources. Those long-lived connections then stay direct and unbroken. |
 | `readinessCheckPath` | no | `/healthz` | HTTP path the readiness probe hits. Set to `/readyz` for apps that gate readiness on external dependencies. |
 | `cache.enabled` | no | `false` | Provision a cache cluster owned by this Api. |
 | `cache.backend` | no | `private-cloud` | `private-cloud`=in-cluster Redis, `public-cloud`=AWS ElastiCache. |
