@@ -63,7 +63,7 @@ spec:
               namespaces:
                 create: false
               # Every call needs an Entra token. Its roles claim decides which namespaces the caller may use.
-              # Role values look like Temporal.<namespace>.<role>, such as Temporal.foo.writer.
+              # Role values look like Temporal.<namespace>.<role>, such as Temporal.foo.write.
               # Temporal's own worker service calls the internal frontend, which skips this.
               authorization:
                 jwtKeyProvider:
