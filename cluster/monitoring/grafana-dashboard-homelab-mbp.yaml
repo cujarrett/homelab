@@ -3838,8 +3838,12 @@ data:
           "pluginVersion": "13.2.3",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "cluster-availability-archive"
+              },
               "editorMode": "code",
-              "expr": "time() - min(node_boot_time_seconds)",
+              "expr": "time() - max_over_time(timestamp(count(up{job=\"node-exporter\"} == 1) < 3)[365d:30s])",
               "instant": true,
               "legendFormat": "Time Since Last Power Outage",
               "refId": "A"
