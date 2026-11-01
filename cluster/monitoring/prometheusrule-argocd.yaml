@@ -13,11 +13,12 @@ spec:
         # A controller restart alone creates a "new" argocd_app_info series per app, so
         # collapsing to (name, health_status, sync_status) first removes that noise.
         # Counts distinct state combos, not transitions - a normal deploy stays under threshold.
+        # Guest sandboxes are left out. They live 10 minutes, and the workflow demo restarts pods on purpose.
         - alert: ArgoCDAppFlapping
           expr: |
             count by (name) (
               count by (name, health_status, sync_status) (
-                count_over_time(argocd_app_info[1h])
+                count_over_time(argocd_app_info{name!~"guest-.*"}[1h])
               )
             ) > 3
           for: 15m
