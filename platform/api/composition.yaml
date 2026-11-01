@@ -447,7 +447,8 @@ spec:
                         httpGet:
                           path: {{ $healthCheckPath }}
                           port: {{ $xr.spec.parameters.port | default 8080 }}
-                        periodSeconds: 10
+                        # A new pod becomes routable at most this long after it can serve.
+                        periodSeconds: 3
                       env:
                         # servicebinding.io convention: $SERVICE_BINDING_ROOT/<binding>/<key>
                         - name: SERVICE_BINDING_ROOT
