@@ -1,0 +1,34 @@
+# The chart opens the metrics port but ships no Service, and its ServiceMonitor is unfinished.
+# So this Service and ServiceMonitor let the main Prometheus scrape it.
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal-worker-controller-metrics
+  namespace: temporal-worker-controller
+  labels:
+    app.kubernetes.io/name: temporal-worker-controller
+    app.kubernetes.io/component: metrics
+spec:
+  selector:
+    app.kubernetes.io/name: temporal-worker-controller
+    app.kubernetes.io/instance: temporal-worker-controller
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: temporal-worker-controller
+  namespace: temporal-worker-controller
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: temporal-worker-controller
+      app.kubernetes.io/component: metrics
+  endpoints:
+    - port: metrics
+      path: /metrics

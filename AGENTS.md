@@ -163,6 +163,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `trivy-system` | Trivy operator | Image CVE scans for the Security dashboard |
 | `temporal` | Temporal | Frontend, history, matching, worker and UI, plus `temporal-postgres` (5Gi on `longhorn-retain`). UI at `temporal.local.lab`, signed in through Entra |
 | `temporal-controller` | temporal-controller | Kubebuilder controller that creates, corrects and deletes Temporal namespaces from `TemporalNamespace` resources |
+| `temporal-worker-controller` | Temporal Worker Controller | Temporal's official controller. Rolls out worker versions from `WorkerDeployment` resources and drains old ones |
 
 ## Internal Hostnames (`.local.lab`)
 
@@ -321,7 +322,7 @@ Four projects group workloads by concern:
 | Project | Allowed source repos | Contents |
 |---|---|---|
 | `platform` | homelab git + `argoproj.github.io/argo-helm` + `charts.crossplane.io/stable` | ArgoCD, Crossplane, compositions, bootstrap |
-| `cluster` | homelab git + `nats-io.github.io/k8s/helm/charts` + `charts.jetstack.io` + `spiffe.github.io/helm-charts-hardened` + `registry-1.docker.io/apollograph` + `go.temporal.io/helm-charts` | Longhorn, Traefik, cert-manager, AdGuard, Cloudflare, NATS + NACK, SPIRE, Apollo operator, Temporal, temporal-controller |
+| `cluster` | homelab git + `nats-io.github.io/k8s/helm/charts` + `charts.jetstack.io` + `spiffe.github.io/helm-charts-hardened` + `registry-1.docker.io/apollograph` + `go.temporal.io/helm-charts` + `registry-1.docker.io/temporalio` | Longhorn, Traefik, cert-manager, AdGuard, Cloudflare, NATS + NACK, SPIRE, Apollo operator, Temporal, temporal-controller, Temporal Worker Controller |
 | `observability` | homelab git + `prometheus-community.github.io/helm-charts` + `grafana.github.io/helm-charts` | kube-prometheus-stack, Loki, Alloy, platform-exporter |
 | `workloads` | homelab git + homelab-workspaces git | All workspace apps (one Application per homelab-workspaces directory) + blog |
 

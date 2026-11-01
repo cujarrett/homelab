@@ -1,0 +1,77 @@
+# Temporal's official Worker Controller. It rolls out worker versions and drains old ones.
+# It signs in to Temporal with a token each Workflow keeps fresh in a Secret. See homelab#297.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: temporal-worker-controller
+  namespace: argocd
+spec:
+  project: cluster
+  sources:
+    - repoURL: registry-1.docker.io/temporalio
+      chart: temporal-worker-controller-crds
+      targetRevision: 0.33.0
+      helm:
+        releaseName: temporal-worker-controller-crds
+    - repoURL: registry-1.docker.io/temporalio
+      chart: temporal-worker-controller
+      targetRevision: 0.33.0
+      helm:
+        releaseName: temporal-worker-controller
+        values: |
+          # Leader election keeps a second replica idle. One is enough here.
+          replicas: 1
+          nodeSelector:
+            node-role.kubernetes.io/worker: worker
+          podSecurityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          containerSecurityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          # Plain HTTP with no auth, like Crossplane's. The metrics hold no secrets.
+          # Turning auth on adds an old proxy image and more setup.
+          metrics:
+            enabled: true
+            disableAuth: true
+          rbac:
+            # The default grants read on every Secret in the cluster.
+            # Listed namespaces get a Role instead. Add each one that runs workers.
+            restrictWatchNamespaces:
+              - temporal-worker-controller
+            # Unbound roles for people to use. Nobody here edits these resources by hand.
+            createEndUserRoles: false
+    - repoURL: https://github.com/cujarrett/homelab.git
+      targetRevision: main
+      path: cluster/temporal-worker-controller
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: temporal-worker-controller
+  # cert-manager's cainjector writes the CA into the webhook at runtime.
+  # Ignored here, or ArgoCD shows drift and selfHeal blanks it.
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions:
+        - '.webhooks[].clientConfig.caBundle'
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    managedNamespaceMetadata:
+      labels:
+        pod-security.kubernetes.io/enforce: restricted
+        pod-security.kubernetes.io/warn: restricted
+        pod-security.kubernetes.io/audit: restricted
+        # Meshed, because Temporal's frontend accepts mTLS only.
+        istio-injection: enabled
+    syncOptions:
+      - CreateNamespace=true
+      # The CRDs are too large for client-side apply's last-applied annotation.
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true

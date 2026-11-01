@@ -3,9 +3,10 @@
 #
 # temporal namespace: the services call each other, and all of them call Postgres.
 # temporal-controller: the frontend on 7233, to manage namespaces.
+# temporal-worker-controller: the frontend on 7233, to roll out worker versions.
 # Pods labelled platform.local.lab/uses-workflow in a workload namespace: the frontend on 7233.
 #   The Api composition sets that label from workflowRef.
-# kube-system: Traefik, for the UI on 8080. Basic auth sits in front of it.
+# kube-system: Traefik, for the UI on 8080. People sign in through Entra.
 # monitoring: Prometheus, for the meshed pods' sidecar metrics on 15020.
 # Node cni0 addresses: kubelet probes. kube-router matches on address alone, so these are each
 #   node's cni0 bridge, the first address of its pod CIDR. Re-check them if a node is rebuilt.
@@ -24,6 +25,13 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: temporal-controller
+      ports:
+        - protocol: TCP
+          port: 7233
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: temporal-worker-controller
       ports:
         - protocol: TCP
           port: 7233
