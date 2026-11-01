@@ -8,7 +8,7 @@ Server-side and incremental static regeneration are not supported, those run a r
 - **ConfigMap** - nginx config with SPA routing (`try_files` → `index.html`), security headers, asset caching, probe path, and extensive scanner/credential-probe blocking rules
 - **Deployment** - nginx container running the pre-built SPA image
 - **Service** - ClusterIP on port 80
-- **Middleware** - Traefik rate limiter: 60 requests/min average, burst of 20, keyed per client IP (`CF-Connecting-IP` header)
+- **Middleware** - Traefik rate limiter: 300 requests/min average, burst of 100, keyed per client IP (`CF-Connecting-IP` header)
 - **Route** - HTTPS on `host`, rate limit applied
 - **Connection policy** - always. Refuses any call this app makes to a destination it has not declared, and any inbound call that does not carry a workload identity the platform issued. See [Platform Connections](../docs/connections.md).
 
