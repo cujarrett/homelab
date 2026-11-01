@@ -20,6 +20,10 @@ spec:
             # renovate: datasource=docker depName=docker.io/kiwigrid/k8s-sidecar
             tag: 2.14.1
         loki:
+          # The chart pins a Loki tag older than its own appVersion.
+          image:
+            # renovate: datasource=docker depName=docker.io/grafana/loki
+            tag: 3.6.19
           commonConfig:
             replication_factor: 1
           storage:
