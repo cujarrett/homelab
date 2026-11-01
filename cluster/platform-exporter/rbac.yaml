@@ -10,7 +10,7 @@ metadata:
   name: platform-exporter
 rules:
   - apiGroups: ["platform.local.lab"]
-    resources: ["apis", "spas", "sqls", "nosqls", "objectstorages", "caches", "topics", "subscriptions", "managedsecrets", "wordpresses", "graphapis", "federatedgraphs"]
+    resources: ["apis", "spas", "sqls", "nosqls", "objectstorages", "caches", "topics", "subscriptions", "managedsecrets", "wordpresses", "graphapis", "federatedgraphs", "workflows"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["dynamodb.aws.m.upbound.io"]
     resources: ["tables"]
@@ -37,6 +37,9 @@ rules:
     verbs: ["get", "list", "watch"]
   - apiGroups: ["app.azuread.m.upbound.io"]
     resources: ["roleassignments"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["temporal.local.lab"]
+    resources: ["temporalnamespaces"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["jetstream.nats.io"]
     resources: ["streams", "consumers"]
