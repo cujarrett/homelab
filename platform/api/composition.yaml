@@ -93,6 +93,11 @@ spec:
             {{- $metricsPort := $xr.spec.parameters.metricsPort | default 9090 }}
             {{- $scrapeInterval := $xr.spec.parameters.scrapeInterval | default "60s" }}
             {{- $replicas := $xr.spec.parameters.replicas | default 1 }}
+            {{- /* Ready once every replica is Ready, so the XR never reports Ready before its pods. */ -}}
+            {{- $deployObs := index $observedResources "deployment" | default dict }}
+            {{- $readyReplicas := 0 }}
+            {{- if $deployObs.resource }}{{- $readyReplicas = $deployObs.resource.status.readyReplicas | default 0 }}{{- end }}
+            {{- $deployReady := ternary "True" "False" (ge (int $readyReplicas) (int $replicas)) }}
             {{- $healthCheckPath := $xr.spec.parameters.readinessCheckPath | default "/healthz" }}
             {{- $sizeResourceMap := dict "xs" (dict "cpuReq" "25m" "cpuLim" "100m" "memReq" "32Mi" "memLim" "64Mi") "sm" (dict "cpuReq" "50m" "cpuLim" "200m" "memReq" "64Mi" "memLim" "128Mi") "md" (dict "cpuReq" "100m" "cpuLim" "500m" "memReq" "128Mi" "memLim" "256Mi") "lg" (dict "cpuReq" "250m" "cpuLim" "1000m" "memReq" "256Mi" "memLim" "512Mi") }}
             {{- $sizeKey := $xr.spec.parameters.size | default "sm" }}
@@ -289,7 +294,7 @@ spec:
                 # annotation an edited ConfigMap never reaches the running process.
                 reloader.stakater.com/auto: "true"
                 {{- end }}
-                gotemplating.fn.crossplane.io/ready: "True"
+                gotemplating.fn.crossplane.io/ready: {{ $deployReady | quote }}
             spec:
               replicas: {{ $replicas }}
               # A rolling update that never goes Ready holds the old pods forever.
