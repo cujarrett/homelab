@@ -3,7 +3,6 @@
 #
 # temporal namespace: the services call each other, and all of them call Postgres.
 # temporal-controller: the frontend on 7233, to manage namespaces.
-# temporal-worker-controller: the frontend on 7233, to roll out worker versions.
 # Pods labelled platform.local.lab/uses-workflow in a workload namespace: the frontend on 7233.
 #   The Api composition sets that label from workflowRef.
 # kube-system: Traefik, for the UI on 8080. People sign in through Entra.
@@ -25,13 +24,6 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: temporal-controller
-      ports:
-        - protocol: TCP
-          port: 7233
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: temporal-worker-controller
       ports:
         - protocol: TCP
           port: 7233
