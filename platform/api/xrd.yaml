@@ -125,14 +125,6 @@ spec:
                         type: string
                         pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
                         maxLength: 253
-                    secretsFrom:
-                      type: array
-                      maxItems: 10
-                      description: "Secrets in this namespace, mounted as files at /secrets/<secret-name>/<key>, one file per key. Read a file on use rather than at startup, because a rotated value lands there without the pod restarting. Hand-create one or declare a Secret XR that fills it - two vendors' credentials can have separate lifecycles."
-                      items:
-                        type: string
-                        pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
-                        maxLength: 253
                     topicRef:
                       type: object
                       description: "Optional reference to a Topic instance this API publishes to. When set, the platform wires the connection automatically."
@@ -309,7 +301,7 @@ spec:
               properties:
                 config:
                   type: object
-                  description: "What the platform put in the container that the spec does not already say. ConfigMaps and Secrets are not repeated here, because configFrom and secretsFrom already name them."
+                  description: "What the platform put in the container that the spec does not already say. ConfigMaps are not repeated here, because configFrom already names them."
                   properties:
                     bindings:
                       type: array

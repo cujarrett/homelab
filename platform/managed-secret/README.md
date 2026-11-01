@@ -23,7 +23,7 @@ The identity and access to read it belong to the referencing `Api`, which create
 
 The pod proves who it is with a short-lived SVID, trades it for credentials scoped to this one secret, and the platform writes each property to a file. Nothing long-lived is stored, and the value never becomes a Kubernetes object. For the full design see [Platform Workload Identity](../docs/workload-identity.md).
 
-Files land at `/secrets/<name>/<key>`, the same shape `secretsFrom` uses, so an app reads a `ManagedSecret` exactly like a hand-created one.
+Files land at `/secrets/<name>/<key>`, one file per key.
 
 ## Waiting for a value
 

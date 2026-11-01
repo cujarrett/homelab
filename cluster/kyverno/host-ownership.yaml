@@ -1,7 +1,7 @@
-# Two namespaces serving one host lets the second pass an HTTP-01 challenge for a
-# host the first already serves, take its private key through secretsFrom, and race
-# it for the "/" route. Every XR host becomes an Ingress, so one Ingress lookup also
-# covers hosts no XR holds, such as blog and oidc.
+# Two namespaces serving one host lets the second get a certificate for a host
+# the first already serves, and race it for the "/" route.
+# Every XR host becomes an Ingress, so one Ingress lookup also covers hosts no XR
+# holds, such as blog and oidc.
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:

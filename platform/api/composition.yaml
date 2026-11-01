@@ -97,7 +97,6 @@ spec:
             {{- $sizeResourceMap := dict "xs" (dict "cpuReq" "25m" "cpuLim" "100m" "memReq" "32Mi" "memLim" "64Mi") "sm" (dict "cpuReq" "50m" "cpuLim" "200m" "memReq" "64Mi" "memLim" "128Mi") "md" (dict "cpuReq" "100m" "cpuLim" "500m" "memReq" "128Mi" "memLim" "256Mi") "lg" (dict "cpuReq" "250m" "cpuLim" "1000m" "memReq" "256Mi" "memLim" "512Mi") }}
             {{- $sizeKey := $xr.spec.parameters.size | default "sm" }}
             {{- $sizeResources := get $sizeResourceMap $sizeKey | default (get $sizeResourceMap "sm") }}
-            {{- $secretsFrom := $xr.spec.parameters.secretsFrom | default list }}
             {{- $configFrom := $xr.spec.parameters.configFrom | default list }}
             {{- $topicRefName := "" }}
             {{- $topicStreamName := "" }}
@@ -231,7 +230,6 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
             {{- $boundSecrets := list }}
             {{- range $b := $bindings }}{{- $boundSecrets = append $boundSecrets $b.secretName }}{{- end }}
-            {{- range $s := $secretsFrom }}{{- $boundSecrets = append $boundSecrets $s }}{{- end }}
             {{- if $boundSecrets }}
             ---
             # --- Role ---
@@ -544,13 +542,6 @@ spec:
                         {{- end }}
                         {{- /* Kept out of /bindings, where a servicebinding.io scan       */ -}}
                         {{- /* expects a type file per directory. A Secret has none.        */ -}}
-                        {{- range $s := $secretsFrom }}
-                        - name: secret-{{ $s }}
-                          mountPath: /secrets/{{ $s }}
-                          readOnly: true
-                        {{- end }}
-                        {{- /* Same /secrets/<name>/<key> shape as secretsFrom, so an app  */}}
-                        {{- /* reads a ManagedSecret exactly like a hand-created one.      */}}
                         {{- range $ms := $managedSecrets }}
                         - name: {{ $ms.dir }}-value
                           mountPath: /secrets/{{ $ms.name }}
@@ -578,14 +569,6 @@ spec:
                       secret:
                         secretName: {{ $b.secretName }}
                         optional: true
-                    {{- end }}
-                    {{- /* Not optional, unlike the binding volumes above. The app named   */ -}}
-                    {{- /* this Secret, so a missing one should stop the pod rather than    */ -}}
-                    {{- /* start it against an empty directory.                             */ -}}
-                    {{- range $s := $secretsFrom }}
-                    - name: secret-{{ $s }}
-                      secret:
-                        secretName: {{ $s }}
                     {{- end }}
                     {{- range $ms := $managedSecrets }}
                     - name: {{ $ms.dir }}-binding
@@ -1220,7 +1203,6 @@ spec:
             {{- /* The credential paths are the ones a reader cannot derive, so they belong */ -}}
             {{- /* here even though an injected variable also names each of them.           */ -}}
             {{- $mountedFiles := list }}
-            {{- range $sec := $secretsFrom }}{{- $mountedFiles = append $mountedFiles (printf "/secrets/%s" $sec) }}{{- end }}
             {{- range $ms := $managedSecrets }}{{- $mountedFiles = append $mountedFiles (printf "/secrets/%s" $ms.name) }}{{- end }}
             {{- if gt (len $awsBindings) 0 }}{{- $mountedFiles = append $mountedFiles "/aws-credentials/credentials" }}{{- end }}
             {{- if $entraNeeded }}{{- $mountedFiles = append $mountedFiles "/entra-identity/token" }}{{- end }}

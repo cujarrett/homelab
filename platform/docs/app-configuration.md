@@ -25,7 +25,8 @@ spec:
     size: md
     host: orders.example.com
     configFrom: [orders-config]            # ConfigMaps
-    secretsFrom: [orders-credentials]      # Secrets
+    managedSecretRefs:                     # secret values, never Kubernetes Secrets
+      - name: orders-credentials
     provides:
       - name: browse
         auth: mesh
@@ -116,15 +117,15 @@ No secret is needed here either. A client assertion is accepted anywhere a clien
 
 ## Config and secrets
 
-`configFrom` names ConfigMaps and the composition mounts them as environment, in order, later entries winning. `secretsFrom` names Secrets and the composition mounts each as files at `/secrets/<secret-name>/<key>`. Both are lists, so two vendors' credentials can have separate lifecycles.
+`configFrom` names ConfigMaps and the composition mounts them as environment, in order, later entries winning.
 
-`managedSecretRefs` reaches the same files by a different route, for a value whose owner sets it in a cloud console rather than by hand. It never becomes a Kubernetes Secret - see [Platform Workload Identity](./workload-identity.md).
+`managedSecretRefs` names secret values, and the composition mounts each as files at `/secrets/<name>/<key>`. It is a list, so two vendors' credentials can have separate lifecycles. A value never becomes a Kubernetes Secret. See [Platform Workload Identity](./workload-identity.md).
 
 Which contract a value gets depends on whether it can change under a running pod.
 
 | What changed | What the pod sees |
 |---|---|
-| A key in a Secret, named by `secretsFrom` or bound | The file updates within about a minute, no restart. Only helps if the app re-reads on use |
+| A key in a bound Secret | The file updates within about a minute, no restart. Only helps if the app re-reads on use |
 | A property of a `managedSecretRefs` value | The file updates within 15 minutes, no restart, because the sidecar polls rather than the kubelet syncing a volume. Only helps if the app re-reads on use |
 | A key in a ConfigMap named by `configFrom` | [Stakater Reloader](https://github.com/stakater/Reloader) rolls the Deployment, because `envFrom` values cannot change in place |
 | A field in the XR | Crossplane re-renders the Deployment and the rollout happens on its own |

@@ -38,8 +38,7 @@ The namespace is owned by the tenant - created by `namespace.yaml` in the tenant
 | `sqlRef.backend` | no | `private-cloud` | Must match the `Sql` instance's backend. When `public-cloud`, the sidecar exchanges the SVID for STS credentials for RDS IAM DB auth. |
 | `nosqlRef.name` | no | - | Name of an existing `NoSql` instance to bind. Creates an IAM Role and binding Secret. |
 | `configFrom` | no | - | ConfigMaps in this namespace, mounted as environment in order, later entries winning. The team owns each, so changing a value never re-reconciles this Api. |
-| `secretsFrom` | no | - | Secrets in this namespace, mounted as files at `/secrets/<secret-name>/<key>`. Hand-create each one. A list, so two vendors' credentials can have separate lifecycles. |
-| `managedSecretRefs` | no | - | Array of references to existing `ManagedSecret` instances. Each creates an IAM Role and binding Secret, and the sidecar writes the value to `/secrets/<ref-name>/<key>`, one file per property. Use this rather than `secretsFrom` when the owner sets the value in a cloud console instead of by hand. |
+| `managedSecretRefs` | no | - | Array of references to existing `ManagedSecret` instances. Each creates an IAM Role and binding Secret, and the sidecar writes the value to `/secrets/<ref-name>/<key>`, one file per property. |
 | `topicRef.name` | no | - | Name of an `Topic` this API publishes to. Injects `NATS_URL` and `NATS_STREAM` env vars. |
 | `topicRef.streamName` | no | - | NATS stream name from the Topic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the Topic's streamName differs from its metadata.name. |
 | `subscriptionRef.name` | no | - | Name of an `Subscription` this API consumes from. Injects `NATS_URL` and `NATS_CONSUMER` env vars. |
@@ -105,13 +104,13 @@ Two ways in, and which one a value takes depends on whether it changes while the
 configFrom: [foo-base, foo-overrides]   # foo-overrides wins on any shared key
 ```
 
-`secretsFrom` names Secrets, and each one is mounted as a directory of files, one file per key.
+`managedSecretRefs` names `ManagedSecret` instances, and each one is mounted as a directory of files, one file per key.
 
 ```
-/secrets/<secret-name>/<key>
+/secrets/<name>/<key>
 ```
 
-Read those files where the value is used rather than once at startup. A rotated Secret lands in the file within about a minute and the pod does not restart, so a value captured at startup goes stale silently. Put anything that never rotates in a ConfigMap instead, so it arrives as an environment variable and stays one.
+Read those files where the value is used rather than once at startup. A rotated value lands in the file and the pod does not restart, so a value captured at startup goes stale silently. Put anything that never rotates in a ConfigMap instead, so it arrives as an environment variable and stays one.
 
 ### What the platform injects
 
