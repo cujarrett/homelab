@@ -344,15 +344,18 @@ spec:
                             define('WP_AUTO_UPDATE_CORE', 'minor');
                       ports:
                         - containerPort: 80
-                      # Probes a static asset, not /, so the check never occupies one of the
-                      # MaxRequestWorkers PHP slots. No livenessProbe on purpose - a slow PHP
-                      # render under load reads as dead and restarts the pod exactly when busiest.
+                      # Probes a static asset, so it skips PHP.
+                      # Prefork still queues it behind busy workers, such as during a photo upload.
+                      # One replica, so not-ready means a site-wide 503. Timeout and threshold ride out a busy minute.
+                      # No livenessProbe on purpose. A slow render under load would restart the pod when busiest.
                       readinessProbe:
                         httpGet:
                           path: /wp-includes/js/wp-embed.min.js
                           port: 80
                         initialDelaySeconds: 5
                         periodSeconds: 10
+                        timeoutSeconds: 5
+                        failureThreshold: 6
                       resources:
                         requests:
                           cpu: {{ $wpCPUReq }}
