@@ -93,7 +93,7 @@ Everything goes into the ephemeral `platform-e2e` namespace, applied directly wi
 | `manifests/private.yaml` | `Sql e2e-sql-private` (in-cluster Postgres), `Topic e2e-topic`, `Subscription e2e-sub`, `Api e2e-api-private` (sql + cache + topic + subscription, all private-cloud) |
 | `manifests/public.yaml` | `Sql e2e-sql-public` (RDS, xs), `NoSql e2e-nosql` (DynamoDB), `ObjectStorage e2e-assets` (S3), `Api e2e-api-public` (sql + cache + nosql + object storage, all public-cloud) |
 
-The Api image is `ghcr.io/cujarrett/hello-world-api:latest` - the Launchpad demo app, whose probes do real round-trips against every binding and report per-integration JSON at `GET /`.
+The Api image is `ghcr.io/cujarrett/demo-api:latest` - the Launchpad demo app, whose probes do real round-trips against every binding and report per-integration JSON at `GET /`.
 
 ## E2E phases
 

@@ -362,6 +362,7 @@ Go apps in this workspace:
 | `sump-pump` | `bridge`, `consumer` | Monorepo. `cmd/bridge` publishes IoT readings to NATS. `cmd/consumer` reads them and exposes Prometheus metrics. `internal/event` holds the shared subjects and payload. Images stay `ghcr.io/cujarrett/sump-pump-bridge` and `-consumer` |
 | `weather-exporter` | `weather-exporter` | Weather Prometheus exporter |
 | `launchpad-api` | `launchpad-api` | BFF (backend for the frontend) for the Launchpad UI |
+| `demo-api` | `demo-api` | Sample Api in each Launchpad guest sandbox and the platform e2e tests. Probes every binding with a real round-trip |
 | `github-exporter` | `github-exporter` | Prometheus exporter for pull request, auto-merge and workflow metrics across the account's repos |
 | `platform-exporter` | `platform-exporter` | Prometheus exporter for Crossplane XR, binding and pod readiness timings |
 | `workload-identity-sidecar` | `workload-identity-sidecar` | Sidecar that trades a SPIFFE SVID for short-lived cloud credentials. Go code lives in `sidecar/` |
