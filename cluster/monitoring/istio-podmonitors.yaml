@@ -45,6 +45,11 @@ spec:
         # workload, response_code, connection_security_policy, request_protocol.
         - action: labeldrop
           regex: "source_version|destination_version|source_canonical_revision|destination_canonical_revision|source_cluster|destination_cluster|grpc_response_status"
+        # Temporal server histograms are about 4k series, and no dashboard reads them.
+        # The _sum and _count series stay, so averages still work.
+        - action: drop
+          sourceLabels: [namespace, __name__]
+          regex: "temporal;(service_latency.*|client_latency|persistence_latency|event_blob_size|service_authorization_latency|visibility_persistence_latency)_bucket"
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
