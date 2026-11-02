@@ -114,7 +114,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | Storage | Longhorn | Three StorageClasses: `longhorn` (default, Delete), `longhorn-retain` (Retain, for stateful platform XRs) and `longhorn-delete` (explicit Delete) |
 | DNS | AdGuard Home | Runs in the `adguard` namespace, pinned to `ctrl-1` by nodeSelector. Uses hostPort 53 UDP |
 | External Access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in the `cloudflare` namespace. Token from the secret `cloudflare-tunnel-token` |
-| Platform Abstraction | Crossplane | Twelve XR types. See [Crossplane Platform](#crossplane-platform) |
+| Platform Abstraction | Crossplane | Thirteen XR types. See [Crossplane Platform](#crossplane-platform) |
 | CNI | flannel | k3s's bundled CNI at its defaults, with no install flags and no `/etc/rancher/k3s/config.yaml`. k3s's kube-router enforces NetworkPolicy, also at its defaults. Istio handles mesh concerns such as mTLS and connection policy |
 | Service Mesh | Istio | Sidecar mesh chained onto flannel, giving workload mTLS. Platform workloads get STRICT mTLS. Inbound, an `AuthorizationPolicy` allows their declared `provides`. Outbound, `REGISTRY_ONLY` egress allows their declared `consumes`. A call passes only when both sides agree. See [Platform Connections](./platform/docs/connections.md). The proxy, pilot and CNI images are the distroless variant, so `istio-proxy` has no shell. Debug it with `kubectl debug` |
 | Observability | kube-prometheus-stack | Prometheus (30d retention), Grafana, Alertmanager |
@@ -273,7 +273,7 @@ To pick up a URL change, restart `getty@tty1.service` so `.bashrc` re-sources th
 
 Crossplane core runs with `--enable-realtime-compositions`, set in the Helm `args` in [cluster/argocd/crossplane.yaml](./cluster/argocd/crossplane.yaml). Composite reconciliation then reacts to composed-resource changes by watch, instead of waiting for the 60s poll. Without it, a composed resource can turn Ready up to a minute before its status reaches the XR.
 
-`platform/` defines twelve platform types, each as `<plural>.platform.local.lab`. The canonical list is [Platform → Offerings](./platform/README.md#offerings). That list leaves out these facts:
+`platform/` defines thirteen platform types, each as `<plural>.platform.local.lab`. The canonical list is [Platform → Offerings](./platform/README.md#offerings). That list leaves out these facts:
 
 - `Spa`: the composition generates the nginx config. App repos must not include an `nginx.conf`.
 - `Wordpress`: a MariaDB StatefulSet and a WordPress Deployment. Credentials derive from the XR UID.
