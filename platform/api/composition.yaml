@@ -98,6 +98,11 @@ spec:
             {{- $readyReplicas := 0 }}
             {{- if $deployObs.resource }}{{- $readyReplicas = $deployObs.resource.status.readyReplicas | default 0 }}{{- end }}
             {{- $deployReady := ternary "True" "False" (ge (int $readyReplicas) (int $replicas)) }}
+            {{- /* An Api with an Entra app waits for the app's client ID before its first Deployment.   */}}
+            {{- /* Started without it, the pods can't sign in and are replaced once it arrives.          */}}
+            {{- /* Only the first create waits. An existing Deployment always renders, so a missed read  */}}
+            {{- /* of the Entra app can never delete it.                                                 */}}
+            {{- $holdDeploy := and $entraNeeded (not $entraClientId) (not $deployObs.resource) }}
             {{- $healthCheckPath := $xr.spec.parameters.readinessCheckPath | default "/healthz" }}
             {{- $sizeResourceMap := dict "xs" (dict "cpuReq" "25m" "cpuLim" "100m" "memReq" "32Mi" "memLim" "64Mi") "sm" (dict "cpuReq" "50m" "cpuLim" "200m" "memReq" "64Mi" "memLim" "128Mi") "md" (dict "cpuReq" "100m" "cpuLim" "500m" "memReq" "128Mi" "memLim" "256Mi") "lg" (dict "cpuReq" "250m" "cpuLim" "1000m" "memReq" "256Mi" "memLim" "512Mi") }}
             {{- $sizeKey := $xr.spec.parameters.size | default "sm" }}
@@ -275,6 +280,7 @@ spec:
                 name: {{ $name }}
                 namespace: {{ $ns }}
             {{- end }}
+            {{- if not $holdDeploy }}
             ---
             # --- Deployment ---
             # Init containers poll for each binding's "type" file - last key written,
@@ -587,6 +593,7 @@ spec:
                       emptyDir:
                         medium: Memory
                     {{- end }}
+            {{- end }}{{- /* end holdDeploy */}}
             {{- if or $awsBindings $managedSecrets }}
             {{- /* One IAM role and one binding Secret per AWS-backed ref. The Secret     */ -}}
             {{- /* carries no value, only where to find one and which role may read it.   */ -}}
