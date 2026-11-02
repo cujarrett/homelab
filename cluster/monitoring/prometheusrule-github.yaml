@@ -29,10 +29,11 @@ spec:
             severity: warning
           annotations:
             summary: "{{ $labels.repo }} gets bot PRs but GitHub cannot auto-merge them"
-            description: >-
-              Turn on "Allow auto-merge" and require the repo's CI check on main, the
-              same as weather-exporter. Without both, Renovate merges hours late on its
-              own next visit, or without waiting on CI.
+            description: |-
+              Run both, if the repo's CI job is named test (else swap in its name).
+              gh api -X PATCH repos/cujarrett/{{ $labels.repo }} -F allow_auto_merge=true
+              echo '{"required_status_checks":{"strict":false,"contexts":["test"]},"enforce_admins":false,"required_pull_request_reviews":null,"restrictions":null}' | gh api -X PUT repos/cujarrett/{{ $labels.repo }}/branches/main/protection --input -
+              Without both, Renovate merges hours late, or without waiting on CI.
         # The alerts above and below read settings gauges that go missing, not zero, when the token loses access.
         - alert: GitHubExporterCannotSeeSettings
           expr: count(github_exporter_repo_settings_visible == 0) > 0
