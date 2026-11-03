@@ -139,6 +139,10 @@ spec:
             limits:
               memory: 1536Mi
           sidecar:
+            # The chart's default sidecar trails upstream.
+            image:
+              # renovate: datasource=docker depName=quay.io/kiwigrid/k8s-sidecar
+              tag: 2.14.3
             dashboards:
               enabled: true
               searchNamespace: ALL
