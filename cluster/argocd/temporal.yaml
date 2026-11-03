@@ -122,9 +122,10 @@ spec:
             # because web keeps the default permissive mode.
             podLabels:
               sidecar.istio.io/inject: "true"
-            # Chart 1.7.0 ships UI 2.54.1, which carries a critical echo advisory. 2.57.0 scans clean.
-            # Delete this override once the chart's own UI tag reaches 2.57.0, or it pins an older UI.
+            # Chart 1.7.0 ships UI 2.54.1, which carries a critical echo advisory.
+            # Delete this override once the chart's own UI tag catches up, or it pins an older UI.
             image:
+              # renovate: datasource=docker depName=temporalio/ui
               tag: 2.57.0
             # Sign in through Entra. The UI sends the signed-in user's token to Temporal.
             additionalEnv:
