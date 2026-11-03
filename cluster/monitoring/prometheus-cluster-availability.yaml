@@ -61,6 +61,9 @@ metadata:
   name: cluster-availability
   namespace: monitoring
 spec:
+  # Without a version, the operator runs its own older default.
+  # renovate: datasource=docker depName=quay.io/prometheus/prometheus
+  version: v3.15.1-distroless
   serviceAccountName: prometheus-cluster-availability
   retention: 1825d
   scrapeInterval: 30s

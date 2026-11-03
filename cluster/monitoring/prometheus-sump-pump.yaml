@@ -40,6 +40,9 @@ metadata:
   name: sump-pump
   namespace: monitoring
 spec:
+  # Without a version, the operator runs its own older default.
+  # renovate: datasource=docker depName=quay.io/prometheus/prometheus
+  version: v3.15.1-distroless
   serviceAccountName: prometheus-sump-pump
   retention: 18250d
   scrapeInterval: 30s

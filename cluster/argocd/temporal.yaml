@@ -14,6 +14,11 @@ spec:
         releaseName: temporal
         values: |
           server:
+            # Chart 1.7.0 ships server 1.32.0, which carries a go-jose advisory.
+            # Delete this override once the chart's own server tag catches up.
+            image:
+              # renovate: datasource=docker depName=temporalio/server
+              tag: 1.32.2
             replicaCount: 1
             nodeSelector:
               node-role.kubernetes.io/worker: worker
