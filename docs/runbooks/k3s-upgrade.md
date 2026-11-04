@@ -1,152 +1,134 @@
 # Upgrading k3s
 
-Re-running the k3s install script with a pinned version upgrades a node in place. The server
-(`ctrl-1`) goes first, then agents one at a time, draining before each. The upgrade itself is
-routine - everything below exists because of two things that broke it before.
+Each node gets the new k3s binary swapped in place, then a service restart. Set one version
+variable and paste the blocks in order. `ctrl-1` goes first, then the agents one at a time.
+
+The install script is skipped on purpose. It rewrites the systemd unit and drops any flag you
+forget. A binary swap leaves the unit, its flags and its drop-ins alone.
 
 | Chapter | What it covers |
 |---|---|
-| [Background](#background) | Two settings this cluster needs that a normal k3s install doesn't |
 | [Pre-flight](#pre-flight) | Checks before touching any node |
-| [Upgrading a node](#upgrading-a-node) | Order, drain, install, uncordon |
-| [Verification](#verification) | Including the checks that catch silent breakage |
+| [Upgrading the nodes](#upgrading-the-nodes) | Drain, swap, restart, uncordon, one node at a time |
+| [Verification](#verification) | Checks that catch silent breakage |
 | [Known traps](#known-traps) | Failures seen before, and how to spot them fast |
-| [Rollback](#rollback) | Re-pinning a node to the previous version |
-
----
-
-## Background
-
-This cluster runs k3s's own networking - flannel for the CNI, kube-router for NetworkPolicy -
-with no install flags and no `/etc/rancher/k3s/config.yaml`. A plain reinstall therefore comes
-back correct on its own, which is the point of running it stock.
-
-Two things still deserve a look on every upgrade.
-
-**1. NetworkPolicy and kubelet probes.** kube-router matches on address alone. A pod behind a
-NetworkPolicy whose ingress rules name only other pods will have its kubelet probe dropped, and
-it reports NotReady while serving fine. See
-[Kubelet Probe Outage](../postmortems/postmortem-kubelet-probe-outage.md). Charts introduce
-policies like this on upgrade without saying so, which is what
-[cluster/longhorn/longhorn-manager-networkpolicy.yaml](../../cluster/longhorn/longhorn-manager-networkpolicy.yaml)
-exists to patch. After any chart bump, `kubectl get networkpolicy -A` is worth a glance.
-
-**2. Nothing else lives only on the nodes.** Read the flags off the running node anyway rather
-than trusting this document, because the installer rewrites the systemd unit from whatever you
-pass it and silently drops the rest.
+| [Rollback](#rollback) | Moving a node back to the previous version |
 
 ---
 
 ## Pre-flight
 
-**Never copy install flags from a document, including this one.** The installer rewrites the
-systemd unit from whatever flags you pass it, so anything you forget to include is silently
-dropped - that's how fix #1 above gets lost. Read the current flags off the running node
-instead of typing them from memory:
+Set the target version. This is the only line you edit each time.
 
 ```bash
-ssh pi@192.168.10.100 "sudo grep -A20 'ExecStart=/usr/local/bin/k3s' /etc/systemd/system/k3s.service"
-ssh pi@192.168.10.101 "sudo grep -A12 'ExecStart=/usr/local/bin/k3s' /etc/systemd/system/k3s-agent.service"
+export K3S_VERSION=v1.37.2+k3s1
 ```
 
-The server runs `--write-kubeconfig-mode 644`, `--disable servicelb`, `--disable local-storage`
-and its TLS SANs. Agents normally run only `--node-name <node>`. There should be no
-`--flannel-backend` flag and no `/etc/rancher/k3s/config.yaml`.
-
-Pin the target version, then check its release notes for a bundled-component bump - Traefik,
-CoreDNS, containerd. Those are what break things here, not the Kubernetes version itself.
-(`v1.36.3+k3s1` bundled Traefik v40.x, whose CRDs the install job couldn't adopt - see
-[Known traps](#known-traps).)
+Check the release is final and see which bundled components it bumps. Traefik, CoreDNS and
+containerd bumps are what break this cluster. The Kubernetes version itself rarely does.
 
 ```bash
-export K3S_VERSION=v1.36.3+k3s1
-gh release view $K3S_VERSION --repo k3s-io/k3s | head -40
+gh release view $K3S_VERSION --repo k3s-io/k3s --json isPrerelease -q .isPrerelease   # must print false
+gh release view $K3S_VERSION --repo k3s-io/k3s | grep -iE 'traefik|coredns|containerd|flannel|kube-router'
 ```
 
-Then confirm the cluster can afford to lose a node:
+`true` means k3s has not promoted the release yet. Stop and wait. Empty component output means
+the notes are not filled in yet. Wait for those too.
+
+Confirm the cluster can lose a node. Every Longhorn volume must read `healthy`, because a
+degraded volume has no spare replica.
 
 ```bash
 kubectl get nodes -o wide
-kubectl get volumes.longhorn.io -n longhorn-system -o custom-columns=NAME:.metadata.name,ROBUSTNESS:.status.robustness
-kubectl get applications -n argocd
+kubectl get volumes.longhorn.io -n longhorn-system --no-headers -o custom-columns=R:.status.robustness | sort | uniq -c
+kubectl get applications.argoproj.io -A
 ```
-
-Every Longhorn volume must read `healthy` before draining - a degraded volume has no replica to
-fall back on.
 
 ---
 
-## Upgrading a node
+## Upgrading the nodes
 
-`ctrl-1` is the only control-plane node, so the API server is briefly unavailable while it
-restarts; running pods and public sites are unaffected. Upgrade `ctrl-1` first - agents newer
-than the server is unsupported skew - then `work-1`, `work-2`, `work-3` one at a time. Longhorn
-keeps 3 replicas across 4 nodes, so draining a second node mid-rebuild can leave one copy.
-
-**1. Cordon and drain.**
+Paste this function once into your shell. It works in zsh and bash.
 
 ```bash
-kubectl cordon <node>
-kubectl drain <node> --ignore-daemonsets --delete-emptydir-data --timeout=180s
+upgrade_node() {
+  local node=$1 ip=$2 svc=$3
+  local url="https://github.com/k3s-io/k3s/releases/download/${K3S_VERSION/+/%2B}"
+
+  kubectl cordon "$node"
+  kubectl drain "$node" --ignore-daemonsets --delete-emptydir-data --timeout=300s || return 1
+
+  ssh "pi@$ip" "set -e; cd /tmp
+    curl -sfLo k3s-arm64 $url/k3s-arm64
+    curl -sfL $url/sha256sum-arm64.txt | grep ' k3s-arm64\$' | sha256sum -c
+    sudo install -m 755 k3s-arm64 /usr/local/bin/k3s
+    rm k3s-arm64
+    sudo systemctl restart $svc" || return 1
+
+  echo "waiting for $node to report $K3S_VERSION"
+  until [ "$(kubectl get node "$node" -o jsonpath='{.status.nodeInfo.kubeletVersion}' 2>/dev/null)" = "$K3S_VERSION" ]; do sleep 5; done
+  kubectl wait --for=condition=Ready "node/$node" --timeout=300s
+  ssh "pi@$ip" "systemctl show $svc -p NRestarts"
+  kubectl uncordon "$node"
+}
 ```
 
-`--ignore-daemonsets` is required for Istio's CNI agent, Traefik and Alloy.
-Longhorn's `instance-manager` refuses eviction for a minute or two on its disruption budget then
-succeeds - normal, not a stuck drain.
+The `ssh` block runs on the node and replaces the k3s binary.
 
-**2. Re-run the installer with the flags recovered above.**
+- **`set -e; cd /tmp`:** stop at the first failure and work in a scratch folder.
+- **First `curl`:** downloads the new k3s binary for ARM64.
+- **Second `curl` line:** fetches the release's checksum list and keeps the `k3s-arm64` line. `sha256sum -c` then checks the download against it. A corrupt or partial file stops everything here.
+- **`install -m 755`:** copies the binary over `/usr/local/bin/k3s` and makes it executable.
+- **`rm`:** cleans up the download.
+- **`systemctl restart $svc`:** restarts `k3s` or `k3s-agent`, so it runs the new binary.
+- **`|| return 1`:** if any step fails, the function stops. The node stays cordoned and nothing gets uncordoned.
+
+Your shell fills in `$url` and `$svc` before sending the command. The `\$` reaches the node as
+`$`, which tells `grep` to match only a line ending in `k3s-arm64`.
+
+Then run one node at a time. Run the [Verification](#verification) checks after each one.
+Before the next node, wait until the Longhorn line reads only `healthy`.
 
 ```bash
-# server
-ssh pi@192.168.10.100 "curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=$K3S_VERSION sh -s - server \
-  --write-kubeconfig-mode 644 --disable servicelb --disable local-storage \
-  --tls-san 192.168.10.100 --tls-san ctrl-1.local.lab --node-name ctrl-1"
-
-# agent - swap IP and node name
-TOKEN=$(ssh pi@192.168.10.100 "sudo cat /var/lib/rancher/k3s/server/node-token")
-ssh pi@192.168.10.101 "curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=$K3S_VERSION \
-  K3S_URL=https://192.168.10.100:6443 K3S_TOKEN=$TOKEN sh -s - agent --node-name work-1"
+upgrade_node ctrl-1 192.168.10.100 k3s
 ```
-
-**3. Wait for `Ready` at the new version, confirm the service is stable, uncordon.**
 
 ```bash
-kubectl get node <node> -w        # Ctrl-C at Ready + new VERSION
-ssh pi@<node-ip> "sudo systemctl show k3s -p NRestarts"   # k3s-agent on agents
-kubectl uncordon <node>
+upgrade_node work-1 192.168.10.101 k3s-agent
 ```
-
-A climbing `NRestarts` means the service is crash-looping even though the node reports Ready -
-`journalctl -u k3s` will have a `Shutdown request received` line naming the cause.
-
-After uncordon, check every public URL before moving on. A mesh pod that could not be created
-while the node was cordoned sits in ReplicaSet backoff for up to five minutes, and a
-single-replica Spa returns 503 until then. See
-[Postmortem - istiod Drain Outage](../postmortems/postmortem-istiod-drain-outage.md).
-
-**4. Let Longhorn finish rebuilding before the next node.**
 
 ```bash
-kubectl get volumes.longhorn.io -n longhorn-system --no-headers -o custom-columns=R:.status.robustness | sort | uniq -c
+upgrade_node work-2 192.168.10.102 k3s-agent
 ```
+
+```bash
+upgrade_node work-3 192.168.10.103 k3s-agent
+```
+
+What to expect:
+
+- **API outage on ctrl-1:** `kubectl` fails for about a minute while it restarts. The wait loop rides it out. Running pods and public sites stay up.
+- **Slow drain:** Longhorn's `instance-manager` refuses eviction for a minute or two. That is normal.
+- **`NRestarts` above 0:** the service is crash-looping even if the node shows Ready. Check `journalctl -u k3s` on the node for the `Shutdown request received` line.
 
 ---
 
 ## Verification
 
+Run these after each node.
+
 ```bash
 kubectl get nodes -o wide
 
-# Running but NOT ready - a 0/1 Running pod passes a plain "grep -v Running"
+# Running but not ready. A 0/1 Running pod passes a plain "grep -v Running".
 kubectl get pods -A --no-headers | awk '{split($3,a,"/"); if ($4=="Running" && a[1]!=a[2]) print}'
 
-# Two running pods on one address means host-local IPAM re-issued an in-use IP.
-# Expect no output. See Known traps below for why a drain prevents it.
+# Two running pods on one address. Expect no output. See Known traps.
 kubectl get pods -A --field-selector status.phase=Running -o \
   jsonpath='{range .items[*]}{.status.podIP}{"\n"}{end}' | grep '^10\.42\.' | sort | uniq -d
 
 kubectl get pods -A --no-headers | grep -vE "Running|Completed"
-kubectl get applications -n argocd
+kubectl get applications.argoproj.io -A
 kubectl get volumes.longhorn.io -n longhorn-system --no-headers -o custom-columns=R:.status.robustness | sort | uniq -c
 
 for u in \
@@ -158,6 +140,7 @@ for u in \
   https://jspollock.mattjarrett.dev \
   https://launchpad.mattjarrett.dev \
   https://connections.mattjarrett.dev \
+  https://graph.mattjarrett.dev \
   https://argocd.local.lab \
   https://grafana.local.lab \
   https://prometheus.local.lab \
@@ -165,23 +148,25 @@ for u in \
   https://adguard.local.lab
 do echo "$u $(curl -sk --netrc-optional -o /dev/null -w '%{http_code}' $u --max-time 10 -A 'Mozilla/5.0')"
 done
-# 200 means up. 302 is fine too - some apps redirect their own root (Prometheus, AdGuard).
-# prometheus and longhorn sit behind basicAuth - --netrc-optional reads ~/.netrc.
-# A 401 on those means the netrc entry is missing, not that the host is down.
-# Without -A above, the *.mattjarrett.dev hosts 403 - that's Cloudflare rejecting curl's
-# lack of a browser User-Agent, not the site being down.
 ```
 
-Then confirm a pod behind a NetworkPolicy passes its kubelet probe - `longhorn-manager` and both
-WordPress deployments are the ones to check.
+Reading the URL check:
+
+- **200 or 302:** up. Prometheus and AdGuard redirect their own root.
+- **401 on prometheus or longhorn:** your `~/.netrc` entry is missing. They sit behind basicAuth.
+- **503 on a Spa:** a mesh pod is in ReplicaSet backoff for up to five minutes after uncordon. See [Postmortem: istiod Drain Outage](../postmortems/postmortem-istiod-drain-outage.md).
+
+Then confirm `longhorn-manager` and both WordPress deployments are Ready. They sit behind
+NetworkPolicies, so they catch dropped kubelet probes. See
+[Kubelet Probe Outage](../postmortems/postmortem-kubelet-probe-outage.md).
 
 ---
 
 ## Known traps
 
-**Traefik CRDs fail to adopt.** k3s bundles Traefik and bumps the chart across releases. If the
-existing CRDs lack Helm ownership metadata the install job fails, the DaemonSet is removed, and
-*all* ingress goes down. Symptom: `helm-install-traefik*` jobs in `CrashLoopBackOff` and no
+**Traefik CRDs fail to adopt.** k3s bundles Traefik and bumps its chart across releases. If the
+CRDs lack Helm ownership metadata, the install job fails and the Traefik DaemonSet is removed.
+All ingress goes down. The symptom is `helm-install-traefik*` jobs in `CrashLoopBackOff` and no
 `traefik` DaemonSet.
 
 ```bash
@@ -190,39 +175,26 @@ kubectl get crd -o name | grep 'traefik\.io' | xargs -I{} kubectl annotate {} me
 kubectl delete job -n kube-system helm-install-traefik helm-install-traefik-crd
 ```
 
-**Restarting the server without draining hands out duplicate pod IPs.** flannel uses host-local
-IPAM, which keeps allocations as files under `/var/lib/cni/networks/cbr0/`. Nothing reconciles
-those files against running sandboxes, so pods that survive a `ctrl-1` k3s restart keep the
-address configured in their netns while losing the reservation behind it. IPAM later re-issues
-that address and two pods answer ARP for one IP. The loser's kubelet probe gets connection
-refused while the pod is healthy on localhost, which reads as a pod stuck `Running` but `0/1`
-with no restarts. The drain in step 1 is what prevents this, so it matters just as much for a
-plain `systemctl restart k3s` or a config change as it does for a version bump.
-
-Count reservations against the pods that actually hold an address - the agents should both be
-zero, and only `ctrl-1` drifts:
-
-```bash
-ssh pi@192.168.10.100 'sudo sh -c "ls /var/lib/cni/networks/cbr0 | grep -c ^10\."'
-kubectl get pods --field-selector spec.nodeName=ctrl-1,status.phase=Running \
-  -A -o json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(sum(1 for p in d["items"] if p["status"].get("podIP") and p["status"]["podIP"] != p["status"].get("hostIP")))'
-```
-
-A gap means some pod holds an unreserved address. Delete whichever pod has no reservation file
-naming its sandbox so it gets a fresh CNI ADD. Flushing ARP only re-runs the race between the
-two claimants and the failure returns within hours.
+**Duplicate pod IPs.** Restarting k3s on ctrl-1 without a drain can give two pods one IP. The
+loser shows `Running` but `0/1`, with no restarts. The duplicate-IP check in Verification finds
+it. Delete the newer pod so it gets a fresh address. Flushing ARP does not fix it.
 
 ---
 
 ## Rollback
 
-Cordon and drain as above, then re-run the same install command with `INSTALL_K3S_VERSION` set
-to the prior version - the script downgrades the binary and restarts the service the same way it
-upgrades. Node data, labels and `/etc/rancher/k3s/` are untouched.
+Set the previous version and run the same function on the node.
+
+```bash
+export K3S_VERSION=v1.37.1+k3s1
+upgrade_node work-1 192.168.10.101 k3s-agent
+```
+
+Roll back agents before `ctrl-1`, so no agent runs newer than the server.
 
 ---
 
 ## Related Docs
 
-- [Cluster](../cluster.md) - current stack and hardware
-- [Kubelet Probe Outage](../postmortems/postmortem-kubelet-probe-outage.md) - why several checks above exist
+- [Cluster](../cluster.md): current stack and hardware
+- [Kubelet Probe Outage](../postmortems/postmortem-kubelet-probe-outage.md): why several checks above exist
