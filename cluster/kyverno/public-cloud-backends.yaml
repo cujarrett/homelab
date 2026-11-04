@@ -1,6 +1,7 @@
 # RDS and ElastiCache bill by the hour, so a forgotten one runs all month.
+# Temporal Cloud has no spend cap, and one namespace can run up about $2,000 a day.
 # Only the e2e suite may ask for them, and it deletes them every run.
-# To let another namespace use them, add it to both lists.
+# To let another namespace use them, add it to every list.
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
@@ -10,7 +11,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
     policies.kyverno.io/title: Platform public-cloud backends
     policies.kyverno.io/description: >-
-      Only approved namespaces may ask for a public-cloud Sql or cache.
+      Only approved namespaces may ask for a public-cloud Sql, cache or workflow space.
 spec:
   validationFailureAction: Enforce
   background: false
@@ -65,6 +66,33 @@ spec:
           conditions:
             all:
               - key: "{{ request.object.spec.parameters.cache.backend || 'private-cloud' }}"
+                operator: Equals
+                value: public-cloud
+              - key: "{{ request.namespace }}"
+                operator: AnyNotIn
+                value:
+                  - platform-e2e
+    - name: public-cloud-workflow-space-allowlist
+      match:
+        any:
+          - resources:
+              kinds:
+                - platform.local.lab/v1alpha1/WorkflowSpace
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: AnyIn
+            value: [CREATE, UPDATE]
+      skipBackgroundRequests: true
+      validate:
+        allowExistingViolations: false
+        message: >-
+          A public-cloud WorkflowSpace is turned off. Use backend private-cloud,
+          or ask the platform team to allow it.
+        deny:
+          conditions:
+            all:
+              - key: "{{ request.object.spec.parameters.backend || 'private-cloud' }}"
                 operator: Equals
                 value: public-cloud
               - key: "{{ request.namespace }}"

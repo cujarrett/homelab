@@ -34,6 +34,10 @@ spec:
             {{- $params := $xr.spec.parameters | default dict }}
             {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
             {{- $temporalAppObjectId := index $envCtx "temporalEntraAppObjectId" | default "" }}
+            {{- $cloud := eq ($params.backend | default "private-cloud") "public-cloud" }}
+            {{- /* temporalCloudEnabled on aws-platform-config is the egress switch for Temporal Cloud. */ -}}
+            {{- /* Anything but "true" renders no ServiceEntry, so no worker can reach it. */ -}}
+            {{- $cloudEgress := eq (toString (index $envCtx "temporalCloudEnabled" | default "false")) "true" }}
             {{- /* The Api composition derives the same GUID from its own namespace and workflowSpaceRef. */ -}}
             {{- /* An Api in another namespace derives a GUID that matches no role, so its grant fails. */ -}}
             {{- $roleHash := printf "%s/%s/temporal-writer" $ns $name | sha256sum }}
@@ -41,11 +45,15 @@ spec:
             {{- /* Ready only when temporal-controller reports Ready. A name clash stays not ready. */ -}}
             {{- $ready := "False" }}
             {{- $observed := index (.observed.resources | default dict) "temporal-namespace" }}
+            {{- $cloudStatus := dict }}
             {{- if $observed }}
             {{- range (($observed.resource.status | default dict).conditions | default list) }}
             {{- if and (eq .type "Ready") (eq .status "True") }}{{- $ready = "True" }}{{- end }}
             {{- end }}
+            {{- $cloudStatus = ($observed.resource.status | default dict).publicCloud | default dict }}
             {{- end }}
+            {{- $cloudEndpoint := index $cloudStatus "endpoint" | default "" }}
+            {{- $cloudNamespace := index $cloudStatus "namespace" | default "" }}
             # --- TemporalNamespace ---
             # temporal-controller creates it in Temporal, where names are global across workspaces.
             apiVersion: temporal.local.lab/v1alpha1
@@ -57,13 +65,59 @@ spec:
                 gotemplating.fn.crossplane.io/composition-resource-name: temporal-namespace
                 gotemplating.fn.crossplane.io/ready: {{ $ready | quote }}
             spec:
+              {{- if $cloud }}
+              backend: public-cloud
+              # Temporal Cloud's minimum. Longer history costs more.
+              retention: "24h"
+              {{- else }}
               retention: {{ $params.retention | default "72h" | quote }}
               {{- with $params.description }}
               description: {{ . | quote }}
               {{- end }}
+              {{- end }}
+            {{- if $cloud }}
+            {{- if $cloudEndpoint }}
+            ---
+            # Where workers connect. The Api composition reads it into env vars.
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{ $name }}-workflow-space
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection
+                gotemplating.fn.crossplane.io/ready: "True"
+            data:
+              TEMPORAL_ADDRESS: {{ $cloudEndpoint | quote }}
+              TEMPORAL_NAMESPACE: {{ $cloudNamespace | quote }}
+            {{- end }}
+            {{- if and $cloudEndpoint $cloudEgress }}
+            ---
+            # The only way out to Temporal Cloud. Without it, workers here can't connect or spend.
+            # TLS passes through by SNI, so workers sign in with their own SVID.
+            apiVersion: networking.istio.io/v1
+            kind: ServiceEntry
+            metadata:
+              name: {{ $name }}-workflow-space
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: egress
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              hosts:
+                - {{ (splitList ":" $cloudEndpoint | first) | quote }}
+              location: MESH_EXTERNAL
+              resolution: DNS
+              exportTo: ["."]
+              ports:
+                - number: 7233
+                  name: tls
+                  protocol: TLS
+            {{- end }}
+            {{- end }}
             {{- /* The role waits for Ready, so a name clash never grants use of another workspace's namespace. */ -}}
             {{- /* Once created it stays, so a brief not-ready never revokes a working grant. */ -}}
-            {{- if or (eq $ready "True") (index (.observed.resources | default dict) "temporal-role") }}
+            {{- if and (not $cloud) (or (eq $ready "True") (index (.observed.resources | default dict) "temporal-role")) }}
             ---
             # The permission to use this Temporal namespace, on the shared Temporal app registration.
             # Temporal reads the value from the token's roles claim.
@@ -89,4 +143,8 @@ spec:
             apiVersion: platform.local.lab/v1alpha1
             kind: WorkflowSpace
             status:
+              {{- if $cloud }}
+              namespace: {{ $cloudNamespace | quote }}
+              {{- else }}
               namespace: {{ $name | quote }}
+              {{- end }}

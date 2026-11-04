@@ -55,6 +55,7 @@ comp_for() {
     Subscription) echo subscription ;; Topic) echo topic ;; Wordpress) echo wordpress ;;
     ManagedSecret) echo managed-secret ;;
     FederatedGraph) echo federated-graph ;; GraphApi) echo graph-api ;;
+    WorkflowSpace) echo workflow-space ;;
     *) echo "" ;;
   esac
 }

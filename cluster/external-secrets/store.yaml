@@ -6,7 +6,7 @@ metadata:
   name: aws-parameter-store
 spec:
   conditions:
-    - namespaces: [apollo-operator-prod, apollo-operator-test, argocd, blog, cert-manager, cloudflare, crossplane-system, longhorn-system, monitoring, temporal]
+    - namespaces: [apollo-operator-prod, apollo-operator-test, argocd, blog, cert-manager, cloudflare, crossplane-system, longhorn-system, monitoring, temporal, temporal-controller]
   provider:
     aws:
       service: ParameterStore

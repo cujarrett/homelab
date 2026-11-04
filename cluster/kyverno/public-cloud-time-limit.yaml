@@ -1,0 +1,34 @@
+# Temporal Cloud has no spend cap, so a public-cloud WorkflowSpace lives 2 hours at most.
+# Deleting it makes temporal-controller delete the Temporal Cloud namespace.
+# Only platform-e2e may create one, and the e2e suite applies it with kubectl, so ArgoCD never puts it back.
+apiVersion: policies.kyverno.io/v1
+kind: DeletingPolicy
+metadata:
+  name: platform-public-cloud-time-limit
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  schedule: "*/15 * * * *"
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["platform.local.lab"]
+        apiVersions: ["v1alpha1"]
+        resources: ["workflowspaces"]
+  conditions:
+    - name: public-cloud
+      expression: "has(object.spec.parameters.backend) && object.spec.parameters.backend == 'public-cloud'"
+    - name: older-than-2-hours
+      expression: "time.now() - timestamp(object.metadata.creationTimestamp) > duration('2h')"
+---
+# The cleanup controller starts with no access to platform kinds.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kyverno:cleanup-controller:platform-workflow-spaces
+  labels:
+    rbac.kyverno.io/aggregate-to-cleanup-controller: "true"
+rules:
+  - apiGroups: ["platform.local.lab"]
+    resources: ["workflowspaces"]
+    verbs: ["get", "list", "watch", "delete"]

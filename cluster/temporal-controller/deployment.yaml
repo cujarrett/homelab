@@ -33,6 +33,9 @@ spec:
             - --entra-tenant-id=7f4c1900-e63c-456b-ab5f-898189b24ec4
             - --entra-client-id=3b4815e2-c1d2-4f4e-af2d-2b6c0f09015b
             - --temporal-token-scope=api://7f4c1900-e63c-456b-ab5f-898189b24ec4/platform-temporal/.default
+            # Creates public-cloud namespaces with the platform's Temporal Cloud key.
+            # Revoking that key in Temporal Cloud stops every create. See docs/runbooks/kill-switches.md.
+            - --temporal-cloud-api-key-file=/var/run/secrets/temporal-cloud/api-key
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -42,6 +45,9 @@ spec:
             # The SPIRE agent's socket, for the JWT-SVID the controller trades for an Entra token.
             - name: spiffe
               mountPath: /var/run/secrets/spiffe.io
+              readOnly: true
+            - name: temporal-cloud
+              mountPath: /var/run/secrets/temporal-cloud
               readOnly: true
           readinessProbe:
             httpGet:
@@ -63,3 +69,7 @@ spec:
           csi:
             driver: csi.spiffe.io
             readOnly: true
+        # The controller reads the key on every call, so a rotated key needs no restart.
+        - name: temporal-cloud
+          secret:
+            secretName: temporal-cloud-api-key

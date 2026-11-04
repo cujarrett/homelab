@@ -26,18 +26,18 @@ spec:
                     backend:
                       type: string
                       default: private-cloud
-                      enum: [private-cloud]
-                      description: "Where the workflow service runs. private-cloud runs it in the cluster."
+                      enum: [private-cloud, public-cloud]
+                      description: "Where the workflow service runs. private-cloud runs it in the cluster. public-cloud runs it on a managed service, only in approved namespaces, and deletes it after 2 hours."
                     retention:
                       type: string
                       default: "72h"
                       pattern: "^[0-9]+(h|m|s)$"
                       maxLength: 16
-                      description: "How long the history of finished workflows is kept, as a Go duration such as 72h. At least 24h."
+                      description: "How long the history of finished workflows is kept, as a Go duration such as 72h. At least 24h. public-cloud always keeps 24h."
                     description:
                       type: string
                       maxLength: 255
-                      description: "Shown next to this workflow space in the workflow UI."
+                      description: "Shown next to this workflow space in the workflow UI. Not used on public-cloud."
             status:
               type: object
               properties:

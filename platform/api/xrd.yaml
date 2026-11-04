@@ -160,6 +160,11 @@ spec:
                           pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
                           maxLength: 63
                           description: "metadata.name of the WorkflowSpace instance (e.g. foo-workflows)."
+                        backend:
+                          type: string
+                          default: private-cloud
+                          enum: [private-cloud, public-cloud]
+                          description: "Must match the WorkflowSpace instance's spec.parameters.backend. When public-cloud, the pod signs in with a client certificate written to files, and the platform injects their paths."
                     replicas:
                       type: integer
                       default: 1

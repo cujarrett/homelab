@@ -17,9 +17,9 @@ A space for durable workflows: steps that keep their progress through crashes, r
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `backend` | no | `private-cloud` | Where the workflow service runs. `private-cloud` runs it in the cluster. |
-| `retention` | no | `72h` | How long the history of finished workflows is kept, as a Go duration. At least `24h`. |
-| `description` | no | - | Shown next to this workflow space in the workflow UI. |
+| `backend` | no | `private-cloud` | Where the workflow service runs. `private-cloud` runs it in the cluster. `public-cloud` runs it on a managed service. See [public-cloud](#public-cloud). |
+| `retention` | no | `72h` | How long the history of finished workflows is kept, as a Go duration. At least `24h`. `public-cloud` always keeps `24h`. |
+| `description` | no | - | Shown next to this workflow space in the workflow UI. Not used on `public-cloud`. |
 
 ## Example instance
 
@@ -70,6 +70,31 @@ c, _ := client.Dial(client.Options{
 `tokenHeader.GetHeaders` calls `cred.GetToken` with `TEMPORAL_TOKEN_SCOPE`. The Azure SDK caches the token and refreshes it before it expires.
 
 Workflow code, task queue names, retries and timeouts all live in the app.
+
+## public-cloud
+
+A `public-cloud` workflow space runs on a managed service that bills by use. The platform limits it.
+
+- **Approved namespaces only.** Elsewhere the platform refuses it.
+- **2 hours at most.** The platform then deletes it.
+- **Sign-in:** the pod signs in with a client certificate. No token is involved.
+
+The `Api` names the backend too:
+
+```yaml
+    workflowSpaceRef:
+      name: foo-workflows
+      backend: public-cloud
+```
+
+| Env var | Value |
+|---|---|
+| `TEMPORAL_ADDRESS` | The workflow service, as `host:port`. |
+| `TEMPORAL_NAMESPACE` | The namespace to use. It is longer than the `WorkflowSpace`'s name. |
+| `TEMPORAL_TLS_CERT` | Path to the client certificate. |
+| `TEMPORAL_TLS_KEY` | Path to its private key. |
+
+Pass the address, namespace and certificate to the Temporal SDK client with TLS on. The files appear a moment after the pod starts, so retry the first connection. They are renewed about every hour, so read them again on each new connection.
 
 ## Operations
 

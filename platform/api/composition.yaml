@@ -70,8 +70,13 @@ spec:
             {{- range $c := $consumes }}
             {{- if or $c.app $c.entraApp }}{{- $entraNeeded = true }}{{- end }}
             {{- end }}
-            {{- /* A workflowSpaceRef means a token for Temporal, so it needs an identity too. */ -}}
-            {{- if $xr.spec.parameters.workflowSpaceRef }}{{- $entraNeeded = true }}{{- end }}
+            {{- /* A private-cloud workflowSpaceRef means a token for Temporal, so it needs an identity too. */ -}}
+            {{- /* public-cloud signs in with the SVID itself, so it needs no Entra identity. */ -}}
+            {{- $workflowRef := $xr.spec.parameters.workflowSpaceRef | default dict }}
+            {{- $workflowSpaceName := $workflowRef.name | default "" }}
+            {{- $workflowCloud := and $workflowSpaceName (eq ($workflowRef.backend | default "private-cloud") "public-cloud") }}
+            {{- $workflowPrivate := and $workflowSpaceName (not $workflowCloud) }}
+            {{- if $workflowPrivate }}{{- $entraNeeded = true }}{{- end }}
             {{- /* crossplane-entra's own service principal object ID - set as owner on   */ -}}
             {{- /* everything it creates, or it can create but never delete/update again.  */ -}}
             {{- /* See cluster/crossplane/azuread-permissions.md.                          */ -}}
@@ -116,8 +121,6 @@ spec:
             {{- end }}
             {{- $subscriptionRefName := "" }}
             {{- if $xr.spec.parameters.subscriptionRef }}{{- $subscriptionRefName = $xr.spec.parameters.subscriptionRef.name }}{{- end }}
-            {{- $workflowSpaceName := "" }}
-            {{- if $xr.spec.parameters.workflowSpaceRef }}{{- $workflowSpaceName = $xr.spec.parameters.workflowSpaceRef.name }}{{- end }}
             {{- /* Every service binding this Api mounts. Each entry has                   */ -}}
             {{- /* dir: the directory under /bindings, the volume name stem and AWS profile */ -}}
             {{- /* label: what the init container prints while it waits                    */ -}}
@@ -315,7 +318,7 @@ spec:
                   labels:
                     app: api
                     app.kubernetes.io/instance: {{ $name }}
-                    {{- if $workflowSpaceName }}
+                    {{- if $workflowPrivate }}
                     # The temporal NetworkPolicy admits these pods. Teams can't create pods, so only workflowSpaceRef sets it.
                     platform.local.lab/uses-workflow: "true"
                     {{- end }}
@@ -341,7 +344,7 @@ spec:
                     runAsGroup: 65532
                     seccompProfile:
                       type: RuntimeDefault
-                  {{- if or $bindings $managedSecrets $entraNeeded }}
+                  {{- if or $bindings $managedSecrets $entraNeeded $workflowCloud }}
                   initContainers:
                     {{- /* Waits for the binding Secret only.                               */}}
                     {{- /* The sidecar below reads it, then its startupProbe waits for values. */}}
@@ -428,6 +431,34 @@ spec:
                         - name: {{ $ms.dir }}-value
                           mountPath: /secrets/{{ $ms.name }}
                         {{- end }}
+                    {{- end }}
+                    {{- if $workflowCloud }}
+                    # Writes this pod's X.509 SVID as files and renews them. The app signs in to Temporal Cloud with them.
+                    - name: spiffe-helper
+                      image: ghcr.io/spiffe/spiffe-helper:0.12.1@sha256:49a7b1aca5b497bb4c1ca1ed1f15397bdf9c9cafb8036df4b963b566bd234f7f
+                      restartPolicy: Always
+                      args: ["-config", "/config/helper.conf"]
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        readOnlyRootFilesystem: true
+                        capabilities:
+                          drop: [ALL]
+                      resources:
+                        requests:
+                          cpu: 5m
+                          memory: 16Mi
+                        limits:
+                          cpu: 50m
+                          memory: 32Mi
+                      volumeMounts:
+                        - name: spiffe-bundle
+                          mountPath: /var/run/secrets/spiffe.io
+                          readOnly: true
+                        - name: temporal-tls
+                          mountPath: /temporal-tls
+                        - name: spiffe-helper-config
+                          mountPath: /config
+                          readOnly: true
                     {{- end }}
                   {{- end }}
                   containers:
@@ -521,7 +552,7 @@ spec:
                         - name: NATS_CONSUMER
                           value: {{ $subscriptionRefName | quote }}
                       {{- end }}
-                      {{- if $workflowSpaceName }}
+                      {{- if $workflowPrivate }}
                         # The WorkflowSpace names its Temporal namespace after itself.
                         - name: TEMPORAL_ADDRESS
                           value: "temporal-frontend.temporal.svc.cluster.local:7233"
@@ -530,6 +561,25 @@ spec:
                         # Request an Entra token for this scope, and send it to Temporal as a bearer token.
                         - name: TEMPORAL_TOKEN_SCOPE
                           value: {{ printf "api://%s/platform-temporal/.default" $entraTenantId | quote }}
+                      {{- end }}
+                      {{- if $workflowCloud }}
+                        # The WorkflowSpace writes where to connect once Temporal Cloud has the namespace.
+                        # The pod waits for that ConfigMap before it starts.
+                        - name: TEMPORAL_ADDRESS
+                          valueFrom:
+                            configMapKeyRef:
+                              name: {{ $workflowSpaceName }}-workflow-space
+                              key: TEMPORAL_ADDRESS
+                        - name: TEMPORAL_NAMESPACE
+                          valueFrom:
+                            configMapKeyRef:
+                              name: {{ $workflowSpaceName }}-workflow-space
+                              key: TEMPORAL_NAMESPACE
+                        # The client certificate and key. spiffe-helper writes them shortly after start.
+                        - name: TEMPORAL_TLS_CERT
+                          value: /temporal-tls/svid.pem
+                        - name: TEMPORAL_TLS_KEY
+                          value: /temporal-tls/svid_key.pem
                       {{- end }}
                       {{- if $configFrom }}
                       envFrom:
@@ -556,6 +606,11 @@ spec:
                           mountPath: /entra-identity
                           readOnly: true
                         {{- end }}
+                        {{- if $workflowCloud }}
+                        - name: temporal-tls
+                          mountPath: /temporal-tls
+                          readOnly: true
+                        {{- end }}
                         {{- /* Kept out of /bindings, where a servicebinding.io scan       */ -}}
                         {{- /* expects a type file per directory. A Secret has none.        */ -}}
                         {{- range $ms := $managedSecrets }}
@@ -566,7 +621,7 @@ spec:
                   volumes:
                     - name: tmp
                       emptyDir: {}
-                    {{- if or $awsBindings $entraNeeded $managedSecrets }}
+                    {{- if or $awsBindings $entraNeeded $managedSecrets $workflowCloud }}
                     - name: spiffe-bundle
                       csi:
                         driver: csi.spiffe.io
@@ -579,6 +634,15 @@ spec:
                     {{- if $entraNeeded }}
                     - name: entra-identity
                       emptyDir: {}
+                    {{- end }}
+                    {{- if $workflowCloud }}
+                    # The private key stays in memory.
+                    - name: temporal-tls
+                      emptyDir:
+                        medium: Memory
+                    - name: spiffe-helper-config
+                      configMap:
+                        name: {{ $name }}-spiffe-helper
                     {{- end }}
                     {{- range $b := $bindings }}
                     - name: {{ $b.dir }}-binding
@@ -870,7 +934,7 @@ spec:
                   name: {{ $caller.namespace }}-{{ $caller.app }}-entra
             {{- end }}
             {{- end }}
-            {{- if $workflowSpaceName }}
+            {{- if $workflowPrivate }}
             {{- /* Same derivation as the WorkflowSpace composition, from this Api's own namespace. */ -}}
             {{- $wfRoleHash := printf "%s/%s/temporal-writer" $ns $workflowSpaceName | sha256sum }}
             {{- $wfRoleId := printf "%s-%s-4%s-a%s-%s" (substr 0 8 $wfRoleHash) (substr 8 12 $wfRoleHash) (substr 13 16 $wfRoleHash) (substr 17 20 $wfRoleHash) (substr 20 32 $wfRoleHash) }}
@@ -1126,9 +1190,13 @@ spec:
                     # the other half of that. NATS is unmeshed, so its NetworkPolicy is the inbound gate.
                     - "nats/nats.nats.svc.cluster.local"
                     {{- end }}
-                    {{- if $workflowSpaceName }}
+                    {{- if $workflowPrivate }}
                     # Matches TEMPORAL_ADDRESS.
                     - "temporal/temporal-frontend.temporal.svc.cluster.local"
+                    {{- end }}
+                    {{- if $workflowCloud }}
+                    # The WorkflowSpace renders the ServiceEntry only while Temporal Cloud is turned on.
+                    - "./*.tmprl.cloud"
                     {{- end }}
                     {{- range $h := $derivedHosts }}
                     # Implied by a binding on this XR, so the app never declares it.
@@ -1237,7 +1305,27 @@ spec:
             {{- if or $topicRefName $subscriptionRefName }}{{- $injectedEnv = append $injectedEnv "NATS_URL" }}{{- end }}
             {{- if $topicRefName }}{{- $injectedEnv = append $injectedEnv "NATS_STREAM" }}{{- end }}
             {{- if $subscriptionRefName }}{{- $injectedEnv = append $injectedEnv "NATS_CONSUMER" }}{{- end }}
-            {{- if $workflowSpaceName }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_ADDRESS" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_NAMESPACE" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_TOKEN_SCOPE" }}{{- end }}
+            {{- if $workflowPrivate }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_ADDRESS" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_NAMESPACE" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_TOKEN_SCOPE" }}{{- end }}
+            {{- if $workflowCloud }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_ADDRESS" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_NAMESPACE" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_TLS_CERT" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_TLS_KEY" }}{{- end }}
+            {{- if $workflowCloud }}
+            ---
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{ $name }}-spiffe-helper
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: spiffe-helper-config
+                gotemplating.fn.crossplane.io/ready: "True"
+            data:
+              helper.conf: |
+                agent_address = "/var/run/secrets/spiffe.io/api.sock"
+                cert_dir = "/temporal-tls"
+                svid_file_name = "svid.pem"
+                svid_key_file_name = "svid_key.pem"
+                svid_bundle_file_name = "bundle.pem"
+                daemon_mode = true
+            {{- end }}
             ---
             apiVersion: platform.local.lab/v1alpha1
             kind: Api

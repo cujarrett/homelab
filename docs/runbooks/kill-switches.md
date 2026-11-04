@@ -37,10 +37,26 @@ Undo: create a new key and put it in `/homelab/apollo-operator-<lane>/apollo-api
 
 ## Temporal Cloud
 
-[Temporal Cloud](https://cloud.temporal.io/) → Settings → API Keys → revoke the platform key.
+[Temporal Cloud](https://cloud.temporal.io/) → Settings → Service Accounts → `homelab-platform` → revoke its API key.
 
-Undo: create a new key and put it in its parameter.
+Undo: create a new key and put it in `/homelab/temporal-cloud/api-key`.
 
-## Public-cloud Sql and cache
+Killing the key stops new namespaces only. Running workers still spend. Cut them off too:
 
-Already off outside the e2e suite, by [public-cloud-backends.yaml](../../cluster/kyverno/public-cloud-backends.yaml).
+```bash
+kubectl patch environmentconfig aws-platform-config --type=merge -p '{"data":{"temporalCloudEnabled":"false"}}'
+```
+
+Every WorkflowSpace drops its route out, so no worker can reach Temporal Cloud. Undo: the same command with `"true"`.
+
+List the XRs that still own a Temporal Cloud namespace, as `namespace/name`:
+
+```bash
+kubectl get workflowspaces.platform.local.lab -A -o jsonpath='{range .items[?(@.spec.parameters.backend=="public-cloud")]}{.metadata.namespace}/{.metadata.name}{"\n"}{end}'
+```
+
+Delete each one, such as `kubectl delete workflowspace foo -n bar`. With the key killed, temporal-controller can't delete the Temporal Cloud side, so delete it in the console too.
+
+## Public-cloud Sql, cache and workflow spaces
+
+Already off outside the e2e suite, by [public-cloud-backends.yaml](../../cluster/kyverno/public-cloud-backends.yaml). A public-cloud workflow space is also deleted after 2 hours, by [public-cloud-time-limit.yaml](../../cluster/kyverno/public-cloud-time-limit.yaml).

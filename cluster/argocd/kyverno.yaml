@@ -57,9 +57,15 @@ spec:
           features:
             admissionReports:
               enabled: false
-          # Nothing here generates resources, so cleanup stays off.
+          # Runs platform-public-cloud-time-limit, which deletes public-cloud workflow spaces after 2 hours.
           cleanupController:
-            enabled: false
+            enabled: true
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 128Mi
           reportsController:
             enabled: true
             resources:
