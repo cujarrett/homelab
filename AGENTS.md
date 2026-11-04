@@ -383,5 +383,4 @@ kubectl get applications.argoproj.io -A
 
 argocd login argocd.local.lab --username admin --insecure
 argocd app sync <app-name>
-kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d
 ```

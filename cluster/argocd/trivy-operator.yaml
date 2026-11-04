@@ -18,12 +18,15 @@ spec:
       releaseName: trivy-operator
       values: |
         operator:
-          # Image CVEs only. The other scanners add load on the Pis and nothing reads them.
-          configAuditScannerEnabled: false
+          # Security reviews read image CVEs, config audits and secrets baked into images.
+          # Config audits read manifests only, so they cost the Pis little.
+          # Secret scanning rides along in each image scan job.
+          # The other scanners add load and nothing reads them.
+          configAuditScannerEnabled: true
           rbacAssessmentScannerEnabled: false
           infraAssessmentScannerEnabled: false
           clusterComplianceEnabled: false
-          exposedSecretScannerEnabled: false
+          exposedSecretScannerEnabled: true
           sbomGenerationEnabled: false
           # One scan job at a time keeps a cold start from saturating a node.
           scanJobsConcurrentLimit: 1

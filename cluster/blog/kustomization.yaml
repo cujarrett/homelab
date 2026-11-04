@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - ghost.yaml
   - ghost-backup.yaml
+  - networkpolicy.yaml
 configMapGenerator:
   - name: ghost-backup-script
     namespace: blog

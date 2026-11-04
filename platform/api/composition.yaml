@@ -319,6 +319,10 @@ spec:
                     # The temporal NetworkPolicy admits these pods. Teams can't create pods, so only workflowSpaceRef sets it.
                     platform.local.lab/uses-workflow: "true"
                     {{- end }}
+                    {{- if or $topicRefName $subscriptionRefName }}
+                    # The nats NetworkPolicy admits these pods. Teams can't create pods, so only topicRef or subscriptionRef sets it.
+                    platform.local.lab/uses-nats: "true"
+                    {{- end }}
                   {{- if $xr.spec.parameters.callsClusterApi }}
                   annotations:
                     # Calls to the Kubernetes API go around the sidecar.
@@ -1119,7 +1123,7 @@ spec:
                     {{- end }}
                     {{- if or $topicRefName $subscriptionRefName }}
                     # The XR already hands this app NATS_URL, so permitting it here is
-                    # the other half of that. Unmeshed, so there is no inbound gate.
+                    # the other half of that. NATS is unmeshed, so its NetworkPolicy is the inbound gate.
                     - "nats/nats.nats.svc.cluster.local"
                     {{- end }}
                     {{- if $workflowSpaceName }}
