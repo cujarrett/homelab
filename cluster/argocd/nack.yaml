@@ -17,6 +17,10 @@ spec:
       skipCrds: true
       values: |
         jetstream:
+          # The chart's image tag trails upstream releases that carry CVE fixes.
+          image:
+            # renovate: datasource=docker depName=natsio/jetstream-controller
+            tag: 0.25.0
           nats:
             # Points the NACK controller at the in-cluster NATS service.
             # NACK reconciles Stream and Consumer CRDs against this server.

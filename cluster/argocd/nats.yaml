@@ -26,6 +26,10 @@ spec:
                   storageClassName: longhorn
           promExporter:
             enabled: true
+            # The chart's image tags trail upstream releases that carry CVE fixes.
+            image:
+              # renovate: datasource=docker depName=natsio/prometheus-nats-exporter
+              tag: 0.20.3
             container:
               merge:
                 resources:
@@ -42,6 +46,9 @@ spec:
                   cpu: "50m"
                   memory: "64Mi"
           reloader:
+            image:
+              # renovate: datasource=docker depName=natsio/nats-server-config-reloader
+              tag: 0.25.0
             container:
               merge:
                 resources:
