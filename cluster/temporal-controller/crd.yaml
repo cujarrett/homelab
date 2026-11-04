@@ -49,8 +49,23 @@ spec:
           spec:
             description: spec defines the desired state of TemporalNamespace
             properties:
+              backend:
+                default: private-cloud
+                description: |-
+                  backend is where the namespace lives.
+                  private-cloud is the self-hosted Temporal server at --temporal-address. public-cloud is Temporal Cloud.
+                  It is fixed at creation, since Temporal can't move a namespace between servers.
+                enum:
+                - private-cloud
+                - public-cloud
+                type: string
+                x-kubernetes-validations:
+                - message: backend can't be changed after creation
+                  rule: self == oldSelf
               description:
-                description: description is shown in the Temporal UI.
+                description: |-
+                  description is shown in the Temporal UI. Not supported on public-cloud,
+                  where the controller keeps its owner record in the description.
                 type: string
               retention:
                 description: |-
@@ -60,6 +75,9 @@ spec:
             required:
             - retention
             type: object
+            x-kubernetes-validations:
+            - message: description is not supported when backend is public-cloud
+              rule: self.backend != 'public-cloud' || !has(self.description)
           status:
             description: status defines the observed state of TemporalNamespace
             properties:
@@ -129,6 +147,17 @@ spec:
                   describe.
                 format: int64
                 type: integer
+              publicCloud:
+                description: publicCloud is set once a Temporal Cloud namespace exists.
+                properties:
+                  endpoint:
+                    description: endpoint is the host:port workers connect to with
+                      their client certificate.
+                    type: string
+                  namespace:
+                    description: namespace is the full Temporal Cloud namespace, name.account.
+                    type: string
+                type: object
             type: object
         required:
         - spec
