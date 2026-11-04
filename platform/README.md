@@ -30,7 +30,7 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 | [`ManagedSecret`](managed-secret/README.md) | A console-set value, delivered as files | - | AWS Secrets Manager |
 | [`FederatedGraph`](federated-graph/README.md) | Federated GraphQL router and composed schema | - | - |
 | [`GraphApi`](graph-api/README.md) | One team's subgraph, joined to a FederatedGraph | - | - |
-| [`Workflow`](workflow/README.md) | Durable workflow space, used by an Api through `workflowRef` | Temporal in the cluster | Temporal Cloud *(planned)* |
+| [`WorkflowSpace`](workflow-space/README.md) | Durable workflow space, used by an Api through `workflowSpaceRef` | Temporal in the cluster | Temporal Cloud *(planned)* |
 
 ---
 

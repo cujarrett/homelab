@@ -12,7 +12,7 @@ render-check:
 test-e2e *args:
     ./test/e2e.sh {{args}}
 
-# Workflow only: a Workflow plus an Api that uses it, in-cluster and Entra (~3 min, free)
+# WorkflowSpace only: a WorkflowSpace plus an Api that uses it, in-cluster and Entra (~3 min, free)
 #   --keep  skip teardown, leave resources up for debugging
 # The full test-e2e runs this too.
 test-e2e-workflow *args:

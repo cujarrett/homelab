@@ -1,5 +1,5 @@
 apiVersion: platform.local.lab/v1alpha1
-kind: Workflow
+kind: WorkflowSpace
 metadata:
   name: e2e-workflows
   namespace: platform-e2e-workflow
@@ -18,5 +18,5 @@ spec:
     image: ghcr.io/cujarrett/demo-api:latest
     port: 8080
     metricsPort: 8080
-    workflowRef:
+    workflowSpaceRef:
       name: e2e-workflows

@@ -11,7 +11,7 @@
 #   ./platform/test/e2e.sh --private-only  # in-cluster only (~5 min, no AWS)
 #   ./platform/test/e2e.sh --keep          # skip teardown, leave resources for debugging
 #
-# Ends by running e2e-workflow.sh, so the full suite covers Workflow too.
+# Ends by running e2e-workflow.sh, so the full suite covers WorkflowSpace too.
 #
 # XRs are applied directly with kubectl (never via ArgoCD), so GitOps state stays
 # untouched. RDS/ElastiCache are VPC-internal and unreachable from the cluster by
@@ -507,15 +507,15 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Workflow suite - its own namespace and teardown, so it runs before --keep can exit
+# WorkflowSpace suite - its own namespace and teardown, so it runs before --keep can exit
 # ---------------------------------------------------------------------------
-echo "== Workflow suite"
+echo "== WorkflowSpace suite"
 WF_ARGS=()
 $KEEP && WF_ARGS+=(--keep)
 if "$SCRIPT_DIR/e2e-workflow.sh" "${WF_ARGS[@]}"; then
   record workflow "e2e-workflow.sh" PASS ""
 else
-  record workflow "e2e-workflow.sh" FAIL "see the Workflow report above"
+  record workflow "e2e-workflow.sh" FAIL "see the WorkflowSpace report above"
 fi
 
 # ---------------------------------------------------------------------------

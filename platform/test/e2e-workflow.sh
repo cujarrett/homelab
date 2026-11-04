@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# Workflow end-to-end test.
+# WorkflowSpace end-to-end test.
 #
-# Inflates a Workflow and an Api that references it, checks every piece the platform
+# Inflates a WorkflowSpace and an Api that references it, checks every piece the platform
 # composes for them, tears both down, and checks nothing was left in Temporal or Entra.
 #
 # Usage:
@@ -86,7 +86,7 @@ kubectl create namespace "$NS" >/dev/null
 kubectl label namespace "$NS" platform.local.lab/workloads=true istio-injection=enabled >/dev/null
 kubectl apply -f "$SCRIPT_DIR/manifests/workflow.yaml" >/dev/null
 
-if wait_until 180 ready workflows.platform.local.lab "$WF"; then record inflate "workflow/$WF Ready" PASS ""; else record inflate "workflow/$WF Ready" FAIL "timeout 180s"; fi
+if wait_until 180 ready workflowspaces.platform.local.lab "$WF"; then record inflate "workflowspace/$WF Ready" PASS ""; else record inflate "workflowspace/$WF Ready" FAIL "timeout 180s"; fi
 if wait_until 600 ready apis.platform.local.lab "$API"; then record inflate "api/$API Ready" PASS ""; else record inflate "api/$API Ready" FAIL "timeout 600s"; fi
 if kubectl wait deployment "$API" -n "$NS" --for=condition=Available --timeout=300s >/dev/null 2>&1; then
   record inflate "worker pod Available" PASS ""
@@ -118,7 +118,7 @@ fi
 
 echo "== Phase 3: teardown"
 kubectl delete -f "$SCRIPT_DIR/manifests/workflow.yaml" --wait=false >/dev/null 2>&1
-if wait_until 300 gone apis.platform.local.lab "$API" && wait_until 300 gone workflows.platform.local.lab "$WF"; then
+if wait_until 300 gone apis.platform.local.lab "$API" && wait_until 300 gone workflowspaces.platform.local.lab "$WF"; then
   record teardown "XRs deleted" PASS ""
 else
   record teardown "XRs deleted" FAIL "timeout 300s"

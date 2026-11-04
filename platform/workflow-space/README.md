@@ -1,15 +1,15 @@
-# Workflow
+# WorkflowSpace
 
-A space for durable workflows: steps that keep their progress through crashes, restarts and long waits. An `Api` that references a `Workflow` can start workflows in it and run them.
+A space for durable workflows: steps that keep their progress through crashes, restarts and long waits. An `Api` that references a `WorkflowSpace` can start workflows in it and run them.
 
 ## What it provisions
 
-- **Workflow namespace:** named after the `Workflow`, with the retention you set. Names are shared across the whole platform, so a name another workspace already uses leaves this `Workflow` not ready.
+- **Workflow namespace:** named after the `WorkflowSpace`, with the retention you set. Names are shared across the whole platform, so a name another workspace already uses leaves this `WorkflowSpace` not ready.
 
 ## Access
 
-- **Same workspace:** an `Api` with `workflowRef` can start and run workflows here.
-- **Other workspaces:** an `Api` elsewhere cannot, even with the same `workflowRef` name.
+- **Same workspace:** an `Api` with `workflowSpaceRef` can start and run workflows here.
+- **Other workspaces:** an `Api` elsewhere cannot, even with the same `workflowSpaceRef` name.
 - **Tokens:** every call needs a token. Calls without one are refused.
 - **Name clash:** access is granted only once the workflow namespace is ready, so a clash grants nothing.
 
@@ -25,7 +25,7 @@ A space for durable workflows: steps that keep their progress through crashes, r
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
-kind: Workflow
+kind: WorkflowSpace
 metadata:
   name: foo-workflows
   namespace: foo
@@ -42,19 +42,19 @@ metadata:
 spec:
   parameters:
     image: ghcr.io/foo/foo-worker:sha-abc123
-    workflowRef:
+    workflowSpaceRef:
       name: foo-workflows
 ```
 
 ## Env vars
 
-An `Api` with `workflowRef` gets these, plus a workload identity whose token carries the permission to use this `Workflow`. The platform also allows its traffic to the workflow service, so it never goes in `consumes`.
+An `Api` with `workflowSpaceRef` gets these, plus a workload identity whose token carries the permission to use this `WorkflowSpace`. The platform also allows its traffic to the workflow service, so it never goes in `consumes`.
 
 | Env var | Value |
 |---|---|
 | `TEMPORAL_ADDRESS` | The workflow service, as `host:port`. Pass it to the Temporal SDK client. |
-| `TEMPORAL_NAMESPACE` | The `Workflow`'s name. Workers and clients use it as their namespace. |
-| `TEMPORAL_TOKEN_SCOPE` | `api://<tenant>/platform-temporal/.default`. Ask Entra for a token with this scope, using the `AZURE_*` identity the Api already has. The token carries this `Workflow`'s permission. Send it as `Authorization: Bearer <token>` on every Temporal call. |
+| `TEMPORAL_NAMESPACE` | The `WorkflowSpace`'s name. Workers and clients use it as their namespace. |
+| `TEMPORAL_TOKEN_SCOPE` | `api://<tenant>/platform-temporal/.default`. Ask Entra for a token with this scope, using the `AZURE_*` identity the Api already has. The token carries this `WorkflowSpace`'s permission. Send it as `Authorization: Bearer <token>` on every Temporal call. |
 
 In Go, with the Azure SDK and the Temporal SDK:
 
@@ -74,6 +74,6 @@ Workflow code, task queue names, retries and timeouts all live in the app.
 ## Operations
 
 ```bash
-kubectl get workflows -n foo
-kubectl describe workflow foo-workflows -n foo
+kubectl get workflowspaces -n foo
+kubectl describe workflowspace foo-workflows -n foo
 ```

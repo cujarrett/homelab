@@ -1,13 +1,13 @@
 apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
-  name: workflows.platform.local.lab
+  name: workflowspaces.platform.local.lab
 spec:
   group: platform.local.lab
   scope: Namespaced
   names:
-    kind: Workflow
-    plural: workflows
+    kind: WorkflowSpace
+    plural: workflowspaces
   versions:
     - name: v1alpha1
       served: true
@@ -43,4 +43,4 @@ spec:
               properties:
                 namespace:
                   type: string
-                  description: "The workflow namespace an Api referencing this Workflow is given."
+                  description: "The workflow namespace an Api referencing this WorkflowSpace is given."

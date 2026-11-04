@@ -1,11 +1,11 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: workflow
+  name: workflow-space
 spec:
   compositeTypeRef:
     apiVersion: platform.local.lab/v1alpha1
-    kind: Workflow
+    kind: WorkflowSpace
   mode: Pipeline
   pipeline:
     - step: load-environment-configs
@@ -34,7 +34,7 @@ spec:
             {{- $params := $xr.spec.parameters | default dict }}
             {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
             {{- $temporalAppObjectId := index $envCtx "temporalEntraAppObjectId" | default "" }}
-            {{- /* The Api composition derives the same GUID from its own namespace and workflowRef. */ -}}
+            {{- /* The Api composition derives the same GUID from its own namespace and workflowSpaceRef. */ -}}
             {{- /* An Api in another namespace derives a GUID that matches no role, so its grant fails. */ -}}
             {{- $roleHash := printf "%s/%s/temporal-writer" $ns $name | sha256sum }}
             {{- $roleId := printf "%s-%s-4%s-a%s-%s" (substr 0 8 $roleHash) (substr 8 12 $roleHash) (substr 13 16 $roleHash) (substr 17 20 $roleHash) (substr 20 32 $roleHash) }}
@@ -87,6 +87,6 @@ spec:
             {{- end }}
             ---
             apiVersion: platform.local.lab/v1alpha1
-            kind: Workflow
+            kind: WorkflowSpace
             status:
               namespace: {{ $name | quote }}
