@@ -48,6 +48,14 @@
     },
     {
       "description": [
+        "Each app's CI writes a fresh sha- tag on every main build and drops any digest.",
+        "A pin would only open a PR that the next deploy undoes."
+      ],
+      "matchPackageNames": ["ghcr.io/cujarrett/platform-exporter", "ghcr.io/cujarrett/temporal-controller"],
+      "pinDigests": false
+    },
+    {
+      "description": [
         "ECR Public publishes no release dates.",
         "Without a date, the 7-day wait never ends.",
         "Skipping the date check lets aws-cli update."
