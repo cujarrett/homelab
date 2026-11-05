@@ -26,7 +26,6 @@ Traefik access logs in Loki, under `log_type=~"access|sandbox"`. Alloy shapes th
 - `request_Cf-Ipcity`, `request_Cf-Region-Code`: the city and state Cloudflare guessed from the IP.
 - Non-US visitors, known bots and requests with no User-Agent never reach Loki.
 - Request duration is not logged. Time on site is the gap between a visit's first and last page view, so a one-page visit reads 0 minutes.
-- `kentjarrett.com` and `mattjarrett.com` arrive with no city. Their Cloudflare zones lack the "Add visitor location headers" managed transform. Report their place as unknown.
 
 ## 1. Fetch the period
 
@@ -70,6 +69,8 @@ A day showing 5000 lines was cut short. Fetch that day again as two halves.
 
 A visit is one visitor's page views with no gap over 30 minutes. The User-Agent filter keeps real browsers and drops crawlers that slipped past Alloy, such as `facebookexternalhit` and `CensysInspect`.
 
+`kentjarrett.com` and `mattjarrett.com` are each grouped on their own. A visit that crosses into one splits in two, so they never affect the other sites' numbers.
+
 A visit gets `bot: true` when any of these hold.
 
 - Datacenter city: Ashburn VA, Santa Clara CA, Council Bluffs IA, Boardman OR, Columbus OH, The Dalles OR, San Jose CA. These are AWS, Google and Azure regions.
@@ -82,6 +83,7 @@ def t: sub("\\.[0-9]+Z$"; "Z") | fromdate;
 def device: if test("iPhone") then "iPhone" elif test("iPad") then "iPad" elif test("Android") then "Android"
   elif test("Macintosh") then "Mac" elif test("Windows") then "Windows" else "Linux" end;
 [.data.result[].values[][1] | fromjson
+  | select(.RequestHost | if $site == "" then test("^(kentjarrett|mattjarrett)\\.com$") | not else . == $site end)
   | select(.DownstreamStatus < 400)
   | select(.["request_User-Agent"] | test("^Mozilla/5\\.0 \\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11)") and (test("compatible;")|not))]
 | group_by(.["request_Cf-Connecting-Ip"])
@@ -107,8 +109,12 @@ def device: if test("iPhone") then "iPhone" elif test("iPad") then "iPad" elif t
   )})
 | sort_by(.start)
 EOF
-jq -f visits.jq period.json > visits.json
+jq --arg site "" -f visits.jq period.json > visits.json
 jq '{visits: length, human: map(select(.bot | not)) | length}' visits.json
+for site in kentjarrett.com mattjarrett.com; do
+  jq --arg site $site -f visits.jq period.json \
+    | jq --arg site $site 'map(select(.bot | not)) | {site: $site, human: length, views: (map(.views) | add // 0)}'
+done
 ```
 
 Read `visits.json` for the report. Per-site page views come from `site_views`, so a visit across six sites counts each view once.
@@ -132,3 +138,5 @@ More than one day:
 5. The 10 longest human visits: start, place, device, minutes, pages.
 
 Then one line per automated group seen, such as a crawler, datacenter hits or a link checker. Add one line only for something unusual, such as a visit over 30 minutes, a new city or a spike on one page.
+
+End with one line each for `kentjarrett.com` and `mattjarrett.com`: human visits and page views. They appear nowhere else in the report.
