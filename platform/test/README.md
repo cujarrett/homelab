@@ -73,6 +73,7 @@ just test-e2e --private-only   # in-cluster only (~2 min, free)
 just test-e2e --keep           # skip teardown, leave resources for debugging
 just test-e2e --abort          # stop a running e2e and remove what it left
 just test-e2e-workflow         # WorkflowSpace only, a WorkflowSpace plus an Api using it (~2 min, free)
+just test-e2e-workflow-cloud   # public-cloud WorkflowSpace with a real Temporal Cloud namespace and one order (~10 min, spends money)
 ```
 
 ## Credentials the e2e uses

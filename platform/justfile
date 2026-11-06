@@ -17,3 +17,9 @@ test-e2e *args:
 # The full test-e2e runs this too.
 test-e2e-workflow *args:
     ./test/e2e-workflow.sh {{args}}
+
+# Public-cloud WorkflowSpace: a real Temporal Cloud namespace and one order (~10 min, spends money)
+#   --time-limit  also wait for the 2 hour delete policy (~2h20m)
+# Nothing else runs this, because Temporal Cloud has no spend cap.
+test-e2e-workflow-cloud *args:
+    ./test/e2e-workflow-cloud.sh {{args}}
