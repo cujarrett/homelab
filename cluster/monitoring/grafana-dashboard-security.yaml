@@ -54,7 +54,7 @@ data:
           "description": "Items only a person can clear: a node waiting on a reboot, auto-updates that stopped, a Renovate PR stuck on a failing check, or anything automation has failed to fix in its window. 0 means nothing needs you.",
           "gridPos": {
             "h": 5,
-            "w": 8,
+            "w": 12,
             "x": 0,
             "y": 0
           },
@@ -109,8 +109,8 @@ data:
           "description": "Items that clear without anyone acting: node updates that apply each morning, and fixable CVEs waiting on Renovate's 7-day hold or an upstream image rebuild. The tables below list each one.",
           "gridPos": {
             "h": 5,
-            "w": 8,
-            "x": 8,
+            "w": 6,
+            "x": 12,
             "y": 0
           },
           "id": 10,
@@ -165,8 +165,8 @@ data:
           },
           "gridPos": {
             "h": 5,
-            "w": 8,
-            "x": 16,
+            "w": 6,
+            "x": 18,
             "y": 0
           },
           "id": 13,
@@ -223,7 +223,7 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
+            "w": 3,
             "x": 0,
             "y": 5
           },
@@ -281,8 +281,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 4,
+            "w": 3,
+            "x": 3,
             "y": 5
           },
           "id": 5,
@@ -339,8 +339,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 8,
+            "w": 3,
+            "x": 6,
             "y": 5
           },
           "id": 6,
@@ -397,8 +397,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 12,
+            "w": 3,
+            "x": 9,
             "y": 5
           },
           "id": 17,
@@ -452,8 +452,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 16,
+            "w": 3,
+            "x": 12,
             "y": 5
           },
           "id": 2,
@@ -483,8 +483,9 @@ data:
               "refId": "A"
             }
           ],
-          "title": "CVEs Waiting",
-          "type": "stat"
+          "title": "Critical CVEs",
+          "type": "stat",
+          "description": "Critical CVEs with a fix, counted per image. High and unknown severity are in the tables but not in this count."
         },
         {
           "fieldConfig": {
@@ -506,8 +507,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 4,
-            "x": 20,
+            "w": 3,
+            "x": 15,
             "y": 5
           },
           "id": 3,
@@ -537,8 +538,67 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Node Updates Waiting",
+          "title": "Node Updates",
           "type": "stat"
+        },
+        {
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 18,
+            "y": 5
+          },
+          "id": 18,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.4",
+          "targets": [
+            {
+              "expr": "count(count by (namespace, owner_name, container, image_spec) ((kube_pod_container_info or kube_pod_init_container_info{container!~\"istio-proxy|istio-validation\"}) * on (namespace, pod) group_left (owner_name) kube_pod_owner{owner_kind!=\"Job\"} unless on (namespace, owner_name, container) label_replace(label_replace(trivy_image_vulnerabilities, \"owner_name\", \"$1\", \"resource_name\", \"(.*)\"), \"container\", \"$1\", \"container_name\", \"(.*)\")) or count by (namespace, owner_name, container, image_spec) (label_replace(kube_pod_init_container_info{container=\"istio-proxy\"} or kube_pod_container_info{container=\"istio-proxy\"}, \"image\", \"$1\", \"image_spec\", \"([^@]+).*\") * on (namespace, pod) group_left (owner_name) kube_pod_owner{owner_kind!=\"Job\"} unless on (image) label_join(label_join(trivy_image_vulnerabilities{image_repository=\"release/proxyv2\"}, \"image\", \"/\", \"image_registry\", \"image_repository\"), \"image\", \":\", \"image\", \"image_tag\"))) or vector(0)",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Not Scanned",
+          "type": "stat",
+          "description": "Running containers with no vulnerability report. The table at the bottom lists them."
         },
         {
           "fieldConfig": {
@@ -575,7 +635,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Security updates pending"
+                  "options": "Updates pending"
                 },
                 "properties": [
                   {
@@ -611,7 +671,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Reboot required"
+                  "options": "Reboot needed"
                 },
                 "properties": [
                   {
@@ -641,13 +701,31 @@ data:
                         }
                       ]
                     }
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "0": {
+                            "index": 0,
+                            "text": "No"
+                          },
+                          "1": {
+                            "index": 1,
+                            "text": "Yes"
+                          }
+                        }
+                      }
+                    ]
                   }
                 ]
               },
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Hours since last auto-update"
+                  "options": "Hours since update"
                 },
                 "properties": [
                   {
@@ -681,6 +759,22 @@ data:
                         }
                       ]
                     }
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Node"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 110
                   }
                 ]
               }
@@ -688,7 +782,7 @@ data:
           },
           "gridPos": {
             "h": 7,
-            "w": 12,
+            "w": 10,
             "x": 0,
             "y": 8
           },
@@ -737,9 +831,9 @@ data:
                   "node": 0
                 },
                 "renameByName": {
-                  "Value #A": "Security updates pending",
-                  "Value #B": "Reboot required",
-                  "Value #C": "Hours since last auto-update",
+                  "Value #A": "Updates pending",
+                  "Value #B": "Reboot needed",
+                  "Value #C": "Hours since update",
                   "node": "Node"
                 }
               }
@@ -776,7 +870,8 @@ data:
                     "value": 80
                   }
                 ]
-              }
+              },
+              "noValue": "No blocked PRs"
             },
             "overrides": [
               {
@@ -814,13 +909,31 @@ data:
                     }
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Repo"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "Open pull requests in ${__value.raw}",
+                        "url": "https://github.com/cujarrett/${__value.raw}/pulls"
+                      }
+                    ]
+                  }
+                ]
               }
             ]
           },
           "gridPos": {
             "h": 7,
-            "w": 12,
-            "x": 12,
+            "w": 5,
+            "x": 10,
             "y": 8
           },
           "id": 8,
@@ -948,10 +1061,10 @@ data:
             ]
           },
           "gridPos": {
-            "h": 8,
-            "w": 24,
-            "x": 0,
-            "y": 15
+            "h": 7,
+            "w": 9,
+            "x": 15,
+            "y": 8
           },
           "id": 14,
           "options": {
@@ -985,7 +1098,7 @@ data:
           "type": "timeseries"
         },
         {
-          "description": "One row per vulnerable package in each workload.\nThe package has a fixed release, but the image still ships the old one.\nRenovate opens a PR once the image publisher ships a rebuilt image. Updates already found are in the table below.",
+          "description": "One row per vulnerable package in each workload.\nThe package has a fixed release, but the image still ships the old one.\nRenovate opens a PR once the image publisher ships a rebuilt image. Updates already found are in the table below.\nRed is critical. Yellow is high. Purple is unknown severity.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1079,6 +1192,30 @@ data:
                   },
                   {
                     "id": "custom.width",
+                    "value": 200
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Kind"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 110
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Namespace"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
                     "value": 150
                   }
                 ]
@@ -1086,10 +1223,10 @@ data:
             ]
           },
           "gridPos": {
-            "h": 14,
+            "h": 12,
             "w": 24,
             "x": 0,
-            "y": 23
+            "y": 15
           },
           "id": 9,
           "links": [
@@ -1170,7 +1307,8 @@ data:
                   "type": "auto"
                 },
                 "inspect": false
-              }
+              },
+              "noValue": "Nothing on hold"
             },
             "overrides": [
               {
@@ -1194,6 +1332,21 @@ data:
                     "value": 220
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Update"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "auto",
+                      "wrapText": true
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -1201,7 +1354,7 @@ data:
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 37
+            "y": 27
           },
           "id": 15,
           "options": {
@@ -1245,7 +1398,7 @@ data:
           "type": "table"
         },
         {
-          "description": "Vulnerable packages with no fixed version anywhere yet.\nNothing to update to. They move to the table above once upstream ships a fix.",
+          "description": "Vulnerable packages with no fixed version anywhere yet.\nNothing to update to. They move to the table above once upstream ships a fix.\nRed is critical. Yellow is high.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1328,6 +1481,30 @@ data:
                   },
                   {
                     "id": "custom.width",
+                    "value": 200
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Kind"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 110
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Namespace"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
                     "value": 150
                   }
                 ]
@@ -1338,7 +1515,7 @@ data:
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 45
+            "y": 35
           },
           "id": 12,
           "options": {
@@ -1416,15 +1593,16 @@ data:
                   "reducers": []
                 },
                 "inspect": false
-              }
+              },
+              "noValue": "Every running container has a scan"
             },
             "overrides": []
           },
           "gridPos": {
-            "h": 8,
+            "h": 6,
             "w": 24,
             "x": 0,
-            "y": 53
+            "y": 43
           },
           "id": 16,
           "options": {
