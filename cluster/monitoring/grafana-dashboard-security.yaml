@@ -1098,6 +1098,44 @@ data:
           "type": "timeseries"
         },
         {
+          "id": 19,
+          "type": "marcusolsson-treemap-panel",
+          "title": "Critical and High CVEs by App",
+          "description": "One block per app. A bigger, darker block carries more critical and high CVEs, fixable or not. Each CVE counts once per app.",
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 15
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "continuous-BlPu"
+              },
+              "decimals": 0,
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorByField": "Value",
+            "groupByField": "",
+            "labelFields": [],
+            "sizeField": "Value",
+            "textField": "app",
+            "tiling": "treemapSquarify"
+          },
+          "targets": [
+            {
+              "expr": "sort_desc(count by (namespace, app) (count by (namespace, app, vuln_id) (label_replace(trivy_vulnerability_id{severity=~\"Critical|High\", resource_kind=\"ReplicaSet\"}, \"app\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\") or label_replace(trivy_vulnerability_id{severity=~\"Critical|High\", resource_kind!~\"ReplicaSet|Job\"}, \"app\", \"$1\", \"resource_name\", \"(.+?)(-[0-9a-f]{32})?\"))))",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            }
+          ]
+        },
+        {
           "description": "One row per vulnerable package in each workload.\nThe package has a fixed release, but the image still ships the old one.\nRenovate opens a PR once the image publisher ships a rebuilt image. Updates already found are in the table below.\nRed is critical. Yellow is high. Purple is unknown severity.",
           "fieldConfig": {
             "defaults": {
@@ -1226,7 +1264,7 @@ data:
             "h": 12,
             "w": 24,
             "x": 0,
-            "y": 15
+            "y": 25
           },
           "id": 9,
           "links": [
@@ -1354,7 +1392,7 @@ data:
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 27
+            "y": 37
           },
           "id": 15,
           "options": {
@@ -1515,7 +1553,7 @@ data:
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 35
+            "y": 45
           },
           "id": 12,
           "options": {
@@ -1602,7 +1640,7 @@ data:
             "h": 6,
             "w": 24,
             "x": 0,
-            "y": 43
+            "y": 53
           },
           "id": 16,
           "options": {
