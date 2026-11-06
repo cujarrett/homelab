@@ -148,7 +148,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `my-vinyl` | Spa + Api + Cache | `myvinyl.mattjarrett.dev` through Cloudflare Tunnel |
 | `js-pollock` | Spa | `jspollock.mattjarrett.dev` through Cloudflare Tunnel |
 | `sump-pump` | Api ×2 + Topic + Subscription | IoT sump pump bridge, consumer and weather-exporter |
-| `launchpad` | Spa + Api + Sql | `launchpad.mattjarrett.dev` through Cloudflare Tunnel. The Spa's nginx proxies `/api/` to `launchpad-api`. That is a cluster-internal BFF (backend for the frontend) that provisions short-lived demo sandboxes. `launchpad-db` holds a year of sandbox map pins |
+| `launchpad` | Spa + Api | `launchpad.mattjarrett.dev` through Cloudflare Tunnel. The Spa's nginx proxies `/api/` to `launchpad-api`. That is a cluster-internal BFF (backend for the frontend) that provisions short-lived demo sandboxes. |
 | `platform-connections-demo` | Api ×3 + Spa | Service mesh walkthrough at `connections.mattjarrett.dev`. Two callers run one image and differ only in what they declare |
 | `platform-graph-demo` | Api + Spa | Schema management walkthrough at `graph.mattjarrett.dev`. The backend runs fixed queries against the `graph-prod` router under a call budget. It reads GitHub every ten minutes |
 | `platform-exporter` | platform-exporter | Custom Prometheus exporter for platform metrics, scraped through `platform-exporter-servicemonitor` |
