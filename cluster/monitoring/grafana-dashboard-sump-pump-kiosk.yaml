@@ -43,31 +43,18 @@ data:
                 "mode": "fixed"
               },
               "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
               "unit": "short"
             }
           },
           "gridPos": {
             "h": 5,
-            "w": 4,
+            "w": 3,
             "x": 0,
             "y": 0
           },
           "id": 1,
           "options": {
-            "colorMode": "none",
+            "colorMode": "value",
             "graphMode": "none",
             "justifyMode": "center",
             "reduceOptions": {
@@ -76,7 +63,11 @@ data:
               ],
               "fields": ""
             },
-            "textMode": "value"
+            "textMode": "value_and_name",
+            "text": {
+              "titleSize": 16,
+              "valueSize": 60
+            }
           },
           "pluginVersion": "13.2.1",
           "targets": [
@@ -87,11 +78,11 @@ data:
               },
               "expr": "sum(rate(sump_pump_runs_total{job=\"sump-pump-consumer\"}[1h]) * 3600)",
               "instant": true,
-              "legendFormat": "runs/hr",
+              "legendFormat": "Runs / hour",
               "refId": "A"
             }
           ],
-          "title": "Runs / Hour",
+          "title": "",
           "type": "stat"
         },
         {
@@ -106,31 +97,18 @@ data:
                 "mode": "fixed"
               },
               "decimals": 1,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "dtdurations"
+              "unit": "short"
             }
           },
           "gridPos": {
             "h": 5,
-            "w": 6,
-            "x": 4,
+            "w": 3,
+            "x": 3,
             "y": 0
           },
           "id": 3,
           "options": {
-            "colorMode": "none",
+            "colorMode": "value",
             "graphMode": "none",
             "justifyMode": "center",
             "reduceOptions": {
@@ -139,7 +117,11 @@ data:
               ],
               "fields": ""
             },
-            "textMode": "value"
+            "textMode": "value_and_name",
+            "text": {
+              "titleSize": 16,
+              "valueSize": 60
+            }
           },
           "pluginVersion": "13.2.1",
           "targets": [
@@ -148,13 +130,121 @@ data:
                 "type": "prometheus",
                 "uid": "sump-pump-archive"
               },
-              "expr": "avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 3600",
+              "expr": "avg_over_time(max(sump_pump_running{job=\"sump-pump-consumer\"})[1h:10s]) * 60",
               "instant": true,
-              "legendFormat": "sec/hr",
+              "legendFormat": "Minutes / hour",
               "refId": "A"
             }
           ],
-          "title": "Duration / Hour",
+          "title": "",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "sump-pump-archive"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "blue",
+                "mode": "fixed"
+              },
+              "decimals": 0,
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 3,
+            "x": 6,
+            "y": 0
+          },
+          "id": 5,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": ""
+            },
+            "textMode": "value_and_name",
+            "text": {
+              "titleSize": 16,
+              "valueSize": 60
+            }
+          },
+          "pluginVersion": "13.2.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "sump-pump-archive"
+              },
+              "expr": "sum(increase(sump_pump_runs_total{job=\"sump-pump-consumer\"}[24h]))",
+              "instant": true,
+              "legendFormat": "Runs 24h",
+              "refId": "A"
+            }
+          ],
+          "title": "",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "sump-pump-archive"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "blue",
+                "mode": "fixed"
+              },
+              "decimals": 2,
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 3,
+            "x": 9,
+            "y": 0
+          },
+          "id": 6,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": ""
+            },
+            "textMode": "value_and_name",
+            "text": {
+              "titleSize": 16,
+              "valueSize": 60
+            }
+          },
+          "pluginVersion": "13.2.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "sump-pump-archive"
+              },
+              "expr": "sum_over_time(max by(job) (weather_precipitation_mm{job=\"weather-exporter\"})[24h:1h]) * 0.03937",
+              "instant": true,
+              "legendFormat": "Rain 24h, inches",
+              "refId": "A"
+            }
+          ],
+          "title": "",
           "type": "stat"
         },
         {
@@ -340,8 +430,8 @@ data:
           },
           "gridPos": {
             "h": 5,
-            "w": 14,
-            "x": 10,
+            "w": 12,
+            "x": 12,
             "y": 0
           },
           "id": 4,
@@ -421,6 +511,6 @@ data:
         ]
       },
       "timezone": "browser",
-      "title": "Sump Pump \u2014 Kiosk",
+      "title": "Sump Pump — Kiosk",
       "uid": "sump-pump-kiosk"
     }

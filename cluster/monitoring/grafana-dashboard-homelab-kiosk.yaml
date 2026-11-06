@@ -176,7 +176,7 @@ data:
                 "targets": [
                     {
                         "instant": true,
-                        "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.100:9100\",mode=\"idle\"}[2m])) * 100)",
+                        "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.100:9100\",mode=\"idle\"}[3m])) * 100)",
                         "legendFormat": "CPU"
                     },
                     {
@@ -346,7 +346,7 @@ data:
                 "targets": [
                     {
                         "instant": true,
-                        "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.101:9100\",mode=\"idle\"}[2m])) * 100)",
+                        "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.101:9100\",mode=\"idle\"}[3m])) * 100)",
                         "legendFormat": "CPU"
                     },
                     {
@@ -516,7 +516,7 @@ data:
                 "targets": [
                     {
                         "instant": true,
-                        "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.102:9100\",mode=\"idle\"}[2m])) * 100)",
+                        "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.102:9100\",mode=\"idle\"}[3m])) * 100)",
                         "legendFormat": "CPU"
                     },
                     {
@@ -686,7 +686,7 @@ data:
                 "targets": [
                     {
                         "instant": true,
-                        "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.103:9100\",mode=\"idle\"}[2m])) * 100)",
+                        "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.103:9100\",mode=\"idle\"}[3m])) * 100)",
                         "legendFormat": "CPU"
                     },
                     {
@@ -726,7 +726,9 @@ data:
             "from": "now-5m",
             "to": "now"
         },
-        "timepicker": {},
+        "timepicker": {
+          "hidden": true
+        },
         "timezone": "browser",
         "title": "Homelab - Kiosk",
         "uid": "homelab-kiosk",
