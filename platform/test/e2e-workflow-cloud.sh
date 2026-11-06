@@ -63,8 +63,12 @@ available() {
   [[ "$(kubectl get deployment "$API" -n "$NS" -o jsonpath='{.status.availableReplicas}' 2>/dev/null)" -ge 1 ]]
 }
 
+# These read into a variable before matching.
+# grep -q stops at its first match, which kills the writer, and pipefail reads that as a failure.
 env_has() { # var
-  kubectl get deployment "$API" -n "$NS" -o jsonpath='{.spec.template.spec.containers[*].env[*].name}' | tr ' ' '\n' | grep -qx "$1"
+  local names
+  names=$(kubectl get deployment "$API" -n "$NS" -o jsonpath='{.spec.template.spec.containers[*].env[*].name}')
+  grep -qx "$1" <<< "${names// /$'\n'}"
 }
 
 no_env() { # var
@@ -72,11 +76,15 @@ no_env() { # var
 }
 
 worker_is_retrying() {
-  kubectl logs "deployment/$API" -n "$NS" -c api --tail=50 2>/dev/null | grep -q "cannot reach Temporal yet"
+  local log
+  log=$(kubectl logs "deployment/$API" -n "$NS" -c api --tail=50 2>/dev/null)
+  grep -q "cannot reach Temporal yet" <<< "$log"
 }
 
 order_done() { # order id
-  curl -sf "http://localhost:$PORT/orders/$1" | grep -q '"done":true'
+  local order
+  order=$(curl -sf "http://localhost:$PORT/orders/$1")
+  grep -q '"done":true' <<< "$order"
 }
 
 # Runs on every exit, including Ctrl-C and a failed check.

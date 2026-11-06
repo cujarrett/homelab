@@ -54,6 +54,10 @@ spec:
             {{- end }}
             {{- $cloudEndpoint := index $cloudStatus "endpoint" | default "" }}
             {{- $cloudNamespace := index $cloudStatus "namespace" | default "" }}
+            {{- /* The endpoint exists before its DNS record. A lookup that early gets "no such name". */ -}}
+            {{- /* The LAN router caches that answer for 15 minutes, so nothing may look it up until Ready. */ -}}
+            {{- /* Once created it stays, so a brief not-ready never takes a working worker down. */ -}}
+            {{- $cloudReady := or (eq $ready "True") (index (.observed.resources | default dict) "connection") }}
             # --- TemporalNamespace ---
             # temporal-controller creates it in Temporal, where names are global across workspaces.
             apiVersion: temporal.local.lab/v1alpha1
@@ -76,7 +80,7 @@ spec:
               {{- end }}
               {{- end }}
             {{- if $cloud }}
-            {{- if $cloudEndpoint }}
+            {{- if and $cloudEndpoint $cloudReady }}
             ---
             # Where workers connect. The Api composition reads it into env vars.
             apiVersion: v1
@@ -91,7 +95,7 @@ spec:
               TEMPORAL_ADDRESS: {{ $cloudEndpoint | quote }}
               TEMPORAL_NAMESPACE: {{ $cloudNamespace | quote }}
             {{- end }}
-            {{- if and $cloudEndpoint $cloudEgress }}
+            {{- if and $cloudEndpoint $cloudReady $cloudEgress }}
             ---
             # The only way out to Temporal Cloud. Without it, workers here can't connect or spend.
             # TLS passes through by SNI, so workers sign in with their own SVID.
