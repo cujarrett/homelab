@@ -96,6 +96,14 @@ spec:
             resource.customizations.ignoreDifferences.PersistentVolumeClaim: |
               jsonPointers:
               - /spec/volumeName
+            # Kyverno never sets ready on a DeletingPolicy, so ArgoCD's built-in check always says Degraded.
+            # Delete this once argoproj/argo-cd#30797 ships.
+            resource.customizations.health.policies.kyverno.io_DeletingPolicy: |
+              local cs = obj.status and obj.status.conditionStatus
+              if cs ~= nil and cs.ready == false then
+                return {status = "Degraded", message = "Policy is not ready"}
+              end
+              return {status = "Healthy", message = "Policy is active"}
         # The repo server and Redis take requests with no auth, so only named callers reach ArgoCD.
         # argocd namespace: the components call each other.
         # kube-system Traefik: the UI and the GitHub webhooks.

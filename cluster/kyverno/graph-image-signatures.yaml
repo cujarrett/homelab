@@ -58,3 +58,15 @@ spec:
         !has(images.subgraphSchema) ||
         images.subgraphSchema.map(image, verifyImageSignatures(image, [attestors.github])).all(e, e > 0)
       message: subgraph schema image is not signed by its subgraph repo CI on main
+---
+# The policy stays not ready until the reports controller can read every kind it matches.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kyverno:reports-controller:platform-subgraphs
+  labels:
+    rbac.kyverno.io/aggregate-to-reports-controller: "true"
+rules:
+  - apiGroups: ["apollographql.com"]
+    resources: ["subgraphs"]
+    verbs: ["get", "list", "watch"]
