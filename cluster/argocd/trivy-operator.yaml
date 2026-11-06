@@ -36,6 +36,10 @@ spec:
           # Per-CVE series carry fixed_version, which the open-items rule needs.
           metricsVulnIdEnabled: true
         trivy:
+          # Chart 0.38.1 pins Trivy 0.76.1, which carries CVE-2026-111497.
+          # Remove this once the chart ships 0.76.2 or newer.
+          image:
+            tag: 0.76.2
           severity: CRITICAL,HIGH
           # Trivy pulls linux/amd64 unless told otherwise.
           # That fails on the arm64-only ghcr images and scans the wrong variant of multi-arch ones.
