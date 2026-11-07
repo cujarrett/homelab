@@ -52,9 +52,11 @@ spec:
       rules:
         # Dropped events only happen while the breaker is open.
         # Crossplane never reports a result named Open.
+        # The 1m window must stay shorter than the 5m wait.
+        # A longer window keeps this true after drops stop, so a short trip would alert.
         - alert: CrossplaneCircuitBreakerOpen
           expr: |
-            rate(circuit_breaker_events_total{result="Dropped"}[5m]) > 0
+            rate(circuit_breaker_events_total{result="Dropped"}[1m]) > 0
           for: 5m
           labels:
             severity: warning
