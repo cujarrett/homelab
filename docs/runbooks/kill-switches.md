@@ -37,6 +37,8 @@ Undo: create a new key and put it in `/homelab/apollo-operator-<lane>/apollo-api
 
 ## Temporal Cloud
 
+The `TemporalCloudSpend` alert fires at any spend in the last 30 days, then again at every $5.
+
 [Temporal Cloud](https://cloud.temporal.io/) → Settings → Service Accounts → `homelab-platform` → revoke its API key.
 
 Undo: create a new key and put it in `/homelab/temporal-cloud/api-key`.

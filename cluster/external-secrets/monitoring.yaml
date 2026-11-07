@@ -43,3 +43,15 @@ spec:
   data:
     - secretKey: salt
       remoteRef: {key: /homelab/monitoring/visitor-salt}
+---
+# Read-only usage metrics, from a Temporal Cloud service account with the Metrics Read-Only role.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: temporal-cloud-metrics
+  namespace: monitoring
+spec:
+  secretStoreRef: {kind: ClusterSecretStore, name: aws-parameter-store}
+  data:
+    - secretKey: api-key
+      remoteRef: {key: /homelab/monitoring/temporal-cloud-metrics-api-key}

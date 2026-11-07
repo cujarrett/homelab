@@ -1,0 +1,64 @@
+# Temporal Cloud has no spend cap or budget alert, so Prometheus watches its usage.
+# The key belongs to a service account with only the Metrics Read-Only role.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: temporal-cloud
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  jobName: temporal-cloud
+  scheme: HTTPS
+  metricsPath: /v1/metrics
+  scrapeInterval: 60s
+  scrapeTimeout: 30s
+  honorTimestamps: true
+  authorization:
+    type: Bearer
+    credentials:
+      name: temporal-cloud-metrics
+      key: api-key
+  staticConfigs:
+    - targets: ["metrics.temporal.io"]
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: temporal-cloud
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: temporal-cloud
+      interval: 1m
+      rules:
+        # Each sample is actions per second, averaged over the 60s scrape interval.
+        # $0.000055 an action: $50 per million, plus the Developer plan's 10%.
+        # Storage has no metric, so this runs slightly low.
+        - record: temporal_cloud:spend_dollars:30d
+          expr: sum(sum_over_time(temporal_cloud_v1_billable_action_count[30d])) * 60 * 0.000055
+        # The value is the last $5 step passed, and 0 means any spend under $5.
+        # The label holds the step, so each new step is a new alert and a new message.
+        - alert: TemporalCloudSpend
+          expr: floor(temporal_cloud:spend_dollars:30d / 5) * 5 and temporal_cloud:spend_dollars:30d > 0
+          labels:
+            severity: critical
+            reached: '{{ printf "%.0f" $value }}'
+          annotations:
+            summary: 'Temporal Cloud spend in the last 30 days: {{ if eq $value 0.0 }}under $5{{ else }}at least ${{ printf "%.0f" $value }}{{ end }}'
+            description: |-
+              Temporal Cloud has no spend cap, so this keeps billing until it is stopped.
+              Follow docs/runbooks/kill-switches.md, section Temporal Cloud.
+        # Without this, a dead scrape would look the same as no usage.
+        - alert: TemporalCloudMetricsDown
+          expr: up{job="temporal-cloud"} == 0
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Prometheus cannot read Temporal Cloud usage"
+            description: |-
+              TemporalCloudSpend can't fire while this is down.
+              Check the key in /homelab/monitoring/temporal-cloud-metrics-api-key.
