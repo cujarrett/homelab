@@ -8,8 +8,7 @@
 # Temporal Cloud has no spend cap, so nothing else runs this. e2e.sh does not call it.
 #
 # Usage:
-#   ./platform/test/e2e-workflow-cloud.sh               # ~10 min, a real namespace and one order
-#   ./platform/test/e2e-workflow-cloud.sh --time-limit  # also waits for the 2 hour policy, ~2h20m
+#   ./platform/test/e2e-workflow-cloud.sh  # ~10 min, a real namespace and one order
 
 set -uo pipefail
 
@@ -20,15 +19,9 @@ API="e2e-cloud-worker"
 MANIFEST="$SCRIPT_DIR/manifests/workflow-cloud.yaml"
 ENTRY="$WF-workflow-space"
 PORT=18080
-TIME_LIMIT=false
+TIME_LIMIT_POLICY="$SCRIPT_DIR/../../cluster/kyverno/public-cloud-time-limit.yaml"
+SHORT_POLICY="e2e-public-cloud-time-limit"
 FORWARD_PID=""
-
-for arg in "$@"; do
-  case "$arg" in
-    --time-limit) TIME_LIMIT=true ;;
-    *) echo "unknown flag: $arg"; exit 2 ;;
-  esac
-done
 
 REPORT_TITLE="PUBLIC-CLOUD WORKFLOW E2E REPORT"
 # shellcheck source=lib.sh
@@ -92,6 +85,7 @@ order_done() { # order id
 cleanup() {
   [[ -n "$FORWARD_PID" ]] && kill "$FORWARD_PID" 2>/dev/null
   set_egress false
+  kubectl delete deletingpolicy "$SHORT_POLICY" --ignore-not-found >/dev/null 2>&1
   kubectl delete -f "$MANIFEST" --ignore-not-found --wait=false >/dev/null 2>&1
 }
 trap cleanup EXIT
@@ -192,16 +186,22 @@ kill "$FORWARD_PID" 2>/dev/null
 FORWARD_PID=""
 
 # ---------------------------------------------------------------------------
-if $TIME_LIMIT; then
-  echo "== Phase 4: time limit (waits up to 2h20m with egress off)"
-  set_egress false
-  kubectl delete apis.platform.local.lab "$API" -n "$NS" >/dev/null 2>&1
-  if wait_until 8400 gone workflowspaces.platform.local.lab "$WF"; then
-    record time-limit "policy deleted the WorkflowSpace" PASS ""
-  else
-    record time-limit "policy deleted the WorkflowSpace" FAIL "still there after 2h20m"
-  fi
+echo "== Phase 4: time limit"
+# A copy of the real policy, with a 1 minute limit checked every minute.
+# It proves the policy, its access and the Temporal Cloud delete without a 2 hour wait.
+# Only platform-e2e can hold a public-cloud WorkflowSpace, so the copy can't touch anything else.
+set_egress false
+kubectl delete apis.platform.local.lab "$API" -n "$NS" >/dev/null 2>&1
+sed -e '/^---$/q' \
+    -e 's/platform-public-cloud-time-limit/'"$SHORT_POLICY"'/' \
+    -e 's|\*/15 \* \* \* \*|* * * * *|' \
+    -e "s/duration('2h')/duration('1m')/" "$TIME_LIMIT_POLICY" | kubectl apply -f - >/dev/null
+if wait_until 900 gone workflowspaces.platform.local.lab "$WF"; then
+  record time-limit "policy deleted the WorkflowSpace" PASS ""
+else
+  record time-limit "policy deleted the WorkflowSpace" FAIL "still there after 900s"
 fi
+kubectl delete deletingpolicy "$SHORT_POLICY" --ignore-not-found >/dev/null 2>&1
 
 # ---------------------------------------------------------------------------
 echo "== Phase 5: teardown"
