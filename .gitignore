@@ -1,0 +1,14 @@
+# CA certificate exported from cluster
+local-lab-ca.crt
+
+# Cluster backup output - contains plaintext secrets, never commit
+/cluster-backup/
+cluster-backup.tar.gz.age
+
+# longhornctl binary
+longhornctl
+
+local-only
+
+# Machine-local Claude Code settings (contains hardcoded local paths)
+.claude/settings.local.json
