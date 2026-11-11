@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: node-updates
+  namespace: node-updates
+  labels:
+    release: monitoring
+spec:
+  # busybox httpd sends no Content-Type for a file without an extension, which Prometheus 3 rejects.
+  fallbackScrapeProtocol: PrometheusText0.0.4
+  selector:
+    matchLabels:
+      app: node-updates
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: 5m
