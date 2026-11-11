@@ -1,0 +1,32 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: aws-creds
+  namespace: crossplane-system
+spec:
+  secretStoreRef: {kind: ClusterSecretStore, name: aws-parameter-store}
+  data:
+    - secretKey: credentials
+      remoteRef: {key: /homelab/crossplane-system/aws-credentials}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: azuread-creds
+  namespace: crossplane-system
+spec:
+  secretStoreRef: {kind: ClusterSecretStore, name: aws-parameter-store}
+  data:
+    - secretKey: credentials
+      remoteRef: {key: /homelab/crossplane-system/azuread-credentials}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: aws-orphan-scanner-creds
+  namespace: crossplane-system
+spec:
+  secretStoreRef: {kind: ClusterSecretStore, name: aws-parameter-store}
+  data:
+    - secretKey: credentials
+      remoteRef: {key: /homelab/crossplane-system/aws-orphan-scanner-credentials}

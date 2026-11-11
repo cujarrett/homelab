@@ -1,0 +1,16 @@
+# Merged into the chart's argocd-secret rather than a Secret of its own, because that is
+# the only place the webhook handlers read it. The chart leaves this key alone while
+# configs.secret.githubSecret is empty.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: argocd-webhook-github
+  namespace: argocd
+spec:
+  secretStoreRef: {kind: ClusterSecretStore, name: aws-parameter-store}
+  target:
+    name: argocd-secret
+    creationPolicy: Merge
+  data:
+    - secretKey: webhook.github.secret
+      remoteRef: {key: /homelab/argocd/webhook-github-secret}

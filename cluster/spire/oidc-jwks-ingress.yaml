@@ -1,0 +1,23 @@
+# Cloudflare's bot protection 403s datacenter callers on this zone, blocking AWS STS
+# and Entra from fetching signing keys. /.well-known/ requests are let through, so
+# the JWKS is published there and rewritten back to the provider's real /keys path.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: spire-oidc
+  namespace: spire-server
+spec:
+  parentRefs:
+    - {name: traefik-gateway, namespace: kube-system}
+  hostnames: [oidc.mattjarrett.dev]
+  rules:
+    - backendRefs:
+        - {name: spire-spiffe-oidc-discovery-provider, port: 80}
+    - matches:
+        - path: {type: PathPrefix, value: /.well-known/keys}
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path: {type: ReplaceFullPath, replaceFullPath: /keys}
+      backendRefs:
+        - {name: spire-spiffe-oidc-discovery-provider, port: 80}
