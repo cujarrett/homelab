@@ -1,0 +1,35 @@
+# Nothing Novel
+
+Nothing here was invented. Every mechanism is a published pattern, used the way its docs say to use it.
+
+A homelab is for learning what the industry already agreed on, so being recognisable is the goal and cleverness is a smell. Every piece below traces to a public spec, a vendor's reference architecture, or a CNCF working group. If one cannot, it does not belong here.
+
+## Where each piece comes from
+
+| What it does | What it is | Public source |
+|---|---|---|
+| A team declares an app or a database; the platform renders the Kubernetes and cloud objects | Crossplane `XRD` + `Composition` | [Crossplane](https://crossplane.io) - Upbound ships this same structure as its reference architecture |
+| Credentials arrive as files the app reads at `/bindings/sql/host` | Service binding | [servicebinding.io](https://servicebinding.io) - files not env vars is the spec's own choice |
+| The app waits until its credentials exist before starting | Init container gate | Standard Kubernetes readiness ordering |
+| No AWS keys anywhere; a pod trades a short-lived certificate for temporary credentials | SPIFFE SVID → STS | [SPIRE](https://spiffe.io) and [AWS IAM Roles Anywhere](https://docs.aws.amazon.com/rolesanywhere/latest/userguide/introduction.html), the service AWS built for exactly this |
+| A workload names who may call it; everything else is refused | `AuthorizationPolicy`, `PeerAuthentication` STRICT | [Istio](https://istio.io) - the first ALLOW policy making a workload deny-by-default is documented behaviour, and deny-by-default is as old as a firewall rule |
+| A workload names what it calls; nothing else is reachable | `Sidecar` `REGISTRY_ONLY` + `ServiceEntry` | Istio's own egress control task |
+| One namespace per environment, branch, or engineer | Kubernetes multi-tenancy | The usual way ephemeral environments are built |
+| CI writes the new image tag to Git; ArgoCD converges | GitOps | OpenGitOps principles; Flux and Argo both ship image automation that does this |
+| Steps that keep their progress through crashes, restarts and long waits | Durable execution | [Temporal](https://temporal.io), open source, from the engineers who built Uber's Cadence |
+| A team's workflow namespace is created from a Kubernetes resource | A custom controller for an outside system | The [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/), the same approach as AWS ACK and Crossplane providers |
+| A workload signs in to Temporal with no stored secret, and its token says which namespace it may use | Workload identity federation and a JWT role claim | [Entra workload identity federation](https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation) and Temporal's built-in [JWT authorizer](https://docs.temporal.io/self-hosted-guide/security) |
+
+## What is actually mine
+
+The selection, and nothing else: which offerings exist, what each one exposes, what the defaults are, and where the platform stops.
+
+That is the same contribution every platform team makes. Nobody invents a control plane or a mesh - they choose a set, give it defaults, and draw a line around it.
+
+## Why companies do this
+
+One team solves a problem once, and every other team gets the answer without ever learning it was a problem. The alternative is each team solving it again, differently, and the organisation owning every one of those answers forever.
+
+That is the whole argument, and it is not mine - the [CNCF Platforms White Paper](https://tag-app-delivery.cncf.io/whitepapers/platforms/) makes it in full, defining a platform as "an integrated collection of capabilities defined and presented according to the needs of the platform's users."
+
+Nor is it theoretical. AWS, Adobe, Autodesk, Nike, Intuit and Cisco publish reference architectures for building exactly this through [CNOE](https://cnoe.io/). Large engineering organisations converged on the pattern first; this repo is one small instance of it.
