@@ -1,0 +1,95 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    # k3s pins a Traefik tag that trails upstream security releases.
+    # This overrides the tag from k3s after a k3s upgrade too.
+    image:
+      repository: rancher/mirrored-library-traefik
+      # renovate: datasource=docker depName=rancher/mirrored-library-traefik
+      tag: 3.7.17
+    ports:
+      web:
+        hostPort: 80
+      websecure:
+        hostPort: 443
+      metrics:
+        port: 9100
+        expose:
+          default: true
+        protocol: TCP
+    service:
+      type: ClusterIP
+    providers:
+      kubernetesGateway:
+        enabled: true
+      kubernetesIngress:
+        enabled: false
+    # Routes attach from any namespace.
+    # web is dropped so no route is also served as plain HTTP on port 80.
+    gateway:
+      listeners:
+        web: null
+        websecure:
+          port: 8443
+          protocol: HTTPS
+          namespacePolicy:
+            from: All
+          certificateRefs:
+            - name: public-tls
+            - name: local-lab-tls
+    # The chart requests nothing, so the scheduler counted Traefik as free on every node.
+    resources:
+      requests:
+        memory: 192Mi
+    deployment:
+      kind: DaemonSet
+      # Inert. Istio's webhook selects on the sidecar.istio.io/inject label, not this
+      # annotation, so Traefik runs unmeshed and reaches apps on PERMISSIVE ports.
+      # Removing it rolls the DaemonSet.
+      podAnnotations:
+        sidecar.istio.io/inject: "true"
+    tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
+    updateStrategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxUnavailable: 1
+        maxSurge: 0
+    # Access logs feed the visitor and sandbox maps (Web Traffic, Platform, Launchpad).
+    # Alloy drops every line that is not a US visitor and hashes the IP before Loki stores it.
+    # Cf-* headers are set by Cloudflare's "Add visitor location headers" managed transform.
+    accessLog:
+      enabled: true
+      format: json
+      fields:
+        defaultMode: drop
+        names:
+          RequestHost: keep
+          RequestMethod: keep
+          RequestPath: keep
+          DownstreamStatus: keep
+        queryParameters:
+          defaultMode: drop
+        headers:
+          defaultMode: drop
+          names:
+            Cf-Connecting-Ip: keep
+            Cf-Ipcountry: keep
+            Cf-Region-Code: keep
+            Cf-Ipcity: keep
+            Cf-Postal-Code: keep
+            Cf-Iplatitude: keep
+            Cf-Iplongitude: keep
+            User-Agent: keep
+    metrics:
+      prometheus:
+        entryPoint: metrics
+        addEntryPointsLabels: true
+        addRoutersLabels: true
+        addServicesLabels: true
