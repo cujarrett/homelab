@@ -189,3 +189,102 @@ spec:
               - key: "{{ split(request.object.metadata.annotations.\"argocd.argoproj.io/tracking-id\" || '', ':')[0] }}"
                 operator: NotEquals
                 value: "{{ request.object.metadata.name }}"
+---
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: platform-workspace-namespaces
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform workspace namespaces
+    policies.kyverno.io/description: >-
+      A workspace synced from homelab-workspaces keeps its namespace labelled and owns
+      only its own namespace. No workspace takes over a cluster namespace.
+spec:
+  # Warn while this runs beside the ClusterPolicy. A rule that fails would otherwise block ArgoCD.
+  validationActions: [Audit, Warn]
+  evaluation:
+    # Reads who made the request, which a background scan does not have.
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [namespaces]
+  matchConditions:
+    - name: synced-by-argocd
+      expression: "request.userInfo.username == 'system:serviceaccount:argocd:argocd-application-controller'"
+  variables:
+    - name: name
+      expression: "object.metadata.name"
+    # Mirrors the workloads AppProject destinations in cluster/argocd/projects.yaml.
+    - name: isWorkspace
+      expression: "variables.name.startsWith('guest-') || variables.name in ['github-exporter', 'graph-test', 'graph-prod', 'js-pollock', 'kentjarrett-com', 'launchpad', 'mattjarrett-com', 'mattjarrett-dev', 'my-vinyl', 'platform-connections-demo', 'platform-graph-demo', 'sump-pump']"
+    # The tracking annotation names the Application, which is the workspace directory.
+    - name: tracking
+      expression: "object.metadata.?annotations['argocd.argoproj.io/tracking-id'].orValue('')"
+  validations:
+    # Every other platform policy selects on this label, so a workspace commit that
+    # relabels its namespace would switch them all off.
+    - expression: "!variables.isWorkspace || object.metadata.?labels['platform.local.lab/workloads'].orValue('') == 'true'"
+      messageExpression: "'Namespace ' + variables.name + ' must keep the label platform.local.lab/workloads set to true.'"
+      message: The namespace must keep the label platform.local.lab/workloads set to true.
+    # ArgoCD checks project destinations only for namespaced kinds, so a workspace commit
+    # could adopt a cluster namespace such as longhorn-system and then prune it.
+    # Adoption rewrites the tracking annotation.
+    - expression: >-
+        request.operation != 'UPDATE' ||
+        variables.tracking == oldObject.metadata.?annotations['argocd.argoproj.io/tracking-id'].orValue('') ||
+        oldObject.metadata.?labels['platform.local.lab/workloads'].orValue('') == 'true' ||
+        variables.name.startsWith('guest-')
+      messageExpression: "'Namespace ' + variables.name + ' is not a workspace namespace, so no other ArgoCD application may take it over.'"
+      message: The namespace is not a workspace namespace, so no other ArgoCD application may take it over.
+    # Owning a Namespace means pruning it, and everything in it, when the file goes.
+    - expression: "!variables.isWorkspace || variables.tracking.split(':')[0] == variables.name"
+      messageExpression: "'Namespace ' + variables.name + ' can only be synced by the workspace directory of the same name.'"
+      message: The namespace can only be synced by the workspace directory of the same name.
+---
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: platform-workspace-resources
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform workspace resources
+    policies.kyverno.io/description: >-
+      A workspace synced from homelab-workspaces deploys only into the namespace
+      named after its directory.
+spec:
+  # Warn while this runs beside the ClusterPolicy. A rule that fails would otherwise block ArgoCD.
+  validationActions: [Audit, Warn]
+  evaluation:
+    # Reads who made the request, which a background scan does not have.
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [platform.local.lab]
+        apiVersions: ["*"]
+        operations: [CREATE, UPDATE]
+        resources: ["*"]
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [configmaps, services]
+  matchConditions:
+    - name: synced-by-argocd
+      expression: "request.userInfo.username == 'system:serviceaccount:argocd:argocd-application-controller'"
+    # Mirrors the workloads AppProject destinations in cluster/argocd/projects.yaml.
+    - name: in-a-workspace-namespace
+      expression: "object.metadata.namespace.startsWith('guest-') || object.metadata.namespace in ['github-exporter', 'graph-test', 'graph-prod', 'js-pollock', 'kentjarrett-com', 'launchpad', 'mattjarrett-com', 'mattjarrett-dev', 'my-vinyl', 'platform-connections-demo', 'platform-graph-demo', 'sump-pump']"
+  validations:
+    # The AppProject allows every workspace namespace to every workspace, and a manifest
+    # that sets metadata.namespace overrides the Application's destination.
+    # The tracking annotation names the Application, which is the workspace directory.
+    - expression: "object.metadata.?annotations['argocd.argoproj.io/tracking-id'].orValue('').split(':')[0] == object.metadata.namespace"
+      messageExpression: "object.kind + ' ' + object.metadata.name + ' is synced into ' + object.metadata.namespace + ' by another workspace. A workspace can only deploy into the namespace named after its directory.'"
+      message: The resource is synced into this namespace by another workspace. A workspace can only deploy into the namespace named after its directory.
