@@ -1,0 +1,72 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: launchpad-api-xr-viewer
+rules:
+  - apiGroups:
+      - platform.local.lab
+    resources:
+      - apis
+      - spas
+      - sqls
+      - nosqls
+      - objectstorages
+      - topics
+      - subscriptions
+      - wordpresses
+      - caches
+      - graphapis
+      - federatedgraphs
+      - managedsecrets
+      - workflowspaces
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apiextensions.crossplane.io
+    resources:
+      - compositeresourcedefinitions
+    verbs:
+      - get
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: launchpad-api-xr-viewer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: launchpad-api-xr-viewer
+subjects:
+  - kind: ServiceAccount
+    name: launchpad-api
+    namespace: launchpad
+---
+# launchpad-api watches pods cluster-wide to stream init container binding status to
+# SSE clients.
+# RBAC cannot scope a ClusterRole to a namespace prefix, so the grant is cluster-wide.
+# extractPodStatus filters to guest-* namespaces before anything is broadcast.
+# get/list/watch only. The SA cannot create, update or delete a pod.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: launchpad-api-pod-viewer
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: launchpad-api-pod-viewer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: launchpad-api-pod-viewer
+subjects:
+  - kind: ServiceAccount
+    name: launchpad-api
+    namespace: launchpad

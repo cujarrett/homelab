@@ -1,0 +1,181 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: blog
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
+---
+# Ghost content PVC - stores SQLite DB, themes, images, and all uploaded files.
+# Uses Recreate strategy because the RWO PVC can only be mounted by one pod at a time.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ghost-content
+  namespace: blog
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ghost
+  namespace: blog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ghost
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: ghost
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ghost
+          image: ghost:6.74.0-alpine@sha256:65baa63b8a7778840506e1d6eb46283dca0bc71b6297ef6bb0c6187c249e654c
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: url
+              value: https://blog.mattjarrett.dev
+            - name: NODE_ENV
+              value: production
+            - name: database__client
+              value: sqlite3
+            - name: database__connection__filename
+              value: /var/lib/ghost/content/data/ghost.db
+            - name: mail__transport
+              value: SMTP
+            - name: mail__options__service
+              value: Gmail
+            - name: mail__options__auth__user
+              value: cujarrett@gmail.com
+            - name: mail__options__auth__pass
+              valueFrom:
+                secretKeyRef:
+                  name: ghost-smtp
+                  key: smtp-password
+            - name: mail__from
+              value: cujarrett@gmail.com
+          ports:
+            - containerPort: 2368
+          volumeMounts:
+            - name: content
+              mountPath: /var/lib/ghost/content
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            tcpSocket:
+              port: 2368
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket:
+              port: 2368
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 5
+      volumes:
+        - name: content
+          persistentVolumeClaim:
+            claimName: ghost-content
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ghost
+  namespace: blog
+spec:
+  selector:
+    app: ghost
+  ports:
+    - port: 80
+      targetPort: 2368
+---
+# Ghost serves its own responses, so headers are set at the router the way the Api
+# composition does it. No Content-Security-Policy: the theme and the admin editor
+# load their own inline scripts and styles, and a wrong one breaks publishing.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: ghost-security-headers
+  namespace: blog
+spec:
+  headers:
+    customResponseHeaders:
+      Server: ""
+      X-Powered-By: ""
+      X-Content-Type-Options: "nosniff"
+      X-Frame-Options: "SAMEORIGIN"
+      Referrer-Policy: "strict-origin-when-cross-origin"
+      X-XSS-Protection: "0"
+      Strict-Transport-Security: "max-age=31536000; includeSubDomains"
+---
+# The sign-in POST, reachable from the internet. Only the credential check is limited,
+# never /ghost itself - the admin is a single-page app that pulls dozens of assets from
+# there, and limiting those blanks the screen. Keyed on CF-Connecting-IP because every
+# request arrives from the two cloudflared pod IPs.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: ghost-signin-ratelimit
+  namespace: blog
+spec:
+  rateLimit:
+    average: 5
+    burst: 3
+    period: 1m
+    sourceCriterion:
+      requestHeaderName: CF-Connecting-IP
+---
+# Everything else, readers and the admin app alike, gets the headers only. Traefik ranks
+# a longer path prefix first, so the sign-in rule wins for that one path.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ghost
+  namespace: blog
+spec:
+  parentRefs:
+    - {name: traefik-gateway, namespace: kube-system}
+  hostnames: [blog.mattjarrett.dev]
+  rules:
+    - filters:
+        - type: ExtensionRef
+          extensionRef: {group: traefik.io, kind: Middleware, name: ghost-security-headers}
+      backendRefs:
+        - {name: ghost, port: 80}
+    - matches:
+        - path: {type: PathPrefix, value: /ghost/api/admin/session}
+      filters:
+        - type: ExtensionRef
+          extensionRef: {group: traefik.io, kind: Middleware, name: ghost-security-headers}
+        - type: ExtensionRef
+          extensionRef: {group: traefik.io, kind: Middleware, name: ghost-signin-ratelimit}
+      backendRefs:
+        - {name: ghost, port: 80}
