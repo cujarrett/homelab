@@ -103,6 +103,16 @@
       "allowedVersions": "<18"
     },
     {
+      "description": [
+        "Chart 3.10 ships Kyverno 1.20, which stops enforcing ClusterPolicy.",
+        "Policies in cluster/kyverno still use that kind.",
+        "Lift this when none are left."
+      ],
+      "matchFileNames": ["cluster/argocd/kyverno.yaml"],
+      "matchPackageNames": ["kyverno"],
+      "allowedVersions": "<3.10.0"
+    },
+    {
       "matchPackageNames": ["mariadb"],
       "matchUpdateTypes": ["major"],
       "prBodyNotes": [
