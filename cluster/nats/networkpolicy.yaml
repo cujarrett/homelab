@@ -1,0 +1,48 @@
+# NATS takes connections with no auth, so only named callers reach it.
+# Any pod in the cluster could otherwise read or publish every subject and delete streams.
+#
+# nats namespace: the servers route to each other, and NACK manages streams.
+# Pods labelled platform.local.lab/uses-nats in any namespace: clients on 4222.
+#   The Api composition sets that label from topicRef or subscriptionRef.
+#   Any namespace, so the e2e suite's unlabelled namespace still reaches it.
+# monitoring: Prometheus, for the exporter on 7777.
+# Node cni0 addresses: kubelet probes on 8222. kube-router matches on address alone, so these are each
+#   node's cni0 bridge, the first address of its pod CIDR. Re-check them if a node is rebuilt.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: nats-callers
+  namespace: nats
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector: {}
+    - from:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              platform.local.lab/uses-nats: "true"
+      ports:
+        - protocol: TCP
+          port: 4222
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 7777
+    - from:
+        - ipBlock:
+            cidr: 10.42.0.1/32
+        - ipBlock:
+            cidr: 10.42.1.1/32
+        - ipBlock:
+            cidr: 10.42.3.1/32
+        - ipBlock:
+            cidr: 10.42.5.1/32
+      ports:
+        - protocol: TCP
+          port: 8222
