@@ -1,60 +1,7 @@
 # Third-party egress is declared, not approved. Anyone may reach a new host by saying so.
 # A host listed here is refused everywhere, so a takedown is one pull request.
-# Kyverno runs only at admission, so adding a host stops new declarations.
-# Existing ones keep working until swept.
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
-metadata:
-  name: platform-egress-denials
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
-    policies.kyverno.io/title: Platform egress denials
-    policies.kyverno.io/description: >-
-      Hosts no workload may declare. Empty by design; add one only to shut a
-      destination off across the whole platform.
-spec:
-  validationFailureAction: Enforce
-  background: false
-  rules:
-    - name: host-is-not-denied
-      match:
-        any:
-          - resources:
-              kinds:
-                - platform.local.lab/v1alpha1/Api
-                - platform.local.lab/v1alpha1/Spa
-      preconditions:
-        all:
-          - key: "{{ request.operation || 'BACKGROUND' }}"
-            operator: AnyIn
-            value: [CREATE, UPDATE]
-      # Kyverno defaults both of these on write. Stated here so the repo matches
-      # what the API server stores, otherwise ArgoCD sits permanently OutOfSync.
-      skipBackgroundRequests: true
-      validate:
-        allowExistingViolations: true
-        # The message cannot name the offending host.
-        # foreach entries take no message of their own, and element is out of scope here.
-        message: >-
-          A host declared in consumes or apiProxies is on the platform egress denial
-          list. Remove the declaration, or open a pull request against
-          cluster/kyverno/egress-denials.yaml if the block is wrong.
-        foreach:
-          - list: "request.object.spec.parameters.consumes[?host]"
-            deny:
-              conditions:
-                all:
-                  - key: "{{ element.host }}"
-                    operator: AnyIn
-                    value: []  # add a host here to shut it off platform-wide
-          - list: "request.object.spec.parameters.apiProxies[?host]"
-            deny:
-              conditions:
-                all:
-                  - key: "{{ element.host }}"
-                    operator: AnyIn
-                    value: []  # add a host here to shut it off platform-wide
----
+# Kyverno runs only at admission, so adding a host stops new declarations and later updates.
+# A running workload keeps its access until its XR next changes.
 apiVersion: policies.kyverno.io/v1
 kind: ValidatingPolicy
 metadata:
