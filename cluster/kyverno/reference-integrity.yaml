@@ -182,6 +182,98 @@ spec:
                     operator: AnyNotIn
                     value: "{{ configmaps }}"
 ---
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: platform-reference-integrity
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform reference integrity
+    policies.kyverno.io/description: >-
+      Every app named in consumes or apiProxies must be an Api that exists, deployed
+      into the namespace the reference claims.
+spec:
+  # Warn while this runs beside the ClusterPolicy. This matches every Api and Spa,
+  # so a lookup that fails would otherwise reject every XR update.
+  validationActions: [Audit, Warn]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [platform.local.lab]
+        apiVersions: [v1alpha1]
+        operations: [CREATE, UPDATE]
+        resources: [apis, spas]
+  variables:
+    - name: ns
+      expression: "object.metadata.namespace"
+    # Apis are namespaced, so the key is namespace and name together.
+    # A reference names both because it may cross namespaces.
+    - name: apis
+      expression: >-
+        resource.List("platform.local.lab/v1alpha1", "apis", "").items.orValue([])
+        .map(a, a.metadata.namespace + "/" + a.metadata.name)
+    # A FederatedGraph router is a callable app too. Its Service is <name>-router.
+    - name: routers
+      expression: >-
+        resource.List("platform.local.lab/v1alpha1", "federatedgraphs", "").items.orValue([])
+        .map(g, g.metadata.namespace + "/" + g.metadata.name + "-router")
+    # Scoped to the XR's own namespace, which is the only place configFrom can name.
+    # Secrets are not checked. The kubelet already reports a missing one as FailedMount.
+    - name: configmaps
+      expression: >-
+        resource.List("v1", "configmaps", variables.ns).items.orValue([])
+        .map(c, c.metadata.name)
+    - name: consumes
+      expression: "object.spec.?parameters.?consumes.orValue([])"
+    - name: proxies
+      expression: "object.spec.?parameters.?apiProxies.orValue([])"
+    - name: configFrom
+      expression: "object.spec.?parameters.?configFrom.orValue([])"
+    # A reference that was already there is not checked again.
+    # Its target may be gone by the time Crossplane removes this XR's finalizer.
+    - name: consumesUnchanged
+      expression: "request.operation == 'UPDATE' && oldObject.spec.?parameters.?consumes.orValue([]) == variables.consumes"
+    - name: proxiesUnchanged
+      expression: "request.operation == 'UPDATE' && oldObject.spec.?parameters.?apiProxies.orValue([]) == variables.proxies"
+    - name: configFromUnchanged
+      expression: "request.operation == 'UPDATE' && oldObject.spec.?parameters.?configFrom.orValue([]) == variables.configFrom"
+    - name: missingConsumes
+      expression: >-
+        variables.consumes.filter(c, has(c.app))
+        .map(c, c.?namespace.orValue('') + "/" + c.app)
+        .filter(k, !(k in variables.apis) && !(k in variables.routers))
+    # namespace is optional on an apiProxies entry and defaults to the Spa's own.
+    - name: missingProxies
+      expression: >-
+        variables.proxies.filter(p, has(p.app))
+        .map(p, p.?namespace.orValue(variables.ns) + "/" + p.app)
+        .filter(k, !(k in variables.apis))
+    - name: missingConfig
+      expression: "variables.configFrom.filter(n, !(n in variables.configmaps))"
+  validations:
+    - expression: "variables.consumesUnchanged || size(variables.missingConsumes) == 0"
+      messageExpression: "'consumes names ' + string(variables.missingConsumes[0]) + ', which is not an Api or a graph router on this platform.'"
+      message: consumes names an app that is not an Api or a graph router on this platform.
+    - expression: "variables.proxiesUnchanged || size(variables.missingProxies) == 0"
+      messageExpression: "'apiProxies names ' + string(variables.missingProxies[0]) + ', which is not an Api on this platform.'"
+      message: apiProxies names an app that is not an Api on this platform.
+    # A public Spa proxying another namespace's Api would publish it to the internet.
+    # The host form is taken verbatim, so an in-cluster name there reaches the same Api.
+    - expression: >-
+        variables.proxies.all(p,
+          (!has(p.app) || p.?namespace.orValue(variables.ns) == variables.ns) &&
+          (!has(p.host) || !(p.host.endsWith('.svc') || p.host.endsWith('.cluster.local') || p.host.contains('.svc.'))))
+      message: >-
+        apiProxies can only reach an Api in this Spa's own namespace, and a host
+        cannot name an in-cluster address. A public Spa proxying another namespace's
+        Api would publish it to the internet.
+    - expression: "variables.configFromUnchanged || size(variables.missingConfig) == 0"
+      messageExpression: "'configFrom names ' + string(variables.missingConfig[0]) + ', which is not a ConfigMap in this namespace.'"
+      message: configFrom names a ConfigMap that does not exist in this namespace.
+---
 # The apis lookup above runs in every Kyverno controller, and the chart binds each
 # to "view". Crossplane aggregates platform kinds into its own view role, so nothing
 # grants the read. Without it the admission controller denies every Api and Spa that

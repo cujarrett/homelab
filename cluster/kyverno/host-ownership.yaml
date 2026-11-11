@@ -71,3 +71,45 @@ rules:
   - apiGroups: ["gateway.networking.k8s.io"]
     resources: ["httproutes"]
     verbs: ["get", "list"]
+---
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: platform-host-ownership
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform host ownership
+    policies.kyverno.io/description: >-
+      One namespace owns each host. An Spa, Api, Wordpress or FederatedGraph is denied
+      when an HTTPRoute in another namespace already serves the same host.
+spec:
+  # Warn while this runs beside the ClusterPolicy. A lookup that fails would otherwise deny every XR with a host.
+  validationActions: [Audit, Warn]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [platform.local.lab]
+        apiVersions: [v1alpha1]
+        operations: [CREATE, UPDATE]
+        resources: [spas, apis, wordpresses, federatedgraphs]
+  matchConditions:
+    - name: has-host
+      expression: "object.spec.?parameters.?host.orValue('') != ''"
+  variables:
+    - name: host
+      expression: "object.spec.parameters.host"
+    # Namespaces other than this XR's own that serve the same host.
+    # Skipping the XR's own namespace lets an update of an existing host pass.
+    - name: otherOwners
+      expression: >-
+        resource.List("gateway.networking.k8s.io/v1", "httproutes", "").items.orValue([])
+        .filter(r, r.metadata.namespace != object.metadata.namespace
+          && variables.host in r.spec.?hostnames.orValue([]))
+        .map(r, r.metadata.namespace)
+  validations:
+    - expression: "size(variables.otherOwners) == 0"
+      messageExpression: "'host ' + variables.host + ' is already used by another namespace. Pick a different host.'"
+      message: The host is already used by another namespace. Pick a different host.
