@@ -1,0 +1,136 @@
+name: base-images
+
+on:
+  push:
+    branches: [main]
+    paths: ["images/**", ".github/workflows/base-images.yml"]
+  pull_request:
+    paths: ["images/**", ".github/workflows/base-images.yml"]
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      promote:
+        description: "Dated base-spa tag to promote now, skipping the 7-day cooldown. Leave empty for a normal run."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  spa:
+    runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/cujarrett/base-spa
+      TAG: nginx1.31-alpine
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Nightly, a build happens only when the newest dated build has Alpine upgrades waiting.
+      # Each build is a new digest, so building on a quiet night would restart the cooldown for nothing.
+      - name: Decide whether to build
+        id: check
+        env:
+          PROMOTE: ${{ inputs.promote }}
+        run: |
+          echo "dated=$TAG-$(date -u +%F)" >> "$GITHUB_OUTPUT"
+          newest=""
+          for n in $(seq 0 60); do
+            tag="$TAG-$(date -u -d "-$n days" +%F)"
+            if docker buildx imagetools inspect "$IMAGE:$tag" >/dev/null 2>&1; then newest="$tag"; break; fi
+          done
+          if [ -n "$PROMOTE" ]; then
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$GITHUB_EVENT_NAME" != "schedule" ] || [ -z "$newest" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          upgrades=$(docker run --rm --entrypoint sh "$IMAGE:$newest" -c 'apk update -q && apk list -u')
+          echo "$upgrades"
+          if [ -n "$upgrades" ]; then echo "build=true"; else echo "build=false"; fi >> "$GITHUB_OUTPUT"
+
+      # no-cache: a cached apk upgrade layer would keep old packages.
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        if: steps.check.outputs.build == 'true'
+        with:
+          context: images/base-spa
+          platforms: linux/arm64
+          no-cache: true
+          pull: true
+          sbom: true
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.IMAGE }}:${{ steps.check.outputs.dated }}
+          labels: org.opencontainers.image.source=https://github.com/cujarrett/homelab
+
+      # Apps follow the main tag, so a build reaches them only after 7 days.
+      # Retagging keeps the digest, so a nightly run with nothing new to promote changes nothing.
+      - name: Promote the newest build that is 7 days old
+        if: github.event_name != 'pull_request'
+        env:
+          PROMOTE: ${{ inputs.promote }}
+        run: |
+          # A manual promote skips the cooldown. The run log records who did it and which tag.
+          if [ -n "$PROMOTE" ]; then
+            if ! [[ "$PROMOTE" =~ ^$TAG-[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+              echo "promote must look like $TAG-YYYY-MM-DD, got $PROMOTE"
+              exit 1
+            fi
+            echo "$GITHUB_ACTOR promoted $PROMOTE without the cooldown"
+            docker buildx imagetools create -t "$IMAGE:$TAG" "$IMAGE:$PROMOTE"
+            exit 0
+          fi
+          for n in $(seq 7 60); do
+            src="$IMAGE:$TAG-$(date -u -d "-$n days" +%F)"
+            if docker buildx imagetools inspect "$src" >/dev/null 2>&1; then
+              docker buildx imagetools create -t "$IMAGE:$TAG" "$src"
+              exit 0
+            fi
+          done
+          echo "No build is 7 days old yet."
+
+  go:
+    # The distroless base changes only when Renovate bumps its FROM, which already waited 7 days.
+    if: github.event_name != 'schedule' && inputs.promote == ''
+    runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # amd64 too, because temporal-controller's e2e test builds its image on an amd64 runner.
+      # The Dockerfile has no RUN step, so no emulation is needed.
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: images/base-go
+          platforms: linux/arm64,linux/amd64
+          no-cache: true
+          pull: true
+          sbom: true
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ghcr.io/cujarrett/base-go:static-debian13
+          labels: org.opencontainers.image.source=https://github.com/cujarrett/homelab
