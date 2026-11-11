@@ -1,0 +1,197 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+spec:
+  project: observability
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 92.17.1
+    helm:
+      releaseName: monitoring
+      values: |
+        kubeApiServer:
+          enabled: false
+        # kube-proxy, scheduler, and controller-manager aren't separately reachable on k3s -
+        # all three are embedded in the k3s binary. Left enabled these ServiceMonitors scrape
+        # nothing and fire *Down alerts permanently.
+        kubeProxy:
+          enabled: false
+        kubeScheduler:
+          enabled: false
+        kubeControllerManager:
+          enabled: false
+        # Merged into every default alert's annotations so a chart-bundled rule is never
+        # just a title with nowhere to look - namespace-scoped alerts deep link filtered,
+        # everything else falls back to the cluster dashboard. Custom rules set their own.
+        defaultRules:
+          additionalRuleAnnotations:
+            dashboard_url: '{{ if $labels.namespace }}https://grafana.local.lab/d/homelab-namespace-overview/namespace-overview?var-namespace={{ $labels.namespace }}{{ else }}https://grafana.local.lab/d/homelab-mbp/homelab{{ end }}'
+        kubelet:
+          serviceMonitor:
+            metricRelabelings:
+              - sourceLabels: [__name__]
+                regex: "apiserver_.+|etcd_.+|workqueue_.+_bucket|prober_.+_bucket|scheduler_.+_bucket|kubelet_runtime_operations_duration_seconds_bucket|container_blkio_device_usage_total|storage_operation_duration_seconds_bucket|rest_client_request_duration_seconds_bucket|kubernetes_feature_enabled"
+                action: drop
+        prometheusOperator:
+          serviceMonitor:
+            selfMonitor: false
+          admissionWebhooks:
+            patch: {}
+        alertmanager:
+          # Redefines discord.default.* here because operator v0.92.1 drops title/message
+          # from the AlertmanagerConfig CRD, and templateFiles skips Helm's tpl so Go syntax
+          # survives. Keeps description alongside summary, unlike the old template.
+          templateFiles:
+            discord.tmpl: |
+              {{ define "discord.default.title" }}{{ if eq .Status "firing" }}🔴 FIRING{{ else }}✅ RESOLVED{{ end }}{{ if .GroupLabels.namespace }} · {{ .GroupLabels.namespace }}{{ end }} ({{ .Alerts | len }}){{ end }}
+
+              {{ define "discord.default.message" }}{{ range .Alerts }}{{ if eq .Labels.severity "critical" }}🚨 `CRITICAL`{{ else if eq .Labels.severity "warning" }}⚠️ `WARNING`{{ else }}ℹ️ `INFO`{{ end }} **{{ .Labels.alertname }}**
+              {{ with .Annotations.summary }}{{ . }}
+              {{ end }}{{ with .Annotations.description }}> {{ . }}
+              {{ end }}{{ with .Labels.pod }}`pod={{ . }}` {{ end }}{{ with .Labels.service }}`service={{ . }}` {{ end }}{{ with .Labels.node }}`node={{ . }}` {{ end }}{{ with .Labels.instance }}`instance={{ . }}` {{ end }}
+              since {{ .StartsAt.Format "15:04 MST" }}{{ with .Annotations.dashboard_url }} · [dashboard]({{ . }}){{ end }}{{ with .GeneratorURL }} · [query]({{ . }}){{ end }}
+
+              {{ end }}{{ end }}
+          alertmanagerSpec:
+            # The operator defaults the request to 200Mi. It holds 45Mi.
+            resources:
+              requests:
+                memory: 64Mi
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: node-role.kubernetes.io/control-plane
+                          operator: DoesNotExist
+            # OnNamespace (the default) would bolt a `namespace = monitoring` matcher
+            # onto the AlertmanagerConfig route, so it would only ever catch alerts
+            # from this one namespace. None lets that route match cluster-wide.
+            alertmanagerConfigMatcherStrategy:
+              type: None
+            alertmanagerConfigSelector:
+              matchLabels:
+                alertmanager: discord
+            storage:
+              volumeClaimTemplate:
+                spec:
+                  resources:
+                    requests:
+                      storage: 2Gi
+        grafana:
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: DoesNotExist
+          plugins:
+            - marcusolsson-treemap-panel
+          serviceMonitor:
+            enabled: false
+          deploymentStrategy:
+            type: Recreate
+          admin:
+            existingSecret: grafana-admin-secret
+            userKey: admin-user
+            passwordKey: admin-password
+          grafana.ini:
+            plugins:
+              # Grafana 13 tries to update its bundled plugins on startup, which kills the
+              # running plugin process and then fails on the read-only image filesystem.
+              preinstall_auto_update: false
+            auth:
+              anonymous:
+                enabled: true
+                org_role: Viewer
+            auth.anonymous:
+              enabled: true
+              org_role: Viewer
+          persistence:
+            enabled: true
+            size: 2Gi
+            storageClassName: longhorn
+          additionalDataSources:
+            - name: Loki
+              type: loki
+              url: http://loki.monitoring.svc.cluster.local:3100
+              access: proxy
+              isDefault: false
+            - name: Sump Pump Archive
+              uid: sump-pump-archive
+              type: prometheus
+              url: http://prometheus-sump-pump.monitoring.svc.cluster.local:9090
+              access: proxy
+              isDefault: false
+            - name: Cluster Availability Archive
+              uid: cluster-availability-archive
+              type: prometheus
+              url: http://prometheus-cluster-availability.monitoring.svc.cluster.local:9090
+              access: proxy
+              isDefault: false
+          resources:
+            requests:
+              memory: 1024Mi
+            limits:
+              memory: 1536Mi
+          sidecar:
+            # The chart's default sidecar trails upstream.
+            image:
+              # renovate: datasource=docker depName=quay.io/kiwigrid/k8s-sidecar
+              tag: 2.14.3
+            dashboards:
+              enabled: true
+              # Workspaces can create ConfigMaps, so dashboards load from this namespace only.
+              searchNamespace: monitoring
+              folderAnnotation: grafana_folder
+              annotations:
+                grafana_folder: Less Used
+              provider:
+                foldersFromFilesStructure: true
+                allowUiUpdates: true
+          ingress:
+            enabled: false
+        prometheus:
+          prometheusSpec:
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: node-role.kubernetes.io/control-plane
+                          operator: DoesNotExist
+            retention: 30d
+            retentionSize: 32GB
+            scrapeInterval: "60s"
+            evaluationInterval: "60s"
+            # Request tracks steady-state usage (~1.3Gi with 30d of series). At 512Mi the
+            # scheduler treated this pod as half its real weight and kept stacking heavy
+            # workloads onto the same node.
+            resources:
+              requests:
+                memory: 1300Mi
+              limits:
+                memory: 2Gi
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  resources:
+                    requests:
+                      storage: 35Gi
+          ingress:
+            enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+    automated:
+      prune: true
+      selfHeal: true

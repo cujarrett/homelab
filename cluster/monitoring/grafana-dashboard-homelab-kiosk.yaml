@@ -1,0 +1,737 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-homelab-kiosk
+  namespace: monitoring
+  annotations:
+    grafana_folder: Kiosk
+  labels:
+    grafana_dashboard: "1"
+data:
+  homelab-display.json: |-
+    {
+        "annotations": {
+            "list": [
+                {
+                    "builtIn": 1,
+                    "datasource": {
+                        "type": "grafana",
+                        "uid": "-- Grafana --"
+                    },
+                    "enable": true,
+                    "hide": true,
+                    "iconColor": "rgba(0, 211, 255, 1)",
+                    "name": "Annotations & Alerts",
+                    "type": "dashboard"
+                }
+            ]
+        },
+        "editable": true,
+        "fiscalYearStartMonth": 0,
+        "graphTooltip": 0,
+        "links": [],
+        "panels": [
+            {
+                "id": 1,
+                "type": "stat",
+                "title": "ctrl-1",
+                "gridPos": {
+                    "x": 0,
+                    "y": 0,
+                    "w": 6,
+                    "h": 5
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "continuous-GrYlRd"
+                        },
+                        "decimals": 0,
+                        "min": 0,
+                        "max": 100,
+                        "unit": "percent"
+                    },
+                    "overrides": [
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Mem"
+                            },
+                            "properties": [
+                                {
+                                    "id": "min",
+                                    "value": 80
+                                },
+                                {
+                                    "id": "max",
+                                    "value": 100
+                                }
+                            ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Pods"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "short"
+                                },
+                                {
+                                    "id": "min",
+                                    "value": 0
+                                },
+                                {
+                                    "id": "max",
+                                    "value": 70
+                                },
+                                {
+                                    "id": "color",
+                                    "value": {
+                                        "mode": "continuous-BlPu"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Temp"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "celsius"
+                                },
+                                {
+                                    "id": "min",
+                                    "value": 40
+                                },
+                                {
+                                    "id": "max",
+                                    "value": 85
+                                }
+                            ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Up"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "s"
+                                },
+                                {
+                                    "id": "decimals",
+                                    "value": 1
+                                },
+                                {
+                                    "id": "color",
+                                    "value": {
+                                        "fixedColor": "blue",
+                                        "mode": "fixed"
+                                    }
+                                },
+                                {
+                                    "id": "noValue",
+                                    "value": "Offline"
+                                },
+                                {
+                                    "id": "mappings",
+                                    "value": [
+                                        {
+                                            "type": "value",
+                                            "options": {
+                                                "0": {
+                                                    "index": 0,
+                                                    "text": "Offline",
+                                                    "color": "red"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "options": {
+                    "colorMode": "background",
+                    "graphMode": "none",
+                    "orientation": "horizontal",
+                    "reduceOptions": {
+                        "calcs": [
+                            "lastNotNull"
+                        ],
+                        "fields": ""
+                    },
+                    "text": {
+                        "titleSize": 18,
+                        "valueSize": 18
+                    }
+                },
+                "targets": [
+                    {
+                        "instant": true,
+                        "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.100:9100\",mode=\"idle\"}[3m])) * 100)",
+                        "legendFormat": "CPU"
+                    },
+                    {
+                        "instant": true,
+                        "expr": "(1 - node_memory_MemAvailable_bytes{instance=\"192.168.10.100:9100\"} / node_memory_MemTotal_bytes{instance=\"192.168.10.100:9100\"}) * 100",
+                        "legendFormat": "Mem"
+                    },
+                    {
+                        "instant": true,
+                        "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.100:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
+                        "legendFormat": "Temp"
+                    },
+                    {
+                        "instant": true,
+                        "expr": "count(kube_pod_info{node=\"ctrl-1\"})",
+                        "legendFormat": "Pods"
+                    },
+                    {
+                        "instant": true,
+                        "expr": "(time() - node_boot_time_seconds{instance=\"192.168.10.100:9100\"}) * on() sum(kube_node_status_condition{condition=\"Ready\",status=\"true\",node=\"ctrl-1\"})",
+                        "legendFormat": "Up"
+                    }
+                ]
+            },
+            {
+                "id": 2,
+                "type": "stat",
+                "title": "work-1",
+                "gridPos": {
+                    "x": 6,
+                    "y": 0,
+                    "w": 6,
+                    "h": 5
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "continuous-GrYlRd"
+                        },
+                        "decimals": 0,
+                        "min": 0,
+                        "max": 100,
+                        "unit": "percent"
+                    },
+                    "overrides": [
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Mem"
+                            },
+                            "properties": [
+                                {
+                                    "id": "min",
+                                    "value": 80
+                                },
+                                {
+                                    "id": "max",
+                                    "value": 100
+                                }
+                            ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Pods"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "short"
+                                },
+                                {
+                                    "id": "min",
+                                    "value": 0
+                                },
+                                {
+                                    "id": "max",
+                                    "value": 70
+                                },
+                                {
+                                    "id": "color",
+                                    "value": {
+                                        "mode": "continuous-BlPu"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Temp"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "celsius"
+                                },
+                                {
+                                    "id": "min",
+                                    "value": 40
+                                },
+                                {
+                                    "id": "max",
+                                    "value": 85
+                                }
+                            ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Up"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "s"
+                                },
+                                {
+                                    "id": "decimals",
+                                    "value": 1
+                                },
+                                {
+                                    "id": "color",
+                                    "value": {
+                                        "fixedColor": "blue",
+                                        "mode": "fixed"
+                                    }
+                                },
+                                {
+                                    "id": "noValue",
+                                    "value": "Offline"
+                                },
+                                {
+                                    "id": "mappings",
+                                    "value": [
+                                        {
+                                            "type": "value",
+                                            "options": {
+                                                "0": {
+                                                    "index": 0,
+                                                    "text": "Offline",
+                                                    "color": "red"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "options": {
+                    "colorMode": "background",
+                    "graphMode": "none",
+                    "orientation": "horizontal",
+                    "reduceOptions": {
+                        "calcs": [
+                            "lastNotNull"
+                        ],
+                        "fields": ""
+                    },
+                    "text": {
+                        "titleSize": 18,
+                        "valueSize": 18
+                    }
+                },
+                "targets": [
+                    {
+                        "instant": true,
+                        "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.101:9100\",mode=\"idle\"}[3m])) * 100)",
+                        "legendFormat": "CPU"
+                    },
+                    {
+                        "instant": true,
+                        "expr": "(1 - node_memory_MemAvailable_bytes{instance=\"192.168.10.101:9100\"} / node_memory_MemTotal_bytes{instance=\"192.168.10.101:9100\"}) * 100",
+                        "legendFormat": "Mem"
+                    },
+                    {
+                        "instant": true,
+                        "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.101:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
+                        "legendFormat": "Temp"
+                    },
+                    {
+                        "instant": true,
+                        "expr": "count(kube_pod_info{node=\"work-1\"})",
+                        "legendFormat": "Pods"
+                    },
+                    {
+                        "instant": true,
+                        "expr": "(time() - node_boot_time_seconds{instance=\"192.168.10.101:9100\"}) * on() sum(kube_node_status_condition{condition=\"Ready\",status=\"true\",node=\"work-1\"})",
+                        "legendFormat": "Up"
+                    }
+                ]
+            },
+            {
+                "id": 3,
+                "type": "stat",
+                "title": "work-2",
+                "gridPos": {
+                    "x": 12,
+                    "y": 0,
+                    "w": 6,
+                    "h": 5
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "continuous-GrYlRd"
+                        },
+                        "decimals": 0,
+                        "min": 0,
+                        "max": 100,
+                        "unit": "percent"
+                    },
+                    "overrides": [
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Mem"
+                            },
+                            "properties": [
+                                {
+                                    "id": "min",
+                                    "value": 80
+                                },
+                                {
+                                    "id": "max",
+                                    "value": 100
+                                }
+                            ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Pods"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "short"
+                                },
+                                {
+                                    "id": "min",
+                                    "value": 0
+                                },
+                                {
+                                    "id": "max",
+                                    "value": 70
+                                },
+                                {
+                                    "id": "color",
+                                    "value": {
+                                        "mode": "continuous-BlPu"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Temp"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "celsius"
+                                },
+                                {
+                                    "id": "min",
+                                    "value": 40
+                                },
+                                {
+                                    "id": "max",
+                                    "value": 85
+                                }
+                            ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Up"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "s"
+                                },
+                                {
+                                    "id": "decimals",
+                                    "value": 1
+                                },
+                                {
+                                    "id": "color",
+                                    "value": {
+                                        "fixedColor": "blue",
+                                        "mode": "fixed"
+                                    }
+                                },
+                                {
+                                    "id": "noValue",
+                                    "value": "Offline"
+                                },
+                                {
+                                    "id": "mappings",
+                                    "value": [
+                                        {
+                                            "type": "value",
+                                            "options": {
+                                                "0": {
+                                                    "index": 0,
+                                                    "text": "Offline",
+                                                    "color": "red"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "options": {
+                    "colorMode": "background",
+                    "graphMode": "none",
+                    "orientation": "horizontal",
+                    "reduceOptions": {
+                        "calcs": [
+                            "lastNotNull"
+                        ],
+                        "fields": ""
+                    },
+                    "text": {
+                        "titleSize": 18,
+                        "valueSize": 18
+                    }
+                },
+                "targets": [
+                    {
+                        "instant": true,
+                        "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.102:9100\",mode=\"idle\"}[3m])) * 100)",
+                        "legendFormat": "CPU"
+                    },
+                    {
+                        "instant": true,
+                        "expr": "(1 - node_memory_MemAvailable_bytes{instance=\"192.168.10.102:9100\"} / node_memory_MemTotal_bytes{instance=\"192.168.10.102:9100\"}) * 100",
+                        "legendFormat": "Mem"
+                    },
+                    {
+                        "instant": true,
+                        "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.102:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
+                        "legendFormat": "Temp"
+                    },
+                    {
+                        "instant": true,
+                        "expr": "count(kube_pod_info{node=\"work-2\"})",
+                        "legendFormat": "Pods"
+                    },
+                    {
+                        "instant": true,
+                        "expr": "(time() - node_boot_time_seconds{instance=\"192.168.10.102:9100\"}) * on() sum(kube_node_status_condition{condition=\"Ready\",status=\"true\",node=\"work-2\"})",
+                        "legendFormat": "Up"
+                    }
+                ]
+            },
+            {
+                "id": 4,
+                "type": "stat",
+                "title": "work-3",
+                "gridPos": {
+                    "x": 18,
+                    "y": 0,
+                    "w": 6,
+                    "h": 5
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "continuous-GrYlRd"
+                        },
+                        "decimals": 0,
+                        "min": 0,
+                        "max": 100,
+                        "unit": "percent"
+                    },
+                    "overrides": [
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Mem"
+                            },
+                            "properties": [
+                                {
+                                    "id": "min",
+                                    "value": 80
+                                },
+                                {
+                                    "id": "max",
+                                    "value": 100
+                                }
+                            ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Pods"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "short"
+                                },
+                                {
+                                    "id": "min",
+                                    "value": 0
+                                },
+                                {
+                                    "id": "max",
+                                    "value": 70
+                                },
+                                {
+                                    "id": "color",
+                                    "value": {
+                                        "mode": "continuous-BlPu"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Temp"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "celsius"
+                                },
+                                {
+                                    "id": "min",
+                                    "value": 40
+                                },
+                                {
+                                    "id": "max",
+                                    "value": 85
+                                }
+                            ]
+                        },
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Up"
+                            },
+                            "properties": [
+                                {
+                                    "id": "unit",
+                                    "value": "s"
+                                },
+                                {
+                                    "id": "decimals",
+                                    "value": 1
+                                },
+                                {
+                                    "id": "color",
+                                    "value": {
+                                        "fixedColor": "blue",
+                                        "mode": "fixed"
+                                    }
+                                },
+                                {
+                                    "id": "noValue",
+                                    "value": "Offline"
+                                },
+                                {
+                                    "id": "mappings",
+                                    "value": [
+                                        {
+                                            "type": "value",
+                                            "options": {
+                                                "0": {
+                                                    "index": 0,
+                                                    "text": "Offline",
+                                                    "color": "red"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "options": {
+                    "colorMode": "background",
+                    "graphMode": "none",
+                    "orientation": "horizontal",
+                    "reduceOptions": {
+                        "calcs": [
+                            "lastNotNull"
+                        ],
+                        "fields": ""
+                    },
+                    "text": {
+                        "titleSize": 18,
+                        "valueSize": 18
+                    }
+                },
+                "targets": [
+                    {
+                        "instant": true,
+                        "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"192.168.10.103:9100\",mode=\"idle\"}[3m])) * 100)",
+                        "legendFormat": "CPU"
+                    },
+                    {
+                        "instant": true,
+                        "expr": "(1 - node_memory_MemAvailable_bytes{instance=\"192.168.10.103:9100\"} / node_memory_MemTotal_bytes{instance=\"192.168.10.103:9100\"}) * 100",
+                        "legendFormat": "Mem"
+                    },
+                    {
+                        "instant": true,
+                        "expr": "node_hwmon_temp_celsius{instance=\"192.168.10.103:9100\",chip=\"thermal_thermal_zone0\",sensor=\"temp0\"}",
+                        "legendFormat": "Temp"
+                    },
+                    {
+                        "instant": true,
+                        "expr": "count(kube_pod_info{node=\"work-3\"})",
+                        "legendFormat": "Pods"
+                    },
+                    {
+                        "instant": true,
+                        "expr": "(time() - node_boot_time_seconds{instance=\"192.168.10.103:9100\"}) * on() sum(kube_node_status_condition{condition=\"Ready\",status=\"true\",node=\"work-3\"})",
+                        "legendFormat": "Up"
+                    }
+                ]
+            }
+        ],
+        "preload": false,
+        "refresh": "10s",
+        "schemaVersion": 42,
+        "tags": [
+            "homelab",
+            "kiosk"
+        ],
+        "templating": {
+            "list": []
+        },
+        "time": {
+            "from": "now-5m",
+            "to": "now"
+        },
+        "timepicker": {
+          "hidden": true
+        },
+        "timezone": "browser",
+        "title": "Homelab - Kiosk",
+        "uid": "homelab-kiosk",
+        "version": 4,
+        "weekStart": ""
+    }

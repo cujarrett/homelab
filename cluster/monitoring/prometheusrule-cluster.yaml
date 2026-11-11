@@ -1,0 +1,116 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cluster
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: cluster
+      interval: 5m
+      rules:
+        # A namespace normally terminates in seconds. Stuck means a finalizer nobody
+        # will remove, or the garbage collector wedged on a type discovery advertises
+        # but the API server won't serve - which stops every namespace deletion, not just this one.
+        - alert: NamespaceStuckTerminating
+          expr: |
+            kube_namespace_status_phase{phase="Terminating"} == 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-mbp/homelab"
+            summary: "Namespace {{ $labels.namespace }} has been Terminating for 15m"
+            description: >-
+              Check for a stuck finalizer with
+              kubectl get namespace {{ $labels.namespace }} -o json | jq .spec.finalizers
+              and for a CRD the API server cannot serve with
+              kubectl get crd -o json | jq -r '.items[] | select([.spec.versions[].served] | index(true) | not) | .metadata.name'.
+              If a namespace unrelated to any recent work is also stuck, suspect
+              the garbage collector rather than the namespace.
+
+        # MemAvailable, not MemFree. Linux parks reclaimable page cache outside free,
+        # so free reads near zero on a node with plenty of headroom.
+        - alert: NodeMemoryPressure
+          expr: |
+            (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 90
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-mbp/homelab"
+            summary: "{{ $labels.instance }} is at {{ $value | printf \"%.0f\" }}% memory"
+            description: >-
+              Find the heaviest pods with `k top pods -A --sort-by=memory` and the
+              heaviest host processes with `ssh pi@<node> "ps -eo pid,comm,rss --sort=-rss | head"`.
+              On ctrl-1 the k3s server process itself is normally the largest single
+              consumer, so compare against its usual size before blaming a workload.
+
+        # Pi 5 soft-throttles around 80C; 65C leaves headroom while still catching a trend early.
+        - alert: NodeOvertemp
+          expr: |
+            node_hwmon_temp_celsius{chip="thermal_thermal_zone0", sensor="temp0"} > 65
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-mbp/homelab"
+            summary: "{{ $labels.instance }} CPU temp is {{ $value | printf \"%.1f\" }}C"
+            description: >-
+              Check airflow and case fans on the node. Confirm current temp with
+              `curl -s http://{{ $labels.instance }}/metrics | grep thermal_zone0`.
+
+        # A Job whose pod failed and that cannot start a retry (missing ServiceAccount,
+        # quota, admission denial) sits "running" with nothing running. KubeJobFailed
+        # waits for backoffLimit and KubeJobNotCompleted needs an active pod, so neither fires.
+        - alert: JobStalled
+          expr: |
+            kube_job_status_failed > 0
+              and on (namespace, job_name) kube_job_status_active == 0
+              unless on (namespace, job_name) kube_job_status_succeeded > 0
+              unless on (namespace, job_name) kube_job_failed{condition="true"} == 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-orphans/orphaned-resources"
+            summary: "Job {{ $labels.namespace }}/{{ $labels.job_name }} failed and is not retrying"
+            description: >-
+              See why the retry cannot start with
+              kubectl get events -n {{ $labels.namespace }} --field-selector involvedObject.name={{ $labels.job_name }}.
+              The failed pod may already be gone, so its logs can be lost.
+
+        # Native sidecars (istio-proxy) report their limit as an init container, hence the "or".
+        # 75% for 30m catches steady growth before the kernel kills the container.
+        - alert: ContainerNearMemoryLimit
+          expr: |
+            max by (namespace, pod, container) (container_memory_working_set_bytes{container!=""})
+              / on (namespace, pod, container) group_left
+            max by (namespace, pod, container) (
+              kube_pod_container_resource_limits{resource="memory"}
+                or kube_pod_init_container_resource_limits{resource="memory"}
+            ) > 0.75
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }} {{ $labels.container }} is at {{ $value | humanizePercentage }} of its memory limit"
+            description: >-
+              Compare usage against the limit with
+              kubectl top pod -n {{ $labels.namespace }} {{ $labels.pod }} --containers.
+              Raise the limit in the manifest or composition that sets it.
+
+        # The kernel restarts an OOM-killed container in place, so the pod stays Running
+        # and KubePodCrashLooping only fires after several kills.
+        - alert: ContainerOOMKilled
+          expr: |
+            increase(container_oom_events_total{container!=""}[10m]) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }} {{ $labels.container }} was OOM-killed"
+            description: >-
+              The container hit its memory limit. Check recent usage with
+              kubectl top pod -n {{ $labels.namespace }} {{ $labels.pod }} --containers
+              and raise the limit in the manifest or composition that sets it.

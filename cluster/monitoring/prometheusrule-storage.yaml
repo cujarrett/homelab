@@ -1,0 +1,50 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: storage
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: storage
+      interval: 5m
+      rules:
+        # Longhorn actualSize sums the whole snapshot chain, so a ratio above 1 is
+        # normal for any volume holding a snapshot and cannot tell a stalled purge
+        # from a healthy one. kubelet reports real filesystem usage instead.
+        - alert: PersistentVolumeFillingUp
+          expr: |
+            kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes > 0.85
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-mbp/homelab"
+            summary: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ $value | humanizePercentage }} full"
+            description: >-
+              {{ $labels.persistentvolumeclaim }} in {{ $labels.namespace }} has
+              less than 15% free. For storage-loki-0 the argocd namespace is
+              usually ~80% of the volume, so check it first with a Loki query
+              before expanding the PVC.
+
+        # Backstop - per-PVC usage says nothing about the node underneath, where a
+        # genuine snapshot leak in /var/lib/longhorn would actually surface.
+        - alert: NodeDiskFillingUp
+          expr: |
+            100 - (
+              node_filesystem_avail_bytes{mountpoint="/", fstype!~"tmpfs|overlay"}
+              / node_filesystem_size_bytes{mountpoint="/", fstype!~"tmpfs|overlay"}
+              * 100
+            ) > 75
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-mbp/homelab"
+            summary: "Node {{ $labels.instance }} root filesystem is {{ $value | printf \"%.0f\" }}% full"
+            description: >-
+              Largest consumers are usually /var/lib/longhorn (replica data) and
+              /var/lib/rancher/k3s/agent/containerd (image store, which accretes
+              stale tags across Renovate bumps and is reclaimable with
+              `k3s crictl rmi --prune`).

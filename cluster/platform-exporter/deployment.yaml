@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: platform-exporter
+  namespace: platform-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: platform-exporter
+  template:
+    metadata:
+      labels:
+        app: platform-exporter
+    spec:
+      serviceAccountName: platform-exporter
+      # runAsUser overrides the image's own USER, which is a name (USER app) - the
+      # kubelet will not honour runAsNonRoot for a name it cannot resolve.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: platform-exporter
+          image: ghcr.io/cujarrett/platform-exporter:sha-e2e03e6df8e8b2fb0b00f0b452fc381d30c10800
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          ports:
+            - name: metrics
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: platform-exporter
+  namespace: platform-exporter
+  labels:
+    app: platform-exporter
+spec:
+  selector:
+    app: platform-exporter
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: metrics

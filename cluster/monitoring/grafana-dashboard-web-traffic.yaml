@@ -1,0 +1,2254 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-web-traffic
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  web-traffic.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "liveNow": false,
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Visitors",
+          "description": "People who opened a page. US only. Attackers and known bots are left out.",
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 0,
+            "y": 0
+          },
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "unit": "short",
+              "noValue": "0",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "blue"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "expr": "count(count by (visitor) (sum by (visitor, site) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range])))) or vector(0)",
+              "refId": "A",
+              "queryType": "instant"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Page views",
+          "description": "Pages those visitors opened. Images, scripts and API calls are not counted.",
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 4,
+            "y": 0
+          },
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "unit": "short",
+              "noValue": "0",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "blue"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "expr": "sum(sum by (visitor, site) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range]))) or vector(0)",
+              "refId": "A",
+              "queryType": "instant"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Attack sources",
+          "description": "Sources that asked for a file no visitor asks for, such as /.env or /wp-login.php on a site with no WordPress. US only.",
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 8,
+            "y": 0
+          },
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "unit": "short",
+              "noValue": "0",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "red"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "expr": "count(sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range]))) or vector(0)",
+              "refId": "A",
+              "queryType": "instant"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Probe requests",
+          "description": "Requests that match a scanner pattern. US only.",
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 12,
+            "y": 0
+          },
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "unit": "short",
+              "noValue": "0",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "red"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "expr": "sum(count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range])) or vector(0)",
+              "refId": "A",
+              "queryType": "instant"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "stat",
+          "title": "Probes answered",
+          "description": "Probes that got a 2xx back. Zero is the only good number. The paths are in What they probed.",
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 16,
+            "y": 0
+          },
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "unit": "short",
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "color": {
+                "mode": "thresholds"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "expr": "sum(count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" | status<300 [$__range])) or vector(0)",
+              "refId": "A",
+              "queryType": "instant"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "stat",
+          "title": "Refused, all countries",
+          "description": "Every 401, 403, 404, 405 and 429 from Traefik's own counters. Mostly scanners. This is the only number here that includes traffic from outside the US.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 20,
+            "y": 0
+          },
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "unit": "short",
+              "noValue": "0",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "red"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"httproute-(${site:pipe})-gw-.*\",code=~\"401|403|404|405|429\"}[$__range]))",
+              "refId": "A",
+              "legendFormat": "",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "type": "geomap",
+          "title": "Who looked at what",
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "description": "One dot per city and site. The color is the site, and red is an attack. Hover a dot to see the pages. Bigger dots mean more requests. US only. mattjarrett.com and kentjarrett.com send no location, so they are never on the map.",
+          "gridPos": {
+            "h": 16,
+            "w": 16,
+            "x": 0,
+            "y": 4
+          },
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "blue"
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Site"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "mattjarrett.dev": {
+                            "color": "purple",
+                            "index": 0
+                          },
+                          "blog.mattjarrett.dev": {
+                            "color": "blue",
+                            "index": 1
+                          },
+                          "launchpad.mattjarrett.dev": {
+                            "color": "dark-blue",
+                            "index": 2
+                          },
+                          "myvinyl.mattjarrett.dev": {
+                            "color": "super-light-blue",
+                            "index": 3
+                          },
+                          "jspollock.mattjarrett.dev": {
+                            "color": "light-purple",
+                            "index": 4
+                          },
+                          "connections.mattjarrett.dev": {
+                            "color": "semi-dark-purple",
+                            "index": 5
+                          },
+                          "graph.mattjarrett.dev": {
+                            "color": "light-blue",
+                            "index": 6
+                          },
+                          "kentjarrett.com": {
+                            "color": "dark-purple",
+                            "index": 7
+                          },
+                          "mattjarrett.com": {
+                            "color": "super-light-purple",
+                            "index": 8
+                          },
+                          "sandbox": {
+                            "color": "semi-dark-blue",
+                            "index": 9
+                          },
+                          "attack": {
+                            "color": "red",
+                            "index": 10,
+                            "text": "Attack"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "basemap": {
+              "config": {
+                "showLabels": true,
+                "theme": "dark"
+              },
+              "type": "carto"
+            },
+            "controls": {
+              "mouseWheelZoom": false,
+              "showAttribution": true,
+              "showDebug": false,
+              "showMeasure": false,
+              "showScale": false,
+              "showZoom": true
+            },
+            "layers": [
+              {
+                "config": {
+                  "showLegend": false,
+                  "style": {
+                    "color": {
+                      "field": "Site",
+                      "fixed": "blue"
+                    },
+                    "opacity": 0.85,
+                    "size": {
+                      "field": "Requests",
+                      "fixed": 6,
+                      "min": 5,
+                      "max": 14
+                    },
+                    "symbol": {
+                      "fixed": "img/icons/marker/circle.svg",
+                      "mode": "fixed"
+                    }
+                  }
+                },
+                "location": {
+                  "latitude": "lat",
+                  "longitude": "lon",
+                  "mode": "coords"
+                },
+                "name": "Traffic",
+                "tooltip": true,
+                "type": "markers"
+              }
+            ],
+            "tooltip": {
+              "mode": "details"
+            },
+            "view": {
+              "allLayers": true,
+              "id": "coords",
+              "lat": 39.5,
+              "lon": -98.35,
+              "zoom": 3.8
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "expr": "sum by (site, city, region, lat, lon, path) (sum by (visitor, site, city, region, lat, lon, path) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range]))) or sum by (site, city, region, lat, lon, path) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" | label_format path=\"{{.host}}\", site=\"attack\" [$__range]))",
+              "refId": "A",
+              "queryType": "instant"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "labelsToFields",
+              "options": {
+                "mode": "columns"
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "convertFieldType",
+              "options": {
+                "conversions": [
+                  {
+                    "destinationType": "number",
+                    "targetField": "lat"
+                  },
+                  {
+                    "destinationType": "number",
+                    "targetField": "lon"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "filterByValue",
+              "options": {
+                "type": "exclude",
+                "match": "any",
+                "filters": [
+                  {
+                    "fieldName": "lat",
+                    "config": {
+                      "id": "isNull",
+                      "options": {}
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "groupBy",
+              "options": {
+                "fields": {
+                  "site": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "city": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "region": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "lat": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "lon": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "Value #A": {
+                    "aggregations": [
+                      "sum"
+                    ],
+                    "operation": "aggregate"
+                  },
+                  "path": {
+                    "aggregations": [
+                      "uniqueValues"
+                    ],
+                    "operation": "aggregate"
+                  }
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "sort": [
+                  {
+                    "field": "Value #A (sum)",
+                    "desc": true
+                  }
+                ]
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "renameByName": {
+                  "site": "Site",
+                  "city": "City",
+                  "region": "State",
+                  "Value #A (sum)": "Requests",
+                  "path (uniqueValues)": "Looked at"
+                },
+                "indexByName": {
+                  "site": 0,
+                  "city": 1,
+                  "region": 2,
+                  "Value #A (sum)": 3,
+                  "path (uniqueValues)": 4,
+                  "lat": 5,
+                  "lon": 6
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "type": "table",
+          "title": "Visitors by site",
+          "description": "Unique visitors per site. The site colors match the dots on the map.",
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 4
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "filterable": true,
+                "inspect": true
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Site"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "mattjarrett.dev": {
+                            "color": "purple",
+                            "index": 0
+                          },
+                          "blog.mattjarrett.dev": {
+                            "color": "blue",
+                            "index": 1
+                          },
+                          "launchpad.mattjarrett.dev": {
+                            "color": "dark-blue",
+                            "index": 2
+                          },
+                          "myvinyl.mattjarrett.dev": {
+                            "color": "super-light-blue",
+                            "index": 3
+                          },
+                          "jspollock.mattjarrett.dev": {
+                            "color": "light-purple",
+                            "index": 4
+                          },
+                          "connections.mattjarrett.dev": {
+                            "color": "semi-dark-purple",
+                            "index": 5
+                          },
+                          "graph.mattjarrett.dev": {
+                            "color": "light-blue",
+                            "index": 6
+                          },
+                          "kentjarrett.com": {
+                            "color": "dark-purple",
+                            "index": 7
+                          },
+                          "mattjarrett.com": {
+                            "color": "super-light-purple",
+                            "index": 8
+                          },
+                          "sandbox": {
+                            "color": "semi-dark-blue",
+                            "index": 9
+                          },
+                          "attack": {
+                            "color": "red",
+                            "index": 10,
+                            "text": "Attack"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 210
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Visitors"
+                },
+                "properties": [
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "blue"
+                    }
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "gauge",
+                      "mode": "basic",
+                      "valueDisplayMode": "text"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": [
+              {
+                "displayName": "Visitors",
+                "desc": true
+              }
+            ]
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "expr": "count by (site) (sum by (visitor, site) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range])))",
+              "refId": "A",
+              "queryType": "instant"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "labelsToFields",
+              "options": {
+                "mode": "columns"
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "renameByName": {
+                  "site": "Site",
+                  "Value #A": "Visitors"
+                },
+                "indexByName": {
+                  "site": 0,
+                  "Value #A": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": 12,
+          "type": "table",
+          "title": "Top pages",
+          "description": "The most opened pages.",
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 12
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "filterable": true,
+                "inspect": true
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Site"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "mattjarrett.dev": {
+                            "color": "purple",
+                            "index": 0
+                          },
+                          "blog.mattjarrett.dev": {
+                            "color": "blue",
+                            "index": 1
+                          },
+                          "launchpad.mattjarrett.dev": {
+                            "color": "dark-blue",
+                            "index": 2
+                          },
+                          "myvinyl.mattjarrett.dev": {
+                            "color": "super-light-blue",
+                            "index": 3
+                          },
+                          "jspollock.mattjarrett.dev": {
+                            "color": "light-purple",
+                            "index": 4
+                          },
+                          "connections.mattjarrett.dev": {
+                            "color": "semi-dark-purple",
+                            "index": 5
+                          },
+                          "graph.mattjarrett.dev": {
+                            "color": "light-blue",
+                            "index": 6
+                          },
+                          "kentjarrett.com": {
+                            "color": "dark-purple",
+                            "index": 7
+                          },
+                          "mattjarrett.com": {
+                            "color": "super-light-purple",
+                            "index": 8
+                          },
+                          "sandbox": {
+                            "color": "semi-dark-blue",
+                            "index": 9
+                          },
+                          "attack": {
+                            "color": "red",
+                            "index": 10,
+                            "text": "Attack"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 170
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Views"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 100
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": [
+              {
+                "displayName": "Views",
+                "desc": true
+              }
+            ]
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "expr": "topk(25, sum by (site, path) (sum by (visitor, site, path) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range]))))",
+              "refId": "A",
+              "queryType": "instant"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "labelsToFields",
+              "options": {
+                "mode": "columns"
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "renameByName": {
+                  "site": "Site",
+                  "path": "Page",
+                  "Value #A": "Views"
+                },
+                "indexByName": {
+                  "site": 0,
+                  "path": 1,
+                  "Value #A": 2
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": 20,
+          "type": "table",
+          "title": "What they looked at",
+          "description": "One row per visitor and site, newest first. The Visitor value is a salted hash, so the same person keeps the same value across sites. Click a column header to filter.",
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "gridPos": {
+            "h": 11,
+            "w": 24,
+            "x": 0,
+            "y": 20
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "filterable": true,
+                "inspect": true
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Site"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "mattjarrett.dev": {
+                            "color": "purple",
+                            "index": 0
+                          },
+                          "blog.mattjarrett.dev": {
+                            "color": "blue",
+                            "index": 1
+                          },
+                          "launchpad.mattjarrett.dev": {
+                            "color": "dark-blue",
+                            "index": 2
+                          },
+                          "myvinyl.mattjarrett.dev": {
+                            "color": "super-light-blue",
+                            "index": 3
+                          },
+                          "jspollock.mattjarrett.dev": {
+                            "color": "light-purple",
+                            "index": 4
+                          },
+                          "connections.mattjarrett.dev": {
+                            "color": "semi-dark-purple",
+                            "index": 5
+                          },
+                          "graph.mattjarrett.dev": {
+                            "color": "light-blue",
+                            "index": 6
+                          },
+                          "kentjarrett.com": {
+                            "color": "dark-purple",
+                            "index": 7
+                          },
+                          "mattjarrett.com": {
+                            "color": "super-light-purple",
+                            "index": 8
+                          },
+                          "sandbox": {
+                            "color": "semi-dark-blue",
+                            "index": 9
+                          },
+                          "attack": {
+                            "color": "red",
+                            "index": 10,
+                            "text": "Attack"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 210
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Last seen"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "dateTimeAsLocal"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 205
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Place"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 180
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Device"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 90
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Pages"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 95
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Visitor"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 150
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": [
+              {
+                "displayName": "Last seen",
+                "desc": true
+              }
+            ]
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "expr": "max by (visitor, site, place, device, path) (max_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" | label_format place=\"{{ if .city }}{{.city}}, {{.region}}{{ else }}unknown{{ end }}\" | label_format device=\"{{ if contains \\\"iPhone\\\" .ua }}iPhone{{ else if contains \\\"iPad\\\" .ua }}iPad{{ else if contains \\\"Android\\\" .ua }}Android{{ else if contains \\\"Macintosh\\\" .ua }}Mac{{ else if contains \\\"Windows\\\" .ua }}Windows{{ else }}Linux{{ end }}\" | label_format ts=\"{{ mul (unixEpoch __timestamp__) 1000 }}\" | unwrap ts [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range]))",
+              "refId": "A",
+              "queryType": "instant"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "labelsToFields",
+              "options": {
+                "mode": "columns"
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "groupBy",
+              "options": {
+                "fields": {
+                  "visitor": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "place": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "device": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "site": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "Value #A": {
+                    "aggregations": [
+                      "max"
+                    ],
+                    "operation": "aggregate"
+                  },
+                  "path": {
+                    "aggregations": [
+                      "count",
+                      "uniqueValues"
+                    ],
+                    "operation": "aggregate"
+                  }
+                }
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "renameByName": {
+                  "Value #A (max)": "Last seen",
+                  "place": "Place",
+                  "device": "Device",
+                  "site": "Site",
+                  "visitor": "Visitor",
+                  "path (count)": "Pages",
+                  "path (uniqueValues)": "Looked at"
+                },
+                "indexByName": {
+                  "Value #A (max)": 0,
+                  "place": 1,
+                  "device": 2,
+                  "site": 3,
+                  "path (count)": 4,
+                  "path (uniqueValues)": 5,
+                  "visitor": 6
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": 30,
+          "type": "row",
+          "title": "Attacks",
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 31
+          },
+          "panels": []
+        },
+        {
+          "id": 31,
+          "type": "timeseries",
+          "title": "Attacks per hour",
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+          },
+          "description": "The red line is probes Loki kept, which is US sources only. The orange line is every refused request from every country.",
+          "gridPos": {
+            "h": 9,
+            "w": 10,
+            "x": 0,
+            "y": 32
+          },
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "unit": "short",
+              "min": 0,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 0,
+                "showPoints": "never",
+                "spanNulls": true
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Probes, US"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "red"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 35
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Refused, all countries"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "orange"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "expr": "sum(count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [1h]))",
+              "refId": "A",
+              "queryType": "range",
+              "legendFormat": "Probes, US",
+              "step": "1h"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"httproute-(${site:pipe})-gw-.*\",code=~\"401|403|404|405|429\"}[1h]))",
+              "refId": "B",
+              "legendFormat": "Refused, all countries",
+              "interval": "1h"
+            }
+          ]
+        },
+        {
+          "id": 32,
+          "type": "table",
+          "title": "Attack sources",
+          "description": "One row per source, busiest first. US only. Place is blank for the two .com sites.",
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 14,
+            "x": 10,
+            "y": 32
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "filterable": true,
+                "inspect": true
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Probes"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 105
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "red"
+                    }
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Place"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 160
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Answers"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 110
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Sites hit"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 230
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Source"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 150
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": [
+              {
+                "displayName": "Probes",
+                "desc": true
+              }
+            ]
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "expr": "sum by (visitor, place, ua, host, status) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" | label_format place=\"{{ if .city }}{{.city}}, {{.region}}{{ else }}unknown{{ end }}\" [$__range]))",
+              "refId": "A",
+              "queryType": "instant"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "labelsToFields",
+              "options": {
+                "mode": "columns"
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "groupBy",
+              "options": {
+                "fields": {
+                  "visitor": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "place": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "ua": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "Value #A": {
+                    "aggregations": [
+                      "sum"
+                    ],
+                    "operation": "aggregate"
+                  },
+                  "host": {
+                    "aggregations": [
+                      "uniqueValues"
+                    ],
+                    "operation": "aggregate"
+                  },
+                  "status": {
+                    "aggregations": [
+                      "uniqueValues"
+                    ],
+                    "operation": "aggregate"
+                  }
+                }
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "renameByName": {
+                  "Value #A (sum)": "Probes",
+                  "place": "Place",
+                  "ua": "Client",
+                  "host (uniqueValues)": "Sites hit",
+                  "status (uniqueValues)": "Answers",
+                  "visitor": "Source"
+                },
+                "indexByName": {
+                  "Value #A (sum)": 0,
+                  "place": 1,
+                  "host (uniqueValues)": 2,
+                  "status (uniqueValues)": 3,
+                  "ua": 4,
+                  "visitor": 5
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": 33,
+          "type": "table",
+          "title": "What they probed",
+          "description": "The most requested scanner paths. Answered probes sort first, with a red status. Each one needs a block in that site.",
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 14,
+            "x": 0,
+            "y": 41
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "filterable": true,
+                "inspect": true
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Status"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "range",
+                        "options": {
+                          "from": 200,
+                          "to": 299,
+                          "result": {
+                            "color": "red",
+                            "index": 0
+                          }
+                        }
+                      },
+                      {
+                        "type": "range",
+                        "options": {
+                          "from": 300,
+                          "to": 599,
+                          "result": {
+                            "color": "transparent",
+                            "index": 1
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-background"
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 100
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Requests"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 120
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Site"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 210
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": [
+              {
+                "displayName": "Status",
+                "desc": false
+              },
+              {
+                "displayName": "Requests",
+                "desc": true
+              }
+            ]
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "expr": "topk(100, sum by (host, path, status) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range]))) or sum by (host, path, status) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" | status<300 [$__range]))",
+              "refId": "A",
+              "queryType": "instant"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "labelsToFields",
+              "options": {
+                "mode": "columns"
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "convertFieldType",
+              "options": {
+                "conversions": [
+                  {
+                    "destinationType": "number",
+                    "targetField": "status"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "renameByName": {
+                  "host": "Site",
+                  "path": "Path",
+                  "status": "Status",
+                  "Value #A": "Requests"
+                },
+                "indexByName": {
+                  "Value #A": 0,
+                  "status": 1,
+                  "host": 2,
+                  "path": 3
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": 34,
+          "type": "bargauge",
+          "title": "Refused by site, all countries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "401, 403, 404, 405 and 429 answers per site, from every country.",
+          "gridPos": {
+            "h": 9,
+            "w": 10,
+            "x": 14,
+            "y": 41
+          },
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "unit": "short",
+              "min": 0,
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "red"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "displayMode": "basic",
+            "orientation": "horizontal",
+            "valueMode": "color",
+            "showUnfilled": false,
+            "minVizHeight": 14,
+            "maxVizHeight": 28,
+            "namePlacement": "left",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sort_desc(sum by (site) (label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(increase(traefik_service_requests_total{exported_service=~\"httproute-(${site:pipe})-gw-.*\",code=~\"401|403|404|405|429\"}[$__range]), \"site\", \"$1\", \"exported_service\", \"httproute-(.+?)-gw-.*\"), \"site\", \"mattjarrett.dev\", \"exported_service\", \"httproute-mattjarrett-dev-mattjarrett-dev-gw-.*\"), \"site\", \"blog.mattjarrett.dev\", \"exported_service\", \"httproute-blog-ghost-gw-.*\"), \"site\", \"launchpad.mattjarrett.dev\", \"exported_service\", \"httproute-launchpad-launchpad-gw-.*\"), \"site\", \"myvinyl.mattjarrett.dev\", \"exported_service\", \"httproute-my-vinyl-my-vinyl-gw-.*\"), \"site\", \"jspollock.mattjarrett.dev\", \"exported_service\", \"httproute-js-pollock-js-pollock-gw-.*\"), \"site\", \"connections.mattjarrett.dev\", \"exported_service\", \"httproute-platform-connections-demo-connections-demo-gw-.*\"), \"site\", \"graph.mattjarrett.dev\", \"exported_service\", \"httproute-platform-graph-demo-graph-demo-gw-.*\"), \"site\", \"kentjarrett.com\", \"exported_service\", \"httproute-kentjarrett-com-kentjarrett-com-wordpress-gw-.*\"), \"site\", \"mattjarrett.com\", \"exported_service\", \"httproute-mattjarrett-com-mattjarrett-com-wordpress-gw-.*\"), \"site\", \"sandbox\", \"exported_service\", \"httproute-guest-.*-gw-.*\")) > 0)",
+              "refId": "A",
+              "legendFormat": "{{site}}",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 40,
+          "type": "row",
+          "title": "All traffic, every country",
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 50
+          },
+          "panels": []
+        },
+        {
+          "id": 41,
+          "type": "timeseries",
+          "title": "Requests per hour",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Each point is the hour before it. Includes scanners and bots.",
+          "gridPos": {
+            "h": 9,
+            "w": 9,
+            "x": 0,
+            "y": 51
+          },
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "unit": "short",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "spanNulls": false
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "mattjarrett.dev"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "purple",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "blog.mattjarrett.dev"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "launchpad.mattjarrett.dev"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "dark-blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "myvinyl.mattjarrett.dev"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "super-light-blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "jspollock.mattjarrett.dev"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "light-purple",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "connections.mattjarrett.dev"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "semi-dark-purple",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "graph.mattjarrett.dev"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "light-blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "kentjarrett.com"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "dark-purple",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "mattjarrett.com"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "super-light-purple",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "sandbox"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "semi-dark-blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum by (site) (label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(increase(traefik_service_requests_total{exported_service=~\"httproute-(${site:pipe})-gw-.*\",code=~\"$status_code\"}[1h]), \"site\", \"$1\", \"exported_service\", \"httproute-(.+?)-gw-.*\"), \"site\", \"mattjarrett.dev\", \"exported_service\", \"httproute-mattjarrett-dev-mattjarrett-dev-gw-.*\"), \"site\", \"blog.mattjarrett.dev\", \"exported_service\", \"httproute-blog-ghost-gw-.*\"), \"site\", \"launchpad.mattjarrett.dev\", \"exported_service\", \"httproute-launchpad-launchpad-gw-.*\"), \"site\", \"myvinyl.mattjarrett.dev\", \"exported_service\", \"httproute-my-vinyl-my-vinyl-gw-.*\"), \"site\", \"jspollock.mattjarrett.dev\", \"exported_service\", \"httproute-js-pollock-js-pollock-gw-.*\"), \"site\", \"connections.mattjarrett.dev\", \"exported_service\", \"httproute-platform-connections-demo-connections-demo-gw-.*\"), \"site\", \"graph.mattjarrett.dev\", \"exported_service\", \"httproute-platform-graph-demo-graph-demo-gw-.*\"), \"site\", \"kentjarrett.com\", \"exported_service\", \"httproute-kentjarrett-com-kentjarrett-com-wordpress-gw-.*\"), \"site\", \"mattjarrett.com\", \"exported_service\", \"httproute-mattjarrett-com-mattjarrett-com-wordpress-gw-.*\"), \"site\", \"sandbox\", \"exported_service\", \"httproute-guest-.*-gw-.*\"))",
+              "refId": "A",
+              "legendFormat": "{{site}}"
+            }
+          ]
+        },
+        {
+          "id": 42,
+          "type": "timeseries",
+          "title": "Status codes per hour",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "2xx is success. 3xx is a redirect. 4xx is a refused request, mostly scanners. 5xx is a server error.",
+          "gridPos": {
+            "h": 9,
+            "w": 9,
+            "x": 9,
+            "y": 51
+          },
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "unit": "short",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "spanNulls": false
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "2xx"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "green"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "3xx"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "blue"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "4xx"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "orange"
+                    }
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "dash": [
+                        10,
+                        10
+                      ],
+                      "fill": "dash"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "5xx"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "red"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"httproute-(${site:pipe})-gw-.*\",code=~\"2..\"}[1h]))",
+              "refId": "A",
+              "legendFormat": "2xx"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"httproute-(${site:pipe})-gw-.*\",code=~\"3..\"}[1h]))",
+              "refId": "B",
+              "legendFormat": "3xx"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"httproute-(${site:pipe})-gw-.*\",code=~\"4..\"}[1h]))",
+              "refId": "C",
+              "legendFormat": "4xx"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(increase(traefik_service_requests_total{exported_service=~\"httproute-(${site:pipe})-gw-.*\",code=~\"5..\"}[1h]))",
+              "refId": "D",
+              "legendFormat": "5xx"
+            }
+          ]
+        },
+        {
+          "id": 43,
+          "type": "bargauge",
+          "title": "Success rate",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Share of requests that did not end in a 5xx.",
+          "gridPos": {
+            "h": 9,
+            "w": 6,
+            "x": 18,
+            "y": 51
+          },
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 1,
+              "unit": "percentunit",
+              "min": 0.9,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 0.9
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.99
+                  }
+                ]
+              },
+              "color": {
+                "mode": "thresholds"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "displayMode": "basic",
+            "orientation": "horizontal",
+            "valueMode": "color",
+            "showUnfilled": true,
+            "minVizHeight": 14,
+            "maxVizHeight": 28,
+            "namePlacement": "left",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum by (site) (label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(increase(traefik_service_requests_total{exported_service=~\"httproute-(${site:pipe})-gw-.*\",code!~\"5..\"}[$__range]), \"site\", \"$1\", \"exported_service\", \"httproute-(.+?)-gw-.*\"), \"site\", \"mattjarrett.dev\", \"exported_service\", \"httproute-mattjarrett-dev-mattjarrett-dev-gw-.*\"), \"site\", \"blog.mattjarrett.dev\", \"exported_service\", \"httproute-blog-ghost-gw-.*\"), \"site\", \"launchpad.mattjarrett.dev\", \"exported_service\", \"httproute-launchpad-launchpad-gw-.*\"), \"site\", \"myvinyl.mattjarrett.dev\", \"exported_service\", \"httproute-my-vinyl-my-vinyl-gw-.*\"), \"site\", \"jspollock.mattjarrett.dev\", \"exported_service\", \"httproute-js-pollock-js-pollock-gw-.*\"), \"site\", \"connections.mattjarrett.dev\", \"exported_service\", \"httproute-platform-connections-demo-connections-demo-gw-.*\"), \"site\", \"graph.mattjarrett.dev\", \"exported_service\", \"httproute-platform-graph-demo-graph-demo-gw-.*\"), \"site\", \"kentjarrett.com\", \"exported_service\", \"httproute-kentjarrett-com-kentjarrett-com-wordpress-gw-.*\"), \"site\", \"mattjarrett.com\", \"exported_service\", \"httproute-mattjarrett-com-mattjarrett-com-wordpress-gw-.*\"), \"site\", \"sandbox\", \"exported_service\", \"httproute-guest-.*-gw-.*\")) / (sum by (site) (label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(increase(traefik_service_requests_total{exported_service=~\"httproute-(${site:pipe})-gw-.*\"}[$__range]), \"site\", \"$1\", \"exported_service\", \"httproute-(.+?)-gw-.*\"), \"site\", \"mattjarrett.dev\", \"exported_service\", \"httproute-mattjarrett-dev-mattjarrett-dev-gw-.*\"), \"site\", \"blog.mattjarrett.dev\", \"exported_service\", \"httproute-blog-ghost-gw-.*\"), \"site\", \"launchpad.mattjarrett.dev\", \"exported_service\", \"httproute-launchpad-launchpad-gw-.*\"), \"site\", \"myvinyl.mattjarrett.dev\", \"exported_service\", \"httproute-my-vinyl-my-vinyl-gw-.*\"), \"site\", \"jspollock.mattjarrett.dev\", \"exported_service\", \"httproute-js-pollock-js-pollock-gw-.*\"), \"site\", \"connections.mattjarrett.dev\", \"exported_service\", \"httproute-platform-connections-demo-connections-demo-gw-.*\"), \"site\", \"graph.mattjarrett.dev\", \"exported_service\", \"httproute-platform-graph-demo-graph-demo-gw-.*\"), \"site\", \"kentjarrett.com\", \"exported_service\", \"httproute-kentjarrett-com-kentjarrett-com-wordpress-gw-.*\"), \"site\", \"mattjarrett.com\", \"exported_service\", \"httproute-mattjarrett-com-mattjarrett-com-wordpress-gw-.*\"), \"site\", \"sandbox\", \"exported_service\", \"httproute-guest-.*-gw-.*\")) > 0)",
+              "refId": "A",
+              "legendFormat": "{{site}}",
+              "instant": true
+            }
+          ]
+        }
+      ],
+      "preload": false,
+      "refresh": "5m",
+      "schemaVersion": 42,
+      "templating": {
+        "list": [
+          {
+            "name": "site",
+            "label": "Site",
+            "type": "custom",
+            "multi": true,
+            "includeAll": true,
+            "hide": 0,
+            "skipUrlSync": false,
+            "current": {
+              "text": "All",
+              "value": "$__all"
+            },
+            "query": "mattjarrett.dev : mattjarrett-dev-mattjarrett-dev|mattjarrett[.]dev, blog.mattjarrett.dev : blog-ghost|blog[.]mattjarrett[.]dev, launchpad.mattjarrett.dev : launchpad-launchpad|launchpad[.]mattjarrett[.]dev, myvinyl.mattjarrett.dev : my-vinyl-my-vinyl|myvinyl[.]mattjarrett[.]dev, jspollock.mattjarrett.dev : js-pollock-js-pollock|jspollock[.]mattjarrett[.]dev, connections.mattjarrett.dev : platform-connections-demo-connections-demo|connections[.]mattjarrett[.]dev, graph.mattjarrett.dev : platform-graph-demo-graph-demo|graph[.]mattjarrett[.]dev, kentjarrett.com : kentjarrett-com-kentjarrett-com-wordpress|kentjarrett[.]com, mattjarrett.com : mattjarrett-com-mattjarrett-com-wordpress|mattjarrett[.]com, sandbox : guest-.*|demo[0-9](-api)?[.]mattjarrett[.]dev"
+          },
+          {
+            "name": "status_code",
+            "label": "HTTP Code",
+            "type": "custom",
+            "multi": false,
+            "includeAll": false,
+            "hide": 0,
+            "skipUrlSync": false,
+            "current": {
+              "text": "All",
+              "value": ".*"
+            },
+            "query": "All : .*, 2xx Success : 2.., 3xx Redirect : 3.., 4xx Client Error : 4.., 5xx Server Error : 5.."
+          }
+        ]
+      },
+      "time": {
+        "from": "now-24h",
+        "to": "now"
+      },
+      "timepicker": {
+        "refresh_intervals": [
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ]
+      },
+      "timezone": "browser",
+      "title": "Web Traffic",
+      "uid": "web-traffic"
+    }
