@@ -51,3 +51,52 @@ spec:
               - key: "{{ request.object.spec.schema.ociImage.reference || 'none' }}"
                 operator: NotEquals
                 value: "ghcr.io/cujarrett/storefront-*@sha256:*"
+---
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: platform-graph-image-allowlist
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform graph image allow list
+    policies.kyverno.io/description: >-
+      A graph lane runs only its subgraphs, its router and the mesh proxy, and a
+      subgraph publishes its schema only from its own signed image.
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+      - apiGroups: [apollographql.com]
+        apiVersions: [v1alpha2]
+        operations: [CREATE, UPDATE]
+        resources: [subgraphs]
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [graph-test, graph-prod]
+  variables:
+    - name: containers
+      expression: >-
+        object.spec.?containers.orValue([]) +
+        object.spec.?initContainers.orValue([]) +
+        object.spec.?ephemeralContainers.orValue([])
+  validations:
+    - expression: >-
+        object.kind != 'Pod' ||
+        variables.containers.all(c, c.image.matches(r'^(ghcr\.io/cujarrett/storefront-[a-z0-9-]+@sha256:[a-f0-9]{64}|ghcr\.io/cujarrett/apollo-router-arm64:[0-9.]+(@sha256:[a-f0-9]{64})?|registry\.istio\.io/release/proxyv2:[0-9.]+(-distroless)?)$'))
+      message: >-
+        Only a storefront-* subgraph by digest, the router and the Istio proxy
+        may run in a graph lane.
+    - expression: >-
+        object.kind != 'Subgraph' ||
+        object.spec.?schema.?ociImage.?reference.orValue('none').matches(r'^ghcr\.io/cujarrett/storefront-.*@sha256:.*$')
+      message: a subgraph publishes its schema only from a storefront-* image pinned by digest

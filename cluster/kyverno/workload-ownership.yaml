@@ -82,3 +82,53 @@ spec:
               - key: "{{ length(request.object.metadata.ownerReferences || `[]`) }}"
                 operator: Equals
                 value: 0
+---
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: platform-workload-ownership
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform workload ownership
+    policies.kyverno.io/description: >-
+      Every workload in a platform namespace must be composed by a Crossplane XR, or be
+      the router an Apollo Supergraph owns.
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [apps]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [deployments, statefulsets, daemonsets]
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+    namespaceSelector:
+      matchLabels:
+        platform.local.lab/workloads: "true"
+  variables:
+    - name: owners
+      expression: "object.metadata.?ownerReferences.orValue([])"
+    # A pod made from a template has only generateName until the API server names it.
+    - name: name
+      expression: "object.metadata.?name.orValue(object.metadata.?generateName.orValue(''))"
+  validations:
+    # The Apollo operator's router Deployment is owned by a Supergraph, which
+    # only Crossplane or a platform admin can create. Composed at one remove.
+    - expression: >-
+        object.kind == 'Pod' ||
+        object.metadata.?labels['crossplane.io/composite'].orValue('') != '' ||
+        variables.owners.exists(o, o.kind == 'Supergraph' && o.apiVersion.startsWith('apollographql.com/'))
+      messageExpression: "object.kind + ' ' + variables.name + ' was not composed by the platform. Declare it as an Api or Spa in homelab-workspaces instead.'"
+      message: The workload was not composed by the platform. Declare it as an Api or Spa in homelab-workspaces instead.
+    # Pods take their labels from the pod template, which Crossplane does not label,
+    # so a pod is checked for having an owner rather than for the composite label.
+    - expression: "object.kind != 'Pod' || size(variables.owners) > 0"
+      messageExpression: "'Pod ' + variables.name + ' has no owner. Declare it as an Api or Spa in homelab-workspaces instead.'"
+      message: The pod has no owner. Declare it as an Api or Spa in homelab-workspaces instead.
