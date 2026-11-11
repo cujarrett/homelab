@@ -1,0 +1,84 @@
+# A pod the platform did not compose gets no Istio Sidecar, so nothing restricts what
+# it reaches. Workload namespaces hold Api and Spa instances only.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: platform-workload-ownership
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    # Autogen copies pods-have-an-owner onto Deployments and CronJobs, where it reads
+    # ownerReferences off the pod template. A template never has any, so every one is denied.
+    pod-policies.kyverno.io/autogen-controllers: none
+    policies.kyverno.io/title: Platform workload ownership
+    policies.kyverno.io/description: >-
+      Every workload in a platform namespace must be composed by a Crossplane XR, or be
+      the router an Apollo Supergraph owns.
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: workloads-come-from-an-xr
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - StatefulSet
+                - DaemonSet
+              namespaceSelector:
+                matchLabels:
+                  platform.local.lab/workloads: "true"
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: AnyIn
+            value: [CREATE, UPDATE]
+          # The Apollo operator's router Deployment is owned by a Supergraph, which
+          # only Crossplane or a platform admin can create. Composed at one remove.
+          - key: "{{ length(request.object.metadata.ownerReferences[?kind == 'Supergraph' && starts_with(apiVersion, 'apollographql.com/')] || `[]`) }}"
+            operator: Equals
+            value: 0
+      # Kyverno defaults both of these on write. Stated here so the repo matches
+      # what the API server stores, otherwise ArgoCD sits permanently OutOfSync.
+      skipBackgroundRequests: true
+      validate:
+        allowExistingViolations: true
+        message: >-
+          {{ request.object.kind }} {{ request.object.metadata.name }} was not composed by
+          the platform. Declare it as an Api or Spa in homelab-workspaces instead.
+        pattern:
+          metadata:
+            labels:
+              crossplane.io/composite: "?*"
+
+    # Pods take their labels from the pod template, which Crossplane does not label,
+    # so a pod is checked for having an owner rather than for the composite label.
+    - name: pods-have-an-owner
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaceSelector:
+                matchLabels:
+                  platform.local.lab/workloads: "true"
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: AnyIn
+            value: [CREATE, UPDATE]
+      # Kyverno defaults both of these on write. Stated here so the repo matches
+      # what the API server stores, otherwise ArgoCD sits permanently OutOfSync.
+      skipBackgroundRequests: true
+      validate:
+        allowExistingViolations: true
+        message: >-
+          Pod {{ request.object.metadata.name }} has no owner. Declare it as an Api or
+          Spa in homelab-workspaces instead.
+        deny:
+          conditions:
+            all:
+              - key: "{{ length(request.object.metadata.ownerReferences || `[]`) }}"
+                operator: Equals
+                value: 0
