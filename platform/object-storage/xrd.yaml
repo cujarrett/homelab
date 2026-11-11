@@ -1,0 +1,30 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: objectstorages.platform.local.lab
+spec:
+  group: platform.local.lab
+  scope: Namespaced
+  names:
+    kind: ObjectStorage
+    plural: objectstorages
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  required: []
+                  properties:
+                    dataRetention:
+                      type: string
+                      default: delete
+                      enum: [retain, delete]
+                      description: "AWS resource reclaim behavior when the XR is deleted. delete=Crossplane deletes the S3 bucket (data is unrecoverable); retain=Crossplane orphans it (bucket persists in AWS, data recoverable)."

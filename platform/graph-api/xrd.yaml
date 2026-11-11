@@ -1,0 +1,46 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: graphapis.platform.local.lab
+spec:
+  group: platform.local.lab
+  scope: Namespaced
+  names:
+    kind: GraphApi
+    plural: graphapis
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [parameters]
+              properties:
+                parameters:
+                  type: object
+                  required: [graph, image]
+                  properties:
+                    graph:
+                      type: string
+                      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                      maxLength: 63
+                      description: "Name of the FederatedGraph in this namespace this subgraph joins. The graph composes every subgraph that names it."
+                    image:
+                      type: string
+                      pattern: "^[A-Za-z0-9][A-Za-z0-9._/@-]*@sha256:[a-f0-9]{64}$"
+                      maxLength: 255
+                      description: "Container image, pinned by digest. The schema is read from /schema.graphql inside it, so the schema published is the one this image serves. Managed by CI, updated on each merge to main."
+                    size:
+                      type: string
+                      default: sm
+                      enum: [xs, sm, md, lg]
+                      description: "Compute tier for the container. Extra Small suits low-traffic services; Large suits high-throughput workloads."
+                    replicas:
+                      type: integer
+                      default: 1
+                      minimum: 1
+                      description: "Number of subgraph replicas."

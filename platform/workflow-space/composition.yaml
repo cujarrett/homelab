@@ -1,0 +1,154 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: workflow-space
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: WorkflowSpace
+  mode: Pipeline
+  pipeline:
+    - step: load-environment-configs
+      functionRef:
+        name: function-environment-configs
+      input:
+        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+        kind: Input
+        spec:
+          environmentConfigs:
+            - type: Reference
+              ref:
+                name: aws-platform-config
+    - step: render-namespace
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $ns := $xr.metadata.namespace }}
+            {{- $params := $xr.spec.parameters | default dict }}
+            {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
+            {{- $temporalAppObjectId := index $envCtx "temporalEntraAppObjectId" | default "" }}
+            {{- $cloud := eq ($params.backend | default "private-cloud") "public-cloud" }}
+            {{- /* temporalCloudEnabled on aws-platform-config is the egress switch for Temporal Cloud. */ -}}
+            {{- /* Anything but "true" renders no ServiceEntry, so no worker can reach it. */ -}}
+            {{- $cloudEgress := eq (toString (index $envCtx "temporalCloudEnabled" | default "false")) "true" }}
+            {{- /* The Api composition derives the same GUID from its own namespace and workflowSpaceRef. */ -}}
+            {{- /* An Api in another namespace derives a GUID that matches no role, so its grant fails. */ -}}
+            {{- $roleHash := printf "%s/%s/temporal-writer" $ns $name | sha256sum }}
+            {{- $roleId := printf "%s-%s-4%s-a%s-%s" (substr 0 8 $roleHash) (substr 8 12 $roleHash) (substr 13 16 $roleHash) (substr 17 20 $roleHash) (substr 20 32 $roleHash) }}
+            {{- /* Ready only when temporal-controller reports Ready. A name clash stays not ready. */ -}}
+            {{- $ready := "False" }}
+            {{- $observed := index (.observed.resources | default dict) "temporal-namespace" }}
+            {{- $cloudStatus := dict }}
+            {{- if $observed }}
+            {{- range (($observed.resource.status | default dict).conditions | default list) }}
+            {{- if and (eq .type "Ready") (eq .status "True") }}{{- $ready = "True" }}{{- end }}
+            {{- end }}
+            {{- $cloudStatus = ($observed.resource.status | default dict).publicCloud | default dict }}
+            {{- end }}
+            {{- $cloudEndpoint := index $cloudStatus "endpoint" | default "" }}
+            {{- $cloudNamespace := index $cloudStatus "namespace" | default "" }}
+            {{- /* The endpoint exists before its DNS record. A lookup that early gets "no such name". */ -}}
+            {{- /* The LAN router caches that answer for 15 minutes, so nothing may look it up until Ready. */ -}}
+            {{- /* Once created it stays, so a brief not-ready never takes a working worker down. */ -}}
+            {{- $cloudReady := or (eq $ready "True") (index (.observed.resources | default dict) "connection") }}
+            # --- TemporalNamespace ---
+            # temporal-controller creates it in Temporal, where names are global across workspaces.
+            apiVersion: temporal.local.lab/v1alpha1
+            kind: TemporalNamespace
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: temporal-namespace
+                gotemplating.fn.crossplane.io/ready: {{ $ready | quote }}
+            spec:
+              {{- if $cloud }}
+              backend: public-cloud
+              # Temporal Cloud's minimum. Longer history costs more.
+              retention: "24h"
+              {{- else }}
+              retention: {{ $params.retention | default "72h" | quote }}
+              {{- with $params.description }}
+              description: {{ . | quote }}
+              {{- end }}
+              {{- end }}
+            {{- if $cloud }}
+            {{- if and $cloudEndpoint $cloudReady }}
+            ---
+            # Where workers connect. The Api composition reads it into env vars.
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{ $name }}-workflow-space
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection
+                gotemplating.fn.crossplane.io/ready: "True"
+            data:
+              TEMPORAL_ADDRESS: {{ $cloudEndpoint | quote }}
+              TEMPORAL_NAMESPACE: {{ $cloudNamespace | quote }}
+            {{- end }}
+            {{- if and $cloudEndpoint $cloudReady $cloudEgress }}
+            ---
+            # The only way out to Temporal Cloud. Without it, workers here can't connect or spend.
+            # TLS passes through by SNI, so workers sign in with their own SVID.
+            apiVersion: networking.istio.io/v1
+            kind: ServiceEntry
+            metadata:
+              name: {{ $name }}-workflow-space
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: egress
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              hosts:
+                - {{ (splitList ":" $cloudEndpoint | first) | quote }}
+              location: MESH_EXTERNAL
+              resolution: DNS
+              exportTo: ["."]
+              ports:
+                - number: 7233
+                  name: tls
+                  protocol: TLS
+            {{- end }}
+            {{- end }}
+            {{- /* The role waits for Ready, so a name clash never grants use of another workspace's namespace. */ -}}
+            {{- /* Once created it stays, so a brief not-ready never revokes a working grant. */ -}}
+            {{- if and (not $cloud) (or (eq $ready "True") (index (.observed.resources | default dict) "temporal-role")) }}
+            ---
+            # The permission to use this Temporal namespace, on the shared Temporal app registration.
+            # Temporal reads the value from the token's roles claim.
+            # The last word must be read, write, worker or admin. Temporal ignores any other word.
+            apiVersion: applications.azuread.m.upbound.io/v1beta1
+            kind: AppRole
+            metadata:
+              name: {{ $ns }}-{{ $name }}-temporal-writer
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: temporal-role
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              forProvider:
+                applicationId: /applications/{{ $temporalAppObjectId }}
+                roleId: {{ $roleId }}
+                value: {{ printf "Temporal.%s.write" $name | quote }}
+                displayName: {{ printf "Temporal.%s.write" $name | quote }}
+                description: {{ printf "Start and run workflows in %s" $name | quote }}
+                allowedMemberTypes:
+                  - Application
+            {{- end }}
+            ---
+            apiVersion: platform.local.lab/v1alpha1
+            kind: WorkflowSpace
+            status:
+              {{- if $cloud }}
+              namespace: {{ $cloudNamespace | quote }}
+              {{- else }}
+              namespace: {{ $name | quote }}
+              {{- end }}

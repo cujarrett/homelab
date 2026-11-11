@@ -1,0 +1,670 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: spa
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: Spa
+  mode: Pipeline
+  pipeline:
+    - step: load-environment-configs
+      functionRef:
+        name: function-environment-configs
+      input:
+        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+        kind: Input
+        spec:
+          environmentConfigs:
+            - type: Reference
+              ref:
+                name: aws-platform-config
+    - step: render-all-resources
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $name := .observed.composite.resource.metadata.name }}
+            {{- $params := .observed.composite.resource.spec.parameters }}
+            {{- $namespace := .observed.composite.resource.metadata.namespace }}
+            {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
+            {{- $entraTenantId := index $envCtx "entraTenantId" | default "" }}
+            {{- $crossplaneEntraSpId := index $envCtx "crossplaneEntraServicePrincipalId" | default "" }}
+            {{- $userAuth := $params.userAuth | default dict }}
+            {{- $signIn := $userAuth.client | default "" }}
+            {{- $apiProxies := $params.apiProxies | default list }}
+            {{- /* An entry names an app or a host, never both. The app form derives the   */ -}}
+            {{- /* address so nobody types an FQDN, and upstreamPath puts back a prefix    */ -}}
+            {{- /* nginx strips when the backend registered its routes under one.          */ -}}
+            {{- $proxies := list }}
+            {{- range $pr := $apiProxies }}
+            {{- $target := "" }}
+            {{- if $pr.app }}
+            {{- $pns := $pr.namespace | default $namespace }}
+            {{- $target = printf "%s.%s.svc.cluster.local" $pr.app $pns }}
+            {{- else }}
+            {{- $target = $pr.host }}
+            {{- end }}
+            {{- $proxies = append $proxies (dict "path" $pr.path "authority" $target "upstream" (printf "%s%s" $target ($pr.upstreamPath | default "")) "onPlatform" (ne ($pr.app | default "") "")) }}
+            {{- end }}
+            {{- $publicConfig := $params.publicConfig | default dict }}
+            {{- $sizeResourceMap := dict "xs" (dict "cpuReq" "25m" "cpuLim" "100m" "memReq" "32Mi" "memLim" "64Mi") "sm" (dict "cpuReq" "50m" "cpuLim" "200m" "memReq" "64Mi" "memLim" "128Mi") "md" (dict "cpuReq" "100m" "cpuLim" "500m" "memReq" "128Mi" "memLim" "256Mi") "lg" (dict "cpuReq" "250m" "cpuLim" "1000m" "memReq" "256Mi" "memLim" "512Mi") }}
+            {{- $sizeKey := $params.size | default "sm" }}
+            {{- $sizeRes := get $sizeResourceMap $sizeKey | default (get $sizeResourceMap "sm") }}
+            {{- $observedResources := .observed.resources | default dict }}
+            # subPath mounts never receive ConfigMap updates, so a changed nginx.conf is
+            # silently ignored by the running pod until something restarts it. Feeding the
+            # hash into a pod annotation makes the change roll the Deployment instead.
+            {{- $configChecksum := "" }}
+            {{- $observedNginxConfig := index $observedResources "nginx-config" }}
+            {{- if $observedNginxConfig }}
+            {{-   range $_, $v := ($observedNginxConfig.resource.data | default dict) }}
+            {{-     $configChecksum = printf "%s%s" $configChecksum $v }}
+            {{-   end }}
+            {{- end }}
+            {{- $configChecksum = $configChecksum | sha256sum | trunc 16 }}
+            {{- /* Every location that sets its own add_header needs these, because nginx */ -}}
+            {{- /* drops server-level add_header directives there.                        */ -}}
+            {{- define "security-headers" }}
+                        add_header Content-Security-Policy      "{{ .contentSecurityPolicy }}"       always;
+                        add_header X-Content-Type-Options       "nosniff"                                   always;
+                        add_header X-Frame-Options              "SAMEORIGIN"                                always;
+                        add_header X-XSS-Protection             "0"                                         always;
+                        add_header Referrer-Policy              "strict-origin-when-cross-origin"           always;
+                        add_header Permissions-Policy           "camera=(), microphone=(), geolocation=()"  always;
+            {{- end }}
+            # --- nginx ConfigMap ---
+            # Generated from XR params so the SPA image stays generic across instances.
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{ $name }}-nginx-config
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: nginx-config
+                gotemplating.fn.crossplane.io/ready: "True"
+            data:
+              default.conf: |
+                {{- if gt (len $apiProxies) 0 }}
+                # Redact sensitive query-string params before they hit the access log.
+                # Proxied SSE endpoints carry bearer tokens as ?token=/?ticket=... since
+                # EventSource can't set custom headers, so it lands in the URL instead.
+                map $args $safe_args {
+                    default                                                                       $args;
+                    "~*(^|&)(token|access_token|ticket|api[_-]?key|secret|password|authorization)=" "redacted";
+                }
+                map $safe_args $safe_uri {
+                    ""      $uri;
+                    default "$uri?$safe_args";
+                }
+                log_format api_proxy '$remote_addr - $remote_user [$time_local] '
+                                      '"$request_method $safe_uri $server_protocol" '
+                                      '$status $body_bytes_sent "$http_referer" "$http_user_agent"';
+                {{- end }}
+                server {
+                    listen 8080;
+                    server_tokens off;
+
+                    root /usr/share/nginx/html;
+                    index index.html;
+
+                    # Block known vulnerability scanners - return 403 and close cheaply.
+                    # curl/python-requests/Go-http-client catch raw non-browser UAs; the named
+                    # tools are common scanners. l9scan (LeakIX) is the largest source of
+                    # catch-all 200s seen in logs, sweeping all Spa instances for creds/config.
+                    if ($http_user_agent ~* "^curl/|python-requests/|TLM-Audit-Scanner|nmap|nikto|sqlmap|nessus|qualys|burp|zaproxy|masscan|wpscan|nuclei|pathscan|l9scan|YUTAA-SCANNER-DEFUNCT|^Go-http-client/") {
+                        return 403;
+                    }
+
+                    # WordPress user-enumeration probe via query string on any path (?rest_route=/wp/v2/users/)
+                    # Not path-based, so it slips past every location block above and hits the SPA catch-all.
+                    if ($args ~* "^rest_route=") {
+                        return 404;
+                    }
+
+                    location /healthz {
+                        access_log off;
+                        return 200 'ok';
+                        add_header Content-Type text/plain always;
+                        add_header Access-Control-Allow-Origin '*' always;
+                    }
+
+                    {{- if gt (len $publicConfig) 0 }}
+                    # Fetched by the app on load, never baked into the JS bundle at build
+                    # time, so one image stays deployable unchanged across environments.
+                    # Mounted whole (not subPath), so kubelet syncs edits without a restart.
+                    location = /config.json {
+                        alias /etc/spa-public-config/config.json;
+                        # .json isn't in nginx's default mime.types, so without this it would
+                        # serve as application/octet-stream. add_header can't override a Content-Type
+                        # nginx computes internally - default_type is the directive that does.
+                        default_type application/json;
+                        add_header Cache-Control "no-cache" always;
+                        add_header X-Content-Type-Options "nosniff" always;
+                    }
+                    {{- end }}
+
+                    # no-cache: browser always refetches the entry point
+                    # All security headers repeated - nginx drops server-level add_header
+                    # directives for any location that defines its own add_header.
+                    location = /index.html {
+                        add_header Cache-Control                "no-cache"                                  always;
+                        {{- include "security-headers" $params }}
+                        # Angular's media="print" onload="..." render trick is an inline event
+                        # handler, blocked by strict script-src CSP. Strip it at serve time so
+                        # the link becomes a plain <link rel="stylesheet"> - no unsafe-inline needed.
+                        sub_filter " media=\"print\" onload=\"this.media='all'\"" "";
+                        sub_filter_once off;
+                    }
+
+                    # immutable: hashed filenames change on each build
+                    location ~* \.(js|css|woff2|woff)$ {
+                        add_header Cache-Control                "public, max-age=31536000, immutable"       always;
+                        {{- include "security-headers" $params }}
+                    }
+
+                    # no-cache: images are not content-hashed so must always revalidate
+                    location ~* \.(png|jpg|jpeg|gif|ico|svg)$ {
+                        add_header Cache-Control                "no-cache"                                  always;
+                        {{- include "security-headers" $params }}
+                    }
+
+                    # Real static files the Angular CLI copies verbatim from public/ (robots.txt,
+                    # PWA manifest) - without these, the default-deny rule below would 404 them
+                    # before the catch-all's try_files ever checks whether they exist on disk.
+                    location = /robots.txt {
+                        add_header Cache-Control "no-cache" always;
+                    }
+
+                    location ~* \.webmanifest$ {
+                        add_header Cache-Control "no-cache" always;
+                    }
+
+
+                    # CI/CD and container files with no extension for the default-deny rule to catch
+                    location ~* (^|/)(Jenkinsfile|Dockerfile)$ {
+                        return 404;
+                    }
+
+                    {{- range $proxies }}
+                    # API proxy: routes {{ .path }}* to its declared backend (no public exposure needed)
+                    location {{ .path }} {
+                        access_log /var/log/nginx/access.log api_proxy;
+                        proxy_pass http://{{ .upstream }}/;
+                        # Host must name the upstream, not the browser's hostname. Envoy routes
+                        # outbound HTTP by :authority, so forwarding the original Host looks up a
+                        # name outside the mesh registry - a blackhole under REGISTRY_ONLY.
+                        proxy_set_header Host {{ .authority }};
+                        proxy_set_header X-Forwarded-Host $host;
+                        # Use Traefik's forwarded header - $remote_addr is Traefik's pod IP, not the client.
+                        proxy_set_header X-Real-IP $http_x_real_ip;
+                        proxy_set_header X-Forwarded-For $http_x_forwarded_for;
+                        proxy_set_header X-Forwarded-Proto $scheme;
+                        # SSE / long-poll support - disable buffering so streamed responses
+                        # reach the client immediately (e.g. /api/status/watch).
+                        proxy_buffering off;
+                        proxy_cache off;
+                        proxy_read_timeout 3600s;
+                        # Connection '' only clears the hop-by-hop header on HTTP/1.1; without
+                        # this line proxy_pass falls back to HTTP/1.0, which also breaks SSE.
+                        proxy_http_version 1.1;
+                        proxy_set_header Connection '';
+                        chunked_transfer_encoding on;
+                    }
+                    {{- end }}
+
+                    # Scanner probes, all answered 404 so the SPA catch-all never returns 200
+                    # and tells a scanner the stack is here. Grouped by suffix: ";" is a
+                    # terminator alongside "/" so /actuator;/env cannot slip past, _profiler and
+                    # _environment have no ^ anchor so they match nested paths, and id_rsa and friends have no
+                    # extension for the dotted default-deny below to catch.
+                    location ~* "(^|/)([a-z0-9_-]*credentials|secrets|var/log|wp-json|stats/prometheus)(/|$)|/(id_rsa|id_dsa|id_ecdsa|id_ed25519)(\.pub)?$" {
+                        return 404;
+                    }
+
+                    location ~* "^/(api/)?(actuator|jolokia|swagger|openapi|console|telescope|geoserver|v2/_catalog|v3/api-docs|rest/(V[0-9]+|default))(/|;|$)|^/server-status$|/(_profiler|_environment)(/|;|$)" {
+                        return 404;
+                    }
+
+                    location ~* "^/(api/|@vite/|actutor/|manage/|__|_)?env(/|\.|$)" {
+                        return 404;
+                    }
+
+                    location ~* "^/(wp-admin|wp-includes|wp-content|wp-login|wp-cron|wp-config|wp-json|wordpress|wp|backup|old|new|web|cms|sito|site|admin|administrator)(/|$)" {
+                        return 404;
+                    }
+
+                    location ~* "^/(phpinfo|php-info|pinfo|server-info|server-status|feed|openid_connect|_ignition|sse|mcp|private-key|__debug__|info|health)(/|$)" {
+                        return 404;
+                    }
+
+                    location ~* "^/(setup|install|installer|installation|wizard|admin/setup|api/user|api/v[0-9]+/(user|config|env)|_internal)(/|$)|^/(app/)?config/(packages|routes|services|security)(/|$)" {
+                        return 404;
+                    }
+
+                    # SSRF and open-proxy probes - a SPA never implements a server-side fetch proxy
+                    location ~* "^/(fetch|read|redirect|proxy|aws/metadata|api/v1/status/flags|@fs)(/|\?|$)" {
+                        return 404;
+                    }
+
+                    # ACME HTTP-01 tokens are base64url - never contain a dot. Matching the token
+                    # charset means a probe like acme-challenge/file.php falls through to the
+                    # dotfile deny below and 404s instead of hitting the catch-all as a 200.
+                    location ~ "^/\.well-known/acme-challenge/[A-Za-z0-9_-]+$" {
+                        try_files $uri $uri/ /index.html;
+                    }
+
+                    # Default-deny: assumes no Spa app's router uses a dotted path segment, so any
+                    # request that looks like a filename or dotfile is a probe. Replaces enumerating
+                    # every credential/config filename scanners try with one rule for all of them.
+                    location ~ /\. {
+                        return 404;
+                    }
+
+                    location ~* \.[^./]+$ {
+                        return 404;
+                    }
+
+                    # SPA catch-all: client-side router handles unmatched paths
+                    location / {
+                        try_files $uri $uri/ /index.html;
+                    }
+                }
+            {{- if gt (len $publicConfig) 0 }}
+            ---
+            # --- Public config ConfigMap ---
+            # Served as /config.json. Public by design - never put a secret in publicConfig.
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{ $name }}-public-config
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: public-config
+                gotemplating.fn.crossplane.io/ready: "True"
+            data:
+              config.json: |
+                {{ $publicConfig | toJson }}
+            {{- end }}
+            ---
+            # --- ServiceAccount ---
+            # Dedicated SA per Spa instance - pods do not use the namespace default SA.
+            apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: serviceaccount
+                gotemplating.fn.crossplane.io/ready: "True"
+            ---
+            # --- Deployment ---
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $namespace }}
+              labels:
+                app: spa
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: deployment
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              replicas: {{ $params.replicas | default 1 }}
+              # A rolling update that never goes Ready holds the old pods forever.
+              # Without a deadline that stalls silently instead of reporting Degraded,
+              # so a bad image looks identical to a quiet day.
+              progressDeadlineSeconds: 300
+              selector:
+                matchLabels:
+                  app: spa
+                  instance: {{ $name }}
+              template:
+                metadata:
+                  labels:
+                    app: spa
+                    instance: {{ $name }}
+                  annotations:
+                    checksum/config: "{{ $configChecksum }}"
+                spec:
+                  automountServiceAccountToken: false
+                  # nginx never calls the apiserver - no token to steal from this pod.
+                  serviceAccountName: {{ $name }}
+                  # The nginx images run as root and bind 80. Both had to go: 8080 is
+                  # bindable unprivileged, and 65532 overrides the image's user the same
+                  # way the Api composition does.
+                  securityContext:
+                    runAsNonRoot: true
+                    runAsUser: 65532
+                    runAsGroup: 65532
+                    seccompProfile:
+                      type: RuntimeDefault
+                  containers:
+                    - name: spa
+                      image: {{ $params.image }}
+                      imagePullPolicy: Always
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        readOnlyRootFilesystem: true
+                        capabilities:
+                          drop: [ALL]
+                      ports:
+                        - containerPort: 8080
+                      resources:
+                        requests:
+                          cpu: {{ get $sizeRes "cpuReq" }}
+                          memory: {{ get $sizeRes "memReq" }}
+                        limits:
+                          cpu: {{ get $sizeRes "cpuLim" }}
+                          memory: {{ get $sizeRes "memLim" }}
+                      readinessProbe:
+                        httpGet:
+                          path: /healthz
+                          port: 8080
+                        initialDelaySeconds: 5
+                        periodSeconds: 10
+                      volumeMounts:
+                        - name: nginx-config
+                          mountPath: /etc/nginx/conf.d/default.conf
+                          subPath: default.conf
+                          readOnly: true
+                        {{- if gt (len $publicConfig) 0 }}
+                        - name: public-config
+                          mountPath: /etc/spa-public-config
+                          readOnly: true
+                        {{- end }}
+                        - name: run
+                          mountPath: /run
+                        - name: nginx-cache
+                          mountPath: /var/cache/nginx
+                        - name: tmp
+                          mountPath: /tmp
+                  volumes:
+                    - name: nginx-config
+                      configMap:
+                        name: {{ $name }}-nginx-config
+                    {{- if gt (len $publicConfig) 0 }}
+                    # Whole-directory mount, not subPath - kubelet syncs ConfigMap edits into
+                    # this one on its own, so publicConfig changes reach the pod with no restart.
+                    - name: public-config
+                      configMap:
+                        name: {{ $name }}-public-config
+                    {{- end }}
+                    # nginx writes its pid to /run and its proxy/client temp files to
+                    # /var/cache/nginx - both on a read-only root without these.
+                    - name: run
+                      emptyDir: {}
+                    - name: nginx-cache
+                      emptyDir: {}
+                    - name: tmp
+                      emptyDir: {}
+            ---
+            # --- Service ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $namespace }}
+              labels:
+                app: spa
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: service
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                app: spa
+                instance: {{ $name }}
+              ports:
+                - port: 80
+                  targetPort: 8080
+            ---
+            # --- Rate limit Middleware ---
+            # Burst 100: one mattjarrett.dev page load is about 40 requests.
+            # A reload doubles that, and a burst of 20 returned 429 for lazy-loaded images.
+            # Average 300/min still throttles scanning bots (about 8 req/s).
+            # Keyed on CF-Connecting-IP, because public traffic all arrives from the cloudflared pod IPs.
+            apiVersion: traefik.io/v1alpha1
+            kind: Middleware
+            metadata:
+              name: {{ $name }}-ratelimit
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: ratelimit-middleware
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              rateLimit:
+                average: 300
+                burst: 100
+                period: 1m
+                sourceCriterion:
+                  requestHeaderName: CF-Connecting-IP
+            ---
+            # --- HTTPRoute ---
+            apiVersion: gateway.networking.k8s.io/v1
+            kind: HTTPRoute
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: httproute
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              parentRefs:
+                - {name: traefik-gateway, namespace: kube-system}
+              hostnames:
+                - {{ $params.host }}
+              rules:
+                - filters:
+                    - type: ExtensionRef
+                      extensionRef: {group: traefik.io, kind: Middleware, name: {{ $name }}-ratelimit}
+                  backendRefs:
+                    - name: {{ $name }}
+                      port: 80
+            {{- /* ---------- Connections ---------- */ -}}
+            {{- /* apiProxies already states this SPA's dependencies, so they become     */ -}}
+            {{- /* egress entries here rather than being declared a second time.         */ -}}
+            {{- /* No provides field - nothing calls a SPA workload-to-workload.         */ -}}
+
+            {{- $consumes := $params.consumes | default list }}
+            ---
+            # Every Spa has a route, and Traefik is unmeshed, so port 8080 cannot be
+            # restricted by identity. A mattjarrett.dev host reaches the internet,
+            # a local.lab host the homelab network.
+            apiVersion: security.istio.io/v1
+            kind: PeerAuthentication
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-peerauth
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels: { instance: {{ $name }} }
+              mtls:
+                mode: STRICT
+              portLevelMtls:
+                "8080":
+                  mode: PERMISSIVE
+            ---
+            apiVersion: security.istio.io/v1
+            kind: AuthorizationPolicy
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-authz
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels: { instance: {{ $name }} }
+              action: ALLOW
+              rules:
+                - to:
+                    - operation: { ports: ["8080"] }
+            ---
+            # REGISTRY_ONLY: only the control plane, the apiProxies upstreams, and what
+            # it declared. The upstream's namespace is read out of its FQDN, so each
+            # entry is scoped rather than matching that host in any namespace.
+            apiVersion: networking.istio.io/v1
+            kind: Sidecar
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-sidecar
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              workloadSelector:
+                labels: { instance: {{ $name }} }
+              outboundTrafficPolicy:
+                mode: REGISTRY_ONLY
+              egress:
+                - hosts:
+                    - "istio-system/*"
+                    {{- range $proxies }}
+                    {{- if .onPlatform }}
+                    {{- $parts := splitList "." .authority }}
+                    - "{{ index $parts 1 }}/{{ .authority }}"
+                    {{- else }}
+                    - "./{{ .authority }}"
+                    {{- end }}
+                    {{- end }}
+                    {{- range $c := $consumes }}
+                    {{- if $c.host }}
+                    - "./{{ $c.host }}"
+                    {{- end }}
+                    {{- if and $c.app $c.namespace }}
+                    - "{{ $c.namespace }}/{{ $c.app }}.{{ $c.namespace }}.svc.cluster.local"
+                    {{- end }}
+                    {{- end }}
+            {{- /* apiProxies off-platform hosts and consumes hosts both need registering. */ -}}
+            {{- /* prefix keeps each one's existing resource name.                         */ -}}
+            {{- $serviceEntries := list }}
+            {{- range $pr := $proxies }}
+            {{- if not $pr.onPlatform }}
+            {{- $serviceEntries = append $serviceEntries (dict "prefix" "proxy-se" "host" $pr.authority "port" 443 "protocol" "TLS") }}
+            {{- end }}
+            {{- end }}
+            {{- range $c := $consumes }}
+            {{- if $c.host }}
+            {{- $serviceEntries = append $serviceEntries (dict "prefix" "connection-se" "host" $c.host "port" ($c.port | default 443) "protocol" ($c.protocol | default "TLS")) }}
+            {{- end }}
+            {{- end }}
+            {{- range $se := $serviceEntries }}
+            ---
+            apiVersion: networking.istio.io/v1
+            kind: ServiceEntry
+            metadata:
+              name: {{ $name }}-{{ $se.host | replace "." "-" }}
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: {{ $se.prefix }}-{{ $se.host | replace "." "-" }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              hosts:
+                - {{ $se.host | quote }}
+              location: MESH_EXTERNAL
+              resolution: DNS
+              exportTo: ["."]
+              ports:
+                - number: {{ $se.port }}
+                  name: {{ $se.protocol | lower }}
+                  protocol: {{ $se.protocol }}
+            {{- end }}
+            {{- if $signIn }}
+            {{- $redirects := list (printf "https://%s/auth/callback" $params.host) }}
+            {{- range $u := ($userAuth.extraRedirectUris | default list) }}{{- $redirects = append $redirects $u }}{{- end }}
+            ---
+            # The sign-in client for this SPA, separate from the backend's own workload
+            # identity - this registration exists for the browser flow and dies with
+            # the SPA, while the backend's identity outlives it.
+            apiVersion: applications.azuread.m.upbound.io/v1beta1
+            kind: Application
+            metadata:
+              name: {{ $namespace }}-{{ $name }}-signin
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: signin-application
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              forProvider:
+                displayName: platform-{{ $namespace }}-{{ $name }}-signin
+                signInAudience: AzureADMyOrg
+                web:
+                  # Derived from host, so nobody types a redirect URI. A wrong one is not a
+                  # typo, it is where a stolen authorization code gets delivered.
+                  redirectUris:
+                  {{- range $u := $redirects }}
+                    - {{ $u | quote }}
+                  {{- end }}
+                  implicitGrant:
+                    # The browser never receives a token, so neither of these is ever on.
+                    accessTokenIssuanceEnabled: false
+                    idTokenIssuanceEnabled: false
+                owners:
+                  - {{ $crossplaneEntraSpId }}
+            ---
+            apiVersion: serviceprincipals.azuread.m.upbound.io/v1beta1
+            kind: Principal
+            metadata:
+              name: {{ $namespace }}-{{ $name }}-signin
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: signin-principal
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              forProvider:
+                clientIdRef:
+                  name: {{ $namespace }}-{{ $name }}-signin
+                owners:
+                  - {{ $crossplaneEntraSpId }}
+            ---
+            # The backend authenticates as this client with its own SPIFFE identity, so the
+            # sign-in client needs no secret either.
+            apiVersion: applications.azuread.m.upbound.io/v1beta1
+            kind: FederatedIdentityCredential
+            metadata:
+              name: {{ $namespace }}-{{ $name }}-signin
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: signin-federated-credential
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              forProvider:
+                applicationIdRef:
+                  name: {{ $namespace }}-{{ $name }}-signin
+                displayName: signin-client
+                issuer: https://oidc.mattjarrett.dev
+                subject: spiffe://homelab.local/ns/{{ $namespace }}/sa/{{ $signIn }}
+                audiences:
+                  - api://AzureADTokenExchange
+            ---
+            # A composition cannot write env into another XR's Deployment, so the client id
+            # is published here and the backend names this in its own configFrom.
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{ $name }}-signin
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: signin-config
+                gotemplating.fn.crossplane.io/ready: "True"
+            data:
+              ENTRA_SIGNIN_TENANT_ID: {{ $entraTenantId | quote }}
+              ENTRA_SIGNIN_REDIRECT_URI: {{ (first $redirects) | quote }}
+              {{- if $userAuth.scopes }}
+              ENTRA_SIGNIN_SCOPES: {{ join " " $userAuth.scopes | quote }}
+              {{- end }}
+            ---
+            apiVersion: platform.local.lab/v1alpha1
+            kind: Spa
+            status:
+              entra:
+                issuer: {{ printf "https://login.microsoftonline.com/%s/v2.0" $entraTenantId | quote }}
+                redirectUris:
+                {{- range $u := $redirects }}
+                  - {{ $u | quote }}
+                {{- end }}
+            {{- end }}

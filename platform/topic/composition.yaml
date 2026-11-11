@@ -1,0 +1,55 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: topic
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: Topic
+  mode: Pipeline
+  pipeline:
+    - step: render-stream
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $params := $xr.spec.parameters }}
+            # --- NACK JetStream Stream ---
+            # The NACK controller (nats namespace) watches this object and calls the NATS
+            # API to create/update the stream - the NATS equivalent of a Kafka Topic.
+            # retention and replicas map to Kafka's log retention and replication.factor.
+            apiVersion: jetstream.nats.io/v1beta2
+            kind: Stream
+            metadata:
+              name: {{ $name }}
+              namespace: nats
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: stream
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              # Stream name as seen in NATS (nats stream ls)
+              name: {{ $params.streamName }}
+              # Subjects this stream captures - NATS wildcard > = "all subtokens"
+              # e.g. foo.events.> captures foo.events.created, foo.events.updated, etc.
+              subjects:
+              {{- range $params.subjects }}
+                - {{ . | quote }}
+              {{- end }}
+              retention: {{ $params.retention | default "limits" }}
+              # file storage survives pod restarts - memory is faster but ephemeral
+              storage: file
+              # Raft replication across NATS cluster - Kafka replication.factor equivalent
+              replicas: 3
+              # Go duration string - Kafka log.retention.ms equivalent
+              maxAge: {{ $params.maxAge | default "720h" }}
+              # -1 = unlimited - Kafka log.retention.bytes equivalent
+              maxBytes: -1
+              maxConsumers: -1
+              maxMsgs: -1
+              discard: old

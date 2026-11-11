@@ -1,0 +1,58 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: sqls.platform.local.lab
+spec:
+  group: platform.local.lab
+  scope: Namespaced
+  names:
+    kind: Sql
+    plural: sqls
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [parameters]
+              properties:
+                parameters:
+                  type: object
+                  # No default, so every owner picks a size knowingly.
+                  # Too big holds capacity forever, since a volume can grow but never shrink.
+                  required: [storageSize]
+                  x-kubernetes-validations:
+                    - rule: "self.backend != 'public-cloud' || quantity(self.storageSize).compareTo(quantity('20Gi')) >= 0"
+                      message: "a public-cloud Sql needs storageSize of at least 20Gi"
+                  properties:
+                    size:
+                      type: string
+                      default: sm
+                      enum: [xs, sm, md, lg]
+                      description: "Size for the RDS instance (cloud only). xs=db.t4g.micro, sm=db.t4g.small, md=db.t4g.medium, lg=db.t4g.large."
+                    backend:
+                      type: string
+                      default: private-cloud
+                      enum: [private-cloud, public-cloud]
+                      description: "Backend to provision. public-cloud provisions AWS RDS Postgres; private-cloud provisions in-cluster Postgres."
+                    dataRetention:
+                      type: string
+                      default: delete
+                      enum: [retain, delete]
+                      description: "PVC reclaim behavior when the XR is deleted. retain=longhorn-retain (PVC survives XR deletion, data recoverable); delete=longhorn-delete (PVC wiped on XR deletion, data is unrecoverable). Intentionally destructive when set to delete."
+                    storageSize:
+                      type: string
+                      # Whole Gi only, 1Gi to 100Gi, so the pattern alone caps the size.
+                      pattern: "^([1-9][0-9]?|100)Gi$"
+                      description: "Size of the database storage, 1Gi to 100Gi (e.g. 1Gi). public-cloud needs at least 20Gi. Can be raised later, never lowered."
+                    consumerServiceAccounts:
+                      type: array
+                      items:
+                        type: string
+                        pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                        maxLength: 63
+                      description: "Service account names of the Apis that will bind this database (public-cloud only). Each entry gets its own IAM role and binding secret scoped to that SA's exact SPIFFE ID. Each entry must match an Api name."

@@ -1,0 +1,193 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: spas.platform.local.lab
+spec:
+  group: platform.local.lab
+  scope: Namespaced
+  names:
+    kind: Spa
+    plural: spas
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  properties:
+                    image:
+                      type: string
+                      pattern: "^[A-Za-z0-9][A-Za-z0-9._/:@-]*$"
+                      maxLength: 255
+                      description: >-
+                        Container image (e.g. ghcr.io/owner/app:sha-abc123). Managed by CI —
+                        set on first create, then updated automatically on each merge to main.
+                    repo:
+                      type: string
+                      pattern: "^https://[A-Za-z0-9._/-]+$"
+                      maxLength: 255
+                      description: "GitHub repository URL for this app's source code (e.g. https://github.com/owner/app)."
+                    host:
+                      type: string
+                      pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+                      maxLength: 253
+                      description: "Hostname clients call, under local.lab for the homelab network or mattjarrett.dev for the internet (e.g. foo.local.lab)."
+                    replicas:
+                      type: integer
+                      default: 1
+                      minimum: 1
+                      description: "Number of nginx replicas. Stateless — safe to scale freely."
+                    contentSecurityPolicy:
+                      type: string
+                      default: "default-src 'self'; frame-ancestors 'none'; base-uri 'self';"
+                      pattern: "^[^\"\\r\\n]+$"
+                      description: >
+                        Value for the Content-Security-Policy response header.
+                        Override with app-specific origins (e.g. Google Fonts, external APIs).
+                        Default is a strict policy suitable for SPAs with no external dependencies.
+                    size:
+                      type: string
+                      default: sm
+                      enum: [xs, sm, md, lg]
+                      description: "Compute tier for the container. Choose based on expected traffic — Extra Small suits low-traffic or background services; Large suits high-throughput workloads."
+                    publicConfig:
+                      type: object
+                      additionalProperties:
+                        type: string
+                      description: >-
+                        Flat key/value pairs served as JSON at /config.json, fetched by the
+                        app on load instead of being baked into the JS bundle at build time —
+                        this keeps one built image deployable across environments unchanged.
+                        Everything here is shipped to any browser that asks: a public API
+                        base URL, a public analytics key, a feature flag. Never a secret —
+                        there is no boundary protecting this file from anyone.
+                    apiProxies:
+                      type: array
+                      description: "Use when this SPA has companion backends. Each entry routes one path prefix to one destination; the prefix is stripped before proxying. An on-platform backend needs no hostname or Cloudflare Tunnel entry of its own — only the SPA is exposed, and how far depends on its host."
+                      items:
+                        type: object
+                        required: [path]
+                        x-kubernetes-validations:
+                          # An entry names what it reaches exactly once. Both would be two
+                          # answers to one question; neither renders nothing at all.
+                          - rule: "has(self.app) != has(self.host)"
+                            message: "each apiProxies entry sets exactly one of app or host"
+                        properties:
+                          path:
+                            type: string
+                            # Rendered into the nginx config, so the charset is bounded to
+                            # what a path can hold. A ; or } here would close the location
+                            # block and let a workspace file write nginx directives.
+                            pattern: "^/[A-Za-z0-9._~/-]*/$"
+                            maxLength: 253
+                            description: "URL path prefix to route (e.g. /foo/). Must start and end with /."
+                          app:
+                            type: string
+                            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                            maxLength: 63
+                            description: "metadata.name of an Api on the platform. Its address is derived, so no FQDN is typed. A name that resolves to nothing is not rejected yet - that needs an admission policy."
+                          namespace:
+                            type: string
+                            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                            maxLength: 63
+                            description: "Namespace of app. Must be this SPA's own namespace, which is also the default when omitted. A proxy cannot reach an Api in another namespace."
+                          host:
+                            type: string
+                            pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+                            maxLength: 253
+                            description: "Off-platform destination, taken verbatim (e.g. api.weather.com). In-cluster names such as foo.bar.svc are refused."
+                          upstreamPath:
+                            type: string
+                            pattern: "^/[A-Za-z0-9._~/-]*[A-Za-z0-9._~-]$"
+                            maxLength: 253
+                            description: "Path prefix to prepend on the upstream side. nginx strips path before forwarding, so set this when the backend expects it back (e.g. /api)."
+                    userAuth:
+                      type: object
+                      description: "Sign-in for this SPA. Omit for an app with no user login. Tokens never reach the browser: the backend completes the code exchange and the browser holds a session cookie."
+                      required: [client]
+                      properties:
+                        client:
+                          type: string
+                          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                          maxLength: 63
+                          description: "metadata.name of the Api that completes sign-in and holds the tokens. Must be one this SPA proxies to. Exactly one, because only one backend owns the session."
+                        scopes:
+                          type: array
+                          maxItems: 20
+                          description: "Scopes the signed-in user needs, named as interfaces on the apps being called."
+                          items:
+                            type: string
+                            pattern: "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+                            maxLength: 255
+                        extraRedirectUris:
+                          type: array
+                          maxItems: 10
+                          description: "Redirect URIs beyond the one derived from host. For a localhost callback during local development, or a second domain during a migration."
+                          items:
+                            type: string
+                            pattern: "^https?://[A-Za-z0-9._~:/-]+$"
+                            maxLength: 2048
+                    consumes:
+                      type: array
+                      description: "Every destination this SPA calls that apiProxies does not already name. Anything in apiProxies is allowed automatically — do not list it. Set either host (off-platform) or app+namespace (any app on the platform)."
+                      items:
+                        type: object
+                        properties:
+                          host:
+                            type: string
+                            pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+                            maxLength: 253
+                            description: "Off-platform hostname (e.g. api.discogs.com). Anything not listed is blocked at this workload's own sidecar."
+                          port:
+                            type: integer
+                            description: "Port for host. Defaults to 443 when omitted."
+                          protocol:
+                            type: string
+                            enum: [TLS, HTTP]
+                            description: "Wire protocol for host. TLS for any https:// destination — the app terminates its own TLS. HTTP only for plaintext destinations."
+                          address:
+                            type: string
+                            pattern: "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                            description: "Bare IPv4 address of an off-platform destination that has no DNS name, such as a device on the LAN. Renders a ServiceEntry with static resolution rather than a DNS lookup. Use with port."
+                          app:
+                            type: string
+                            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                            maxLength: 63
+                            description: "metadata.name of an Api in another namespace this calls. Use with namespace."
+                          namespace:
+                            type: string
+                            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                            maxLength: 63
+                            description: "Namespace of app. Required when app is set."
+                  required:
+                    - image
+                    - host
+              required:
+                - parameters
+            status:
+              type: object
+              description: "What the platform derived. Spec is what you asked for, this is what you got."
+              properties:
+                entra:
+                  type: object
+                  properties:
+                    clientId:
+                      type: string
+                      description: "Application (client) ID of the sign-in client registration."
+                    issuer:
+                      type: string
+                      description: "Token issuer for this tenant."
+                    redirectUris:
+                      type: array
+                      description: "Derived from host, plus anything in userAuth.extraRedirectUris."
+                      items:
+                        type: string
+          required:
+            - spec

@@ -1,0 +1,1381 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: api
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: Api
+  mode: Pipeline
+  pipeline:
+    - step: load-environment-configs
+      functionRef:
+        name: function-environment-configs
+      input:
+        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+        kind: Input
+        spec:
+          environmentConfigs:
+            - type: Reference
+              ref:
+                name: aws-platform-config
+    - step: render-all-resources
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $ns := $xr.metadata.namespace }}
+            {{- $cacheBackend := ($xr.spec.parameters.cache | default dict).backend | default "private-cloud" }}
+            {{- /* Refs point to standalone resources created outside this Api. */ -}}
+            {{- /* The binding Secret already exists in $ns - just mount it.    */ -}}
+            {{- $objectStorageRefs := $xr.spec.parameters.objectStorageRefs | default list }}
+            {{- $managedSecretRefs := $xr.spec.parameters.managedSecretRefs | default list }}
+            {{- $envCtx := index .context "apiextensions.crossplane.io/environment" | default dict }}
+            {{- $awsAccountId := index $envCtx "awsAccountId" | default "" }}
+            {{- /* Public issuer, so it is hardcoded next to the trust domain rather than */ -}}
+            {{- /* injected. Must match the IAM OIDC provider registered in AWS.          */ -}}
+            {{- $oidcIssuerHost := "oidc.mattjarrett.dev" }}
+            {{- $oidcProviderArn := printf "arn:aws:iam::%s:oidc-provider/%s" $awsAccountId $oidcIssuerHost }}
+            {{- /* Every AWS role this Api gets trusts the same one subject: this pod's SPIFFE  */ -}}
+            {{- /* ID. Built once here rather than per binding, because a second copy is a   */ -}}
+            {{- /* second thing to keep in step.                                            */ -}}
+            {{- $trustPolicy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Principal" (dict "Federated" $oidcProviderArn) "Action" "sts:AssumeRoleWithWebIdentity" "Condition" (dict "StringEquals" (dict (printf "%s:aud" $oidcIssuerHost) "sts.amazonaws.com" (printf "%s:sub" $oidcIssuerHost) (printf "spiffe://homelab.local/ns/%s/sa/%s" $ns $name))))) | toJson }}
+            {{- $provides := $xr.spec.parameters.provides | default list }}
+            {{- /* Interfaces carry their own auth mode, so the two claim types split here */ -}}
+            {{- /* once and every Entra object below reads one of these lists.            */ -}}
+            {{- $appRoles := list }}
+            {{- $delegatedScopes := list }}
+            {{- range $iface := $provides }}
+            {{- $mode := $iface.auth }}
+            {{- if eq $mode "user" }}
+            {{- $delegatedScopes = append $delegatedScopes $iface }}
+            {{- else if eq $mode "workload" }}
+            {{- $appRoles = append $appRoles $iface }}
+            {{- end }}
+            {{- end }}
+            {{- /* Declared once here, read by both the mesh rules far below and the      */ -}}
+            {{- /* Entra scope env vars above them.                                       */ -}}
+            {{- $consumes := $xr.spec.parameters.consumes | default list }}
+            {{- /* An app that offers an interface, or calls one, needs an identity.       */ -}}
+            {{- /* Nothing declares it, because the declaration already exists.            */ -}}
+            {{- /* An Entra identity exists only when a token is in play.                  */ -}}
+            {{- /* A mesh interface carries no token, so it needs none.                    */ -}}
+            {{- $entraNeeded := or (gt (len $appRoles) 0) (gt (len $delegatedScopes) 0) }}
+            {{- range $c := $consumes }}
+            {{- if or $c.app $c.entraApp }}{{- $entraNeeded = true }}{{- end }}
+            {{- end }}
+            {{- /* A private-cloud workflowSpaceRef means a token for Temporal, so it needs an identity too. */ -}}
+            {{- /* public-cloud signs in with the SVID itself, so it needs no Entra identity. */ -}}
+            {{- $workflowRef := $xr.spec.parameters.workflowSpaceRef | default dict }}
+            {{- $workflowSpaceName := $workflowRef.name | default "" }}
+            {{- $workflowCloud := and $workflowSpaceName (eq ($workflowRef.backend | default "private-cloud") "public-cloud") }}
+            {{- $workflowPrivate := and $workflowSpaceName (not $workflowCloud) }}
+            {{- if $workflowPrivate }}{{- $entraNeeded = true }}{{- end }}
+            {{- /* crossplane-entra's own service principal object ID - set as owner on   */ -}}
+            {{- /* everything it creates, or it can create but never delete/update again.  */ -}}
+            {{- /* See cluster/crossplane/azuread-permissions.md.                          */ -}}
+            {{- $crossplaneEntraSpId := index $envCtx "crossplaneEntraServicePrincipalId" | default "" }}
+            {{- $entraTenantId := index $envCtx "entraTenantId" | default "" }}
+            {{- $temporalSpObjectId := index $envCtx "temporalEntraSpObjectId" | default "" }}
+            {{- $observedResources := .observed.resources | default dict }}
+            {{- $entraAppObs := index $observedResources "entra-application" | default dict }}
+            {{- $entraClientId := "" }}
+            {{- if $entraAppObs.resource }}{{- $entraClientId = $entraAppObs.resource.status.atProvider.clientId | default "" }}{{- end }}
+            {{- $sqlRefName := "" }}
+            {{- if $xr.spec.parameters.sqlRef }}{{- $sqlRefName = $xr.spec.parameters.sqlRef.name }}{{- end }}
+            {{- $nosqlRefName := "" }}
+            {{- if $xr.spec.parameters.nosqlRef }}{{- $nosqlRefName = $xr.spec.parameters.nosqlRef.name }}{{- end }}
+            {{- $sqlBackend := "private-cloud" }}
+            {{- if $xr.spec.parameters.sqlRef }}{{- $sqlBackend = $xr.spec.parameters.sqlRef.backend | default "private-cloud" }}{{- end }}
+            {{- $cacheEnabled := and $xr.spec.parameters.cache $xr.spec.parameters.cache.enabled }}
+            {{- $host := $xr.spec.parameters.host | default "" }}
+            {{- $metricsPort := $xr.spec.parameters.metricsPort | default 9090 }}
+            {{- $scrapeInterval := $xr.spec.parameters.scrapeInterval | default "60s" }}
+            {{- $replicas := $xr.spec.parameters.replicas | default 1 }}
+            {{- /* Ready once every replica is Ready, so the XR never reports Ready before its pods. */ -}}
+            {{- $deployObs := index $observedResources "deployment" | default dict }}
+            {{- $readyReplicas := 0 }}
+            {{- if $deployObs.resource }}{{- $readyReplicas = $deployObs.resource.status.readyReplicas | default 0 }}{{- end }}
+            {{- $deployReady := ternary "True" "False" (ge (int $readyReplicas) (int $replicas)) }}
+            {{- /* An Api with an Entra app waits for the app's client ID before its first Deployment.   */}}
+            {{- /* Started without it, the pods can't sign in and are replaced once it arrives.          */}}
+            {{- /* Only the first create waits. An existing Deployment always renders, so a missed read  */}}
+            {{- /* of the Entra app can never delete it.                                                 */}}
+            {{- $holdDeploy := and $entraNeeded (not $entraClientId) (not $deployObs.resource) }}
+            {{- $healthCheckPath := $xr.spec.parameters.readinessCheckPath | default "/healthz" }}
+            {{- $sizeResourceMap := dict "xs" (dict "cpuReq" "25m" "cpuLim" "100m" "memReq" "32Mi" "memLim" "64Mi") "sm" (dict "cpuReq" "50m" "cpuLim" "200m" "memReq" "64Mi" "memLim" "128Mi") "md" (dict "cpuReq" "100m" "cpuLim" "500m" "memReq" "128Mi" "memLim" "256Mi") "lg" (dict "cpuReq" "250m" "cpuLim" "1000m" "memReq" "256Mi" "memLim" "512Mi") }}
+            {{- $sizeKey := $xr.spec.parameters.size | default "sm" }}
+            {{- $sizeResources := get $sizeResourceMap $sizeKey | default (get $sizeResourceMap "sm") }}
+            {{- $configFrom := $xr.spec.parameters.configFrom | default list }}
+            {{- $topicRefName := "" }}
+            {{- $topicStreamName := "" }}
+            {{- if $xr.spec.parameters.topicRef }}
+            {{- $topicRefName = $xr.spec.parameters.topicRef.name }}
+            {{- $topicStreamName = ($xr.spec.parameters.topicRef.streamName | default ($xr.spec.parameters.topicRef.name | upper)) }}
+            {{- end }}
+            {{- $subscriptionRefName := "" }}
+            {{- if $xr.spec.parameters.subscriptionRef }}{{- $subscriptionRefName = $xr.spec.parameters.subscriptionRef.name }}{{- end }}
+            {{- /* Every service binding this Api mounts. Each entry has                   */ -}}
+            {{- /* dir: the directory under /bindings, the volume name stem and AWS profile */ -}}
+            {{- /* label: what the init container prints while it waits                    */ -}}
+            {{- /* secretName: the binding Secret mounted at dir                           */ -}}
+            {{- /* awsProfileEnv: read only for entries in $awsBindings                    */ -}}
+            {{- $objectStorage := list }}
+            {{- range $ref := $objectStorageRefs }}
+              {{- $objectStorage = append $objectStorage (dict
+                  "dir" (printf "object-storage-%s" $ref.name)
+                  "label" $ref.name
+                  "secretName" (printf "%s-%s" $name $ref.name)
+                  "awsProfileEnv" (printf "AWS_PROFILE_OBJECT_STORAGE_%s" ($ref.name | upper | replace "-" "_"))) }}
+            {{- end }}
+            {{- $sqlSecretName := $sqlRefName }}
+            {{- if eq $sqlBackend "public-cloud" }}{{- $sqlSecretName = printf "%s-sql" $name }}{{- end }}
+            {{- $sql := dict "dir" "sql" "label" "sql" "secretName" $sqlSecretName "awsProfileEnv" (printf "AWS_PROFILE_SQL_%s" ($sqlRefName | upper | replace "-" "_")) }}
+            {{- $nosql := dict "dir" "nosql" "label" "nosql" "secretName" (printf "%s-nosql" $name) "awsProfileEnv" (printf "AWS_PROFILE_NOSQL_%s" ($nosqlRefName | upper | replace "-" "_")) }}
+            {{- $cache := dict "dir" "cache" "label" "cache" "secretName" (printf "%s-cache" $name) "awsProfileEnv" "AWS_PROFILE_CACHE" }}
+            {{- $sqlOnAws := and $sqlRefName (eq $sqlBackend "public-cloud") }}
+            {{- $cacheOnAws := and $cacheEnabled (eq $cacheBackend "public-cloud") }}
+            {{- /* Mount order and sidecar order differ for sql and nosql.            */ -}}
+            {{- /* Both are baked into the pod spec, so reordering either rolls pods.  */ -}}
+            {{- $bindings := $objectStorage }}
+            {{- if $sqlRefName }}{{- $bindings = append $bindings $sql }}{{- end }}
+            {{- if $nosqlRefName }}{{- $bindings = append $bindings $nosql }}{{- end }}
+            {{- if $cacheEnabled }}{{- $bindings = append $bindings $cache }}{{- end }}
+            {{- /* The subset the credential sidecar fetches AWS keys for. */ -}}
+            {{- $awsBindings := $objectStorage }}
+            {{- if $nosqlRefName }}{{- $awsBindings = append $awsBindings $nosql }}{{- end }}
+            {{- if $sqlOnAws }}{{- $awsBindings = append $awsBindings $sql }}{{- end }}
+            {{- if $cacheOnAws }}{{- $awsBindings = append $awsBindings $cache }}{{- end }}
+            {{- /* mountPath:profile pairs for the sidecar's AWS_BINDINGS. */ -}}
+            {{- $sidecarBindingParts := list }}
+            {{- range $b := $awsBindings }}
+              {{- $sidecarBindingParts = append $sidecarBindingParts (printf "/bindings/%s:%s" $b.dir $b.dir) }}
+            {{- end }}
+            {{- /* Each managed secret has a binding under /bindings and a value under /secrets. */ -}}
+            {{- $managedSecrets := list }}
+            {{- range $ref := $managedSecretRefs }}
+              {{- $managedSecrets = append $managedSecrets (dict
+                  "dir" (printf "managed-secret-%s" $ref.name)
+                  "label" $ref.name
+                  "name" $ref.name
+                  "secretName" (printf "%s-secret-%s" $name $ref.name)) }}
+            {{- end }}
+            {{- /* bindingDir:outputDir pairs for SECRET_BINDINGS. Two paths because the      */ -}}
+            {{- /* binding is a read-only Secret volume and the fetched value has to land     */ -}}
+            {{- /* somewhere writable that the app container also mounts.                     */ -}}
+            {{- $secretBindingParts := list }}
+            {{- range $ms := $managedSecrets }}
+              {{- $secretBindingParts = append $secretBindingParts (printf "/bindings/%s:/secrets/%s" $ms.dir $ms.name) }}
+            {{- end }}
+            {{- /* Endpoints this pod must reach because of what it bound, not because    */ -}}
+            {{- /* it asked. The mesh has no idea these exist otherwise, so under         */ -}}
+            {{- /* REGISTRY_ONLY every one of them is a blackhole. Add to this list in    */ -}}
+            {{- /* this block only - it is read further down and never rebuilt.           */ -}}
+            {{- $derivedHosts := list }}
+            {{- if gt (len $awsBindings) 0 }}
+              {{- /* The credential sidecar calls this to turn its SVID into AWS keys.    */ -}}
+              {{- /* Without it nothing else here works - no credentials, no calls.       */ -}}
+              {{- $derivedHosts = append $derivedHosts "sts.us-east-1.amazonaws.com" }}
+            {{- end }}
+            {{- range $ref := $objectStorageRefs }}
+              {{- /* Virtual-hosted style is the AWS SDK default, so SNI carries the      */ -}}
+              {{- /* bucket name - one host per bucket, not one regional endpoint.        */ -}}
+              {{- $derivedHosts = append $derivedHosts (printf "platform-%s-%s.s3.us-east-1.amazonaws.com" $ns $ref.name) }}
+            {{- end }}
+            {{- if $nosqlRefName }}
+              {{- /* Every table in a region shares this endpoint - the table name is in */ -}}
+              {{- /* the request body, not the hostname, so IAM is what scopes access.   */ -}}
+              {{- $derivedHosts = append $derivedHosts "dynamodb.us-east-1.amazonaws.com" }}
+            {{- end }}
+            {{- if gt (len $managedSecretRefs) 0 }}
+              {{- /* The sidecar reads every ManagedSecret through this one endpoint, and */ -}}
+              {{- /* it needs STS below to have an identity to read them with.            */ -}}
+              {{- $derivedHosts = append $derivedHosts "secretsmanager.us-east-1.amazonaws.com" }}
+              {{- $derivedHosts = append $derivedHosts "sts.us-east-1.amazonaws.com" }}
+            {{- end }}
+            {{- if $entraNeeded }}
+              {{- /* Where an SVID is traded for an Entra token. Same reasoning as STS   */ -}}
+              {{- /* above - opting into Entra is what declares this, so the app never   */ -}}
+              {{- /* restates it and cannot forget to.                                   */ -}}
+              {{- $derivedHosts = append $derivedHosts "login.microsoftonline.com" }}
+            {{- end }}
+            {{- /* Nothing for public-cloud Sql or Cache - RDS and ElastiCache are VPC   */ -}}
+            {{- /* only, so unreachable from this cluster. If that changes, the call     */ -}}
+            {{- /* fails loudly here and the host goes in consumes.                      */ -}}
+            # --- Service ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              labels:
+                app: api
+                app.kubernetes.io/instance: {{ $name }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: service
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                app.kubernetes.io/instance: {{ $name }}
+              ports:
+                - name: http
+                  port: 80
+                  targetPort: {{ $xr.spec.parameters.port | default 8080 }}
+                - name: metrics
+                  port: {{ $metricsPort }}
+                  targetPort: {{ $metricsPort }}
+            ---
+            # --- ServiceAccount ---
+            # Dedicated SA per Api instance - pods do not use the namespace default SA.
+            apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: serviceaccount
+                gotemplating.fn.crossplane.io/ready: "True"
+            {{- $boundSecrets := list }}
+            {{- range $b := $bindings }}{{- $boundSecrets = append $boundSecrets $b.secretName }}{{- end }}
+            {{- if $boundSecrets }}
+            ---
+            # --- Role ---
+            # Grants get only on the exact Secrets this instance mounts or injects.
+            # Prevents a compromised container from reading other Secrets in the namespace.
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: Role
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: role
+                gotemplating.fn.crossplane.io/ready: "True"
+            rules:
+              - apiGroups: [""]
+                resources: ["secrets"]
+                verbs: ["get"]
+                resourceNames:
+                  {{- range $boundSecrets }}
+                  - {{ . | quote }}
+                  {{- end }}
+            ---
+            # --- RoleBinding ---
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: RoleBinding
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: rolebinding
+                gotemplating.fn.crossplane.io/ready: "True"
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: Role
+              name: {{ $name }}
+            subjects:
+              - kind: ServiceAccount
+                name: {{ $name }}
+                namespace: {{ $ns }}
+            {{- end }}
+            {{- if not $holdDeploy }}
+            ---
+            # --- Deployment ---
+            # Init containers poll for each binding's "type" file - last key written,
+            # confirming all binding keys are available before the app starts.
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              labels:
+                app: api
+                app.kubernetes.io/instance: {{ $name }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: deployment
+                {{- if $configFrom }}
+                # envFrom copies ConfigMap values in at pod creation. Without this
+                # annotation an edited ConfigMap never reaches the running process.
+                reloader.stakater.com/auto: "true"
+                {{- end }}
+                gotemplating.fn.crossplane.io/ready: {{ $deployReady | quote }}
+            spec:
+              replicas: {{ $replicas }}
+              # A rolling update that never goes Ready holds the old pods forever.
+              # Without a deadline that stalls silently instead of reporting Degraded,
+              # so a bad image looks identical to a quiet day.
+              progressDeadlineSeconds: 300
+              selector:
+                matchLabels:
+                  app.kubernetes.io/instance: {{ $name }}
+              template:
+                metadata:
+                  labels:
+                    app: api
+                    app.kubernetes.io/instance: {{ $name }}
+                    {{- if $workflowPrivate }}
+                    # The temporal NetworkPolicy admits these pods. Teams can't create pods, so only workflowSpaceRef sets it.
+                    platform.local.lab/uses-workflow: "true"
+                    {{- end }}
+                    {{- if or $topicRefName $subscriptionRefName }}
+                    # The nats NetworkPolicy admits these pods. Teams can't create pods, so only topicRef or subscriptionRef sets it.
+                    platform.local.lab/uses-nats: "true"
+                    {{- end }}
+                  {{- if $xr.spec.parameters.callsClusterApi }}
+                  annotations:
+                    # Calls to the Kubernetes API go around the sidecar.
+                    # The sidecar drops long-running watches.
+                    # 10.43.0.1 is the Kubernetes API address on k3s by default.
+                    traffic.sidecar.istio.io/excludeOutboundIPRanges: "10.43.0.1/32"
+                  {{- end }}
+                spec:
+                  serviceAccountName: {{ $name }}
+                  # Only an Api that calls the cluster API needs its token.
+                  # Kyverno's platform-cluster-api-access limits the flag to approved namespaces.
+                  # RBAC under cluster/<namespace>/rbac.yaml decides what the token can do.
+                  automountServiceAccountToken: {{ $xr.spec.parameters.callsClusterApi | default false }}
+                  # runAsUser overrides the image's own USER, since kubelet refuses
+                  # runAsNonRoot for a name it can't resolve. 65532 works everywhere -
+                  # the binaries are root-owned 0755, so none needs to own its uid.
+                  securityContext:
+                    runAsNonRoot: true
+                    runAsUser: 65532
+                    runAsGroup: 65532
+                    seccompProfile:
+                      type: RuntimeDefault
+                  {{- if or $bindings $managedSecrets $entraNeeded $workflowCloud }}
+                  initContainers:
+                    {{- /* Waits for the binding Secret only.                               */}}
+                    {{- /* The sidecar below reads it, then its startupProbe waits for values. */}}
+                    {{- range $wait := concat $managedSecrets $bindings }}
+                    - name: wait-for-{{ $wait.dir }}-binding
+                      image: busybox:1.38@sha256:a46257e06c82ad85242d0d38077d0a52d9896389ca60a1a59d3463db586e5fa4
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        readOnlyRootFilesystem: true
+                        capabilities:
+                          drop: [ALL]
+                      command:
+                        - sh
+                        - -c
+                        - "until [ -f /bindings/{{ $wait.dir }}/type ]; do echo waiting for {{ $wait.label }} binding; sleep 5; done"
+                      volumeMounts:
+                        - name: {{ $wait.dir }}-binding
+                          mountPath: /bindings/{{ $wait.dir }}
+                          readOnly: true
+                    {{- end }}
+                    {{- if or $awsBindings $entraNeeded $managedSecrets }}
+                    - name: workload-identity-sidecar
+                      image: ghcr.io/cujarrett/workload-identity-sidecar:main@sha256:8a92cc08463a6b7d7073ab6851b1ac3df76253e91314601d6825eb9fbd0bcbd6
+                      imagePullPolicy: Always
+                      # A native sidecar. Kubernetes starts the app only after this
+                      # container's startupProbe passes.
+                      restartPolicy: Always
+                      {{- if $managedSecrets }}
+                      # Passes once every ManagedSecret has a value, so the app never
+                      # starts against an empty /secrets directory.
+                      # Waits up to an hour for an owner to set a new one.
+                      # The binary checks the files itself, so the image needs no shell.
+                      startupProbe:
+                        exec:
+                          command:
+                            - /usr/local/bin/workload-identity-sidecar
+                            - ready
+                            {{- range $ms := $managedSecrets }}
+                            - /secrets/{{ $ms.name }}/ready
+                            {{- end }}
+                        periodSeconds: 5
+                        failureThreshold: 720
+                      {{- end }}
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        readOnlyRootFilesystem: true
+                        capabilities:
+                          drop: [ALL]
+                      env:
+                        {{- if gt (len $awsBindings) 0 }}
+                        - name: AWS_BINDINGS
+                          value: {{ join "," $sidecarBindingParts | quote }}
+                        - name: CREDS_FILE
+                          value: /aws-credentials/credentials
+                        {{- end }}
+                        {{- if gt (len $secretBindingParts) 0 }}
+                        - name: SECRET_BINDINGS
+                          value: {{ join "," $secretBindingParts | quote }}
+                        {{- end }}
+                        {{- if $entraNeeded }}
+                        - name: ENTRA_FEDERATED_TOKEN_FILE
+                          value: /entra-identity/token
+                        {{- end }}
+                      volumeMounts:
+                        - name: tmp
+                          mountPath: /tmp
+                        - name: spiffe-bundle
+                          mountPath: /var/run/secrets/spiffe.io
+                          readOnly: true
+                        {{- if gt (len $awsBindings) 0 }}
+                        - name: aws-credentials
+                          mountPath: /aws-credentials
+                        {{- end }}
+                        {{- if $entraNeeded }}
+                        - name: entra-identity
+                          mountPath: /entra-identity
+                        {{- end }}
+                        {{- range $b := $awsBindings }}
+                        - name: {{ $b.dir }}-binding
+                          mountPath: /bindings/{{ $b.dir }}
+                          readOnly: true
+                        {{- end }}
+                        {{- range $ms := $managedSecrets }}
+                        - name: {{ $ms.dir }}-binding
+                          mountPath: /bindings/{{ $ms.dir }}
+                          readOnly: true
+                        - name: {{ $ms.dir }}-value
+                          mountPath: /secrets/{{ $ms.name }}
+                        {{- end }}
+                    {{- end }}
+                    {{- if $workflowCloud }}
+                    # Writes this pod's X.509 SVID as files and renews them. The app signs in to Temporal Cloud with them.
+                    - name: spiffe-helper
+                      image: ghcr.io/spiffe/spiffe-helper:0.12.1@sha256:49a7b1aca5b497bb4c1ca1ed1f15397bdf9c9cafb8036df4b963b566bd234f7f
+                      restartPolicy: Always
+                      args: ["-config", "/config/helper.conf"]
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        readOnlyRootFilesystem: true
+                        capabilities:
+                          drop: [ALL]
+                      resources:
+                        requests:
+                          cpu: 5m
+                          memory: 16Mi
+                        limits:
+                          cpu: 50m
+                          memory: 32Mi
+                      volumeMounts:
+                        - name: spiffe-bundle
+                          mountPath: /var/run/secrets/spiffe.io
+                          readOnly: true
+                        - name: temporal-tls
+                          mountPath: /temporal-tls
+                        - name: spiffe-helper-config
+                          mountPath: /config
+                          readOnly: true
+                    {{- end }}
+                  {{- end }}
+                  containers:
+                    - name: api
+                      image: {{ $xr.spec.parameters.image }}
+                      imagePullPolicy: Always
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        readOnlyRootFilesystem: true
+                        capabilities:
+                          drop: [ALL]
+                      ports:
+                        - containerPort: {{ $xr.spec.parameters.port | default 8080 }}
+                      resources:
+                        requests:
+                          cpu: {{ get $sizeResources "cpuReq" }}
+                          memory: {{ get $sizeResources "memReq" }}
+                        limits:
+                          cpu: {{ get $sizeResources "cpuLim" }}
+                          memory: {{ get $sizeResources "memLim" }}
+                      # Checks every 2s while starting, so the pod turns Ready within
+                      # seconds of the app being able to serve.
+                      # Readiness then takes over at 10s, since a check can do real work.
+                      # The hour-long limit restarts only an app that never comes up.
+                      startupProbe:
+                        httpGet:
+                          path: {{ $healthCheckPath }}
+                          port: {{ $xr.spec.parameters.port | default 8080 }}
+                        periodSeconds: 2
+                        failureThreshold: 1800
+                      readinessProbe:
+                        httpGet:
+                          path: {{ $healthCheckPath }}
+                          port: {{ $xr.spec.parameters.port | default 8080 }}
+                        # A new pod becomes routable at most this long after it can serve.
+                        periodSeconds: 3
+                      env:
+                        # servicebinding.io convention: $SERVICE_BINDING_ROOT/<binding>/<key>
+                        - name: SERVICE_BINDING_ROOT
+                          value: /bindings
+                      {{- if gt (len $awsBindings) 0 }}
+                        - name: AWS_SHARED_CREDENTIALS_FILE
+                          value: /aws-credentials/credentials
+                        {{- range $b := $awsBindings }}
+                        - name: {{ $b.awsProfileEnv }}
+                          value: {{ $b.dir }}
+                        {{- end }}
+                      {{- end }}
+                      {{- if $entraNeeded }}
+                        # Read by the Azure SDK's WorkloadIdentityCredential - it does the
+                        # client_assertion exchange itself, not this sidecar. See
+                        # workload-identity-sidecar's README for the split.
+                        - name: AZURE_CLIENT_ID
+                          value: {{ $entraClientId | quote }}
+                        - name: AZURE_TENANT_ID
+                          value: {{ $entraTenantId | quote }}
+                        - name: AZURE_FEDERATED_TOKEN_FILE
+                          value: /entra-identity/token
+                        {{- range $c := $consumes }}
+                        {{- if and $c.app $c.namespace }}
+                        # One per app this Api already said it calls. The URI format is
+                        # the platform's own, so an app that had to build this string
+                        # would be guessing at a convention it cannot see.
+                        - name: ENTRA_SCOPE_{{ $c.app | upper | replace "-" "_" }}
+                          value: api://{{ $entraTenantId }}/platform-{{ $c.namespace }}-{{ $c.app }}/.default
+                        {{- end }}
+                        {{- if $c.entraApp }}
+                        # A registration the platform does not own, so its owner supplied
+                        # the URI. Injected for the same reason as the derived ones: the
+                        # app should never assemble an audience string by hand.
+                        - name: ENTRA_SCOPE_{{ $c.entraApp.role | upper | replace "." "_" | replace "-" "_" }}
+                          value: {{ printf "%s/.default" $c.entraApp.appIdUri | quote }}
+                        {{- end }}
+                        {{- end }}
+                      {{- end }}
+                      {{- if $topicRefName }}
+                        # Topic wiring: injected automatically from topicRef.
+                        # App reads NATS_URL + NATS_STREAM to publish events.
+                        - name: NATS_URL
+                          value: "nats://nats.nats.svc.cluster.local:4222"
+                        - name: NATS_STREAM
+                          value: {{ $topicStreamName | quote }}
+                      {{- end }}
+                      {{- if $subscriptionRefName }}
+                        # Subscription wiring: injected automatically from subscriptionRef.
+                        # App reads NATS_CONSUMER to bind to the durable cursor.
+                        {{- if not $topicRefName }}
+                        - name: NATS_URL
+                          value: "nats://nats.nats.svc.cluster.local:4222"
+                        {{- end }}
+                        - name: NATS_CONSUMER
+                          value: {{ $subscriptionRefName | quote }}
+                      {{- end }}
+                      {{- if $workflowPrivate }}
+                        # The WorkflowSpace names its Temporal namespace after itself.
+                        - name: TEMPORAL_ADDRESS
+                          value: "temporal-frontend.temporal.svc.cluster.local:7233"
+                        - name: TEMPORAL_NAMESPACE
+                          value: {{ $workflowSpaceName | quote }}
+                        # Request an Entra token for this scope, and send it to Temporal as a bearer token.
+                        - name: TEMPORAL_TOKEN_SCOPE
+                          value: {{ printf "api://%s/platform-temporal/.default" $entraTenantId | quote }}
+                      {{- end }}
+                      {{- if $workflowCloud }}
+                        # The WorkflowSpace writes where to connect once Temporal Cloud has the namespace.
+                        # The pod waits for that ConfigMap before it starts.
+                        - name: TEMPORAL_ADDRESS
+                          valueFrom:
+                            configMapKeyRef:
+                              name: {{ $workflowSpaceName }}-workflow-space
+                              key: TEMPORAL_ADDRESS
+                        - name: TEMPORAL_NAMESPACE
+                          valueFrom:
+                            configMapKeyRef:
+                              name: {{ $workflowSpaceName }}-workflow-space
+                              key: TEMPORAL_NAMESPACE
+                        # The client certificate and key. spiffe-helper writes them shortly after start.
+                        - name: TEMPORAL_TLS_CERT
+                          value: /temporal-tls/svid.pem
+                        - name: TEMPORAL_TLS_KEY
+                          value: /temporal-tls/svid_key.pem
+                      {{- end }}
+                      {{- if $configFrom }}
+                      envFrom:
+                        {{- range $cm := $configFrom }}
+                        - configMapRef:
+                            name: {{ $cm }}
+                        {{- end }}
+                      {{- end }}
+                      volumeMounts:
+                        - name: tmp
+                          mountPath: /tmp
+                        {{- if gt (len $awsBindings) 0 }}
+                        - name: aws-credentials
+                          mountPath: /aws-credentials
+                          readOnly: true
+                        {{- end }}
+                        {{- range $b := $bindings }}
+                        - name: {{ $b.dir }}-binding
+                          mountPath: /bindings/{{ $b.dir }}
+                          readOnly: true
+                        {{- end }}
+                        {{- if $entraNeeded }}
+                        - name: entra-identity
+                          mountPath: /entra-identity
+                          readOnly: true
+                        {{- end }}
+                        {{- if $workflowCloud }}
+                        - name: temporal-tls
+                          mountPath: /temporal-tls
+                          readOnly: true
+                        {{- end }}
+                        {{- /* Kept out of /bindings, where a servicebinding.io scan       */ -}}
+                        {{- /* expects a type file per directory. A Secret has none.        */ -}}
+                        {{- range $ms := $managedSecrets }}
+                        - name: {{ $ms.dir }}-value
+                          mountPath: /secrets/{{ $ms.name }}
+                          readOnly: true
+                        {{- end }}
+                  volumes:
+                    - name: tmp
+                      emptyDir: {}
+                    {{- if or $awsBindings $entraNeeded $managedSecrets $workflowCloud }}
+                    - name: spiffe-bundle
+                      csi:
+                        driver: csi.spiffe.io
+                        readOnly: true
+                    {{- end }}
+                    {{- if gt (len $awsBindings) 0 }}
+                    - name: aws-credentials
+                      emptyDir: {}
+                    {{- end }}
+                    {{- if $entraNeeded }}
+                    - name: entra-identity
+                      emptyDir: {}
+                    {{- end }}
+                    {{- if $workflowCloud }}
+                    # The private key stays in memory.
+                    - name: temporal-tls
+                      emptyDir:
+                        medium: Memory
+                    - name: spiffe-helper-config
+                      configMap:
+                        name: {{ $name }}-spiffe-helper
+                    {{- end }}
+                    {{- range $b := $bindings }}
+                    - name: {{ $b.dir }}-binding
+                      secret:
+                        secretName: {{ $b.secretName }}
+                        optional: true
+                    {{- end }}
+                    {{- range $ms := $managedSecrets }}
+                    - name: {{ $ms.dir }}-binding
+                      secret:
+                        secretName: {{ $ms.secretName }}
+                        optional: true
+                    {{- /* The value lands here rather than in the binding volume, which is */}}
+                    {{- /* a Secret and therefore read-only to the sidecar writing it.      */}}
+                    - name: {{ $ms.dir }}-value
+                      emptyDir:
+                        medium: Memory
+                    {{- end }}
+            {{- end }}{{- /* end holdDeploy */}}
+            {{- if or $awsBindings $managedSecrets }}
+            {{- /* One IAM role and one binding Secret per AWS-backed ref. The Secret     */ -}}
+            {{- /* carries no value, only where to find one and which role may read it.   */ -}}
+            {{- /* Both are deleted with this Api.                                        */ -}}
+            {{- $iamBindings := list }}
+            {{- range $ref := $objectStorageRefs }}
+            {{- $refName := $ref.name }}
+            {{- $bucketName := printf "platform-%s-%s" $ns $refName }}
+            {{- /* IAM role names are capped at 64 chars. Hash the name when it would exceed that. */}}
+            {{- $rawRoleExternalName := printf "crossplane-%s-%s-%s" $ns $name $refName }}
+            {{- $roleExternalName := $rawRoleExternalName }}
+            {{- if gt (len $rawRoleExternalName) 64 }}
+            {{- $roleExternalName = printf "xp-%s" ($rawRoleExternalName | sha256sum | trunc 61) }}
+            {{- end }}
+            {{- $policy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "s3:GetObject" "s3:PutObject" "s3:DeleteObject" "s3:ListBucket") "Resource" (list (printf "arn:aws:s3:::%s" $bucketName) (printf "arn:aws:s3:::%s/*" $bucketName)))) | toJson }}
+            {{- $iamBindings = append $iamBindings (dict
+                "roleName" (printf "%s-objstorage-%s" $name $refName)
+                "roleKey" (printf "role-object-storage-%s" $refName)
+                "roleExternalName" $roleExternalName
+                "tagKey" "ObjectStorageRef" "tagValue" $refName
+                "policyName" (printf "platform-object-storage-%s-%s" $ns $refName)
+                "policy" $policy
+                "secretName" (printf "%s-%s" $name $refName)
+                "secretKey" (printf "binding-secret-object-storage-%s" $refName)
+                "bindingType" "s3"
+                "dataKey" "bucket" "dataValue" $bucketName
+                "roleArn" (printf "arn:aws:iam::%s:role/crossplane/%s" $awsAccountId $roleExternalName)) }}
+            {{- end }}
+            {{- if $nosqlRefName }}
+            {{- /* No hashing fallback here - a table role name is short by construction. */}}
+            {{- $tableName := printf "platform-%s-%s" $ns $nosqlRefName }}
+            {{- $policy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "dynamodb:GetItem" "dynamodb:PutItem" "dynamodb:UpdateItem" "dynamodb:DeleteItem" "dynamodb:Query" "dynamodb:Scan" "dynamodb:BatchGetItem" "dynamodb:BatchWriteItem") "Resource" (list (printf "arn:aws:dynamodb:us-east-1:*:table/%s" $tableName) (printf "arn:aws:dynamodb:us-east-1:*:table/%s/index/*" $tableName)))) | toJson }}
+            {{- $iamBindings = append $iamBindings (dict
+                "roleName" (printf "%s-nosql" $name)
+                "roleKey" "role-nosql"
+                "roleExternalName" (printf "crossplane-%s-%s-nosql" $ns $name)
+                "tagKey" "NoSqlRef" "tagValue" $nosqlRefName
+                "policyName" (printf "platform-nosql-%s-%s" $ns $nosqlRefName)
+                "policy" $policy
+                "secretName" (printf "%s-nosql" $name)
+                "secretKey" "binding-secret-nosql"
+                "bindingType" "dynamodb"
+                "dataKey" "table-name" "dataValue" $tableName
+                "roleArn" (printf "arn:aws:iam::%s:role/crossplane/crossplane-%s-%s-nosql" $awsAccountId $ns $name)) }}
+            {{- end }}
+            {{- range $ref := $managedSecretRefs }}
+            {{- $refName := $ref.name }}
+            {{- $secretId := printf "platform/%s/%s" $ns $refName }}
+            {{- $rawSecretRoleName := printf "crossplane-%s-%s-%s-secret" $ns $name $refName }}
+            {{- $secretRoleName := $rawSecretRoleName }}
+            {{- if gt (len $rawSecretRoleName) 64 }}
+            {{- $secretRoleName = printf "xp-%s" ($rawSecretRoleName | sha256sum | trunc 61) }}
+            {{- end }}
+            {{- /* Secrets Manager appends six random characters at creation, so the exact  */}}
+            {{- /* ARN is unknowable here. Six ? rather than * because ? matches one       */}}
+            {{- /* character each - a trailing * would also match platform/ns/name-other.  */}}
+            {{- $policy := dict "Version" "2012-10-17" "Statement" (list (dict "Effect" "Allow" "Action" (list "secretsmanager:GetSecretValue" "secretsmanager:DescribeSecret") "Resource" (list (printf "arn:aws:secretsmanager:us-east-1:%s:secret:%s-??????" $awsAccountId $secretId)))) | toJson }}
+            {{- $iamBindings = append $iamBindings (dict
+                "roleName" (printf "%s-secret-%s" $name $refName)
+                "roleKey" (printf "role-managed-secret-%s" $refName)
+                "roleExternalName" $secretRoleName
+                "tagKey" "ManagedSecretRef" "tagValue" $refName
+                "policyName" (printf "platform-managed-secret-%s-%s" $ns $refName)
+                "policy" $policy
+                "secretName" (printf "%s-secret-%s" $name $refName)
+                "secretKey" (printf "binding-secret-managed-secret-%s" $refName)
+                "bindingType" "secretsmanager"
+                "dataKey" "secret-id" "dataValue" $secretId
+                "roleArn" (printf "arn:aws:iam::%s:role/crossplane/%s" $awsAccountId $secretRoleName)) }}
+            {{- end }}
+            {{- range $b := $iamBindings }}
+            ---
+            # Trust scoped to this Api's service account.
+            apiVersion: iam.aws.m.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              name: {{ $b.roleName }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: {{ $b.roleKey }}
+                gotemplating.fn.crossplane.io/ready: "True"
+                crossplane.io/external-name: {{ $b.roleExternalName }}
+            spec:
+              forProvider:
+                path: /crossplane/
+                # crossplane-user may only create roles under this boundary.
+                permissionsBoundary: arn:aws:iam::{{ $awsAccountId }}:policy/CrossplaneWorkloadRoleBoundary
+                maxSessionDuration: 3600
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}
+                  {{ $b.tagKey }}: {{ $b.tagValue }}
+                assumeRolePolicy: {{ $trustPolicy | quote }}
+                inlinePolicy:
+                  - name: {{ $b.policyName }}
+                    policy: {{ $b.policy | quote }}
+            ---
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $b.secretName }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: {{ $b.secretKey }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            type: servicebinding.io/{{ $b.bindingType }}
+            stringData:
+              type: {{ $b.bindingType }}
+              provider: aws
+              {{ $b.dataKey }}: {{ $b.dataValue }}
+              region: us-east-1
+              role-arn: {{ $b.roleArn }}
+            {{- end }}
+            {{- end }}{{- /* end AWS IAM resources */}}
+            {{- if $entraNeeded }}
+            ---
+            # Entra app registration for this Api. owners is required - an app created
+            # through the API is never auto-owned, only the Azure web UI does that.
+            # Without it, crossplane-entra can create this but never delete or update it.
+            apiVersion: applications.azuread.m.upbound.io/v1beta1
+            kind: Application
+            metadata:
+              name: {{ $ns }}-{{ $name }}-entra
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: entra-application
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              forProvider:
+                displayName: platform-{{ $ns }}-{{ $name }}
+                api:
+                  # Without this Entra mints v1 tokens, issued by sts.windows.net rather
+                  # than login.microsoftonline.com/<tenant>/v2.0. An API validating the
+                  # v2 issuer rejects every one of them, and the token looks fine.
+                  requestedAccessTokenVersion: 2
+                  {{- if $delegatedScopes }}
+                  # auth: user interfaces. A delegated scope is a field on the application,
+                  # which is why these are inline and app roles are not. type Admin keeps
+                  # consent with an administrator - User would let anyone consent themselves.
+                  oauth2PermissionScope:
+                  {{- range $scope := $delegatedScopes }}
+                  {{- $scopeHash := printf "%s/%s/%s/scope" $ns $name $scope.name | sha256sum }}
+                    - id: {{ printf "%s-%s-4%s-a%s-%s" (substr 0 8 $scopeHash) (substr 8 12 $scopeHash) (substr 13 16 $scopeHash) (substr 17 20 $scopeHash) (substr 20 32 $scopeHash) }}
+                      value: {{ $scope.name | quote }}
+                      type: Admin
+                      enabled: true
+                      adminConsentDisplayName: {{ $scope.name | quote }}
+                      adminConsentDescription: {{ printf "%s on %s, on behalf of a signed-in user" $scope.name $name | quote }}
+                  {{- end }}
+                  {{- end }}
+                # A stable, derivable name for this Api as an audience, so a caller doesn't
+                # need to read this Api's resources to learn its client ID. The tenant ID
+                # is required - a bare api://name is refused by the default tenant policy.
+                identifierUris:
+                  - api://{{ $entraTenantId }}/platform-{{ $ns }}-{{ $name }}
+                owners:
+                  - {{ $crossplaneEntraSpId }}
+            ---
+            # Service principal - required before a federated credential can attach,
+            # and before the app can be assigned any app role on another Api later.
+            apiVersion: serviceprincipals.azuread.m.upbound.io/v1beta1
+            kind: Principal
+            metadata:
+              name: {{ $ns }}-{{ $name }}-entra
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: entra-principal
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              forProvider:
+                clientIdRef:
+                  name: {{ $ns }}-{{ $name }}-entra
+                owners:
+                  - {{ $crossplaneEntraSpId }}
+            ---
+            # Trusts a JWT-SVID for this exact pod identity, traded for a real Entra
+            # token via client_assertion - no client secret anywhere.
+            apiVersion: applications.azuread.m.upbound.io/v1beta1
+            kind: FederatedIdentityCredential
+            metadata:
+              name: {{ $ns }}-{{ $name }}-entra
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: entra-federated-credential
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              forProvider:
+                applicationIdRef:
+                  name: {{ $ns }}-{{ $name }}-entra
+                displayName: workload-identity
+                issuer: https://{{ $oidcIssuerHost }}
+                subject: spiffe://homelab.local/ns/{{ $ns }}/sa/{{ $name }}
+                audiences:
+                  - api://AzureADTokenExchange
+            {{- range $role := $appRoles }}
+            {{- /* Entra role names are PascalCase with dots by convention (Data.Read);   */ -}}
+            {{- /* neither survives a Kubernetes object name, so sanitize for the name    */ -}}
+            {{- /* only. forProvider.value keeps the role exactly as the app declared it. */ -}}
+            {{- $roleSlug := $role.name | lower | replace "." "-" | replace "_" "-" }}
+            {{- /* Entra identifies a role by GUID, not by name, and wants the same GUID  */ -}}
+            {{- /* every reconcile. Deriving it from what already names this role means   */ -}}
+            {{- /* no one has to invent a UUID, paste it into a workspace file, or know   */ -}}
+            {{- /* that it must never change. uuidv4 would be a new value every render.   */ -}}
+            {{- $roleHash := printf "%s/%s/%s" $ns $name $role.name | sha256sum }}
+            {{- $roleId := printf "%s-%s-4%s-a%s-%s" (substr 0 8 $roleHash) (substr 8 12 $roleHash) (substr 13 16 $roleHash) (substr 17 20 $roleHash) (substr 20 32 $roleHash) }}
+            ---
+            # A role this Api offers. allowedMemberTypes must be Application - the Azure web UI
+            # defaults to User, which syncs green and then never shows up in the token of
+            # a caller that has no user behind it.
+            apiVersion: applications.azuread.m.upbound.io/v1beta1
+            kind: AppRole
+            metadata:
+              name: {{ $ns }}-{{ $name }}-entra-role-{{ $roleSlug }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: entra-role-{{ $roleSlug }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              forProvider:
+                applicationIdRef:
+                  name: {{ $ns }}-{{ $name }}-entra
+                roleId: {{ $roleId }}
+                value: {{ $role.name | quote }}
+                displayName: {{ $role.name | quote }}
+                description: {{ printf "%s on %s" $role.name $name | quote }}
+                allowedMemberTypes:
+                  - Application
+            {{- range $caller := ($role.allowedCallers | default list) }}
+            ---
+            # The grant itself. Expect it to sit red for ~30s with "Permission being assigned
+            # was not found on application" while the role above replicates from the app
+            # registration to its service principal, which is what the grant checks against.
+            apiVersion: app.azuread.m.upbound.io/v1beta1
+            kind: RoleAssignment
+            metadata:
+              name: {{ $ns }}-{{ $name }}-entra-grant-{{ $roleSlug }}-{{ $caller.namespace }}-{{ $caller.app }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: entra-grant-{{ $roleSlug }}-{{ $caller.namespace }}-{{ $caller.app }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              forProvider:
+                appRoleId: {{ $roleId }}
+                # The caller's own Principal, created by that Api's own composition run.
+                # Resolves by name across XRs - if the caller has not reconciled yet, this
+                # stays unresolved and retries rather than rendering something wrong.
+                principalObjectIdRef:
+                  name: {{ $caller.namespace }}-{{ $caller.app }}-entra
+                resourceObjectIdRef:
+                  name: {{ $ns }}-{{ $name }}-entra
+            {{- end }}
+            {{- end }}
+            {{- range $scope := $delegatedScopes }}
+            {{- $scopeSlug := $scope.name | lower | replace "." "-" | replace "_" "-" }}
+            {{- range $caller := ($scope.allowedCallers | default list) }}
+            ---
+            # The delegated equivalent of a RoleAssignment. Consent is recorded against the
+            # caller's service principal, so a token minted through on-behalf-of carries
+            # this scope in scp rather than the roles claim an app-only call would get.
+            apiVersion: serviceprincipaldelegated.azuread.m.upbound.io/v1beta1
+            kind: PermissionGrant
+            metadata:
+              name: {{ $ns }}-{{ $name }}-entra-scope-{{ $scopeSlug }}-{{ $caller.namespace }}-{{ $caller.app }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: entra-scope-grant-{{ $scopeSlug }}-{{ $caller.namespace }}-{{ $caller.app }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              forProvider:
+                claimValues:
+                  - {{ $scope.name | quote }}
+                # The API being called, so the scope is one this app actually exposes.
+                resourceServicePrincipalObjectIdRef:
+                  name: {{ $ns }}-{{ $name }}-entra
+                # The caller, created by its own composition run.
+                servicePrincipalObjectIdRef:
+                  name: {{ $caller.namespace }}-{{ $caller.app }}-entra
+            {{- end }}
+            {{- end }}
+            {{- if $workflowPrivate }}
+            {{- /* Same derivation as the WorkflowSpace composition, from this Api's own namespace. */ -}}
+            {{- $wfRoleHash := printf "%s/%s/temporal-writer" $ns $workflowSpaceName | sha256sum }}
+            {{- $wfRoleId := printf "%s-%s-4%s-a%s-%s" (substr 0 8 $wfRoleHash) (substr 8 12 $wfRoleHash) (substr 13 16 $wfRoleHash) (substr 17 20 $wfRoleHash) (substr 20 32 $wfRoleHash) }}
+            ---
+            # Grants this Api the WorkflowSpace's role, so its Entra token can use that Temporal namespace.
+            apiVersion: app.azuread.m.upbound.io/v1beta1
+            kind: RoleAssignment
+            metadata:
+              name: {{ $ns }}-{{ $name }}-temporal-grant
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: temporal-grant
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              forProvider:
+                appRoleId: {{ $wfRoleId }}
+                principalObjectIdRef:
+                  name: {{ $ns }}-{{ $name }}-entra
+                resourceObjectId: {{ $temporalSpObjectId | quote }}
+            {{- end }}
+            {{- end }}{{- /* end entraNeeded */}}
+            {{- if $cacheEnabled }}
+            ---
+            apiVersion: platform.local.lab/v1alpha1
+            kind: Cache
+            metadata:
+              name: {{ $name }}-cache
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: cache
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              parameters:
+                backend: {{ $cacheBackend }}
+                consumerServiceAccount: {{ $name }}
+            {{- end }}
+            ---
+            # release: monitoring matches the Prometheus operator's serviceMonitorSelector
+            apiVersion: monitoring.coreos.com/v1
+            kind: ServiceMonitor
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              labels:
+                release: monitoring
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: servicemonitor
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels:
+                  app.kubernetes.io/instance: {{ $name }}
+              endpoints:
+                - port: metrics
+                  path: /metrics
+                  interval: {{ $scrapeInterval }}
+                  metricRelabelings:
+                    - sourceLabels: [__name__]
+                      regex: "go_.*|process_.*|promhttp_.*"
+                      action: drop
+            {{- if $host }}
+            {{- /* Internal hosts stay off the rate limiter, see the Middleware comment below. */ -}}
+            {{- $isPublic := not (hasSuffix ".local.lab" $host) }}
+            ---
+            # --- Security response headers Middleware ---
+            # An Api serves its own responses with no nginx in front, so these come from
+            # Traefik. default-src 'none' since a JSON API is never a document context.
+            apiVersion: traefik.io/v1alpha1
+            kind: Middleware
+            metadata:
+              name: {{ $name }}-security-headers
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: security-headers-middleware
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              headers:
+                customResponseHeaders:
+                  Server: ""
+                  X-Powered-By: ""
+                  X-Content-Type-Options: "nosniff"
+                  X-Frame-Options: "DENY"
+                  Referrer-Policy: "strict-origin-when-cross-origin"
+                  # "0" disables the legacy XSS auditor - removed from modern browsers,
+                  # and enabling it created XS-Leak side channels in older ones. Matches Spa.
+                  X-XSS-Protection: "0"
+                  Strict-Transport-Security: "max-age=31536000; includeSubDomains"
+                  Content-Security-Policy: "default-src 'none'; frame-ancestors 'none'"
+            {{- if $isPublic }}
+            ---
+            # --- Rate limit Middleware ---
+            # Public hosts only, keyed on CF-Connecting-IP since public traffic all arrives
+            # from the two cloudflared pod IPs. Internal hosts are excluded rather than
+            # given a different limit because a .local.lab request carries no such header.
+            apiVersion: traefik.io/v1alpha1
+            kind: Middleware
+            metadata:
+              name: {{ $name }}-ratelimit
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: ratelimit-middleware
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              rateLimit:
+                average: 60
+                burst: 20
+                period: 1m
+                sourceCriterion:
+                  requestHeaderName: CF-Connecting-IP
+            {{- end }}
+            ---
+            apiVersion: gateway.networking.k8s.io/v1
+            kind: HTTPRoute
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: httproute
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              parentRefs:
+                - {name: traefik-gateway, namespace: kube-system}
+              hostnames:
+                - {{ $host }}
+              rules:
+                # Headers first - a 429 from the rate limiter short-circuits the rest of
+                # the chain, and the response still needs the security headers on it.
+                - filters:
+                    - type: ExtensionRef
+                      extensionRef: {group: traefik.io, kind: Middleware, name: {{ $name }}-security-headers}
+                    {{- if $isPublic }}
+                    - type: ExtensionRef
+                      extensionRef: {group: traefik.io, kind: Middleware, name: {{ $name }}-ratelimit}
+                    {{- end }}
+                  backendRefs:
+                    - name: {{ $name }}
+                      port: 80
+            {{- end }}
+            {{- /* ---------- Connections ---------- */ -}}
+            {{- /* Deny by default, allow by declaration.                                */ -}}
+            {{- /* Inbound: an AuthorizationPolicy built from provides.                  */ -}}
+            {{- /* Outbound: a Sidecar built from consumes.                              */ -}}
+            {{- $appPort := $xr.spec.parameters.port | default 8080 }}
+            ---
+            # Callers must prove a real mesh identity. Two exceptions, both for unmeshed
+            # infrastructure that has no identity to present, Prometheus scraping metrics,
+            # and Traefik forwarding public ingress (only when this Api has a host).
+            apiVersion: security.istio.io/v1
+            kind: PeerAuthentication
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-peerauth
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels: { app.kubernetes.io/instance: {{ $name }} }
+              mtls:
+                mode: STRICT
+              portLevelMtls:
+                "{{ $metricsPort }}":
+                  mode: PERMISSIVE
+                {{- if $host }}
+                "{{ $appPort }}":
+                  mode: PERMISSIVE
+                {{- end }}
+            ---
+            # The first ALLOW policy on a workload makes it deny by default.
+            # Every rule lives in this one object.
+            # A second ALLOW policy would be ORed in and widen access.
+            apiVersion: security.istio.io/v1
+            kind: AuthorizationPolicy
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-authz
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels: { app.kubernetes.io/instance: {{ $name }} }
+              action: ALLOW
+              rules:
+                # Prometheus is unmeshed and presents no identity to match on.
+                # Path-limited, so a metricsPort equal to port opens only /metrics.
+                - to:
+                    - operation: { ports: ["{{ $metricsPort }}"], paths: ["/metrics"] }
+                {{- if $host }}
+                # Traefik is unmeshed, so the routed port can't be limited by identity.
+                # The host decides whether it reaches the internet or only the homelab network.
+                - to:
+                    - operation: { ports: ["{{ $appPort }}"] }
+                {{- end }}
+                {{- range $iface := $provides }}
+                {{- /* An interface with no callers renders no rule.                        */ -}}
+                {{- /* Istio reads an empty principals list as no condition at all.         */ -}}
+                {{- /* The ALLOW rule would then admit anyone.                              */ -}}
+                {{- if $iface.allowedCallers }}
+                # provides: {{ $iface.name }}
+                - from:
+                    - source:
+                        principals:
+                          {{- range $iface.allowedCallers }}
+                          - "cluster.local/ns/{{ .namespace }}/sa/{{ .app }}"
+                          {{- end }}
+                  {{- $m := $iface.methods | default list }}
+                  {{- $p := $iface.paths | default list }}
+                  {{- if or (gt (len $m) 0) (gt (len $p) 0) }}
+                  to:
+                    - operation:
+                        {{- if gt (len $m) 0 }}
+                        methods: [{{ range $i, $v := $m }}{{ if $i }}, {{ end }}{{ $v | quote }}{{ end }}]
+                        {{- end }}
+                        {{- if gt (len $p) 0 }}
+                        paths: [{{ range $i, $v := $p }}{{ if $i }}, {{ end }}{{ $v | quote }}{{ end }}]
+                        {{- end }}
+                  {{- end }}
+                {{- end }}
+                {{- end }}
+            {{- if and $sqlRefName (eq $sqlBackend "private-cloud") }}
+            ---
+            # The database denies every caller until an Api names it.
+            # Istio ORs ALLOW policies, so this adds this Api and no one else.
+            apiVersion: security.istio.io/v1
+            kind: AuthorizationPolicy
+            metadata:
+              name: {{ $sqlRefName }}-postgres-from-{{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: sql-caller-authz
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels: { app: {{ $sqlRefName }}-postgres }
+              action: ALLOW
+              rules:
+                - from:
+                    - source:
+                        principals: ["cluster.local/ns/{{ $ns }}/sa/{{ $name }}"]
+            {{- end }}
+            ---
+            # REGISTRY_ONLY: only the control plane, what this XR composed, and what it
+            # declared. No wildcard, so every other app in the namespace is refused too.
+            apiVersion: networking.istio.io/v1
+            kind: Sidecar
+            metadata:
+              name: {{ $name }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-sidecar
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              workloadSelector:
+                labels: { app.kubernetes.io/instance: {{ $name }} }
+              # Envoy must close an idle connection to the app before the app does.
+              # Go apps close at 60s, the same as the scrape interval.
+              # Reusing a connection the app is closing returns 503.
+              inboundConnectionPool:
+                http:
+                  idleTimeout: 30s
+              outboundTrafficPolicy:
+                mode: REGISTRY_ONLY
+              egress:
+                - hosts:
+                    - "istio-system/*"
+                    {{- if and $cacheEnabled (eq $cacheBackend "private-cloud") }}
+                    # Composed by this XR, so the app never declares it.
+                    - "./{{ $name }}-cache-redis.{{ $ns }}.svc.cluster.local"
+                    {{- end }}
+                    {{- if and $sqlRefName (eq $sqlBackend "private-cloud") }}
+                    - "./{{ $sqlRefName }}-postgres.{{ $ns }}.svc.cluster.local"
+                    {{- end }}
+                    {{- if or $topicRefName $subscriptionRefName }}
+                    # The XR already hands this app NATS_URL, so permitting it here is
+                    # the other half of that. NATS is unmeshed, so its NetworkPolicy is the inbound gate.
+                    - "nats/nats.nats.svc.cluster.local"
+                    {{- end }}
+                    {{- if $workflowPrivate }}
+                    # Matches TEMPORAL_ADDRESS.
+                    - "temporal/temporal-frontend.temporal.svc.cluster.local"
+                    {{- end }}
+                    {{- if $workflowCloud }}
+                    # The WorkflowSpace renders the ServiceEntry only while Temporal Cloud is turned on.
+                    - "./*.tmprl.cloud"
+                    {{- end }}
+                    {{- range $h := $derivedHosts }}
+                    # Implied by a binding on this XR, so the app never declares it.
+                    - "./{{ $h }}"
+                    {{- end }}
+                    {{- range $c := $consumes }}
+                    {{- if $c.host }}
+                    - "./{{ $c.host }}"
+                    {{- end }}
+                    {{- if $c.address }}
+                    - "./{{ $c.address | replace "." "-" }}.address.declared"
+                    {{- end }}
+                    {{- if $c.entraApp }}
+                    - "./{{ $c.entraApp.host }}"
+                    {{- end }}
+                    {{- if and $c.app $c.namespace }}
+                    - "{{ $c.namespace }}/{{ $c.app }}.{{ $c.namespace }}.svc.cluster.local"
+                    {{- end }}
+                    {{- end }}
+            {{- /* One shape for every outbound endpoint. A derived host comes from a    */ -}}
+            {{- /* binding on this XR, so the platform registers it rather than making the */ -}}
+            {{- /* app restate it in consumes. An entraApp host is an API registered       */ -}}
+            {{- /* outside the platform, where its owner grants the role and the platform  */ -}}
+            {{- /* only opens the path. protocol TLS passes the app's own encrypted stream */ -}}
+            {{- /* through, where HTTP would make Envoy try to terminate it.               */ -}}
+            {{- $serviceEntries := list }}
+            {{- range $h := $derivedHosts }}
+            {{- $serviceEntries = append $serviceEntries (dict "key" $h "host" $h "port" 443 "protocol" "TLS") }}
+            {{- end }}
+            {{- range $c := $consumes }}
+            {{- $port := $c.port | default 443 }}
+            {{- $protocol := $c.protocol | default "TLS" }}
+            {{- if $c.host }}
+            {{- $serviceEntries = append $serviceEntries (dict "key" $c.host "host" $c.host "port" $port "protocol" $protocol) }}
+            {{- end }}
+            {{- if $c.address }}
+            {{- /* A destination with no DNS name, such as a device on the LAN. Static    */ -}}
+            {{- /* resolution names the endpoint directly, because a DNS ServiceEntry has */ -}}
+            {{- /* nothing to look up.                                                    */ -}}
+            {{- $serviceEntries = append $serviceEntries (dict "key" $c.address "host" (printf "%s.address.declared" ($c.address | replace "." "-")) "address" $c.address "port" $port "protocol" $protocol) }}
+            {{- end }}
+            {{- if $c.entraApp }}
+            {{- $serviceEntries = append $serviceEntries (dict "key" $c.entraApp.host "host" $c.entraApp.host "port" 443 "protocol" "TLS") }}
+            {{- end }}
+            {{- end }}
+            {{- range $se := $serviceEntries }}
+            ---
+            apiVersion: networking.istio.io/v1
+            kind: ServiceEntry
+            metadata:
+              name: {{ $name }}-{{ $se.key | replace "." "-" }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-se-{{ $se.key | replace "." "-" }}
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              hosts:
+                - {{ $se.host | quote }}
+              {{- if $se.address }}
+              addresses:
+                - {{ printf "%s/32" $se.address | quote }}
+              {{- end }}
+              location: MESH_EXTERNAL
+              resolution: {{ if $se.address }}STATIC{{ else }}DNS{{ end }}
+              exportTo: ["."]
+              {{- if $se.address }}
+              endpoints:
+                - address: {{ $se.address | quote }}
+              {{- end }}
+              ports:
+                - number: {{ $se.port }}
+                  name: {{ $se.protocol | lower }}
+                  protocol: {{ $se.protocol }}
+            {{- end }}
+            {{- /* Derived values written back so kubectl get api <name> -o yaml answers   */ -}}
+            {{- /* what an app expects, without opening a composition or the Azure web UI.  */ -}}
+            {{- $scopeRows := list }}
+            {{- range $c := $consumes }}
+            {{- if and $c.app $c.namespace }}
+            {{- $scopeRows = append $scopeRows (dict "target" (printf "%s/%s" $c.namespace $c.app) "scope" (printf "api://%s/platform-%s-%s/.default" $entraTenantId $c.namespace $c.app) "envVar" (printf "ENTRA_SCOPE_%s" ($c.app | upper | replace "-" "_"))) }}
+            {{- end }}
+            {{- if $c.entraApp }}
+            {{- $scopeRows = append $scopeRows (dict "target" $c.entraApp.host "scope" (printf "%s/.default" $c.entraApp.appIdUri) "envVar" (printf "ENTRA_SCOPE_%s" ($c.entraApp.role | upper | replace "." "_" | replace "-" "_"))) }}
+            {{- end }}
+            {{- end }}
+            {{- /* Every platform-injected variable name, assembled the same way the      */ -}}
+            {{- /* container env is above. Reading it here beats reconstructing the        */ -}}
+            {{- /* derivation rules from a README.                                          */ -}}
+            {{- /* The credential paths are the ones a reader cannot derive, so they belong */ -}}
+            {{- /* here even though an injected variable also names each of them.           */ -}}
+            {{- $mountedFiles := list }}
+            {{- range $ms := $managedSecrets }}{{- $mountedFiles = append $mountedFiles (printf "/secrets/%s" $ms.name) }}{{- end }}
+            {{- if gt (len $awsBindings) 0 }}{{- $mountedFiles = append $mountedFiles "/aws-credentials/credentials" }}{{- end }}
+            {{- if $entraNeeded }}{{- $mountedFiles = append $mountedFiles "/entra-identity/token" }}{{- end }}
+            {{- $injectedEnv := list "SERVICE_BINDING_ROOT" }}
+            {{- if gt (len $awsBindings) 0 }}
+            {{- $injectedEnv = append $injectedEnv "AWS_SHARED_CREDENTIALS_FILE" }}
+            {{- range $b := $awsBindings }}{{- $injectedEnv = append $injectedEnv $b.awsProfileEnv }}{{- end }}
+            {{- end }}
+            {{- if $entraNeeded }}
+            {{- $injectedEnv = append $injectedEnv "AZURE_CLIENT_ID" }}
+            {{- $injectedEnv = append $injectedEnv "AZURE_TENANT_ID" }}
+            {{- $injectedEnv = append $injectedEnv "AZURE_FEDERATED_TOKEN_FILE" }}
+            {{- end }}
+            {{- range $r := $scopeRows }}{{- $injectedEnv = append $injectedEnv $r.envVar }}{{- end }}
+            {{- if or $topicRefName $subscriptionRefName }}{{- $injectedEnv = append $injectedEnv "NATS_URL" }}{{- end }}
+            {{- if $topicRefName }}{{- $injectedEnv = append $injectedEnv "NATS_STREAM" }}{{- end }}
+            {{- if $subscriptionRefName }}{{- $injectedEnv = append $injectedEnv "NATS_CONSUMER" }}{{- end }}
+            {{- if $workflowPrivate }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_ADDRESS" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_NAMESPACE" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_TOKEN_SCOPE" }}{{- end }}
+            {{- if $workflowCloud }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_ADDRESS" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_NAMESPACE" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_TLS_CERT" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_TLS_KEY" }}{{- end }}
+            {{- if $workflowCloud }}
+            ---
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{ $name }}-spiffe-helper
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: spiffe-helper-config
+                gotemplating.fn.crossplane.io/ready: "True"
+            data:
+              helper.conf: |
+                agent_address = "/var/run/secrets/spiffe.io/api.sock"
+                cert_dir = "/temporal-tls"
+                svid_file_name = "svid.pem"
+                svid_key_file_name = "svid_key.pem"
+                svid_bundle_file_name = "bundle.pem"
+                daemon_mode = true
+            {{- end }}
+            ---
+            apiVersion: platform.local.lab/v1alpha1
+            kind: Api
+            status:
+              config:
+                bindings: [{{ range $i, $b := $bindings }}{{ if $i }}, {{ end }}{{ printf "/bindings/%s" $b.dir | quote }}{{ end }}]
+                files: [{{ range $i, $f := $mountedFiles }}{{ if $i }}, {{ end }}{{ $f | quote }}{{ end }}]
+                injectedEnv: [{{ range $i, $e := $injectedEnv }}{{ if $i }}, {{ end }}{{ $e | quote }}{{ end }}]
+              {{- if $entraNeeded }}
+              entra:
+                {{- if $entraClientId }}
+                clientId: {{ $entraClientId | quote }}
+                {{- end }}
+                audience: {{ printf "api://%s/platform-%s-%s" $entraTenantId $ns $name | quote }}
+                issuer: {{ printf "https://login.microsoftonline.com/%s/v2.0" $entraTenantId | quote }}
+              {{- end }}
+              {{- if $scopeRows }}
+              consumes:
+              {{- range $r := $scopeRows }}
+                - target: {{ $r.target | quote }}
+                  scope: {{ $r.scope | quote }}
+                  envVar: {{ $r.envVar | quote }}
+              {{- end }}
+              {{- end }}

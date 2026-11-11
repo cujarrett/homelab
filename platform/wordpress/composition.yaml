@@ -1,0 +1,920 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: wordpress
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: Wordpress
+  mode: Pipeline
+  pipeline:
+    - step: render-all-resources
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $name := .observed.composite.resource.metadata.name }}
+            {{- $namespace := .observed.composite.resource.metadata.namespace }}
+            {{- $uid := .observed.composite.resource.metadata.uid }}
+            {{- $params := .observed.composite.resource.spec.parameters }}
+            {{- $observedResources := .observed.resources | default dict }}
+            {{- $size := $params.size | default "sm" }}
+            # CPU requests track measured steady state, which is tens of milli-cores even on
+            # the busier site. CPU limits stay generous because CPU bursts only throttle.
+            # Memory request equals limit so the scheduler never packs more onto a node than it holds.
+            {{- $wpCPUReq := "50m" }}{{- $wpCPULim := "1000m" }}
+            {{- $wpMemReq := "768Mi" }}{{- $wpMemLim := "768Mi" }}
+            {{- $dbCPUReq := "50m" }}{{- $dbCPULim := "500m" }}
+            {{- $dbMemReq := "512Mi" }}{{- $dbMemLim := "512Mi" }}
+            {{- if eq $size "md" }}
+            {{-   $wpCPUReq = "100m" }}{{- $wpCPULim = "1500m" }}
+            {{-   $wpMemReq = "1280Mi" }}{{- $wpMemLim = "1280Mi" }}
+            {{- else if eq $size "lg" }}
+            {{-   $wpCPUReq = "150m" }}{{- $wpCPULim = "2000m" }}
+            {{-   $wpMemReq = "2Gi" }}{{- $wpMemLim = "2Gi" }}
+            {{-   $dbCPUReq = "100m" }}{{- $dbCPULim = "1000m" }}
+            {{-   $dbMemReq = "1Gi" }}{{- $dbMemLim = "1Gi" }}
+            {{- end }}
+            # Each prefork child carries every active plugin, measured at roughly 128Mi on a
+            # plugin-heavy site. Workers are the memory limit divided by that, less headroom
+            # for the shared opcache and the parent, so a full worker pool cannot OOM the pod.
+            {{- $wpMaxWorkers := "4" }}
+            {{- if eq $size "md" }}
+            {{-   $wpMaxWorkers = "8" }}
+            {{- else if eq $size "lg" }}
+            {{-   $wpMaxWorkers = "12" }}
+            {{- end }}
+            # subPath mounts never receive ConfigMap updates, so a changed mu-plugin is
+            # silently ignored by the running pod until something restarts it. Feeding the
+            # hash into a pod annotation makes the change roll the Deployment instead.
+            {{- $configChecksum := "" }}
+            {{- range $key := list "security-mu-plugin-configmap" "mpm-tuning-configmap" }}
+            {{-   $cm := index $observedResources $key }}
+            {{-   if $cm }}
+            {{-     range $_, $v := ($cm.resource.data | default dict) }}
+            {{-       $configChecksum = printf "%s%s" $configChecksum $v }}
+            {{-     end }}
+            {{-   end }}
+            {{- end }}
+            {{- $configChecksum = $configChecksum | sha256sum | trunc 16 }}
+            # --- MariaDB credentials Secret ---
+            # Read back from the live Secret when it exists, only derived from the XR UID
+            # on creation - MariaDB applies MYSQL_*_PASSWORD only on an empty datadir.
+            {{- $dbPassword := printf "%s-db" $uid | sha256sum | trunc 32 }}
+            {{- $rootPassword := printf "%s-root" $uid | sha256sum | trunc 32 }}
+            {{- $observedSecret := index $observedResources "mariadb-secret" }}
+            {{- if $observedSecret }}
+            {{-   $observedData := $observedSecret.resource.data | default dict }}
+            {{-   if index $observedData "password" }}
+            {{-     $dbPassword = index $observedData "password" | b64dec }}
+            {{-   end }}
+            {{-   if index $observedData "rootPassword" }}
+            {{-     $rootPassword = index $observedData "rootPassword" | b64dec }}
+            {{-   end }}
+            {{- end }}
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $name }}-mariadb
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: mariadb-secret
+                gotemplating.fn.crossplane.io/ready: "True"
+            type: Opaque
+            stringData:
+              database: wordpress
+              username: wordpress
+              password: "{{ $dbPassword }}"
+              rootPassword: "{{ $rootPassword }}"
+            ---
+            # --- MariaDB data PVC ---
+            # storageClassName is frozen on first creation: once bound, a PVC's storageClassName
+            # is immutable. We read back the observed value so reconciles are always no-ops.
+            {{- $mariadbSC := "longhorn-retain" }}
+            {{- if (index $observedResources "mariadb-pvc") }}
+            {{-   $mariadbSC = (index $observedResources "mariadb-pvc").resource.spec.storageClassName }}
+            {{- else if eq $params.dataRetention "delete" }}
+            {{-   $mariadbSC = "longhorn-delete" }}
+            {{- end }}
+            apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: {{ $name }}-mariadb-data
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: mariadb-pvc
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              accessModes: ["ReadWriteOnce"]
+              storageClassName: {{ $mariadbSC }}
+              resources:
+                requests:
+                  storage: {{ $params.dbStorageSize | default "5Gi" }}
+            ---
+            # --- WordPress wp-content PVC ---
+            {{- $wpSC := "longhorn-retain" }}
+            {{- if (index $observedResources "wordpress-pvc") }}
+            {{-   $wpSC = (index $observedResources "wordpress-pvc").resource.spec.storageClassName }}
+            {{- else if eq $params.dataRetention "delete" }}
+            {{-   $wpSC = "longhorn-delete" }}
+            {{- end }}
+            apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: {{ $name }}-wp-content
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: wordpress-pvc
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              accessModes: ["ReadWriteOnce"]
+              storageClassName: {{ $wpSC }}
+              resources:
+                requests:
+                  storage: {{ $params.storageSize | default "10Gi" }}
+            ---
+            # --- MariaDB StatefulSet ---
+            apiVersion: apps/v1
+            kind: StatefulSet
+            metadata:
+              name: {{ $name }}-mariadb
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: mariadb-statefulset
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels:
+                  app: mariadb
+                  instance: {{ $name }}
+              serviceName: {{ $name }}-mariadb
+              replicas: 1
+              template:
+                metadata:
+                  labels:
+                    app: mariadb
+                    instance: {{ $name }}
+                spec:
+                  # Keep off the control-plane node (ctrl-1) - WordPress + MariaDB are memory-heavy
+                  nodeSelector:
+                    node-role.kubernetes.io/worker: worker
+                  # Neither WordPress nor MariaDB calls the apiserver.
+                  automountServiceAccountToken: false
+                  # Neither image can run non-root - both entrypoints extract files and
+                  # chown them before dropping privileges. Containment is capability-shaped
+                  # instead - see the per-container drops.
+                  securityContext:
+                    seccompProfile:
+                      type: RuntimeDefault
+                  containers:
+                    - name: mariadb
+                      image: mariadb:11@sha256:c4124d1afa875e47f2892edf26b482fa54f796e2f342d3717a04ca091a22a9bd
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        capabilities:
+                          drop: [ALL]
+                          # The entrypoint chowns the datadir and drops to the mysql
+                          # user. Verified as the minimum that still initialises a
+                          # database - fewer and it exits before listening.
+                          add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+                      env:
+                        - name: MYSQL_ROOT_PASSWORD
+                          valueFrom:
+                            secretKeyRef:
+                              name: {{ $name }}-mariadb
+                              key: rootPassword
+                        - name: MYSQL_DATABASE
+                          valueFrom:
+                            secretKeyRef:
+                              name: {{ $name }}-mariadb
+                              key: database
+                        - name: MYSQL_USER
+                          valueFrom:
+                            secretKeyRef:
+                              name: {{ $name }}-mariadb
+                              key: username
+                        - name: MYSQL_PASSWORD
+                          valueFrom:
+                            secretKeyRef:
+                              name: {{ $name }}-mariadb
+                              key: password
+                        # A new major starts on old system tables without this.
+                        # The entrypoint backs those tables up inside the volume first.
+                        - name: MARIADB_AUTO_UPGRADE
+                          value: "1"
+                      ports:
+                        - containerPort: 3306
+                          name: mysql
+                      resources:
+                        requests:
+                          cpu: {{ $dbCPUReq }}
+                          memory: {{ $dbMemReq }}
+                        limits:
+                          cpu: {{ $dbCPULim }}
+                          memory: {{ $dbMemLim }}
+                      readinessProbe:
+                        exec:
+                          command: ["healthcheck.sh", "--connect", "--innodb_initialized"]
+                        initialDelaySeconds: 10
+                        periodSeconds: 10
+                      volumeMounts:
+                        - name: data
+                          mountPath: /var/lib/mysql
+                  volumes:
+                    - name: data
+                      persistentVolumeClaim:
+                        claimName: {{ $name }}-mariadb-data
+            ---
+            # --- MariaDB Service ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: {{ $name }}-mariadb
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: mariadb-service
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                app: mariadb
+                instance: {{ $name }}
+              ports:
+                - port: 3306
+                  targetPort: 3306
+                  name: mysql
+            ---
+            # --- WordPress Deployment ---
+            # initContainer seeds wp-content on first run only. Tests for themes/ rather
+            # than emptiness - a fresh Longhorn PVC already holds lost+found.
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: {{ $name }}-wordpress
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: wordpress-deployment
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels:
+                  app: wordpress
+                  instance: {{ $name }}
+              replicas: {{ $params.replicas | default 1 }}
+              strategy:
+                type: Recreate
+              template:
+                metadata:
+                  labels:
+                    app: wordpress
+                    instance: {{ $name }}
+                  annotations:
+                    checksum/config: "{{ $configChecksum }}"
+                spec:
+                  # Keep off the control-plane node (ctrl-1) - WordPress + MariaDB are memory-heavy
+                  nodeSelector:
+                    node-role.kubernetes.io/worker: worker
+                  # Neither WordPress nor MariaDB calls the apiserver.
+                  automountServiceAccountToken: false
+                  # Neither image can run non-root - both entrypoints extract files and
+                  # chown them before dropping privileges. Containment is capability-shaped
+                  # instead - see the per-container drops.
+                  securityContext:
+                    seccompProfile:
+                      type: RuntimeDefault
+                  initContainers:
+                    - name: init-wp-content
+                      image: wordpress:7.1.4-php8.5-apache@sha256:1065422531e9f1741e393ebd27e235a92edeb3336142b66d781ff5d8c90e0392
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        capabilities:
+                          drop: [ALL]
+                          # Only copies into the volume - no privilege drop, so no SETUID.
+                          add: [CHOWN, DAC_OVERRIDE, FOWNER]
+                      command:
+                        - sh
+                        - -c
+                        - |
+                          if [ ! -d /target/themes ]; then
+                            echo "Seeding wp-content from image..."
+                            cp -r /var/www/html/wp-content/. /target/
+                          fi
+                      volumeMounts:
+                        - name: wp-content
+                          mountPath: /target
+                  containers:
+                    - name: wordpress
+                      # Pinned to an exact patch - core lives in the container filesystem, not
+                      # the PVC, so whatever this tag ships is what every restart runs. Renovate
+                      # bumps it. The php8.5 suffix keeps PHP fixed across those bumps.
+                      image: wordpress:7.1.4-php8.5-apache@sha256:1065422531e9f1741e393ebd27e235a92edeb3336142b66d781ff5d8c90e0392
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        capabilities:
+                          drop: [ALL]
+                          # NET_BIND_SERVICE for port 80, SETUID/SETGID so Apache can drop
+                          # to www-data, CHOWN/DAC_OVERRIDE/FOWNER for core extraction -
+                          # verified minimum, dropping CHOWN or DAC_OVERRIDE exits on startup.
+                          add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID, NET_BIND_SERVICE]
+                      env:
+                        - name: WORDPRESS_DB_HOST
+                          value: {{ $name }}-mariadb:3306
+                        - name: WORDPRESS_DB_NAME
+                          value: wordpress
+                        - name: WORDPRESS_DB_USER
+                          valueFrom:
+                            secretKeyRef:
+                              name: {{ $name }}-mariadb
+                              key: username
+                        - name: WORDPRESS_DB_PASSWORD
+                          valueFrom:
+                            secretKeyRef:
+                              name: {{ $name }}-mariadb
+                              key: password
+                        # Blocks the browser theme/plugin editor, not updates - DISALLOW_FILE_MODS
+                        # would also block those. WP_AUTO_UPDATE_CORE covers what the pinned tag
+                        # skips; DISABLE_WP_CRON defers to the CronJob since page-view cron never fires.
+                        - name: WORDPRESS_CONFIG_EXTRA
+                          value: |
+                            define('DISALLOW_FILE_EDIT', true);
+                            define('DISABLE_WP_CRON', true);
+                            define('WP_AUTO_UPDATE_CORE', 'minor');
+                      ports:
+                        - containerPort: 80
+                      # Probes a static asset, so it skips PHP.
+                      # Prefork still queues it behind busy workers, such as during a photo upload.
+                      # One replica, so not-ready means a site-wide 503. Timeout and threshold ride out a busy minute.
+                      # No livenessProbe on purpose. A slow render under load would restart the pod when busiest.
+                      readinessProbe:
+                        httpGet:
+                          path: /wp-includes/js/wp-embed.min.js
+                          port: 80
+                        initialDelaySeconds: 5
+                        periodSeconds: 10
+                        timeoutSeconds: 5
+                        failureThreshold: 6
+                      resources:
+                        requests:
+                          cpu: {{ $wpCPUReq }}
+                          memory: {{ $wpMemReq }}
+                        limits:
+                          cpu: {{ $wpCPULim }}
+                          memory: {{ $wpMemLim }}
+                      volumeMounts:
+                        - name: wp-content
+                          mountPath: /var/www/html/wp-content
+                        - name: security-mu-plugin
+                          mountPath: /var/www/html/wp-content/mu-plugins/security-hardening.php
+                          subPath: security-hardening.php
+                        - name: mpm-tuning
+                          mountPath: /etc/apache2/conf-enabled/zz-mpm-tuning.conf
+                          subPath: zz-mpm-tuning.conf
+                        - name: php-uploads
+                          mountPath: /usr/local/etc/php/conf.d/uploads.ini
+                          subPath: uploads.ini
+                  volumes:
+                    - name: wp-content
+                      persistentVolumeClaim:
+                        claimName: {{ $name }}-wp-content
+                    - name: security-mu-plugin
+                      configMap:
+                        name: {{ $name }}-security-mu-plugin
+                    - name: mpm-tuning
+                      configMap:
+                        name: {{ $name }}-mpm-tuning
+                    - name: php-uploads
+                      configMap:
+                        name: {{ $name }}-php-uploads
+            ---
+            # --- wp-cron CronJob ---
+            # Runs scheduled events now that DISABLE_WP_CRON stops page views doing it.
+            # Hits the ClusterIP so the loop stays in-namespace instead of via Cloudflare.
+            apiVersion: batch/v1
+            kind: CronJob
+            metadata:
+              name: {{ $name }}-wp-cron
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: wp-cron-cronjob
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              schedule: "*/5 * * * *"
+              # Forbid, not Allow - a slow run on a Pi would otherwise stack overlapping jobs
+              # against a single WordPress replica and starve the site of PHP workers.
+              concurrencyPolicy: Forbid
+              successfulJobsHistoryLimit: 1
+              failedJobsHistoryLimit: 3
+              # Without this, a controller outage longer than 100s makes the CronJob give up
+              # rather than resume on the next tick.
+              startingDeadlineSeconds: 300
+              jobTemplate:
+                spec:
+                  # KubeJobFailed waits 15m, so a Job that cleans itself up sooner never alerts.
+                  # A cron that is genuinely broken shows up as a stale wp-cron, not a failed Job.
+                  ttlSecondsAfterFinished: 600
+                  backoffLimit: 1
+                  template:
+                    metadata:
+                      labels:
+                        app: wp-cron
+                        instance: {{ $name }}
+                        # A new pod every five minutes would add a new set of sidecar series each time.
+                        istio-prometheus-ignore: "true"
+                    spec:
+                      restartPolicy: OnFailure
+                      automountServiceAccountToken: false
+                      nodeSelector:
+                        node-role.kubernetes.io/worker: worker
+                      securityContext:
+                        runAsNonRoot: true
+                        runAsUser: 65532
+                        runAsGroup: 65532
+                        seccompProfile:
+                          type: RuntimeDefault
+                      containers:
+                        - name: curl
+                          image: curlimages/curl:8.23.0@sha256:3fb7e13e5d179a845c97d78204f3f1064d1907037f26a3ebf91710571151fd93
+                          securityContext:
+                            allowPrivilegeEscalation: false
+                            readOnlyRootFilesystem: true
+                            capabilities:
+                              drop: [ALL]
+                          args:
+                            # -f turns a 5xx into a non-zero exit, so a broken cron surfaces as a
+                            # failed Job instead of succeeding quietly and never running cron.
+                            - -fsS
+                            # A pod that starts before its node has the Service programmed gets
+                            # an instant connection refusal - retry instead of failing the Job.
+                            # That refusal has lasted 30s, so this rides out a full minute.
+                            - --retry
+                            - "6"
+                            - --retry-connrefused
+                            - --retry-delay
+                            - "10"
+                            - --max-time
+                            - "120"
+                            - -o
+                            - /dev/null
+                            - http://{{ $name }}-wordpress/wp-cron.php
+                          resources:
+                            requests:
+                              cpu: 10m
+                              memory: 16Mi
+                            limits:
+                              memory: 32Mi
+            ---
+            # --- WordPress Service ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: {{ $name }}-wordpress
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: wordpress-service
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                app: wordpress
+                instance: {{ $name }}
+              ports:
+                - port: 80
+                  targetPort: 80
+            ---
+            # --- WordPress HTTPRoute ---
+            # Traefik ranks Exact paths, then longer prefixes and regexes, then "/" last,
+            # so the block and rate-limit rules win over the catch-all.
+            apiVersion: gateway.networking.k8s.io/v1
+            kind: HTTPRoute
+            metadata:
+              name: {{ $name }}-wordpress
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: wordpress-httproute
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              parentRefs:
+                - {name: traefik-gateway, namespace: kube-system}
+              hostnames:
+                - {{ $params.host }}
+              rules:
+                - filters:
+                    - type: ExtensionRef
+                      extensionRef: {group: traefik.io, kind: Middleware, name: {{ $name }}-wp-security-headers}
+                  backendRefs:
+                    - name: {{ $name }}-wordpress
+                      port: 80
+                # Headers first - a 429 from the rate limiter short-circuits the rest of
+                # the chain, and the response still needs the security headers on it.
+                - matches:
+                    - path: {type: Exact, value: /wp-login.php}
+                    - path: {type: PathPrefix, value: /wp-json/wp/v2/users}
+                  filters:
+                    - type: ExtensionRef
+                      extensionRef: {group: traefik.io, kind: Middleware, name: {{ $name }}-wp-security-headers}
+                    - type: ExtensionRef
+                      extensionRef: {group: traefik.io, kind: Middleware, name: {{ $name }}-wp-security-ratelimit}
+                  backendRefs:
+                    - name: {{ $name }}-wordpress
+                      port: 80
+                # wp-includes: core PHP is only ever included, never requested directly.
+                # uploads: PHP there is a dropped webshell, never a real page.
+                - matches:
+                    - path: {type: Exact, value: /xmlrpc.php}
+                    - path: {type: Exact, value: /wp-config-sample.php}
+                    - path: {type: Exact, value: /wp-settings.php}
+                    - path: {type: RegularExpression, value: '^/wp-(includes|content/uploads)/.*\.php$'}
+                  filters:
+                    - type: ExtensionRef
+                      extensionRef: {group: traefik.io, kind: Middleware, name: {{ $name }}-wp-security-headers}
+                    - type: ExtensionRef
+                      extensionRef: {group: traefik.io, kind: Middleware, name: {{ $name }}-xmlrpc-block}
+                  backendRefs:
+                    - name: {{ $name }}-wordpress
+                      port: 80
+            ---
+            # --- Apache worker recycling ConfigMap ---
+            # MaxConnectionsPerChild 0 (image default) never recycles workers, so memory
+            # accumulates - 500 bounds it. MaxSpareServers must stay well below
+            # MaxRequestWorkers, otherwise idle children are never reaped and memory only
+            # ever ratchets upward for the life of the pod.
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{ $name }}-mpm-tuning
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: mpm-tuning-configmap
+                gotemplating.fn.crossplane.io/ready: "True"
+            data:
+              zz-mpm-tuning.conf: |
+                <IfModule mpm_prefork_module>
+                    MaxConnectionsPerChild 500
+                    MaxRequestWorkers {{ $wpMaxWorkers }}
+                    MinSpareServers 1
+                    MaxSpareServers 3
+                </IfModule>
+            ---
+            # --- PHP upload limit ConfigMap ---
+            # The image default of 2M rejects most phone photos.
+            # 10M fits a 12MP phone photo with room to spare.
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{ $name }}-php-uploads
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: php-uploads-configmap
+                gotemplating.fn.crossplane.io/ready: "True"
+            data:
+              uploads.ini: |
+                upload_max_filesize = 10M
+                post_max_size = 10M
+            ---
+            # --- Security mu-plugin ConfigMap ---
+            # Must-use plugin: turns off Jetpack's site accelerator, disables XML-RPC and Application Passwords (brute-force and
+            # credential-stuffing vectors), removes /wp/v2/users, and spam-flags affiliate-referral comments.
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{ $name }}-security-mu-plugin
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: security-mu-plugin-configmap
+                gotemplating.fn.crossplane.io/ready: "True"
+            data:
+              security-hardening.php: |
+                <?php
+                // Core resets to the pinned image on restart, but the update_core transient
+                // lives in the database and will still claim the site is current. Twicedaily
+                // checks leave that lie standing for up to 12 hours; hourly bounds it to one.
+                // wp_maybe_auto_update is frequently not scheduled at all, so assert it too.
+                add_action('init', function () {
+                    foreach (['wp_version_check' => 0, 'wp_maybe_auto_update' => 300] as $hook => $offset) {
+                        if (wp_get_schedule($hook) !== 'hourly') {
+                            wp_clear_scheduled_hook($hook);
+                            wp_schedule_event(time() + $offset, 'hourly', $hook);
+                        }
+                    }
+                });
+                // Keep Jetpack's site accelerator off, so core JavaScript is served by this site, not c0.wp.com.
+                // A script from another host runs with the admin's session, so a breach there could take over the site.
+                add_filter('jetpack_force_disable_site_accelerator', '__return_true');
+                // Disable XML-RPC
+                add_filter('xmlrpc_enabled', '__return_false');
+                // Disable Application Passwords so REST API basic-auth is rejected outright.
+                // Bots cannot credential-stuff via /wp-json/ without this feature enabled.
+                add_filter('wp_is_application_passwords_available', '__return_false');
+                // Remove users from REST API to prevent username enumeration.
+                // Includes /me which was previously omitted and used in active credential stuffing.
+                add_filter('rest_endpoints', function($endpoints) {
+                    unset($endpoints['/wp/v2/users']);
+                    unset($endpoints['/wp/v2/users/(?P<id>[\d]+)']);
+                    unset($endpoints['/wp/v2/users/me']);
+                    return $endpoints;
+                });
+                // Remove users provider from XML sitemaps (/wp-sitemap-users-1.xml)
+                add_filter('wp_sitemaps_add_provider', function($provider, $name) {
+                    return ($name === 'users') ? false : $provider;
+                }, 10, 2);
+                // Block canonical redirect for /?author= queries.
+                // Without this, /?author=2 emits a 301 to /author/<slug>/ which leaks
+                // the username before template_redirect fires.
+                add_filter('redirect_canonical', function($redirect_url, $requested_url) {
+                    if (isset($_GET['author'])) {
+                        return false;
+                    }
+                    return $redirect_url;
+                }, 10, 2);
+                // Disable author archive pages (/author/<slug>/) to prevent username enumeration
+                add_action('template_redirect', function() {
+                    if (is_author() || isset($_GET['author'])) {
+                        global $wp_query;
+                        $wp_query->set_404();
+                        status_header(404);
+                        nocache_headers();
+                    }
+                });
+                // Route automated affiliate-referral comments straight to spam so they never
+                // reach the moderation queue. Each rule below was measured against the full
+                // comment history: together they catch 62 of 64 known spam comments and flag
+                // none of the 662 legitimate ones. Rules that would have caught the remaining
+                // two also flagged real commenters, so they are deliberately omitted --
+                // a couple of strays in the queue beats silently spamming a genuine reader.
+                add_filter('pre_comment_approved', function($approved, $commentdata) {
+                    if ($approved === 'spam' || is_wp_error($approved)) {
+                        return $approved;
+                    }
+                    $email = isset($commentdata['comment_author_email']) ? $commentdata['comment_author_email'] : '';
+                    $url   = isset($commentdata['comment_author_url']) ? $commentdata['comment_author_url'] : '';
+                    $body  = isset($commentdata['comment_content']) ? $commentdata['comment_content'] : '';
+                    // Throwaway addresses: a bare run of digits at a free mail provider.
+                    if (preg_match('/^[0-9]{6,9}@(outlook|hotmail|gmail)\.com$/i', $email)) {
+                        return 'spam';
+                    }
+                    // Crypto exchange domains in the author URL field.
+                    if (preg_match('/(binance|gate\.(io|com)|bybit|okx)/i', $url)) {
+                        return 'spam';
+                    }
+                    // Affiliate tracking codes in either the author URL or the body.
+                    if (preg_match('/[?&](ref|code)=[A-Z0-9]{6,}/', $url . ' ' . $body)) {
+                        return 'spam';
+                    }
+                    return $approved;
+                }, 10, 2);
+            ---
+            # --- wp-login.php / REST users rate limit Middleware ---
+            apiVersion: traefik.io/v1alpha1
+            kind: Middleware
+            metadata:
+              name: {{ $name }}-wp-security-ratelimit
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: wp-security-ratelimit-middleware
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              rateLimit:
+                # A human login is two requests - anything sustained above this is a bot.
+                average: 3
+                burst: 6
+                period: 1m
+                sourceCriterion:
+                  requestHeaderName: CF-Connecting-IP
+            ---
+            # --- Security response headers Middleware ---
+            # Strips Server and X-Powered-By disclosure headers; adds standard browser
+            # security headers missing from Apache's default config.
+            apiVersion: traefik.io/v1alpha1
+            kind: Middleware
+            metadata:
+              name: {{ $name }}-wp-security-headers
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: wp-security-headers-middleware
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              headers:
+                customResponseHeaders:
+                  Server: ""
+                  X-Powered-By: ""
+                  X-Content-Type-Options: "nosniff"
+                  X-Frame-Options: "SAMEORIGIN"
+                  Referrer-Policy: "strict-origin-when-cross-origin"
+                  # "0" disables the legacy XSS auditor - removed from modern browsers,
+                  # and enabling it created XS-Leak side channels in older ones. Matches Spa.
+                  X-XSS-Protection: "0"
+                  Strict-Transport-Security: "max-age=31536000; includeSubDomains"
+                  Permissions-Policy: "camera=(), microphone=(), geolocation=(), payment=()"
+            ---
+            # --- xmlrpc.php block Middleware ---
+            # Rejects requests to xmlrpc.php at Traefik before they reach PHP - the mu-plugin
+            # also disables XML-RPC at the WordPress level, so bots get 403 either way without consuming a worker.
+            apiVersion: traefik.io/v1alpha1
+            kind: Middleware
+            metadata:
+              name: {{ $name }}-xmlrpc-block
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: xmlrpc-block-middleware
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              ipAllowList:
+                sourceRange:
+                  - "127.0.0.1/32"
+            ---
+            # --- WordPress NetworkPolicy ---
+            # Code execution here should reach only the database, DNS and the public internet.
+            # egress ipBlock subtracts RFC1918 plus link-local (cloud metadata) so a shell can't scan the LAN.
+            # istiod: the sidecar fetches its config and certificate there.
+            apiVersion: networking.k8s.io/v1
+            kind: NetworkPolicy
+            metadata:
+              name: {{ $name }}-wordpress
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: wordpress-networkpolicy
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              podSelector:
+                matchLabels:
+                  app: wordpress
+                  instance: {{ $name }}
+              # Egress only - an ingress rule that admits the kubelet readiness probe has to
+              # name the node CIDR, which opens port 80 to the whole LAN.
+              policyTypes: ["Egress"]
+              egress:
+                - to:
+                    - namespaceSelector:
+                        matchLabels:
+                          kubernetes.io/metadata.name: kube-system
+                      podSelector:
+                        matchLabels:
+                          k8s-app: kube-dns
+                  ports:
+                    - protocol: UDP
+                      port: 53
+                    - protocol: TCP
+                      port: 53
+                - to:
+                    - podSelector:
+                        matchLabels:
+                          app: mariadb
+                          instance: {{ $name }}
+                  ports:
+                    - protocol: TCP
+                      port: 3306
+                - to:
+                    - namespaceSelector:
+                        matchLabels:
+                          kubernetes.io/metadata.name: istio-system
+                      podSelector:
+                        matchLabels:
+                          app: istiod
+                  ports:
+                    - protocol: TCP
+                      port: 15012
+                - to:
+                    - ipBlock:
+                        cidr: 0.0.0.0/0
+                        except:
+                          - 10.0.0.0/8
+                          - 172.16.0.0/12
+                          - 192.168.0.0/16
+                          - 169.254.0.0/16
+            ---
+            # --- MariaDB NetworkPolicy ---
+            # 3306: only its own WordPress pod.
+            # 15021: the sidecar's health port. The kubelet probes it from the node, so no source is named.
+            # 15020: Prometheus scrapes the sidecar.
+            # Egress: DNS and istiod. MariaDB has no reason to originate anything else.
+            apiVersion: networking.k8s.io/v1
+            kind: NetworkPolicy
+            metadata:
+              name: {{ $name }}-mariadb
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: mariadb-networkpolicy
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              podSelector:
+                matchLabels:
+                  app: mariadb
+                  instance: {{ $name }}
+              policyTypes: ["Ingress", "Egress"]
+              ingress:
+                - from:
+                    - podSelector:
+                        matchLabels:
+                          app: wordpress
+                          instance: {{ $name }}
+                  ports:
+                    - protocol: TCP
+                      port: 3306
+                - ports:
+                    - protocol: TCP
+                      port: 15021
+                - from:
+                    - namespaceSelector:
+                        matchLabels:
+                          kubernetes.io/metadata.name: monitoring
+                  ports:
+                    - protocol: TCP
+                      port: 15020
+              egress:
+                - to:
+                    - namespaceSelector:
+                        matchLabels:
+                          kubernetes.io/metadata.name: istio-system
+                      podSelector:
+                        matchLabels:
+                          app: istiod
+                  ports:
+                    - protocol: TCP
+                      port: 15012
+                - to:
+                    - namespaceSelector:
+                        matchLabels:
+                          kubernetes.io/metadata.name: kube-system
+                      podSelector:
+                        matchLabels:
+                          k8s-app: kube-dns
+                  ports:
+                    - protocol: UDP
+                      port: 53
+                    - protocol: TCP
+                      port: 53
+            ---
+            # --- MariaDB mTLS ---
+            # Only a meshed caller reaches the database.
+            # Database traffic is encrypted between nodes.
+            apiVersion: security.istio.io/v1
+            kind: PeerAuthentication
+            metadata:
+              name: {{ $name }}-mariadb
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: mariadb-peerauth
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels:
+                  app: mariadb
+                  instance: {{ $name }}
+              mtls:
+                mode: STRICT
+            ---
+            # --- wp-cron NetworkPolicy ---
+            # Egress: DNS, istiod and its own WordPress Service. The cron pod only curls one URL.
+            # Ingress 15021: the sidecar's health port. The kubelet probes it from the node, so no source is named.
+            # Nothing else should ever connect to it.
+            apiVersion: networking.k8s.io/v1
+            kind: NetworkPolicy
+            metadata:
+              name: {{ $name }}-wp-cron
+              namespace: {{ $namespace }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: wp-cron-networkpolicy
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              podSelector:
+                matchLabels:
+                  app: wp-cron
+                  instance: {{ $name }}
+              policyTypes: ["Ingress", "Egress"]
+              ingress:
+                - ports:
+                    - protocol: TCP
+                      port: 15021
+              egress:
+                - to:
+                    - namespaceSelector:
+                        matchLabels:
+                          kubernetes.io/metadata.name: istio-system
+                      podSelector:
+                        matchLabels:
+                          app: istiod
+                  ports:
+                    - protocol: TCP
+                      port: 15012
+                - to:
+                    - namespaceSelector:
+                        matchLabels:
+                          kubernetes.io/metadata.name: kube-system
+                      podSelector:
+                        matchLabels:
+                          k8s-app: kube-dns
+                  ports:
+                    - protocol: UDP
+                      port: 53
+                    - protocol: TCP
+                      port: 53
+                - to:
+                    - podSelector:
+                        matchLabels:
+                          app: wordpress
+                          instance: {{ $name }}
+                  ports:
+                    - protocol: TCP
+                      port: 80
