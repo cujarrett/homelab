@@ -45,3 +45,33 @@ spec:
                 operator: AnyNotIn
                 value:
                   - launchpad
+---
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: platform-cluster-api-access
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform cluster API access
+    policies.kyverno.io/description: >-
+      Only approved namespaces may set callsClusterApi on an Api.
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [platform.local.lab]
+        apiVersions: [v1alpha1]
+        operations: [CREATE, UPDATE]
+        resources: [apis]
+  validations:
+    # Each namespace here also needs its RBAC under cluster/<namespace>/rbac.yaml.
+    - expression: >-
+        !object.spec.?parameters.?callsClusterApi.orValue(false) ||
+        object.metadata.namespace in ['launchpad']
+      message: >-
+        callsClusterApi is only allowed in approved namespaces.
+        Ask the platform team for Kubernetes API access.

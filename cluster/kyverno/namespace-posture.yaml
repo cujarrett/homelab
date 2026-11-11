@@ -45,3 +45,34 @@ spec:
           metadata:
             labels:
               istio-injection: enabled
+---
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: platform-namespace-posture
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform namespace posture
+    policies.kyverno.io/description: >-
+      Every platform workload namespace is meshed.
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [namespaces]
+    objectSelector:
+      matchLabels:
+        platform.local.lab/workloads: "true"
+  validations:
+    # The sidecar is the only egress control on Api and Spa pods.
+    # An absent label leaves pods unmeshed by accident.
+    - expression: "object.metadata.?labels['istio-injection'].orValue('') == 'enabled'"
+      messageExpression: "'Namespace ' + object.metadata.name + ' does not set istio-injection to enabled. Its pods would run with no egress control.'"
+      message: The namespace does not set istio-injection to enabled. Its pods would run with no egress control.

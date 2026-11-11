@@ -102,3 +102,44 @@ spec:
                 operator: AnyNotIn
                 value:
                   - platform-e2e
+---
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: platform-public-cloud-backends
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform public-cloud backends
+    policies.kyverno.io/description: >-
+      Only approved namespaces may ask for a public-cloud Sql, cache or workflow space.
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [platform.local.lab]
+        apiVersions: [v1alpha1]
+        operations: [CREATE, UPDATE]
+        resources: [sqls, caches, workflowspaces, apis]
+  variables:
+    # To let another namespace use them, add it here.
+    - name: allowed
+      expression: "object.metadata.namespace in ['platform-e2e']"
+  validations:
+    # Sql, Cache and WorkflowSpace hold the backend in the same field.
+    # Cache: one committed by itself never passes through the Api check below.
+    - expression: >-
+        object.kind == 'Api' || variables.allowed ||
+        object.spec.?parameters.?backend.orValue('private-cloud') != 'public-cloud'
+      messageExpression: "'A public-cloud ' + object.kind + ' is turned off. Use backend private-cloud, or ask the platform team to allow it.'"
+      message: A public-cloud backend is turned off. Use backend private-cloud, or ask the platform team to allow it.
+    # An Api asks for a cache through its own field.
+    - expression: >-
+        object.kind != 'Api' || variables.allowed ||
+        object.spec.?parameters.?cache.?backend.orValue('private-cloud') != 'public-cloud'
+      message: >-
+        A public-cloud cache is turned off. Use cache backend private-cloud,
+        or ask the platform team to allow it.

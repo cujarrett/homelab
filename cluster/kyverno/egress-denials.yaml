@@ -54,3 +54,43 @@ spec:
                   - key: "{{ element.host }}"
                     operator: AnyIn
                     value: []  # add a host here to shut it off platform-wide
+---
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: platform-egress-denials
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform egress denials
+    policies.kyverno.io/description: >-
+      Hosts no workload may declare. Empty by design; add one only to shut a
+      destination off across the whole platform.
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [platform.local.lab]
+        apiVersions: [v1alpha1]
+        operations: [CREATE, UPDATE]
+        resources: [apis, spas]
+  variables:
+    # Add a host here to shut it off platform-wide.
+    - name: denied
+      expression: "[]"
+    - name: declared
+      expression: >-
+        object.spec.?parameters.?consumes.orValue([]).filter(c, has(c.host)).map(c, c.host) +
+        object.spec.?parameters.?apiProxies.orValue([]).filter(p, has(p.host)).map(p, p.host)
+    - name: hits
+      expression: "variables.declared.filter(h, h in variables.denied)"
+  validations:
+    - expression: "size(variables.hits) == 0"
+      messageExpression: "'Host ' + string(variables.hits[0]) + ' is on the platform egress denial list. Remove the declaration, or open a pull request against cluster/kyverno/egress-denials.yaml if the block is wrong.'"
+      message: >-
+        A host declared in consumes or apiProxies is on the platform egress denial
+        list. Remove the declaration, or open a pull request against
+        cluster/kyverno/egress-denials.yaml if the block is wrong.
