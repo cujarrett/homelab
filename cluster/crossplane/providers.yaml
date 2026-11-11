@@ -1,0 +1,167 @@
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: worker-nodes
+spec:
+  deploymentTemplate:
+    spec:
+      selector: {}
+      template:
+        spec:
+          # Keep provider/function runtimes off the control-plane node (ctrl-1) - they
+          # are memory-heavy (provider-aws-s3 + family-aws alone ~830Mi) and ctrl-1 needs
+          # headroom for istiod and fleet-wide sidecars (platform-connections plan).
+          nodeSelector:
+            node-role.kubernetes.io/worker: worker
+          containers:
+            - name: package-runtime
+              # Live heap is ~150Mi, but Go's default GC lets it grow to ~300Mi first.
+              # GOMEMLIMIT is soft, so a reconcile burst past it slows GC, not the pod.
+              env:
+                - name: GOMEMLIMIT
+                  value: 256MiB
+              # Providers request nothing by default while each holds 220-520Mi, so the
+              # scheduler counts them as free and stacks them on one node. 384Mi is the
+              # 7 day p95 across them. No limit, so a provider that briefly exceeds this
+              # is scheduled honestly, not killed.
+              resources:
+                requests:
+                  memory: 384Mi
+
+---
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: worker-nodes-idle
+spec:
+  deploymentTemplate:
+    spec:
+      # Providers only the platform e2e suite exercises. They hold ~600Mi between runs
+      # for zero managed resources, so the controller is scaled to nothing while the
+      # CRDs stay installed and the compositions still render. Scale to 1 before
+      # `just test-e2e`, back to 0 after.
+      replicas: 0
+      selector: {}
+      template:
+        spec:
+          nodeSelector:
+            node-role.kubernetes.io/worker: worker
+          containers:
+            - name: package-runtime
+              resources:
+                requests:
+                  memory: 256Mi
+
+---
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: worker-nodes-function
+spec:
+  deploymentTemplate:
+    spec:
+      selector: {}
+      template:
+        spec:
+          nodeSelector:
+            node-role.kubernetes.io/worker: worker
+          containers:
+            - name: package-runtime
+              # Functions peak at 70Mi over 30 days, far below the providers.
+              # No limit, so a render spike is never OOM-killed.
+              resources:
+                requests:
+                  memory: 96Mi
+
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-environment-configs
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-environment-configs:v0.9.1
+  runtimeConfigRef:
+    name: worker-nodes-function
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-go-templating
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-go-templating:v0.13.1
+  runtimeConfigRef:
+    name: worker-nodes-function
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: upbound-provider-family-aws
+spec:
+  package: xpkg.upbound.io/upbound/provider-family-aws:v2.9.4
+  runtimeConfigRef:
+    name: worker-nodes
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-s3
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-s3:v2.9.4
+  runtimeConfigRef:
+    name: worker-nodes
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-elasticache
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-elasticache:v2.9.4
+  runtimeConfigRef:
+    name: worker-nodes-idle
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-iam
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-iam:v2.9.4
+  runtimeConfigRef:
+    name: worker-nodes
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-rds
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-rds:v2.9.4
+  runtimeConfigRef:
+    name: worker-nodes-idle
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-dynamodb
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-dynamodb:v2.9.4
+  runtimeConfigRef:
+    name: worker-nodes
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-secretsmanager
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-secretsmanager:v2.9.4
+  runtimeConfigRef:
+    name: worker-nodes
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-azuread
+spec:
+  # Creates the Entra Application, ServicePrincipal and FederatedIdentityCredential
+  # objects per Api binding — the Entra side of workload identity federation.
+  package: xpkg.upbound.io/upbound/provider-azuread:v2.5.5
+  runtimeConfigRef:
+    name: worker-nodes
