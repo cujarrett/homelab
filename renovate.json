@@ -93,6 +93,16 @@
       "allowedVersions": "<12"
     },
     {
+      "description": [
+        "A Postgres major cannot read the old major's data directory.",
+        "Moving temporal-postgres to 18 needs a dump and restore by hand.",
+        "Lift this when doing that upgrade."
+      ],
+      "matchFileNames": ["cluster/temporal/**"],
+      "matchPackageNames": ["postgres"],
+      "allowedVersions": "<18"
+    },
+    {
       "matchPackageNames": ["mariadb"],
       "matchUpdateTypes": ["major"],
       "prBodyNotes": [
