@@ -1,0 +1,38 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: managedsecrets.platform.local.lab
+spec:
+  group: platform.local.lab
+  scope: Namespaced
+  names:
+    kind: ManagedSecret
+    plural: managedsecrets
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [parameters]
+              properties:
+                parameters:
+                  type: object
+                  required: [keys]
+                  properties:
+                    keys:
+                      type: array
+                      minItems: 1
+                      description: "Property names the value must carry. Each becomes one file in the consuming pod. Declared here so the owner knows what to set and the app knows what to read; nothing rejects a value missing one, so an app should check what it needs at startup."
+                      items:
+                        type: string
+                        pattern: "^[A-Za-z_][A-Za-z0-9_]*$"
+                    dataRetention:
+                      type: string
+                      default: retain
+                      enum: [retain, delete]
+                      description: "Reclaim behavior when the XR is deleted. retain=the value stays recoverable for 7 days; delete=it is purged immediately and the name is free to reuse right away."

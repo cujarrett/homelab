@@ -1,0 +1,26 @@
+# Served by the Gateway in helmchartconfig.yaml, which reads Secrets from its own
+# namespace only. Traefik picks between them by SNI.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: public-tls
+  namespace: kube-system
+spec:
+  secretName: public-tls
+  issuerRef: {kind: ClusterIssuer, name: letsencrypt-prod}
+  dnsNames:
+    - mattjarrett.dev
+    - "*.mattjarrett.dev"
+    - mattjarrett.com
+    - kentjarrett.com
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: local-lab-tls
+  namespace: kube-system
+spec:
+  secretName: local-lab-tls
+  issuerRef: {kind: ClusterIssuer, name: local-lab-ca-issuer}
+  dnsNames:
+    - "*.local.lab"

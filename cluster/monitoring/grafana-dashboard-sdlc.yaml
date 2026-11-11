@@ -1,0 +1,1143 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-sdlc
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  sdlc.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "liveNow": false,
+      "panels": [
+        {
+          "description": "Share of the last 7 days of merges that nobody clicked. This is the toil number, and the only one automation is meant to move.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 1,
+              "max": 1,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 0.25
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.6
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          },
+          "id": 60,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.2",
+          "targets": [
+            {
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"7d\"}) / (sum(github_exporter_pr_merged{repo=~\"$repo\",window=\"7d\"}) > 0)",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Merges with no person",
+          "type": "stat"
+        },
+        {
+          "description": "How many merges automation completed in the last 7 days. The share above says whether it is winning, this says whether there is enough volume for that to mean anything.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          },
+          "id": 61,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.2",
+          "targets": [
+            {
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"7d\"}) or vector(0)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Automated merges, 7d",
+          "type": "stat"
+        },
+        {
+          "description": "Share of bot pull requests that qualify for automerge at all. The remainder are majors and the named exclusions, held for a person by design, so this is coverage rather than a failure.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 1,
+              "max": 1,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 0.25
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.6
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 12,
+            "y": 0
+          },
+          "id": 62,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.2",
+          "targets": [
+            {
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",scope=\"auto-candidate\",window=\"30d\"}) / (sum(github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",window=\"30d\"}) > 0)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Eligible for automation",
+          "type": "stat"
+        },
+        {
+          "description": "Runs on main that passed. Automation only merges on a green required check, so a falling number here is the gate doing its job, not a broken gate.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 1,
+              "max": 1,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 0.9
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.98
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 18,
+            "y": 0
+          },
+          "id": 5,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.2",
+          "targets": [
+            {
+              "expr": "sum(github_exporter_workflow_runs{repo=~\"$repo\",conclusion=\"success\"}) / (sum(github_exporter_workflow_runs{repo=~\"$repo\",conclusion=~\"success|failure\"}) > 0)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "CI pass rate on main",
+          "type": "stat"
+        },
+        {
+          "description": "Open pull requests with automerge armed that GitHub will not merge, almost always a failed required check. Automation is on and a person is still needed, so this is toil it did not remove.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 3
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 0,
+            "y": 3
+          },
+          "id": 91,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.2",
+          "targets": [
+            {
+              "expr": "sum(github_exporter_pr_open_blocked{repo=~\"$repo\"}) or vector(0)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Stuck on a failed check",
+          "type": "stat"
+        },
+        {
+          "description": "Deployments that blew their progress deadline. The old pods are still serving, so nothing is down, but the merge never reached the cluster.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 6,
+            "y": 3
+          },
+          "id": 94,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.2",
+          "targets": [
+            {
+              "expr": "sum(kube_deployment_status_condition{condition=\"Progressing\",status=\"false\"} == 1) or vector(0)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Rollouts stuck",
+          "type": "stat"
+        },
+        {
+          "description": "ArgoCD applications reporting Degraded. A merge landed in Git and the cluster could not make it real.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 12,
+            "y": 3
+          },
+          "id": 95,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.2",
+          "targets": [
+            {
+              "expr": "count(argocd_app_info{health_status=\"Degraded\"}) or vector(0)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Apps degraded",
+          "type": "stat"
+        },
+        {
+          "description": "Repos whose GitHub poll failed in the last hour. Every count on this dashboard is a floor while this is above zero.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 18,
+            "y": 3
+          },
+          "id": 4,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.2",
+          "targets": [
+            {
+              "expr": "count(increase(github_exporter_poll_errors_total{repo=~\"$repo\"}[1h]) > 0) or vector(0)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Repos with poll errors",
+          "type": "stat"
+        },
+        {
+          "description": "Merges per day, split by whether a person clicked the button. A finished day reads the rolling 24h count as it stood at that day's midnight, which is why the offset is there. Today has no such reading yet, so its bar comes from the calendar-day count read at the dashboard's own end time. It has to be that timestamp and not the query's, because Grafana rounds the query end down to the last daily step, where the calendar count has just reset to zero. That substitution is held to days the exporter was actually running, otherwise it would paint today's number onto every day that predates the exporter.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "bars",
+                "fillOpacity": 80,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "normal"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "transparent",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Auto merged"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Manual merged"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "purple",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 14,
+            "x": 0,
+            "y": 6
+          },
+          "id": 93,
+          "options": {
+            "legend": {
+              "calcs": [
+                "sum"
+              ],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "13.2.2",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"1d\"} offset -1d) or (sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"today\"} @ ${__to:date:seconds}) and on() sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"1d\"}))",
+              "interval": "1d",
+              "legendFormat": "Auto merged",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "editorMode": "code",
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"1d\"} offset -1d) or (sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"today\"} @ ${__to:date:seconds}) and on() sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"1d\"}))",
+              "interval": "1d",
+              "legendFormat": "Manual merged",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Merges per day",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Thirty days of merges, split by whether a person spent attention on it.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "blue",
+                "mode": "fixed"
+              },
+              "decimals": 0,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Auto merged"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Manual merged"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "purple",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 10,
+            "x": 14,
+            "y": 6
+          },
+          "id": 80,
+          "options": {
+            "displayMode": "gradient",
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "maxVizHeight": 60,
+            "minVizHeight": 60,
+            "minVizWidth": 8,
+            "namePlacement": "left",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "sizing": "manual",
+            "valueMode": "text"
+          },
+          "pluginVersion": "13.2.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=~\"auto|bot\",window=\"30d\"})",
+              "instant": true,
+              "legendFormat": "Auto merged",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "sum(github_exporter_pr_merged{repo=~\"$repo\",merge=\"clicked\",window=\"30d\"})",
+              "instant": true,
+              "legendFormat": "Manual merged",
+              "refId": "B"
+            }
+          ],
+          "title": "30D Merge Counts",
+          "type": "bargauge"
+        },
+        {
+          "description": "One row per repo. Open PRs waiting, how the last 30 days of merges reached main, and whether CI is green. Human PRs are the ones you opened yourself. Bot, not eligible are dependency bumps auto-merge was never allowed to take - majors and anything outside the grouped branches - so they sat until someone merged them by hand. Eligible is the share of the repo's bot merges that auto-merge was configured to take, which is what separates a repo with automation switched off from one whose updates were all majors.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "footer": {
+                  "reducers": []
+                },
+                "inspect": false
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Open"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "text",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Merged 30d"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "gradient",
+                      "type": "gauge"
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "continuous-BlPu"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "blue",
+                          "value": 0
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Human PRs"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "text",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Bot, not eligible"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "text",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Eligible"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "red",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 0.25
+                        },
+                        {
+                          "color": "green",
+                          "value": 0.6
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CI pass rate"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "red",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 0.9
+                        },
+                        {
+                          "color": "green",
+                          "value": 0.98
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 13
+          },
+          "id": 70,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": []
+          },
+          "pluginVersion": "13.2.2",
+          "targets": [
+            {
+              "expr": "sum by (repo) (github_exporter_pr_open{repo=~\"$repo\"})",
+              "format": "table",
+              "instant": true,
+              "refId": "Open"
+            },
+            {
+              "expr": "sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",window=\"30d\"})",
+              "format": "table",
+              "instant": true,
+              "refId": "Merged"
+            },
+            {
+              "expr": "sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",author=\"human\",window=\"30d\"})",
+              "format": "table",
+              "instant": true,
+              "refId": "Human"
+            },
+            {
+              "expr": "sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",scope=\"excluded\",window=\"30d\"})",
+              "format": "table",
+              "instant": true,
+              "refId": "Blocked"
+            },
+            {
+              "expr": "sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",scope=\"auto-candidate\",window=\"30d\"}) / (sum by (repo) (github_exporter_pr_merged{repo=~\"$repo\",author=\"bot\",window=\"30d\"}) > 0)",
+              "format": "table",
+              "instant": true,
+              "refId": "Eligible"
+            },
+            {
+              "expr": "sum by (repo) (github_exporter_workflow_runs{repo=~\"$repo\",conclusion=\"success\"}) / (sum by (repo) (github_exporter_workflow_runs{repo=~\"$repo\",conclusion=~\"success|failure\"}) > 0)",
+              "format": "table",
+              "instant": true,
+              "refId": "Pass"
+            }
+          ],
+          "title": "By repo",
+          "transformations": [
+            {
+              "id": "joinByField",
+              "options": {
+                "byField": "repo",
+                "mode": "outerTabular"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Time 1": true,
+                  "Time 2": true,
+                  "Time 3": true,
+                  "Time 4": true,
+                  "Time 5": true,
+                  "Time 6": true
+                },
+                "indexByName": {
+                  "Value #Blocked": 4,
+                  "Value #Eligible": 5,
+                  "Value #Human": 3,
+                  "Value #Merged": 2,
+                  "Value #Open": 1,
+                  "Value #Pass": 6,
+                  "repo": 0
+                },
+                "renameByName": {
+                  "Value #Blocked": "Bot, not eligible",
+                  "Value #Eligible": "Eligible",
+                  "Value #Human": "Human PRs",
+                  "Value #Merged": "Merged 30d",
+                  "Value #Open": "Open",
+                  "Value #Pass": "CI pass rate",
+                  "repo": "Repo"
+                }
+              }
+            },
+            {
+              "id": "filterByValue",
+              "options": {
+                "filters": [
+                  {
+                    "config": {
+                      "id": "equal",
+                      "options": {
+                        "value": 0
+                      }
+                    },
+                    "fieldName": "Open"
+                  },
+                  {
+                    "config": {
+                      "id": "equal",
+                      "options": {
+                        "value": 0
+                      }
+                    },
+                    "fieldName": "Merged 30d"
+                  }
+                ],
+                "match": "all",
+                "type": "exclude"
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ],
+      "preload": false,
+      "refresh": "5m",
+      "schemaVersion": 42,
+      "tags": [
+        "sdlc",
+        "github"
+      ],
+      "templating": {
+        "list": [
+          {
+            "allowCustomValue": true,
+            "current": {
+              "text": "All",
+              "value": "$__all"
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "definition": "label_values(github_exporter_pr_merged, repo)",
+            "hide": 0,
+            "includeAll": true,
+            "label": "Repo",
+            "multi": true,
+            "name": "repo",
+            "options": [],
+            "query": {
+              "query": "label_values(github_exporter_pr_merged, repo)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "regexApplyTo": "value",
+            "skipUrlSync": false,
+            "sort": 1,
+            "type": "query"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-30d",
+        "to": "now"
+      },
+      "timepicker": {
+        "refresh_intervals": [
+          "5s",
+          "10s",
+          "30s",
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ]
+      },
+      "timezone": "browser",
+      "title": "SDLC",
+      "uid": "sdlc-delivery"
+    }

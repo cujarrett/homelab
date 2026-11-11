@@ -1,0 +1,28 @@
+# The frontend accepts mTLS only, so a caller's token never crosses the network in plain text.
+# Any mesh identity may connect. Which Temporal namespaces it may use is decided by its token.
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: temporal-frontend
+  namespace: temporal
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: frontend
+  mtls:
+    mode: STRICT
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: temporal-frontend
+  namespace: temporal
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: frontend
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals: ["*"]

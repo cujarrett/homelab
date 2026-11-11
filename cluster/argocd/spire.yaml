@@ -1,0 +1,148 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: spire
+  namespace: argocd
+spec:
+  project: cluster
+  sources:
+    - repoURL: https://spiffe.github.io/helm-charts-hardened/
+      chart: spire
+      targetRevision: 0.30.4
+      helm:
+        releaseName: spire
+        values: |
+          global:
+            spire:
+              trustDomain: homelab.local
+              # Sets both the JWT-SVID `iss` claim minted by spire-server and the issuer
+              # advertised by the discovery document - AWS and Entra require them to match.
+              jwtIssuer: https://oidc.mattjarrett.dev
+              clusterName: homelab
+              namespaces:
+                create: true
+              persistence:
+                storageClass: longhorn-retain
+
+          spire-server:
+            # HA requires a shared datastore; single replica is sufficient for homelab.
+            replicaCount: 1
+            # 1 year - avoids frequent CA rotation with no automated rotation tooling in place.
+            caTTL: 8760h
+            caSubject:
+              country: US
+              organization: Homelab
+              commonName: homelab-spire
+            # Prefer worker nodes - ctrl-1 runs AdGuard (DNS) and the kiosk display.
+            affinity:
+              nodeAffinity:
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - weight: 100
+                    preference:
+                      matchExpressions:
+                        - key: node-role.kubernetes.io/control-plane
+                          operator: DoesNotExist
+            # Watches pods and issues each a SPIFFE ID from its namespace + service account.
+            controllerManager:
+              enabled: true
+              identities:
+                clusterSPIFFEIDs:
+                  # By default the chart IDs every pod; we only want platform pods.
+                  default:
+                    enabled: false
+                  # Issue an ID to Api pods only (label set by the composition). Spa has no
+                  # server-side process to hold one - see docs/platform-workload-identity.md
+                  # "Static frontends".
+                  homelab-workloads:
+                    spiffeIDTemplate: spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}
+                    podSelector:
+                      matchExpressions:
+                        - key: app
+                          operator: In
+                          values:
+                            - api
+                  # temporal-controller trades its SVID for an Entra token to sign in to Temporal.
+                  # Pinned to its own namespace and pod label, so no other pod gets this ID.
+                  temporal-controller:
+                    spiffeIDTemplate: spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}
+                    namespaceSelector:
+                      matchLabels:
+                        kubernetes.io/metadata.name: temporal-controller
+                    podSelector:
+                      matchLabels:
+                        app: temporal-controller
+
+          spire-agent:
+            logLevel: INFO
+            # The chart requests nothing, so the scheduler counted each agent as free.
+            resources:
+              requests:
+                memory: 128Mi
+            # The chart's pinned digest ships brotli 1.2.0, open to CVE-2026-111497.
+            # Drop this once the chart's own digest ships brotli 1.2.1 or newer.
+            socketAlternate:
+              image:
+                tag: latest@sha256:a93eed832b139af32b39d78a5ac1d9c708647dda1fe52ebd800e2b684d0fb0c7
+
+          # CSI driver mounts each pod's SVID (cert + key) as files via a volume.
+          # Required before any workload can consume its identity for AWS credential exchange.
+          spiffe-csi-driver:
+            enabled: true
+            # The chart's default images trail upstream releases.
+            image:
+              # renovate: datasource=docker depName=ghcr.io/spiffe/spiffe-csi-driver
+              tag: 0.3.0
+            nodeDriverRegistrar:
+              image:
+                # renovate: datasource=docker depName=registry.k8s.io/sig-storage/csi-node-driver-registrar
+                tag: v2.18.0
+
+          # Publishes the JWT-SVID signing keys so AWS and Entra can validate them.
+          # Public by necessity - both clouds fetch the discovery doc and JWKS from the internet.
+          spiffe-oidc-discovery-provider:
+            enabled: true
+            # Traefik terminates TLS at the edge; the provider serves plain HTTP behind it.
+            tls:
+              spire:
+                enabled: false
+            # The chart's nginx tag trails upstream patch releases.
+            # This nginx is the public face of oidc.mattjarrett.dev.
+            insecureScheme:
+              nginx:
+                image:
+                  # renovate: datasource=docker depName=nginxinc/nginx-unprivileged
+                  tag: 1.31.7-alpine
+            config:
+              # Advertise the /.well-known/ path that Cloudflare lets datacenter callers reach.
+              # Traefik rewrites it back to /keys - see cluster/spire/oidc-jwks-ingress.yaml.
+              jwksUri: https://oidc.mattjarrett.dev/.well-known/keys
+    # The HTTPRoute and its JWKS rewrite - see cluster/spire/oidc-jwks-ingress.yaml.
+    - repoURL: https://github.com/cujarrett/homelab.git
+      targetRevision: main
+      path: cluster/spire
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: spire-server
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      name: spire-server
+      namespace: spire-server
+      jqPathExpressions:
+        # Kubernetes strips apiVersion/kind from volumeClaimTemplates after creation; chart includes them
+        - .spec.volumeClaimTemplates
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      name: spire-server-spire-controller-manager-webhook
+      jqPathExpressions:
+        # SPIRE controller-manager owns this webhook after startup - injects caBundle and
+        # reorders entries. Ignore the whole array to avoid permanent ordering drift.
+        - .webhooks

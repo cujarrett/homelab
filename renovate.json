@@ -1,0 +1,195 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "github>cujarrett/homelab//.github/renovate-shared",
+    "helpers:pinGitHubActionDigestsToSemver"
+  ],
+  "reviewers": ["cujarrett"],
+  "enabledManagers": ["argocd", "crossplane", "kubernetes", "github-actions", "custom.regex"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/platform/.+/composition\\.yaml$/"],
+      "matchStrings": [
+        "image: (?<depName>[a-z][^\\s:@{]*):(?<currentValue>[^\\s@]+)(@(?<currentDigest>sha256:[0-9a-f]+))?"
+      ],
+      "description": "Without a template, a regex manager can only replace a digest that is already there, so pinning fails.",
+      "autoReplaceStringTemplate": "image: {{{depName}}}:{{{newValue}}}{{#if newDigest}}@{{{newDigest}}}{{/if}}",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/\\.github/workflows/ci\\.yml$/", "/cluster/.+\\.yaml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: registryUrl=(?<registryUrl>\\S+))?\\n\\s+\\w+: (?<currentValue>\\S+)"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "A re-pushed tag cannot change what the cluster runs. Helm charts and Crossplane packages cannot carry a digest, so they are left out.",
+      "matchDatasources": ["docker"],
+      "matchManagers": ["custom.regex", "kubernetes"],
+      "pinDigests": true
+    },
+    {
+      "description": [
+        "Chart values hold the tag and the digest as separate keys.",
+        "The renovate comment rewrites only the tag."
+      ],
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": ["cluster/**"],
+      "pinDigests": false
+    },
+    {
+      "matchPackageNames": ["ghcr.io/cujarrett/workload-identity-sidecar"],
+      "pinDigests": true,
+      "minimumReleaseAge": "0 days"
+    },
+    {
+      "description": [
+        "Each app's CI writes a fresh sha- tag on every main build and drops any digest.",
+        "A pin would only open a PR that the next deploy undoes."
+      ],
+      "matchPackageNames": ["ghcr.io/cujarrett/platform-exporter", "ghcr.io/cujarrett/temporal-controller"],
+      "pinDigests": false
+    },
+    {
+      "description": [
+        "ECR Public publishes no release dates.",
+        "Without a date, the 7-day wait never ends.",
+        "Skipping the date check lets aws-cli update."
+      ],
+      "matchPackageNames": ["public.ecr.aws/**"],
+      "minimumReleaseAgeBehaviour": "timestamp-optional"
+    },
+    {
+      "description": [
+        "xpkg.upbound.io publishes no release dates, so minimumReleaseAge cannot count.",
+        "The 7 days count from the branch's last commit instead.",
+        "CI runs only on pull requests, so the branch stays pending and the PR opens after prNotPendingHours.",
+        "rebaseWhen conflicted: a rebase is a new commit and would restart the 7 days."
+      ],
+      "matchPackageNames": ["xpkg.upbound.io/**"],
+      "minimumReleaseAgeBehaviour": "timestamp-optional",
+      "prCreation": "not-pending",
+      "prNotPendingHours": 168,
+      "rebaseWhen": "conflicted"
+    },
+    {
+      "matchPackageNames": ["wordpress"],
+      "prBodyNotes": [
+        "⚠️ WordPress core lives in the container filesystem, not the `wp-content` PVC. Whatever tag is pinned here is what a restarted pod runs - a self-applied update inside the pod is discarded on restart. Merging this is what makes the version durable.",
+        "To take a security release before the 7-day cooldown expires, tick this update on the Renovate Dependency Dashboard under **Pending Status Checks** to force the PR immediately. Editing the tag by hand also works and is faster."
+      ]
+    },
+    {
+      "description": [
+        "11.8 is LTS, supported until 2030-02.",
+        "12.3 LTS ends sooner, and 13 is a rolling release.",
+        "Lift this when an LTS outlasts 11.8."
+      ],
+      "matchPackageNames": ["mariadb"],
+      "allowedVersions": "<12"
+    },
+    {
+      "matchPackageNames": ["mariadb"],
+      "matchUpdateTypes": ["major"],
+      "prBodyNotes": [
+        "⚠️ This restarts the database of every WordPress site. Follow [Upgrade MariaDB](https://github.com/cujarrett/homelab/blob/main/docs/wordpress/README.md#upgrade-mariadb) before merging: confirm the new major is LTS, then back up every site."
+      ]
+    },
+    {
+      "description": [
+        "PHP and Debian security fixes arrive as a rebuild of the same tag.",
+        "Digest updates skip the 7-day wait so those fixes land fast."
+      ],
+      "matchPackageNames": ["wordpress"],
+      "matchUpdateTypes": ["digest"],
+      "minimumReleaseAge": "0 days"
+    },
+    {
+      "matchPackageNames": ["spire"],
+      "prBodyNotes": [
+        "⚠️ `cluster/argocd/spire.yaml` overrides the spire-agent `socketAlternate` image for CVE-2026-111497. If this chart's default `chainguard/bash` digest ships Brotli 1.2.1 or newer, delete the override in this PR."
+      ]
+    },
+    {
+      "matchPackageNames": ["adguard/adguardhome"],
+      "prBodyNotes": [
+        "⚠️ **Before merging:** run `/adguard-pre-pull` - AdGuard's `Recreate` rollout strategy plus `ctrl-1`'s DNS pointing only at AdGuard itself means a cold image pull will fail with `ImagePullBackOff`."
+      ]
+    },
+    {
+      "description": [
+        "One PR per update.",
+        "A merge applies to the cluster, so each change must revert on its own.",
+        "Per-package automerge rules only work when the package is alone on its branch."
+      ],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": null
+    },
+    {
+      "description": [
+        "Each Upbound AWS provider requires provider-family-aws at its own exact version.",
+        "Bumped one at a time, the newer provider never starts and its resources stop reconciling.",
+        "Placed after the groupName null rule, which would otherwise split the group."
+      ],
+      "matchPackageNames": ["xpkg.upbound.io/upbound/provider-family-aws", "xpkg.upbound.io/upbound/provider-aws-*"],
+      "groupName": "upbound aws providers"
+    },
+    {
+      "description": [
+        "cluster/monitoring/istio-proxy-scan.yaml scans the proxy image istiod injects.",
+        "One PR moves the three Istio charts and that image together, so the scan never checks a version no pod runs.",
+        "Placed after the groupName null rule, which would otherwise split the group."
+      ],
+      "matchRegistryUrls": ["https://istio-release.storage.googleapis.com/charts"],
+      "groupName": "istio"
+    },
+    {
+      "matchPackageNames": ["registry.istio.io/release/proxyv2"],
+      "groupName": "istio"
+    },
+    {
+      "description": [
+        "A person merges these.",
+        "AdGuard: run /adguard-pre-pull first.",
+        "spire minor or major: can put the agent out of step with workload-identity-sidecar."
+      ],
+      "matchPackageNames": ["adguard/adguardhome", "spire"],
+      "automerge": false,
+      "labels": []
+    },
+    {
+      "description": [
+        "spire chart patches keep the same appVersion.",
+        "The agent stays in step with workload-identity-sidecar, so patches automerge.",
+        "Minor and major still go to a person, per the rule above."
+      ],
+      "matchPackageNames": ["spire"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true,
+      "labels": ["automerge"]
+    }
+  ],
+  "argocd": {
+    "managerFilePatterns": [
+      "/cluster/argocd/.+\\.yaml$/",
+      "/cluster/monitoring/.+\\.yaml$/"
+    ]
+  },
+  "crossplane": {
+    "managerFilePatterns": [
+      "/cluster/crossplane/.+\\.yaml$/",
+      "/platform/test/fixtures/render-functions\\.yaml$/"
+    ]
+  },
+  "kubernetes": {
+    "managerFilePatterns": [
+      "/cluster/.+/.+\\.yaml$/"
+    ]
+  }
+}

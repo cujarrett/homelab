@@ -1,0 +1,69 @@
+# Scrapes Istio telemetry into the main Prometheus - istio-sidecars for merged
+# app+Envoy metrics, istiod for pilot control-plane metrics. release: monitoring
+# so the kube-prometheus-stack Prometheus selects these.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: istio-sidecars
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  # Canonical Istio pattern: scrape only the istio-proxy container, using the
+  # pod's prometheus.io annotations for port (15020) and path (/stats/prometheus).
+  selector:
+    matchExpressions:
+      - { key: istio-prometheus-ignore, operator: DoesNotExist }
+  namespaceSelector:
+    any: true
+  podMetricsEndpoints:
+    - path: /stats/prometheus
+      interval: 30s
+      relabelings:
+        - action: keep
+          sourceLabels: [__meta_kubernetes_pod_container_name]
+          regex: "istio-proxy"
+        - action: keep
+          sourceLabels: [__meta_kubernetes_pod_annotationpresent_prometheus_io_scrape]
+        - action: replace
+          regex: (\d+);((([0-9]+?)(\.|$)){4})
+          replacement: $2:$1
+          sourceLabels:
+            - __meta_kubernetes_pod_annotation_prometheus_io_port
+            - __meta_kubernetes_pod_ip
+          targetLabel: __address__
+        - action: labeldrop
+          regex: "__meta_kubernetes_pod_label_(.+)"
+        - action: replace
+          sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - action: replace
+          sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+      metricRelabelings:
+        # Trim low-value, high-cardinality labels; keep identity (*_principal),
+        # workload, response_code, connection_security_policy, request_protocol.
+        - action: labeldrop
+          regex: "source_version|destination_version|source_canonical_revision|destination_canonical_revision|source_cluster|destination_cluster|grpc_response_status"
+        # Temporal server histograms are about 4k series, and no dashboard reads them.
+        # The _sum and _count series stay, so averages still work.
+        - action: drop
+          sourceLabels: [namespace, __name__]
+          regex: "temporal;(service_latency.*|client_latency|persistence_latency|event_blob_size|service_authorization_latency|visibility_persistence_latency)_bucket"
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: istiod
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: istiod
+  namespaceSelector:
+    matchNames: [istio-system]
+  podMetricsEndpoints:
+    - port: http-monitoring
+      interval: 30s

@@ -1,0 +1,346 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: apis.platform.local.lab
+spec:
+  group: platform.local.lab
+  scope: Namespaced
+  names:
+    kind: Api
+    plural: apis
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  properties:
+                    objectStorageRefs:
+                      type: array
+                      description: "References to ObjectStorage instances to bind. Each ref creates an IAM role and binding Secret. Each ref mounts at /bindings/object-storage-<ref-name>/, so a ref named foo mounts at /bindings/object-storage-foo/."
+                      items:
+                        type: object
+                        required: [name]
+                        properties:
+                          name:
+                            type: string
+                            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                            maxLength: 63
+                            description: "metadata.name of the ObjectStorage instance."
+                    managedSecretRefs:
+                      type: array
+                      description: "References to ManagedSecret instances to bind. Each ref creates an IAM role and binding Secret, and mounts the value at /secrets/<name>/<key>, one file per property. The pod waits at startup until a value has been set."
+                      items:
+                        type: object
+                        required: [name]
+                        properties:
+                          name:
+                            type: string
+                            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                            maxLength: 63
+                            description: "metadata.name of the ManagedSecret instance."
+                    sqlRef:
+                      type: object
+                      description: "Reference to an existing Sql instance to bind. The platform mounts its Secret at /bindings/sql/."
+                      required: [name]
+                      properties:
+                        name:
+                          type: string
+                          # Templated into Service names and the sidecar egress list, so it
+                          # must be a DNS label - an unbounded string could inject a line there.
+                          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                          maxLength: 63
+                          description: "metadata.name of the Sql instance."
+                        backend:
+                          type: string
+                          default: private-cloud
+                          enum: [private-cloud, public-cloud]
+                          description: "Must match the Sql instance's spec.parameters.backend. When public-cloud, the sidecar exchanges the SVID for STS credentials so the app can generate an RDS auth token."
+                    nosqlRef:
+                      type: object
+                      description: "Reference to an existing NoSql instance to bind. The platform mounts its Secret at /bindings/nosql/."
+                      required: [name]
+                      properties:
+                        name:
+                          type: string
+                          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                          maxLength: 63
+                          description: "metadata.name of the NoSql instance."
+                    cache:
+                      type: object
+                      description: "Cache options. Lifecycle tied to this Api. If omitted, no cache is created."
+                      properties:
+                        enabled:
+                          type: boolean
+                          default: false
+                        backend:
+                          type: string
+                          default: private-cloud
+                          enum: [private-cloud, public-cloud]
+                          description: "Cache backend: private-cloud=in-cluster Redis, public-cloud=AWS ElastiCache."
+                    image:
+                      type: string
+                      pattern: "^[A-Za-z0-9][A-Za-z0-9._/:@-]*$"
+                      maxLength: 255
+                      description: >-
+                        Container image (e.g. ghcr.io/owner/api:sha-abc123). Managed by CI -
+                        set on first create, then updated automatically on each merge to main.
+                    repo:
+                      type: string
+                      pattern: "^https://[A-Za-z0-9._/-]+$"
+                      maxLength: 255
+                      description: "GitHub repository URL for this app's source code (e.g. https://github.com/owner/api)."
+                    port:
+                      type: integer
+                      default: 8080
+                      minimum: 1
+                      description: "Port the container listens on. Service always exposes port 80 → this targetPort."
+                    metricsPort:
+                      type: integer
+                      default: 9090
+                      minimum: 1
+                      description: "Port the container exposes Prometheus metrics on. Defaults to 9090. Set to match port if the app serves metrics on the same port as the app (e.g. 8080)."
+                    scrapeInterval:
+                      type: string
+                      default: "60s"
+                      description: "Prometheus scrape interval for the ServiceMonitor. Defaults to 60s. Reduce for apps that emit short-lived state changes (e.g. 10s for sump-pump-consumer)."
+                      pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
+                    host:
+                      type: string
+                      pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+                      maxLength: 253
+                      description: "Hostname clients call, under local.lab for the homelab network or mattjarrett.dev for the internet. If omitted, the API is reachable only inside the cluster."
+                    configFrom:
+                      type: array
+                      maxItems: 10
+                      description: "ConfigMaps in this namespace, mounted into the container as environment in order, later entries winning on a shared key. The team owns each object, so changing a value touches that file and never re-reconciles this Api."
+                      items:
+                        type: string
+                        pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+                        maxLength: 253
+                    topicRef:
+                      type: object
+                      description: "Optional reference to a Topic instance this API publishes to. When set, the platform wires the connection automatically."
+                      required: [name]
+                      properties:
+                        name:
+                          type: string
+                          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                          maxLength: 63
+                          description: "metadata.name of the Topic instance (e.g. foo-events)."
+                        streamName:
+                          type: string
+                          pattern: "^[A-Za-z0-9_-]+$"
+                          maxLength: 255
+                          description: "NATS stream name as defined in the Topic's spec.parameters.streamName. Defaults to topicRef.name uppercased when omitted. Set explicitly when the Topic's streamName differs from its metadata.name."
+                    subscriptionRef:
+                      type: object
+                      description: "Optional reference to a Subscription instance this API consumes from. When set, the platform wires the consumer binding automatically."
+                      required: [name]
+                      properties:
+                        name:
+                          type: string
+                          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                          maxLength: 63
+                          description: "metadata.name of the Subscription instance (e.g. foo-consumer)."
+                    workflowSpaceRef:
+                      type: object
+                      description: "Optional reference to a WorkflowSpace in this namespace. When set, the platform wires this API to it, for running workflows or starting them."
+                      required: [name]
+                      properties:
+                        name:
+                          type: string
+                          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                          maxLength: 63
+                          description: "metadata.name of the WorkflowSpace instance (e.g. foo-workflows)."
+                        backend:
+                          type: string
+                          default: private-cloud
+                          enum: [private-cloud, public-cloud]
+                          description: "Must match the WorkflowSpace instance's spec.parameters.backend. When public-cloud, the pod signs in with a client certificate written to files, and the platform injects their paths."
+                    replicas:
+                      type: integer
+                      default: 1
+                      minimum: 1
+                      description: "Number of API replicas."
+                    callsClusterApi:
+                      type: boolean
+                      default: false
+                      description: "Set when this API calls the cluster's own control API, for example to watch platform resources. Keeps those long-lived connections direct and unbroken."
+                    readinessCheckPath:
+                      type: string
+                      pattern: "^/[A-Za-z0-9._~/-]*$"
+                      maxLength: 253
+                      default: /healthz
+                      description: "HTTP path the readiness probe hits. Defaults to /healthz. Set to /readyz for apps that gate readiness on external dependencies (e.g. service bindings)."
+                    size:
+                      type: string
+                      default: sm
+                      enum: [xs, sm, md, lg]
+                      description: "Compute tier for the container. Choose based on expected traffic - Extra Small suits low-traffic or background services; Large suits high-throughput workloads."
+                    provides:
+                      type: array
+                      maxItems: 10
+                      description: "Named interfaces this API exposes to other workloads. Anything not listed here cannot call this API."
+                      items:
+                        type: object
+                        required: [name, auth, allowedCallers]
+                        properties:
+                          name:
+                            type: string
+                            pattern: "^[A-Za-z][A-Za-z0-9._-]*$"
+                            maxLength: 120
+                            description: "Interface name (e.g. collection-write). Groups a set of routes under one grant, and becomes the Entra object a caller is granted."
+                          auth:
+                            type: string
+                            # Required rather than defaulted - worth stating explicitly on
+                            # every interface, and keeps the API server from writing a value
+                            # git doesn't have, which would hold an app OutOfSync.
+                            enum: [mesh, workload, user]
+                            description: "What a caller must prove to use this interface. mesh means its workload identity is enough, no token is involved, and no Entra object is created. workload means it must also carry an Entra app role, checked through the roles claim. user means it must carry a delegated scope, checked through scp, which is what on-behalf-of produces."
+                          methods:
+                            type: array
+                            maxItems: 9
+                            description: "HTTP methods this interface allows. Omit for all methods - the coarsest, lowest-upkeep default. Narrow only if this API genuinely has more than one trust boundary."
+                            items:
+                              type: string
+                              enum: [GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS, CONNECT, TRACE]
+                          paths:
+                            type: array
+                            maxItems: 20
+                            description: "URL path globs this interface allows (e.g. /api/v1/collection/*). Omit for all paths - see methods."
+                            items:
+                              type: string
+                              pattern: "^/[A-Za-z0-9._~/*-]*$"
+                              maxLength: 253
+                          allowedCallers:
+                            type: array
+                            description: "Workloads granted this interface. Everything else is denied."
+                            items:
+                              type: object
+                              required: [namespace, app]
+                              properties:
+                                namespace:
+                                  type: string
+                                  pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                                  maxLength: 63
+                                  description: "Namespace the calling workload runs in."
+                                app:
+                                  type: string
+                                  pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                                  maxLength: 63
+                                  description: "The calling Api/Spa's metadata.name - also its ServiceAccount name."
+                    consumes:
+                      type: array
+                      maxItems: 10
+                      description: "Every destination this workload calls, including apps in its own namespace. Anything this XR creates itself (e.g. its own cache) is allowed automatically - do not list it. Set exactly one of host (off-platform), app plus namespace (on-platform), or entraApp (a registration the platform does not own)."
+                      items:
+                        type: object
+                        x-kubernetes-validations:
+                          # An entry names one destination. Two would be two answers to one
+                          # question, and the composition would render both.
+                          - rule: "(has(self.host) ? 1 : 0) + (has(self.address) ? 1 : 0) + (has(self.app) ? 1 : 0) + (has(self.entraApp) ? 1 : 0) == 1"
+                            message: "each consumes entry sets exactly one of host, address, app, or entraApp"
+                          - rule: "!has(self.app) || has(self.namespace)"
+                            message: "consumes app requires namespace"
+                        properties:
+                          host:
+                            type: string
+                            pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+                            maxLength: 253
+                            description: "Hostname of a destination outside the mesh. Usually off-platform (e.g. api.discogs.com). An in-cluster service with no sidecar is named by its full service name with port and protocol HTTP (e.g. foo.bar.svc.cluster.local). Anything not listed is blocked at this workload's own sidecar."
+                          port:
+                            type: integer
+                            description: "Port for host. Defaults to 443 when omitted."
+                          protocol:
+                            type: string
+                            enum: [TLS, HTTP]
+                            description: "Wire protocol for host. TLS for any https:// destination - the app terminates its own TLS. HTTP only for plaintext destinations."
+                          address:
+                            type: string
+                            pattern: "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                            description: "Bare IPv4 address of an off-platform destination that has no DNS name, such as a device on the LAN. Renders a ServiceEntry with static resolution rather than a DNS lookup. Use with port."
+                          app:
+                            type: string
+                            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                            maxLength: 63
+                            description: "metadata.name of an Api in another namespace this calls. Use with namespace."
+                          namespace:
+                            type: string
+                            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                            maxLength: 63
+                            description: "Namespace of app. Required when app is set."
+                          entraApp:
+                            type: object
+                            description: "An API registered in Entra outside the platform. Its owner supplies every value here, because nothing on the platform knows them."
+                            required: [appIdUri, role, host]
+                            properties:
+                              appIdUri:
+                                type: string
+                                maxLength: 255
+                                pattern: "^[A-Za-z][A-Za-z0-9+.-]*://[A-Za-z0-9._~:/-]+$"
+                                description: "The target's Application ID URI (e.g. api://legacy-billing). Becomes the audience of the requested token. An identifier, not a URL."
+                              role:
+                                type: string
+                                pattern: "^[A-Za-z][A-Za-z0-9._-]*$"
+                                maxLength: 120
+                                description: "App role to request on that registration."
+                              host:
+                                type: string
+                                pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+                                maxLength: 253
+                                description: "Hostname the request actually goes to. Separate from appIdUri, which names the token audience rather than an address."
+                  required: [image]
+              required:
+                - parameters
+            status:
+              type: object
+              description: "What the platform derived. Spec is what you asked for, this is what you got."
+              properties:
+                config:
+                  type: object
+                  description: "What the platform put in the container that the spec does not already say. ConfigMaps are not repeated here, because configFrom already names them."
+                  properties:
+                    bindings:
+                      type: array
+                      description: "Directories holding a provisioned datastore's connection details, one file per key."
+                      items:
+                        type: string
+                    files:
+                      type: array
+                      description: "Every other path the platform mounts, including declared Secrets and the credentials refreshed for this pod."
+                      items:
+                        type: string
+                    injectedEnv:
+                      type: array
+                      description: "Environment variable names the platform sets without being asked."
+                      items:
+                        type: string
+                entra:
+                  type: object
+                  properties:
+                    clientId:
+                      type: string
+                      description: "Application (client) ID of this app's registration."
+                    audience:
+                      type: string
+                      description: "Application ID URI other apps request a token for."
+                    issuer:
+                      type: string
+                      description: "Token issuer for this tenant. Identical for every app in it."
+                consumes:
+                  type: array
+                  description: "The scope requested for each on-platform destination, and the env var carrying it."
+                  items:
+                    type: object
+                    properties:
+                      target: { type: string }
+                      scope: { type: string }
+                      envVar: { type: string }

@@ -1,0 +1,10 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: cloudflare-tunnel-token
+  namespace: cloudflare
+spec:
+  secretStoreRef: {kind: ClusterSecretStore, name: aws-parameter-store}
+  data:
+    - secretKey: tunnel-token
+      remoteRef: {key: /homelab/cloudflare/tunnel-token}

@@ -1,0 +1,47 @@
+# callsClusterApi takes the sidecar out of the path to the Kubernetes API.
+# RBAC still decides what the pod may do there.
+# This keeps the flag to the namespaces the platform team has granted RBAC.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: platform-cluster-api-access
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform cluster API access
+    policies.kyverno.io/description: >-
+      Only approved namespaces may set callsClusterApi on an Api.
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: calls-cluster-api-allowlist
+      match:
+        any:
+          - resources:
+              kinds:
+                - platform.local.lab/v1alpha1/Api
+      preconditions:
+        all:
+          - key: "{{ request.operation || 'BACKGROUND' }}"
+            operator: AnyIn
+            value: [CREATE, UPDATE]
+      # Kyverno defaults both of these on write. Stated here so the repo matches
+      # what the API server stores, otherwise ArgoCD sits permanently OutOfSync.
+      skipBackgroundRequests: true
+      validate:
+        allowExistingViolations: false
+        message: >-
+          callsClusterApi is only allowed in approved namespaces.
+          Ask the platform team for Kubernetes API access.
+        deny:
+          conditions:
+            all:
+              - key: "{{ request.object.spec.parameters.callsClusterApi || `false` }}"
+                operator: Equals
+                value: true
+              # Each namespace here also needs its RBAC under cluster/<namespace>/rbac.yaml.
+              - key: "{{ request.namespace }}"
+                operator: AnyNotIn
+                value:
+                  - launchpad

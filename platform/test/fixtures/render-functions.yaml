@@ -1,0 +1,16 @@
+# Functions for local `crossplane render` - see ../render-check.sh. Versions must
+# match cluster/crossplane/providers.yaml or render-check tests the wrong function.
+# Safe here only because platform-xrs.yaml excludes test/** from ArgoCD.
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-environment-configs
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-environment-configs:v0.3.0
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-go-templating
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-go-templating:v0.12.0

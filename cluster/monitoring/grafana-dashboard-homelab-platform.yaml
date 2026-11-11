@@ -1,0 +1,1386 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-homelab-platform
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  homelab-platform.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "liveNow": false,
+      "panels": [
+        {
+          "description": "Number of live guest sandbox workspaces (max 5).",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 4
+                  },
+                  {
+                    "color": "red",
+                    "value": 5
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 5,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": ""
+            }
+          },
+          "pluginVersion": "13.1.0",
+          "targets": [
+            {
+              "expr": "sum(launchpad_guest_workspace_count)",
+              "instant": true,
+              "legendFormat": "workspaces",
+              "refId": "A"
+            }
+          ],
+          "title": "Active Guest Workspaces",
+          "type": "stat"
+        },
+        {
+          "description": "Active guest workspace count and total resource count over time.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "showPoints": "auto"
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "workspaces"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "resources"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "purple",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 19,
+            "x": 5,
+            "y": 0
+          },
+          "id": 3,
+          "options": {
+            "annotations": {
+              "clustering": -1,
+              "multiLane": false
+            },
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "enableFacetedFilter": false,
+              "overflow": "ellipsis",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(launchpad_guest_workspace_count)",
+              "legendFormat": "workspaces",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(launchpad_guest_resource_count)",
+              "legendFormat": "resources",
+              "refId": "B"
+            }
+          ],
+          "title": "Guest Workspace & Resource Usage",
+          "type": "timeseries"
+        },
+        {
+          "description": "Total resources across all active guest workspaces.",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "unit": "short",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "blue"
+              }
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 5,
+            "x": 0,
+            "y": 3
+          },
+          "id": 2,
+          "options": {
+            "colorMode": "none",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": ""
+            }
+          },
+          "pluginVersion": "13.1.0",
+          "targets": [
+            {
+              "expr": "sum(launchpad_guest_resource_count)",
+              "instant": true,
+              "legendFormat": "resources",
+              "refId": "A"
+            }
+          ],
+          "title": "Guest Resource Count",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "gridPos": {
+            "h": 13,
+            "w": 16,
+            "x": 0,
+            "y": 6
+          },
+          "id": 15,
+          "timeFrom": "1y",
+          "title": "Guest Sandboxes by Location",
+          "type": "geomap",
+          "description": "Where guest sandboxes were launched from. US only. Kept a year.",
+          "targets": [
+            {
+              "refId": "A",
+              "editorMode": "code",
+              "queryType": "instant",
+              "legendFormat": "Sandboxes",
+              "expr": "sum by (city, region, postal, lat, lon) (count_over_time({log_type=\"sandbox\"} | json | label_format city=request_Cf_Ipcity, region=request_Cf_Region_Code, postal=request_Cf_Postal_Code, lat=request_Cf_Iplatitude, lon=request_Cf_Iplongitude [$__range]))"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "labelsToFields",
+              "options": {
+                "mode": "columns"
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "convertFieldType",
+              "options": {
+                "conversions": [
+                  {
+                    "targetField": "lat",
+                    "destinationType": "number"
+                  },
+                  {
+                    "targetField": "lon",
+                    "destinationType": "number"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "renameByName": {
+                  "city": "City",
+                  "region": "State",
+                  "postal": "Postal code"
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "purple"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "view": {
+              "id": "coords",
+              "lat": 39.5,
+              "lon": -98.35,
+              "zoom": 3.8
+            },
+            "controls": {
+              "showZoom": true,
+              "mouseWheelZoom": false
+            },
+            "basemap": {
+              "type": "carto",
+              "config": {
+                "theme": "dark",
+                "showLabels": true
+              }
+            },
+            "layers": [
+              {
+                "type": "markers",
+                "name": "Sandboxes",
+                "tooltip": true,
+                "location": {
+                  "mode": "coords",
+                  "latitude": "lat",
+                  "longitude": "lon"
+                },
+                "config": {
+                  "showLegend": false,
+                  "style": {
+                    "size": {
+                      "fixed": 7
+                    },
+                    "color": {
+                      "fixed": "purple"
+                    },
+                    "opacity": 0.75
+                  }
+                }
+              }
+            ],
+            "tooltip": {
+              "mode": "details"
+            }
+          }
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "gridPos": {
+            "h": 13,
+            "w": 8,
+            "x": 16,
+            "y": 6
+          },
+          "id": 16,
+          "timeFrom": "1y",
+          "title": "Guest Sandboxes by State",
+          "type": "table",
+          "targets": [
+            {
+              "refId": "A",
+              "editorMode": "code",
+              "queryType": "instant",
+              "legendFormat": "Sandboxes",
+              "expr": "sort_desc(sum by (region) (count_over_time({log_type=\"sandbox\"} | json | label_format region=request_Cf_Region_Code [$__range])))"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "labelsToFields",
+              "options": {
+                "mode": "columns"
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "renameByName": {
+                  "region": "State",
+                  "Value #A": "Sandboxes"
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "sort": [
+                  {
+                    "field": "Sandboxes",
+                    "desc": true
+                  }
+                ]
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "text"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "showHeader": true
+          }
+        },
+        {
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 30
+                  },
+                  {
+                    "color": "red",
+                    "value": 90
+                  }
+                ]
+              },
+              "unit": "s"
+            }
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 8,
+            "x": 0,
+            "y": 19
+          },
+          "id": 10,
+          "options": {
+            "displayMode": "lcd",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "overflow": "ellipsis",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "maxVizHeight": 300,
+            "minVizHeight": 16,
+            "minVizWidth": 8,
+            "namePlacement": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "sizing": "auto",
+            "text": {},
+            "valueMapping": [],
+            "valueMode": "color"
+          },
+          "pluginVersion": "13.1.0",
+          "targets": [
+            {
+              "expr": "sum(platform_xr_time_to_ready_seconds_sum{kind!~\"X?Topic|X?Subscription\"}) by (kind, backend)\n/\nsum(platform_xr_time_to_ready_seconds_count{kind!~\"X?Topic|X?Subscription\"}) by (kind, backend)",
+              "legendFormat": "{{kind}} / {{backend}}",
+              "refId": "A"
+            }
+          ],
+          "title": "XR Time-to-Ready \u2014 mean by Kind",
+          "type": "bargauge"
+        },
+        {
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 10
+                  },
+                  {
+                    "color": "red",
+                    "value": 30
+                  }
+                ]
+              },
+              "unit": "s"
+            }
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 8,
+            "x": 8,
+            "y": 19
+          },
+          "id": 11,
+          "options": {
+            "displayMode": "lcd",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "overflow": "ellipsis",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "maxVizHeight": 300,
+            "minVizHeight": 16,
+            "minVizWidth": 8,
+            "namePlacement": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "sizing": "auto",
+            "text": {},
+            "valueMapping": [],
+            "valueMode": "color"
+          },
+          "pluginVersion": "13.1.0",
+          "targets": [
+            {
+              "expr": "label_replace(\n  (\n    sum by (init_container) (\n      platform_pod_init_container_seconds_sum{init_container!~\"linkerd.*|istio-proxy|wait-for-object-storage-.*-binding\"}\n    )\n    /\n    sum by (init_container) (\n      platform_pod_init_container_seconds_count{init_container!~\"linkerd.*|istio-proxy|wait-for-object-storage-.*-binding\"}\n    )\n    or\n    label_replace(\n      sum(platform_pod_init_container_seconds_sum{init_container=~\"wait-for-object-storage-.*-binding\"})\n      /\n      sum(platform_pod_init_container_seconds_count{init_container=~\"wait-for-object-storage-.*-binding\"}),\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"init_container\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n)",
+              "legendFormat": "{{init_container}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Binding Wait \u2014 mean per Stage",
+          "type": "bargauge"
+        },
+        {
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 30
+                  },
+                  {
+                    "color": "red",
+                    "value": 120
+                  }
+                ]
+              },
+              "unit": "s"
+            }
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 8,
+            "x": 16,
+            "y": 19
+          },
+          "id": 8,
+          "options": {
+            "displayMode": "lcd",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "overflow": "ellipsis",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "maxVizHeight": 300,
+            "minVizHeight": 16,
+            "minVizWidth": 8,
+            "namePlacement": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "sizing": "auto",
+            "text": {},
+            "valueMapping": [],
+            "valueMode": "color"
+          },
+          "pluginVersion": "13.1.0",
+          "targets": [
+            {
+              "expr": "sum(platform_managed_time_to_ready_seconds_sum{kind!~\"NATS.*\"}) by (kind)\n/\nsum(platform_managed_time_to_ready_seconds_count{kind!~\"NATS.*\"}) by (kind)",
+              "legendFormat": "{{kind}}",
+              "refId": "A"
+            }
+          ],
+          "title": "AWS Provisioning \u2014 mean by Type",
+          "type": "bargauge"
+        },
+        {
+          "description": "Each series is one rollout event \u2014 the line appears when that XR or pod first becomes ready, and its height is how long it took. Solid lines = total XR TTR; dashed = pod ready (init containers done); dotted = per-stage binding wait. Zoom into a provisioning window to see individual rollout shapes.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "seconds to ready",
+                "drawStyle": "line",
+                "fillOpacity": 4,
+                "lineInterpolation": "stepAfter",
+                "lineWidth": 2,
+                "showPoints": "never",
+                "thresholdsStyle": {
+                  "mode": "line"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "transparent",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 90
+                  }
+                ]
+              },
+              "unit": "s"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byFrameRefID",
+                  "options": "B"
+                },
+                "properties": [
+                  {
+                    "id": "custom.lineWidth",
+                    "value": 1
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "dash": [
+                        8,
+                        4
+                      ],
+                      "fill": "dash"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byFrameRefID",
+                  "options": "C"
+                },
+                "properties": [
+                  {
+                    "id": "custom.lineWidth",
+                    "value": 1
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "dash": [
+                        2,
+                        4
+                      ],
+                      "fill": "dot"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 24,
+            "x": 0,
+            "y": 25
+          },
+          "id": 12,
+          "options": {
+            "annotations": {
+              "clustering": -1,
+              "multiLane": false
+            },
+            "legend": {
+              "calcs": [],
+              "displayMode": "table",
+              "enableFacetedFilter": false,
+              "overflow": "ellipsis",
+              "placement": "right",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "expr": "platform_xr_time_to_ready_seconds_instance{kind!~\"X?Topic|X?Subscription\"} < 3600",
+              "legendFormat": "{{kind}} \u00b7 {{name}}",
+              "refId": "A"
+            },
+            {
+              "expr": "platform_pod_time_to_ready_seconds_instance{exported_namespace!=\"platform-exporter\"} < 3600",
+              "legendFormat": "pod \u00b7 {{exported_namespace}}",
+              "refId": "B"
+            },
+            {
+              "expr": "label_replace(\n  (\n    platform_pod_init_container_seconds_instance{exported_namespace!=\"platform-exporter\",init_container!~\"linkerd.*|istio-proxy|wait-for-object-storage-.*-binding\"}\n    or\n    label_replace(\n      platform_pod_init_container_seconds_instance{exported_namespace!=\"platform-exporter\",init_container=~\"wait-for-object-storage-.*-binding\"},\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"stage\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n) < 3600",
+              "legendFormat": "{{exported_namespace}} \u00b7 {{stage}}",
+              "refId": "C"
+            }
+          ],
+          "title": "Rollout History \u2014 Time-to-Ready per Instance & Stage",
+          "type": "timeseries"
+        },
+        {
+          "description": "One row per XR. Ready status and provisioning time for all composite resources. TTR is set once when the XR first becomes ready and is not updated for subsequent reconciles.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "left",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "footer": {
+                  "reducers": []
+                },
+                "inspect": false
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ready"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 100
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "0": {
+                            "color": "red",
+                            "index": 1,
+                            "text": "Not Ready"
+                          },
+                          "1": {
+                            "color": "green",
+                            "index": 0,
+                            "text": "Ready"
+                          }
+                        },
+                        "type": "value"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "applyToRow": false,
+                      "type": "color-text"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ttr"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 130
+                  },
+                  {
+                    "id": "unit",
+                    "value": "s"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 30
+                        },
+                        {
+                          "color": "red",
+                          "value": 90
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "gradient",
+                      "type": "color-background"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Time"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "job"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "instance"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 31
+          },
+          "id": 4,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true
+          },
+          "targets": [
+            {
+              "expr": "platform_xr_ready",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "expr": "platform_xr_time_to_ready_seconds_instance",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "B"
+            }
+          ],
+          "title": "XR Status & Provisioning Time",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "exclude": {
+                  "names": [
+                    "Time",
+                    "__name__",
+                    "namespace",
+                    "container",
+                    "endpoint",
+                    "pod",
+                    "job",
+                    "instance"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "renameByName": {
+                  "Value": "ready",
+                  "Value #A": "ready",
+                  "Value #B": "ttr"
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": [
+                  {
+                    "desc": false,
+                    "displayName": "name"
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "description": "Per-pod init container wait time broken down by stage. Each row is one stage for one pod. Zoom the time range to recent rollout windows for meaningful data.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "left",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "footer": {
+                  "reducers": []
+                },
+                "inspect": false
+              },
+              "decimals": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 15
+                  },
+                  {
+                    "color": "red",
+                    "value": 60
+                  }
+                ]
+              },
+              "unit": "s"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "wait_s"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 110
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "gradient",
+                      "type": "color-background"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Time"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "job"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "instance"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "init_container"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 14,
+            "x": 0,
+            "y": 41
+          },
+          "id": 13,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true
+          },
+          "targets": [
+            {
+              "expr": "label_replace(\n  (\n    platform_pod_init_container_seconds_instance{init_container!~\"linkerd.*|istio-proxy|wait-for-object-storage-.*-binding\"}\n    or\n    label_replace(\n      platform_pod_init_container_seconds_instance{init_container=~\"wait-for-object-storage-.*-binding\"},\n      \"init_container\", \"wait-for-object-storage-binding\",\n      \"init_container\", \".*\"\n    )\n  ),\n  \"stage\", \"$1\",\n  \"init_container\", \"wait-for-(.*)-binding\"\n)",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Pod Binding Wait \u2014 per Stage",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "exported_namespace",
+                    "exported_pod",
+                    "stage",
+                    "Value"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "renameByName": {
+                  "exported_namespace": "namespace",
+                  "exported_pod": "pod",
+                  "Value": "wait_s"
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": [
+                  {
+                    "desc": false,
+                    "displayName": "namespace"
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "description": "Active bindings between Api instances and their platform dependencies (sql, nosql, topic, subscription, object-storage).",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "left",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "footer": {
+                  "reducers": []
+                },
+                "inspect": false
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Time"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "job"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "instance"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "consumer_kind"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom.viz",
+                    "value": true
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 10,
+            "x": 14,
+            "y": 41
+          },
+          "id": 5,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true
+          },
+          "targets": [
+            {
+              "expr": "platform_xr_binding",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Api Bindings",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "consumer_name",
+                    "binding_type",
+                    "provider_name"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": [
+                  {
+                    "desc": false,
+                    "displayName": "consumer_name"
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "description": "GitHub pushes from homelab-workspaces that ArgoCD accepted. A launchpad change shows here within seconds. Rejected requests are left out, because the reachability probe sends one every 5m.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "short",
+              "decimals": 0,
+              "custom": {
+                "drawStyle": "bars",
+                "fillOpacity": 60,
+                "lineWidth": 1,
+                "stacking": {
+                  "mode": "normal"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 24,
+            "x": 0,
+            "y": 50
+          },
+          "id": 14,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "targets": [
+            {
+              "editorMode": "code",
+              "refId": "A",
+              "interval": "5m",
+              "expr": "sum by (handler) (label_replace(increase(traefik_router_requests_total{router=~\"httproute-argocd-argocd-(applicationset-)?webhook-gw-.*\",code=~\"2..\"}[5m]), \"handler\", \"$1\", \"router\", \"httproute-argocd-argocd-(applicationset-webhook|webhook)-gw-.*\"))",
+              "legendFormat": "{{handler}}"
+            }
+          ],
+          "title": "ArgoCD Webhook Deliveries",
+          "type": "timeseries"
+        }
+      ],
+      "preload": false,
+      "refresh": "30s",
+      "schemaVersion": 42,
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "timepicker": {
+        "refresh_intervals": [
+          "5s",
+          "10s",
+          "30s",
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ]
+      },
+      "timezone": "browser",
+      "title": "Platform",
+      "uid": "homelab-platform"
+    }
+

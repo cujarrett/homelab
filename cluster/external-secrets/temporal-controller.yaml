@@ -1,0 +1,12 @@
+# The platform's Temporal Cloud key, for creating public-cloud namespaces.
+# It belongs to the homelab-platform service account in Temporal Cloud, with the Developer role.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: temporal-cloud-api-key
+  namespace: temporal-controller
+spec:
+  secretStoreRef: {kind: ClusterSecretStore, name: aws-parameter-store}
+  data:
+    - secretKey: api-key
+      remoteRef: {key: /homelab/temporal-cloud/api-key}

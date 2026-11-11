@@ -1,0 +1,22 @@
+apiVersion: platform.local.lab/v1alpha1
+kind: WorkflowSpace
+metadata:
+  name: e2e-workflows
+  namespace: platform-e2e-workflow
+spec:
+  parameters:
+    retention: 24h
+    description: Platform e2e
+---
+apiVersion: platform.local.lab/v1alpha1
+kind: Api
+metadata:
+  name: e2e-worker
+  namespace: platform-e2e-workflow
+spec:
+  parameters:
+    image: ghcr.io/cujarrett/demo-api:latest
+    port: 8080
+    metricsPort: 8080
+    workflowSpaceRef:
+      name: e2e-workflows

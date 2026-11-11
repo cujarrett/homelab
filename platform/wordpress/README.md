@@ -1,0 +1,57 @@
+# Wordpress
+
+Crossplane composition that deploys a self-contained WordPress site with MariaDB.
+
+## What it provisions
+- **MariaDB PVC** - persistent storage for the database
+- **MariaDB StatefulSet + Service** - database backend; credentials derived from the XR UID (no secrets in Git)
+- **WordPress PVC** - persistent storage for `wp-content` (uploads, themes, plugins)
+- **WordPress Deployment + Service** - Apache/PHP WordPress container; seeds `wp-content` from the image on first run
+- **Route** - HTTPS on `host`, with rate limits on login and blocks on `xmlrpc.php` and direct PHP paths
+- **NetworkPolicies** - WordPress reaches its database, DNS and the public internet only; the database is reachable from its own WordPress pod only
+- **Encryption** - traffic between WordPress and its database is encrypted, and the database refuses a caller with no workload identity
+
+The namespace is owned by the tenant - created by `namespace.yaml` in the tenant directory.
+
+## Editing theme and plugin code
+
+`DISALLOW_FILE_EDIT` is set, so the built-in code editor is gone from the admin UI. Plugin and
+theme installs and updates are unaffected and still work normally from the UI.
+
+## Parameters
+
+| Parameter | Required | Default | Description |
+|---|---|---|---|
+| `host` | yes | - | Hostname clients call. Must match WordPress `siteurl`/`home` in the DB - changing requires a DB search-replace. |
+| `size` | no | `sm` | Resource tier for WordPress and MariaDB containers. See table below. |
+| `storageSize` | no | `10Gi` | `wp-content` PVC size (uploads, themes, plugins) |
+| `dbStorageSize` | no | `5Gi` | MariaDB PVC size |
+| `replicas` | no | `1` | WordPress pod replicas |
+| `dataRetention` | no | `retain` | `retain` - keep PV on XR delete (uses `longhorn-retain` StorageClass). `delete` - wipe PV on XR delete (uses `longhorn-delete` StorageClass). |
+
+### Size tiers
+
+| Size | WP CPU request/limit | WP Memory request/limit | DB CPU request/limit | DB Memory request/limit |
+|---|---|---|---|---|
+| `sm` | 50m / 1000m | 768Mi / 768Mi | 50m / 500m | 512Mi / 512Mi |
+| `md` | 100m / 1500m | 1280Mi / 1280Mi | 50m / 500m | 512Mi / 512Mi |
+| `lg` | 150m / 2000m | 2Gi / 2Gi | 100m / 1000m | 1Gi / 1Gi |
+
+## Example instance
+
+```yaml
+apiVersion: platform.local.lab/v1alpha1
+kind: Wordpress
+metadata:
+  name: foo
+  namespace: foo
+spec:
+  parameters:
+    host: foo.example.com
+    storageSize: "10Gi"
+    dbStorageSize: "1Gi"
+    size: sm
+    dataRetention: retain
+```
+
+Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).

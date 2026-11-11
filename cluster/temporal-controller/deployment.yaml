@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal-controller
+  namespace: temporal-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: temporal-controller
+  template:
+    metadata:
+      labels:
+        app: temporal-controller
+    spec:
+      serviceAccountName: temporal-controller
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: manager
+          # temporal-controller's CI replaces this with each main build's sha tag.
+          image: ghcr.io/cujarrett/temporal-controller:sha-0ed75f5d0c7f36aa5444702b89fbae75b07e8160
+          args:
+            - --temporal-address=temporal-frontend.temporal.svc.cluster.local:7233
+            - --health-probe-bind-address=:8081
+            - --leader-elect
+            # Sign in to Temporal with an Entra token traded for this pod's SPIFFE SVID.
+            # The client ID is temporal-controller-entra's, from cluster/temporal-controller/entra.yaml.
+            - --entra-tenant-id=7f4c1900-e63c-456b-ab5f-898189b24ec4
+            - --entra-client-id=3b4815e2-c1d2-4f4e-af2d-2b6c0f09015b
+            - --temporal-token-scope=api://7f4c1900-e63c-456b-ab5f-898189b24ec4/platform-temporal/.default
+            # Creates public-cloud namespaces with the platform's Temporal Cloud key.
+            # Revoking that key in Temporal Cloud stops every create. See docs/runbooks/kill-switches.md.
+            - --temporal-cloud-api-key-file=/var/run/secrets/temporal-cloud/api-key
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            # The SPIRE agent's socket, for the JWT-SVID the controller trades for an Entra token.
+            - name: spiffe
+              mountPath: /var/run/secrets/spiffe.io
+              readOnly: true
+            - name: temporal-cloud
+              mountPath: /var/run/secrets/temporal-cloud
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+        - name: spiffe
+          csi:
+            driver: csi.spiffe.io
+            readOnly: true
+        # The controller reads the key on every call, so a rotated key needs no restart.
+        - name: temporal-cloud
+          secret:
+            secretName: temporal-cloud-api-key

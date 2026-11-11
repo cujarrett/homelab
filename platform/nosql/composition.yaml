@@ -1,0 +1,64 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: nosql
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: NoSql
+  mode: Pipeline
+  pipeline:
+    - step: render-aws-resources
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $ns := $xr.metadata.namespace }}
+            {{- /* Defaults mirror the XRD - crossplane render sees the raw XR, with no */ -}}
+            {{- /* API server defaulting applied.                                        */ -}}
+            {{- $partitionKey := $xr.spec.parameters.partitionKey | default "id" }}
+            {{- $partitionKeyType := $xr.spec.parameters.partitionKeyType | default "S" }}
+            {{- $dataRetention := $xr.spec.parameters.dataRetention | default "retain" }}
+            {{- /* Namespace in the name so the Api policy, which builds this from its own */ -}}
+            {{- /* namespace, can only reach tables in that namespace.                   */ -}}
+            {{- $tableName := printf "platform-%s-%s" $ns $name }}
+            {{- $managementPolicies := list "Observe" "Create" "Update" "LateInitialize" }}
+            {{- if eq $dataRetention "delete" }}
+            {{- $managementPolicies = list "*" }}
+            {{- end }}
+            {{- $ready := "False" }}
+            {{- with index (.observed.resources | default dict) "table" }}
+            {{- range (.resource.status.conditions | default list) }}
+            {{- if and (eq .type "Ready") (eq .status "True") }}{{- $ready = "True" }}{{- end }}
+            {{- end }}
+            {{- end }}
+            ---
+            apiVersion: dynamodb.aws.m.upbound.io/v1beta1
+            kind: Table
+            metadata:
+              name: {{ $name }}
+              annotations:
+                {{- /* Deterministic, so the Api inline policy can scope to the exact */}}
+                {{- /* table ARN without wildcards.                                   */}}
+                crossplane.io/external-name: {{ $tableName }}
+                gotemplating.fn.crossplane.io/composition-resource-name: table
+                gotemplating.fn.crossplane.io/ready: {{ $ready | quote }}
+            spec:
+              managementPolicies: {{ $managementPolicies | toJson }}
+              forProvider:
+                region: us-east-1
+                billingMode: PAY_PER_REQUEST
+                hashKey: {{ $partitionKey }}
+                attribute:
+                  - name: {{ $partitionKey }}
+                    type: {{ $partitionKeyType }}
+                tags:
+                  Table: {{ $tableName }}
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}

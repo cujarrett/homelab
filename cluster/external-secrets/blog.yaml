@@ -1,0 +1,23 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: ghost-smtp
+  namespace: blog
+spec:
+  secretStoreRef: {kind: ClusterSecretStore, name: aws-parameter-store}
+  data:
+    - secretKey: smtp-password
+      remoteRef: {key: /homelab/blog/smtp-password}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: ghost-backup-creds
+  namespace: blog
+spec:
+  secretStoreRef: {kind: ClusterSecretStore, name: aws-parameter-store}
+  data:
+    - secretKey: content-api-key
+      remoteRef: {key: /homelab/blog/content-api-key}
+    - secretKey: github-token
+      remoteRef: {key: /homelab/blog/backup-github-token}

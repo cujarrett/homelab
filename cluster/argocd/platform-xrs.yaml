@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-definitions
+  namespace: argocd
+spec:
+  revisionHistoryLimit: 5
+  project: platform
+  source:
+    repoURL: https://github.com/cujarrett/homelab.git
+    targetRevision: main
+    path: platform
+    directory:
+      recurse: true
+      # test/** holds the platform test scripts and the e2e manifests they apply - never applied by ArgoCD
+      exclude: "test/**"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

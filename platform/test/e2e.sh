@@ -1,0 +1,661 @@
+#!/usr/bin/env bash
+#
+# Platform end-to-end test.
+#
+# Inflates an Api with every platform integration - private-cloud (Postgres, Redis,
+# NATS) and public-cloud (RDS, ElastiCache, DynamoDB, S3) - verifies each works from
+# inside the pod, tears everything down, and verifies nothing was left behind.
+#
+# Usage:
+#   ./platform/test/e2e.sh                 # full run (~15-25 min, costs a few cents of AWS)
+#   ./platform/test/e2e.sh --private-only  # in-cluster only (~5 min, no AWS)
+#   ./platform/test/e2e.sh --keep          # skip teardown, leave resources for debugging
+#
+# Ends by running e2e-workflow.sh, so the full suite covers WorkflowSpace too.
+#
+# XRs are applied directly with kubectl (never via ArgoCD), so GitOps state stays
+# untouched. RDS/ElastiCache are VPC-internal and unreachable from the cluster by
+# design, so those check provisioning plus the SPIFFE -> OIDC -> STS chain only ("identity-only").
+
+set -uo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NS="platform-e2e"
+REGION="us-east-1"
+PRIVATE_ONLY=false
+KEEP=false
+ABORT=false
+
+for arg in "$@"; do
+  case "$arg" in
+    --private-only) PRIVATE_ONLY=true ;;
+    --keep) KEEP=true ;;
+    --abort) ABORT=true ;;
+    *) echo "unknown flag: $arg"; exit 2 ;;
+  esac
+done
+
+# Release finalizers on managed resources whose AWS object is already gone.
+#
+# A namespace deleted while its managed resources are still deleting wedges, because
+# the provider cannot reconcile in a terminating namespace. Their finalizers then hold
+# the namespace open forever, even once AWS has nothing left.
+#
+# The rule: never release a finalizer without asking AWS whether the object is really
+# gone. One dropped on a live resource orphans it, and an orphan bills silently.
+unlatch_namespace() {
+  local ns=$1 region=$2 r ext live unknown released=0
+
+  for r in $(kubectl get managed -n "$ns" -o name 2>/dev/null); do
+    ext=$(kubectl get "$r" -n "$ns" -o jsonpath='{.metadata.annotations.crossplane\.io/external-name}' 2>/dev/null)
+    [ -n "$ext" ] || continue
+
+    live=""; unknown=0
+    case "$r" in
+      usergroup.elasticache.*)        live=$(aws elasticache describe-user-groups --user-group-id "$ext" --region "$region" --query 'UserGroups[].Status' --output text 2>/dev/null) ;;
+      user.elasticache.*)             live=$(aws elasticache describe-users --user-id "$ext" --region "$region" --query 'Users[].Status' --output text 2>/dev/null) ;;
+      replicationgroup.elasticache.*) live=$(aws elasticache describe-replication-groups --replication-group-id "$ext" --region "$region" --query 'ReplicationGroups[].Status' --output text 2>/dev/null) ;;
+      instance.rds.*)                 live=$(aws rds describe-db-instances --db-instance-identifier "$ext" --region "$region" --query 'DBInstances[].DBInstanceStatus' --output text 2>/dev/null) ;;
+      table.dynamodb.*)               live=$(aws dynamodb describe-table --table-name "$ext" --region "$region" --query 'Table.TableStatus' --output text 2>/dev/null) ;;
+      bucket.s3.*)                    live=$(aws s3api head-bucket --bucket "$ext" --region "$region" 2>/dev/null && echo present) ;;
+      secret.secretsmanager.*|secretversion.secretsmanager.*) live=$(aws secretsmanager describe-secret --secret-id "$ext" --region "$region" --query 'Name' --output text 2>/dev/null) ;;
+      role.iam.*)                     live=$(aws iam get-role --role-name "$ext" --query 'Role.RoleName' --output text 2>/dev/null) ;;
+      *)                              unknown=1 ;;
+    esac
+
+    # An unrecognised kind is left alone on purpose. Guessing here is how a live
+    # database gets orphaned, and a stuck namespace is the cheaper failure.
+    if [ "$unknown" -eq 1 ]; then
+      echo "   unlatch: no AWS lookup for ${r%%/*}, leaving its finalizer" >&2
+      continue
+    fi
+    if [ -n "$live" ]; then
+      echo "   unlatch: $ext still in AWS ($live), keeping its finalizer" >&2
+      continue
+    fi
+
+    if kubectl patch "$r" -n "$ns" --type=merge -p '{"metadata":{"finalizers":[]}}' >/dev/null 2>&1; then
+      echo "   unlatch: released $r (confirmed gone from AWS)" >&2
+      released=$((released + 1))
+    fi
+  done
+
+  return $(( released > 0 ? 0 : 1 ))
+}
+
+# --abort: stop a run that died mid-flight and clean up what it left. The teardown
+# below only runs when the script reaches it, so a killed run leaves AWS billing.
+if $ABORT; then
+  pkill -f 'test/e2e.sh' 2>/dev/null && echo "killed the running e2e" && sleep 2
+  kubectl get ns "$NS" >/dev/null 2>&1 || { echo "namespace already gone"; exit 0; }
+  kubectl delete apis.platform.local.lab --all -n "$NS" --ignore-not-found --timeout=60s >/dev/null 2>&1
+  kubectl delete managed -n "$NS" --all --ignore-not-found --timeout=120s >/dev/null 2>&1
+  kubectl delete ns "$NS" --wait=false >/dev/null 2>&1
+  for _ in $(seq 1 60); do
+    kubectl get ns "$NS" >/dev/null 2>&1 || break
+    sleep 10
+  done
+  kubectl get ns "$NS" >/dev/null 2>&1 && unlatch_namespace "$NS" "$REGION"
+  for _ in $(seq 1 24); do
+    kubectl get ns "$NS" >/dev/null 2>&1 || break
+    sleep 5
+  done
+  if kubectl get ns "$NS" >/dev/null 2>&1; then
+    echo "namespace still present - inspect before another run"; exit 1
+  fi
+  echo "aborted clean"; exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# Result collection
+# ---------------------------------------------------------------------------
+REPORT_TITLE="E2E REPORT"
+# shellcheck source=lib.sh
+source "$SCRIPT_DIR/lib.sh"
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+wait_ready() { # kind name timeout_seconds -> 0 if Ready=True
+  local kind=$1 name=$2 timeout=$3 start
+  start=$(date +%s)
+  while true; do
+    local status
+    status=$(kubectl get "$kind" "$name" -n "$NS" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null)
+    [[ "$status" == "True" ]] && return 0
+    if (( $(date +%s) - start > timeout )); then
+      echo "  --- $kind/$name conditions on timeout:"
+      kubectl get "$kind" "$name" -n "$NS" -o jsonpath='{.status.conditions}' 2>/dev/null | python3 -m json.tool 2>/dev/null || true
+      return 1
+    fi
+    sleep 10
+  done
+}
+
+wait_gone() { # kind name timeout_seconds -> 0 if the object no longer exists
+  local kind=$1 name=$2 timeout=$3 start
+  start=$(date +%s)
+  while kubectl get "$kind" "$name" -n "$NS" >/dev/null 2>&1; do
+    (( $(date +%s) - start > timeout )) && return 1
+    sleep 10
+  done
+  return 0
+}
+
+wait_secret() { # name timeout_seconds -> 0 once the secret exists
+  local name=$1 timeout=$2 start
+  start=$(date +%s)
+  while ! kubectl get secret "$name" -n "$NS" >/dev/null 2>&1; do
+    (( $(date +%s) - start > timeout )) && return 1
+    sleep 10
+  done
+  return 0
+}
+
+secret_keys() { # secret_name -> space-separated sorted key list ("" if absent)
+  kubectl get secret "$1" -n "$NS" -o jsonpath='{.data}' 2>/dev/null \
+    | python3 -c 'import json,sys; print(" ".join(sorted(json.load(sys.stdin))))' 2>/dev/null
+}
+
+check_secret() { # check_name secret must_have_key must_not_have_key
+  local check=$1 secret=$2 want=$3 forbid=$4 keys
+  keys=$(secret_keys "$secret")
+  if [[ -z "$keys" ]]; then
+    record contract "$check" FAIL "secret $secret missing"
+  elif [[ "$keys" != *"$want"* ]]; then
+    record contract "$check" FAIL "key '$want' missing (has: $keys)"
+  elif [[ -n "$forbid" && "$keys" == *"$forbid"* ]]; then
+    record contract "$check" FAIL "key '$forbid' must not be present"
+  else
+    record contract "$check" PASS ""
+  fi
+}
+
+# probe_statuses <local_port> -> lines of "name|status|detail" from the app's GET /
+probe_statuses() {
+  curl -s --max-time 5 "http://127.0.0.1:$1/" | python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+for i in d.get("integrations", []):
+    print("|".join([i["name"], i["status"], i.get("detail", "")]))
+'
+}
+
+# check_probes <api> <local_port> <expected names, comma-separated>
+# Retries until every expected integration reports ok, or the deadline passes.
+# Restarts the port-forward if it dies (kubectl drops it on transient errors).
+check_probes() {
+  local api=$1 port=$2 expected=$3 deadline=$(( $(date +%s) + 360 )) statuses=""
+  local pf_log pf_pid=""
+  pf_log=$(mktemp)
+
+  while (( $(date +%s) < deadline )); do
+    if [[ -z "$pf_pid" ]] || ! kill -0 "$pf_pid" 2>/dev/null; then
+      kubectl port-forward -n "$NS" "svc/$api" "$port:80" --address 127.0.0.1 >>"$pf_log" 2>&1 &
+      pf_pid=$!
+      sleep 3
+    fi
+    statuses=$(probe_statuses "$port") || statuses=""
+    local all_ok=true
+    IFS=',' read -ra names <<< "$expected"
+    for n in "${names[@]}"; do
+      local line
+      line=$(grep "^$n|" <<< "$statuses" | head -1)
+      [[ "$line" == "$n|ok|"* ]] || all_ok=false
+    done
+    $all_ok && break
+    sleep 10
+  done
+  kill "$pf_pid" 2>/dev/null
+  if [[ -z "$statuses" ]]; then
+    echo "  --- port-forward log for $api:"
+    tail -5 "$pf_log"
+  fi
+  rm -f "$pf_log"
+
+  IFS=',' read -ra names <<< "$expected"
+  for n in "${names[@]}"; do
+    local line status detail
+    line=$(grep "^$n|" <<< "$statuses" | head -1)
+    status=$(cut -d'|' -f2 <<< "$line")
+    detail=$(cut -d'|' -f3 <<< "$line")
+    if [[ "$status" == "ok" && "$detail" == *"VPC-internal"* ]]; then
+      record data-plane "$api: $n" "PASS (identity-only)" "$detail"
+    elif [[ "$status" == "ok" ]]; then
+      record data-plane "$api: $n" PASS "$detail"
+    else
+      record data-plane "$api: $n" FAIL "status=${status:-missing} $detail"
+    fi
+  done
+}
+
+# PASS when the command exits non-zero (resource not found / grep found
+# nothing). Every command below is written so that "exists" = exit 0.
+aws_gone() { # check_name command...
+  local check=$1; shift
+  local out
+  if out=$("$@" 2>&1); then
+    record teardown-verify "$check" FAIL "orphan: ${out:-exists}"
+  else
+    record teardown-verify "$check" PASS ""
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Phase 0 - preflight
+# ---------------------------------------------------------------------------
+echo "== Phase 0: preflight"
+
+kubectl get nodes >/dev/null 2>&1 \
+  && record preflight "kubectl reachable" PASS "" \
+  || { record preflight "kubectl reachable" FAIL "cannot reach cluster"; report; exit 1; }
+
+for check in "crossplane:crossplane-system:app=crossplane" "nats:nats:app.kubernetes.io/name=nats" "spire-agent:spire-server:app.kubernetes.io/name=agent"; do
+  IFS=':' read -r label ns selector <<< "$check"
+  if [[ -n "$(kubectl get pods -n "$ns" -l "$selector" --field-selector=status.phase=Running --no-headers 2>/dev/null)" ]]; then
+    record preflight "$label running" PASS ""
+  else
+    record preflight "$label running" FAIL "no Running pods matching $selector in $ns"
+  fi
+done
+
+if kubectl get namespace "$NS" >/dev/null 2>&1; then
+  record preflight "namespace free" FAIL "$NS already exists - previous run not cleaned up?"
+  report; exit 1
+fi
+record preflight "namespace free" PASS ""
+
+# provider-aws-rds and provider-aws-elasticache idle at replicas 0 between runs, since
+# only this suite creates a public Sql or Cache. Wake them for the run and let the trap
+# put them back. ArgoCD ignores this field so selfHeal will not undo it mid-run.
+scale_e2e_providers() {
+  kubectl patch deploymentruntimeconfig worker-nodes-idle --type=merge \
+    -p "{\"spec\":{\"deploymentTemplate\":{\"spec\":{\"replicas\":$1}}}}" >/dev/null 2>&1
+}
+
+if ! $PRIVATE_ONLY; then
+  trap 'scale_e2e_providers 0' EXIT
+  scale_e2e_providers 1
+  if kubectl wait --for=condition=Healthy provider.pkg.crossplane.io/provider-aws-rds \
+       provider.pkg.crossplane.io/provider-aws-elasticache --timeout=180s >/dev/null 2>&1; then
+    record preflight "rds/elasticache providers awake" PASS ""
+  else
+    record preflight "rds/elasticache providers awake" FAIL "did not go Healthy in 180s"
+    report; exit 1
+  fi
+fi
+
+if ! $PRIVATE_ONLY; then
+  if aws sts get-caller-identity --region "$REGION" >/dev/null 2>&1; then
+    record preflight "aws cli credentials" PASS ""
+  else
+    record preflight "aws cli credentials" FAIL "needed for teardown verification"
+    report; exit 1
+  fi
+
+  # The previous run's ElastiCache replication group deletes asynchronously for
+  # ~5-10 min after the run ends and the new run reuses the same id - wait it
+  # out so back-to-back runs don't stall on the create.
+  # Unique per run, so a value left behind by an earlier run cannot make the
+  # delivery check pass without the sidecar having fetched anything.
+  SECRET_SENTINEL="e2e-$(date +%s)"
+
+  # Any secret with this name blocks CreateSecret - scheduled for deletion keeps the
+  # name for the whole recovery window, and a live one from --keep collides outright.
+  # Left alone either fails seven minutes into inflate, so force the name free here.
+  if aws secretsmanager describe-secret --secret-id "platform/$NS/e2e-secret" \
+       --region "$REGION" >/dev/null 2>&1; then
+    aws secretsmanager delete-secret --secret-id "platform/$NS/e2e-secret" --region "$REGION" \
+      --force-delete-without-recovery >/dev/null 2>&1
+    record preflight "stale secret purged" PASS "a previous run left the name taken"
+  fi
+
+  RG_RAW="crossplane-$NS-e2e-api-public-cache"
+  RG_ID="$RG_RAW"
+  if (( ${#RG_RAW} > 40 )); then
+    RG_ID="xp-$(printf '%s' "$RG_RAW" | shasum -a 256 | cut -c1-37)"
+  fi
+  RG_WAIT_DEADLINE=$(( $(date +%s) + 900 ))
+  while true; do
+    RG_STATUS=$(aws elasticache describe-replication-groups --replication-group-id "$RG_ID" --region "$REGION" \
+      --query 'ReplicationGroups[].Status' --output text 2>/dev/null)
+    if [[ -z "$RG_STATUS" ]]; then
+      record preflight "elasticache id free" PASS ""
+      break
+    elif [[ "$RG_STATUS" == "deleting" ]]; then
+      if (( $(date +%s) > RG_WAIT_DEADLINE )); then
+        record preflight "elasticache id free" FAIL "still deleting after 900s"
+        break
+      fi
+      echo "  ... waiting for previous replication group to finish deleting"
+      sleep 30
+    else
+      record preflight "elasticache id free" FAIL "exists with status=$RG_STATUS - previous run not cleaned up?"
+      break
+    fi
+  done
+fi
+
+(( FAILURES > 0 )) && { report; exit 1; }
+
+# ---------------------------------------------------------------------------
+# Phase 1 - inflate
+# ---------------------------------------------------------------------------
+echo "== Phase 1: inflate (public-cloud resources take ~10-14 min)"
+# Labelled like a real workspace, so the run covers the mesh and admission policies too.
+kubectl create namespace "$NS" >/dev/null
+kubectl label namespace "$NS" platform.local.lab/workloads=true istio-injection=enabled >/dev/null
+
+kubectl apply -f "$SCRIPT_DIR/manifests/private.yaml" >/dev/null
+$PRIVATE_ONLY || kubectl apply -f "$SCRIPT_DIR/manifests/public.yaml" >/dev/null
+
+INFLATE_OK=true
+# Quick resources first; the long AWS ones provision concurrently in the
+# background, so later waits mostly return immediately.
+for spec in "topic:e2e-topic:180" "subscription:e2e-sub:180" "sql:e2e-sql-private:300"; do
+  IFS=':' read -r kind name timeout <<< "$spec"
+  if wait_ready "$kind" "$name" "$timeout"; then
+    record inflate "$kind/$name Ready" PASS ""
+  else
+    record inflate "$kind/$name Ready" FAIL "timeout ${timeout}s"; INFLATE_OK=false
+  fi
+done
+
+if ! $PRIVATE_ONLY; then
+  for spec in "nosql:e2e-nosql:180" "objectstorage:e2e-assets:180" "managedsecret:e2e-secret:420" "sql:e2e-sql-public:960"; do
+    IFS=':' read -r kind name timeout <<< "$spec"
+    if wait_ready "$kind" "$name" "$timeout"; then
+      record inflate "$kind/$name Ready" PASS ""
+    else
+      record inflate "$kind/$name Ready" FAIL "timeout ${timeout}s"; INFLATE_OK=false
+    fi
+  done
+fi
+
+# Apis last - their readiness gates on bindings (and the owned Cache).
+if wait_ready apis.platform.local.lab e2e-api-private 600; then
+  record inflate "api/e2e-api-private Ready" PASS ""
+else
+  record inflate "api/e2e-api-private Ready" FAIL "timeout 600s"; INFLATE_OK=false
+fi
+if kubectl wait deployment e2e-api-private -n "$NS" --for=condition=Available --timeout=300s >/dev/null 2>&1; then
+  record inflate "private pod Available" PASS ""
+else
+  record inflate "private pod Available" FAIL "timeout 300s"; INFLATE_OK=false
+fi
+
+if ! $PRIVATE_ONLY; then
+  if wait_ready apis.platform.local.lab e2e-api-public 960; then
+    record inflate "api/e2e-api-public Ready" PASS ""
+  else
+    record inflate "api/e2e-api-public Ready" FAIL "timeout 960s"; INFLATE_OK=false
+  fi
+  # The cache binding secret is written only after the ElastiCache replication
+  # group is ready (~12 min) - the Api XR reports Ready before that, and the
+  # pod stays Pending until this secret exists to mount.
+  if wait_secret e2e-api-public-cache 960; then
+    record inflate "cache binding secret written" PASS ""
+  else
+    record inflate "cache binding secret written" FAIL "timeout 960s"; INFLATE_OK=false
+  fi
+  if kubectl wait deployment e2e-api-public -n "$NS" --for=condition=Available --timeout=300s >/dev/null 2>&1; then
+    record inflate "public pod Available" PASS ""
+  else
+    record inflate "public pod Available" FAIL "timeout 300s"; INFLATE_OK=false
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# Phase 2 - contract checks (binding secrets, deployment shape, RBAC)
+# ---------------------------------------------------------------------------
+if $INFLATE_OK; then
+  echo "== Phase 2: contract checks"
+
+  check_secret "sql private binding has password, no ARNs" e2e-sql-private password role-arn
+  check_secret "cache private binding" e2e-api-private-cache host role-arn
+
+  PRIV_DEPLOY=$(kubectl get deployment e2e-api-private -n "$NS" -o json 2>/dev/null)
+  if grep -q '"name": "NATS_STREAM"' <<< "$PRIV_DEPLOY" && grep -q '"name": "NATS_CONSUMER"' <<< "$PRIV_DEPLOY"; then
+    record contract "private deploy has NATS env vars" PASS ""
+  else
+    record contract "private deploy has NATS env vars" FAIL "NATS_STREAM/NATS_CONSUMER missing"
+  fi
+  if grep -q 'workload-identity-sidecar' <<< "$PRIV_DEPLOY"; then
+    record contract "private deploy has no AWS sidecar" FAIL "sidecar present without AWS bindings"
+  else
+    record contract "private deploy has no AWS sidecar" PASS ""
+  fi
+
+  if ! $PRIVATE_ONLY; then
+    check_secret "sql public binding has role-arn, no password" e2e-api-public-sql role-arn password
+    check_secret "nosql binding" e2e-api-public-nosql table-name ""
+    check_secret "object-storage binding" e2e-api-public-e2e-assets bucket ""
+    check_secret "cache public binding has role-arn" e2e-api-public-cache role-arn ""
+    check_secret "managed secret binding has secret-id, no value" e2e-api-public-secret-e2e-secret secret-id E2E_TOKEN
+
+    PUB_DEPLOY=$(kubectl get deployment e2e-api-public -n "$NS" -o json 2>/dev/null)
+    if grep -q 'workload-identity-sidecar' <<< "$PUB_DEPLOY"; then
+      record contract "public deploy has AWS sidecar" PASS ""
+    else
+      record contract "public deploy has AWS sidecar" FAIL "workload-identity-sidecar missing"
+    fi
+    # Names follow AWS_PROFILE_<KIND>_<REF>; only cache has no ref to name it by.
+    for var in AWS_PROFILE_OBJECT_STORAGE_E2E_ASSETS AWS_PROFILE_NOSQL_E2E_NOSQL \
+               AWS_PROFILE_SQL_E2E_SQL_PUBLIC AWS_PROFILE_CACHE; do
+      if grep -q "\"name\": \"$var\"" <<< "$PUB_DEPLOY"; then
+        record contract "public deploy has $var" PASS ""
+      else
+        record contract "public deploy has $var" FAIL "env var missing"
+      fi
+    done
+
+    # The value only exists once someone sets it, so the platform starts with a
+    # placeholder and writes no files. Prove that, then set a value and prove the
+    # sidecar picks it up without a restart - the whole point of the offering.
+    PUB_POD=$(kubectl get pod -n "$NS" -l app.kubernetes.io/instance=e2e-api-public \
+      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    # Run these in the sidecar, not the app - the app image is distroless and has no
+    # test, ls or grep, so every check there fails on a missing binary rather than a
+    # missing file. Both containers mount the same volume.
+    if kubectl exec "$PUB_POD" -n "$NS" -c workload-identity-sidecar -- test -e /secrets/e2e-secret/E2E_TOKEN 2>/dev/null; then
+      record contract "managed secret withheld before a value is set" FAIL "file exists while unset"
+    else
+      record contract "managed secret withheld before a value is set" PASS ""
+    fi
+
+    umask 077 && SECRET_STAGE=$(mktemp)
+    printf '{"E2E_TOKEN":"%s"}' "$SECRET_SENTINEL" > "$SECRET_STAGE"
+    aws secretsmanager put-secret-value --secret-id "platform/$NS/e2e-secret" \
+      --secret-string "file://$SECRET_STAGE" --region "$REGION" >/dev/null 2>&1
+    rm -f "$SECRET_STAGE"
+
+    # The fetcher retries every 30s while a value is missing, so this lands well
+    # inside the window without waiting out the 15 minute steady-state refresh.
+    SECRET_DELIVERED=false
+    for _ in $(seq 1 12); do
+      if kubectl exec "$PUB_POD" -n "$NS" -c workload-identity-sidecar -- \
+          grep -q "$SECRET_SENTINEL" /secrets/e2e-secret/E2E_TOKEN 2>/dev/null; then
+        SECRET_DELIVERED=true; break
+      fi
+      sleep 10
+    done
+    if $SECRET_DELIVERED; then
+      record contract "managed secret value reaches the pod" PASS ""
+    else
+      record contract "managed secret value reaches the pod" FAIL "no file after 120s"
+    fi
+
+    # RBAC isolation: each Api's Role must not name the other's secrets.
+    PRIV_ROLE=$(kubectl get role e2e-api-private -n "$NS" -o json 2>/dev/null)
+    if grep -q 'e2e-api-public' <<< "$PRIV_ROLE"; then
+      record contract "RBAC scoped per Api" FAIL "private Role can read public secrets"
+    else
+      record contract "RBAC scoped per Api" PASS ""
+    fi
+  fi
+
+  # -------------------------------------------------------------------------
+  # Phase 3 - data plane via the probe app
+  # -------------------------------------------------------------------------
+  echo "== Phase 3: data plane (probes retried while sidecars warm up)"
+  check_probes e2e-api-private 18081 "SQL Database,Cache,Topic,Subscription"
+  $PRIVATE_ONLY || check_probes e2e-api-public 18082 "SQL Database,Cache,NoSQL Database,Object Storage"
+else
+  echo "== Skipping contract + data-plane checks (inflate failed)"
+  record contract "skipped" SKIP "inflate failed"
+fi
+
+# ---------------------------------------------------------------------------
+# WorkflowSpace suite - its own namespace and teardown, so it runs before --keep can exit
+# ---------------------------------------------------------------------------
+echo "== WorkflowSpace suite"
+WF_ARGS=()
+$KEEP && WF_ARGS+=(--keep)
+# bash 3.2 on macOS treats an empty array as unset under set -u.
+if "$SCRIPT_DIR/e2e-workflow.sh" ${WF_ARGS[@]+"${WF_ARGS[@]}"}; then
+  record workflow "e2e-workflow.sh" PASS ""
+else
+  record workflow "e2e-workflow.sh" FAIL "see the WorkflowSpace report above"
+fi
+
+# ---------------------------------------------------------------------------
+# Phase 4 - teardown
+# ---------------------------------------------------------------------------
+if $KEEP; then
+  echo "== Phase 4: SKIPPED (--keep). Tear down manually with:"
+  echo "   kubectl delete -f $SCRIPT_DIR/manifests/private.yaml"
+  $PRIVATE_ONLY || echo "   kubectl delete -f $SCRIPT_DIR/manifests/public.yaml"
+  echo "   kubectl delete namespace $NS"
+  report
+  exit $(( FAILURES > 0 ? 1 : 0 ))
+fi
+
+echo "== Phase 4: teardown (RDS/ElastiCache deletion takes several minutes)"
+# Apis first - deleting them cascades the owned Cache (and ElastiCache).
+kubectl delete apis.platform.local.lab e2e-api-private -n "$NS" --ignore-not-found >/dev/null 2>&1
+kubectl delete apis.platform.local.lab e2e-api-public -n "$NS" --ignore-not-found >/dev/null 2>&1
+wait_gone apis.platform.local.lab e2e-api-private 300 || record teardown "api/e2e-api-private deleted" FAIL "still present after 300s"
+wait_gone apis.platform.local.lab e2e-api-public 900 || record teardown "api/e2e-api-public deleted" FAIL "still present after 900s"
+# The owned Caches outlive their Api briefly - the ElastiCache replication
+# group takes ~5-10 min to delete in AWS and the Cache XR waits for it.
+wait_gone cache e2e-api-private-cache 300 || record teardown "cache/e2e-api-private-cache deleted" FAIL "still present after 300s"
+wait_gone cache e2e-api-public-cache 900 || record teardown "cache/e2e-api-public-cache deleted" FAIL "still present after 900s"
+
+kubectl delete -f "$SCRIPT_DIR/manifests/private.yaml" --ignore-not-found >/dev/null 2>&1
+$PRIVATE_ONLY || kubectl delete -f "$SCRIPT_DIR/manifests/public.yaml" --ignore-not-found >/dev/null 2>&1
+
+for spec in "topic:e2e-topic:120" "subscription:e2e-sub:120" "sql:e2e-sql-private:300"; do
+  IFS=':' read -r kind name timeout <<< "$spec"
+  if wait_gone "$kind" "$name" "$timeout"; then
+    record teardown "$kind/$name deleted" PASS ""
+  else
+    record teardown "$kind/$name deleted" FAIL "still present after ${timeout}s"
+  fi
+done
+if ! $PRIVATE_ONLY; then
+  for spec in "nosql:e2e-nosql:180" "objectstorage:e2e-assets:180" "sql:e2e-sql-public:900"; do
+    IFS=':' read -r kind name timeout <<< "$spec"
+    if wait_gone "$kind" "$name" "$timeout"; then
+      record teardown "$kind/$name deleted" PASS ""
+    else
+      record teardown "$kind/$name deleted" FAIL "still present after ${timeout}s"
+    fi
+  done
+fi
+
+# ---------------------------------------------------------------------------
+# Phase 5 - verify teardown
+# ---------------------------------------------------------------------------
+echo "== Phase 5: verify teardown"
+
+if kubectl get streams.jetstream.nats.io e2e-topic -n nats >/dev/null 2>&1 \
+   || kubectl get consumers.jetstream.nats.io e2e-sub -n nats >/dev/null 2>&1; then
+  record teardown-verify "NATS stream/consumer gone" FAIL "orphaned in nats namespace"
+else
+  record teardown-verify "NATS stream/consumer gone" PASS ""
+fi
+
+# Wait for every managed resource to go before touching the namespace. The AWS
+# provider creates a namespaced ProviderConfigUsage on each reconcile, and a
+# terminating namespace refuses new objects - so deleting the namespace first stops
+# the provider reconciling anything left in it, including to finish its own deletes.
+# The namespace then waits on finalizers that can never clear.
+echo "   waiting for managed resources before deleting the namespace"
+MR_DEADLINE=$(( $(date +%s) + 1200 ))
+while [ -n "$(kubectl get managed -n "$NS" --no-headers 2>/dev/null)" ] \
+      && [ "$(date +%s)" -lt "$MR_DEADLINE" ]; do
+  sleep 15
+done
+if [ -n "$(kubectl get managed -n "$NS" --no-headers 2>/dev/null)" ]; then
+  record teardown-verify "managed resources gone before namespace delete" FAIL \
+    "$(kubectl get managed -n "$NS" --no-headers 2>/dev/null | awk '{print $1}' | paste -sd, -)"
+  unlatch_namespace "$NS" "$REGION"
+else
+  record teardown-verify "managed resources gone before namespace delete" PASS ""
+fi
+
+# Connection secrets are owned by their managed resource, so this runs after the
+# wait above. The deadline still catches anything else left behind.
+EMPTY_DEADLINE=$(( $(date +%s) + 600 ))
+while true; do
+  LEFTOVER=$(kubectl get deployments,secrets,pvc -n "$NS" --no-headers 2>/dev/null)
+  [[ -z "$LEFTOVER" ]] && break
+  (( $(date +%s) > EMPTY_DEADLINE )) && break
+  sleep 10
+done
+if [[ -n "$LEFTOVER" ]]; then
+  record teardown-verify "namespace empty" FAIL "left in $NS: $(awk '{print $1}' <<< "$LEFTOVER" | tr '\n' ' ')"
+else
+  record teardown-verify "namespace empty" PASS ""
+fi
+
+kubectl delete namespace "$NS" >/dev/null 2>&1
+if wait_gone namespace "$NS" 600; then
+  record teardown-verify "namespace terminated" PASS ""
+else
+  # Only reachable if a managed resource outlived the wait above, so whatever is left
+  # is holding a finalizer the provider can no longer clear. Release the ones AWS has
+  # already forgotten.
+  if unlatch_namespace "$NS" "$REGION"; then
+    wait_gone namespace "$NS" 120 \
+      && record teardown-verify "namespace terminated" "PASS (unlatched)" "released finalizers on resources already gone from AWS" \
+      || record teardown-verify "namespace terminated" FAIL "stuck terminating even after unlatching"
+  else
+    record teardown-verify "namespace terminated" FAIL "stuck terminating"
+  fi
+fi
+
+if ! $PRIVATE_ONLY; then
+  aws_gone "RDS instance gone" \
+    aws rds describe-db-instances --db-instance-identifier e2e-sql-public --region "$REGION" \
+      --query 'DBInstances[].DBInstanceIdentifier' --output text
+  aws_gone "DynamoDB table gone" \
+    aws dynamodb describe-table --table-name "platform-$NS-e2e-nosql" --region "$REGION" \
+      --query 'Table.TableName' --output text
+  aws_gone "S3 bucket gone" \
+    aws s3api head-bucket --bucket "platform-$NS-e2e-assets" --region "$REGION"
+  # dataRetention defaults to retain, so the secret is scheduled for deletion rather
+  # than erased. DeletedDate set is the platform having done its job.
+  # dataRetention delete purges immediately, so the name must be free for the next run.
+  aws_gone "Secrets Manager secret gone" \
+    aws secretsmanager describe-secret --secret-id "platform/$NS/e2e-secret" \
+      --region "$REGION" --query 'Name' --output text
+  aws_gone "IAM roles gone" bash -c \
+    "aws iam list-roles --path-prefix /crossplane/ --query 'Roles[?contains(RoleName, \`$NS\`)].RoleName' --output text --region $REGION | grep ."
+  # $RG_ID computed in preflight (mirrors the composition's 40-char naming).
+  # AWS deletes replication groups asynchronously for ~5-10 min after the XR
+  # is gone - "deleting" means the platform did its job, so count it as done.
+  RG_STATUS=$(aws elasticache describe-replication-groups --replication-group-id "$RG_ID" --region "$REGION" \
+    --query 'ReplicationGroups[].Status' --output text 2>/dev/null)
+  case "$RG_STATUS" in
+    "")        record teardown-verify "ElastiCache replication group gone" PASS "" ;;
+    deleting)  record teardown-verify "ElastiCache replication group gone" "PASS (deleting)" "AWS async deletion in progress" ;;
+    *)         record teardown-verify "ElastiCache replication group gone" FAIL "orphan: $RG_ID status=$RG_STATUS" ;;
+  esac
+fi
+
+report
+exit $(( FAILURES > 0 ? 1 : 0 ))

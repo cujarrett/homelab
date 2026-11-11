@@ -1,0 +1,24 @@
+# Platform tests
+
+# Render every workspace XR against the current compositions (~1 min, no cluster)
+render-check:
+    ./test/render-check.sh
+
+# Flags pass through to test/e2e.sh
+#   --private-only  in-cluster integrations only (~2 min, free)
+#   --keep          skip teardown, leave resources up for debugging
+#   --abort         stop a running e2e and remove everything it left
+# Full e2e: inflates every integration including real AWS (~15-25 min, a few cents)
+test-e2e *args:
+    ./test/e2e.sh {{args}}
+
+# WorkflowSpace only: a WorkflowSpace plus an Api that uses it, in-cluster and Entra (~3 min, free)
+#   --keep  skip teardown, leave resources up for debugging
+# The full test-e2e runs this too.
+test-e2e-workflow *args:
+    ./test/e2e-workflow.sh {{args}}
+
+# Public-cloud WorkflowSpace: a real Temporal Cloud namespace and one order (~10 min, spends money)
+# Nothing else runs this, because Temporal Cloud has no spend cap.
+test-e2e-workflow-cloud:
+    ./test/e2e-workflow-cloud.sh

@@ -1,0 +1,84 @@
+# Exposes the Crossplane metrics port (8080) as a Service and tells Prometheus
+# to scrape it. The metrics.enabled=true Helm flag adds port 8080 to the pod
+# but does NOT create a Service - we do that here.
+apiVersion: v1
+kind: Service
+metadata:
+  name: crossplane-metrics
+  namespace: crossplane-system
+  labels:
+    app: crossplane
+    release: crossplane
+spec:
+  selector:
+    app: crossplane
+    release: crossplane
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: crossplane
+  namespace: crossplane-system
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: crossplane
+      release: crossplane
+  namespaceSelector:
+    matchNames:
+      - crossplane-system
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: crossplane-alerts
+  namespace: crossplane-system
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: crossplane.xr
+      interval: 60s
+      rules:
+        # Dropped events only happen while the breaker is open.
+        # Crossplane never reports a result named Open.
+        # The 1m window must stay shorter than the 5m wait.
+        # A longer window keeps this true after drops stop, so a short trip would alert.
+        - alert: CrossplaneCircuitBreakerOpen
+          expr: |
+            rate(circuit_breaker_events_total{result="Dropped"}[1m]) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Crossplane circuit breaker open on {{ $labels.controller }}"
+            description: >
+              Controller {{ $labels.controller }} has had its watch circuit breaker
+              open for over 5 minutes. Crossplane is backing off and not reconciling
+              this resource. Check: kubectl get events -A --sort-by=.lastTimestamp | tail -20
+
+        # Reconcile errors spiking - something is consistently failing
+        - alert: CrossplaneReconcileErrors
+          expr: |
+            rate(controller_runtime_reconcile_errors_total{
+              job="crossplane-metrics"
+            }[5m]) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Crossplane reconcile errors on controller {{ $labels.controller }}"
+            description: >
+              Controller {{ $labels.controller }} is producing > 0.1 errors/sec over
+              the last 5 minutes. Check Crossplane logs:
+              kubectl logs -n crossplane-system -l app=crossplane --tail=50

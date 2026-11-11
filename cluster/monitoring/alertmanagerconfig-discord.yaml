@@ -1,0 +1,68 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: discord
+  namespace: monitoring
+  labels:
+    # Matched by alertmanagerConfigSelector in the kube-prometheus-stack values.
+    alertmanager: discord
+spec:
+  # Delivery lives here, not in inline Helm values: the operator re-parses those
+  # with its own structs, which have no webhook_url_file, and silently keeps the
+  # old config. apiURL as a secret ref is the path it understands.
+  route:
+    receiver: discord
+    groupBy:
+      - namespace
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 12h
+    routes:
+      # Fires for 30 days after any spend, and each new $5 step sends its own message.
+      # 120h matches Alertmanager's retention. A longer interval would not be honoured.
+      - receiver: discord
+        repeatInterval: 120h
+        matchers:
+          - name: alertname
+            value: TemporalCloudSpend
+      # Fires permanently by design, for an external dead-man's-switch to watch.
+      # Here it is just a 12h heartbeat carrying no cluster state.
+      - receiver: "null"
+        matchers:
+          - name: alertname
+            value: Watchdog
+      # k3s embeds these in one binary, so nothing listens on the probed ports
+      # and all three fire forever.
+      - receiver: "null"
+        matchers:
+          - name: alertname
+            value: KubeControllerManagerDown|KubeProxyDown|KubeSchedulerDown
+            matchType: =~
+      # Meta-alert fired whenever any severity="info" alert exists, meant to pair
+      # with inhibit_rules (not configured here). Silenced too, otherwise it spams
+      # Discord for every info-level alert on every namespace.
+      - receiver: "null"
+        matchers:
+          - name: alertname
+            value: InfoInhibitor
+      # Ephemeral Launchpad sandboxes and the platform e2e test namespace - teardown
+      # deletes the workload before the ServiceMonitor is pruned, so Prometheus scrapes
+      # a dead target briefly. Expected noise, not a real outage.
+      - receiver: "null"
+        matchers:
+          - name: alertname
+            value: TargetDown
+          - name: namespace
+            value: demo[1-5]|guest-.*|platform-e2e
+            matchType: =~
+  receivers:
+    - name: discord
+      discordConfigs:
+        # Hand-created in the cluster, never in Git. Rotate by deleting the
+        # webhook in Discord and remaking it.
+        - apiURL:
+            name: alertmanager-discord
+            key: webhook-url
+          # Formatting lives in alertmanager.templateFiles - operator v0.92.1
+          # silently drops title/message from this CRD.
+    - name: "null"

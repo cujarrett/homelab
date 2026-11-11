@@ -1,0 +1,8 @@
+# Longhorn reserves 12% of each node's CPU by default, 480m on a 4-core Pi against
+# measured usage under 60m. 5% still guarantees 200m and returns about 1.1 cores.
+apiVersion: longhorn.io/v1beta2
+kind: Setting
+metadata:
+  name: guaranteed-instance-manager-cpu
+  namespace: longhorn-system
+value: '{"v1":"5","v2":"5"}'

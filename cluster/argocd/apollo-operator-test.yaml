@@ -1,0 +1,79 @@
+# Apollo GraphOS Operator, test. Reads each subgraph's schema from the deployed
+# image, publishes it to GraphOS, and runs the router. Prod has its own install
+# and key, so nothing here can publish to the prod variant.
+#
+# This Application also owns the CRDs and ClusterRoles the prod install borrows,
+# so deleting it deletes every Subgraph and Supergraph in both lanes. The
+# Application keeps its name for that reason; only what it installs is renamed.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: apollo-operator
+  namespace: argocd
+spec:
+  project: cluster
+  sources:
+    - repoURL: registry-1.docker.io/apollograph
+      chart: operator-chart
+      targetRevision: 1.6.1
+      helm:
+        releaseName: apollo-operator-test
+        values: |
+          apiKey:
+            secretName: apollo-api-key
+          config:
+            controllers:
+              # An empty list means cluster-scoped, so every namespace is named.
+              # The chart binds a RoleBinding into each one. The namespace itself is
+              # owned by homelab-workspaces, like every other workload namespace.
+              subgraph:
+                namespaces: &graphNamespaces
+                  - graph-test
+                # Apollo operator bug: on expiry it re-pulls the whole image, even one pinned by digest.
+                # 60s default: 90 MB a minute per subgraph, to re-read a file that cannot change.
+                # No setting turns it off. This delays it to 30 days.
+                expirations:
+                  schema: 720h
+              # Left empty, both installs render the same cluster-wide binding name,
+              # and whichever syncs second stays OutOfSync.
+              mcpServer:
+                namespaces: *graphNamespaces
+              supergraph:
+                namespaces: *graphNamespaces
+                # Pinned, because the chart defaults this to busybox:latest and a
+                # moving tag decides what runs next to every published schema. The
+                # index digest resolves per architecture, so arm64 nodes are covered.
+                loaderImage: busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+              supergraphSchema:
+                namespaces: *graphNamespaces
+              supergraphSet:
+                namespaces: *graphNamespaces
+          podTemplate:
+            nodeSelector:
+              node-role.kubernetes.io/worker: worker
+          container:
+            resources:
+              requests:
+                cpu: 25m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: apollo-operator-test
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+  ignoreDifferences:
+    # The chart ships these as empty lists and the API server drops them on write,
+    # so the rendered chart and the live CRD never match without this.
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jqPathExpressions:
+        - .spec.names.categories
+        - .spec.names.shortNames
+        - .spec.versions[].additionalPrinterColumns

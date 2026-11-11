@@ -1,0 +1,47 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: subscription
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: Subscription
+  mode: Pipeline
+  pipeline:
+    - step: render-subscription
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $params := $xr.spec.parameters }}
+            {{- /* Derive stream name from topicRef.name: foo-events → FOO-EVENTS */}}
+            {{- /* Use explicit streamName if provided; fall back to uppercased topicRef.name.
+                 This handles Topics whose streamName differs from their metadata.name. */}}
+            {{- $stream := ($params.topicRef.streamName | default ($params.topicRef.name | upper)) }}
+            # --- Consumer ---
+            # Durable pull consumer - NATS remembers this cursor's position across pod
+            # restarts. The reading Api binds to $name as its consumer name. ackPolicy
+            # explicit requires each message acked; deliverPolicy all replays from stream start.
+            apiVersion: jetstream.nats.io/v1beta2
+            kind: Consumer
+            metadata:
+              name: {{ $name }}
+              namespace: nats
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: consumer
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              streamName: {{ $stream }}
+              durableName: {{ $name }}
+              filterSubject: {{ $params.filterSubject | default ">" | quote }}
+              deliverPolicy: {{ $params.deliverPolicy | default "all" }}
+              ackPolicy: {{ $params.ackPolicy | default "explicit" }}
+              ackWait: "30s"
+              maxAckPending: -1
+

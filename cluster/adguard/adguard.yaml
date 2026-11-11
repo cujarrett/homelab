@@ -1,0 +1,113 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: adguard
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adguard-home
+  namespace: adguard
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: adguard-home
+  template:
+    metadata:
+      labels:
+        app: adguard-home
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: ctrl-1   # hostPort 53 must be on a known IP
+      hostNetwork: false
+      containers:
+        - name: adguard-home
+          image: adguard/adguardhome:v0.107.80@sha256:e2e1b48c832f7705be915873f95de0d5114de573736441d7f2923a8a6293027c
+          ports:
+            - containerPort: 53
+              hostPort: 53
+              protocol: UDP
+              name: dns-udp
+            - containerPort: 53
+              hostPort: 53
+              protocol: TCP
+              name: dns-tcp
+            - containerPort: 3000
+              name: setup
+            - containerPort: 80
+              name: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: work
+              mountPath: /opt/adguardhome/work
+            - name: conf
+              mountPath: /opt/adguardhome/conf
+      volumes:
+        - name: work
+          persistentVolumeClaim:
+            claimName: adguard-work
+        - name: conf
+          persistentVolumeClaim:
+            claimName: adguard-conf
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: adguard-work
+  namespace: adguard
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: adguard-conf
+  namespace: adguard
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: adguard-home
+  namespace: adguard
+spec:
+  selector:
+    app: adguard-home
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+    - port: 3000
+      targetPort: 3000
+      name: setup
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: adguard-home
+  namespace: adguard
+spec:
+  parentRefs:
+    - {name: traefik-gateway, namespace: kube-system}
+  hostnames: [adguard.local.lab]
+  rules:
+    - backendRefs:
+        - {name: adguard-home, port: 80}

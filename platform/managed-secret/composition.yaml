@@ -1,0 +1,62 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: managed-secret
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: ManagedSecret
+  mode: Pipeline
+  pipeline:
+    - step: render-aws-resources
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $ns := $xr.metadata.namespace }}
+            {{- $dataRetention := $xr.spec.parameters.dataRetention | default "retain" }}
+            {{- $recoveryWindowInDays := 7 }}
+            {{- if eq $dataRetention "delete" }}
+            {{- $recoveryWindowInDays = 0 }}
+            {{- end }}
+            {{- $region := "us-east-1" }}
+            {{- /* Slash-separated, so the namespace and name can never reconcatenate into */ -}}
+            {{- /* another instance's path. The Api composition derives the same string.   */ -}}
+            {{- $secretId := printf "platform/%s/%s" $ns $name }}
+            {{- /* An absent ready annotation leaves readiness unspecified, which never  */}}
+            {{- /* counts as ready, so the XR would wait forever. Read what the managed  */}}
+            {{- /* resources actually report instead, the same way Sql and Cache do.     */}}
+            {{- $secretReady := "False" }}
+            {{- with index (.observed.resources | default dict) "secret" }}
+            {{- range (.resource.status.conditions | default list) }}
+            {{- if and (eq .type "Ready") (eq .status "True") }}{{- $secretReady = "True" }}{{- end }}
+            {{- end }}
+            {{- end }}
+            ---
+            # Created with no value. Only the owner ever sets one, in the console.
+            # A composed SecretVersion would write one again after every provider restart,
+            # because the provider never records which version it made.
+            apiVersion: secretsmanager.aws.m.upbound.io/v1beta1
+            kind: Secret
+            metadata:
+              name: {{ $name }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: secret
+                gotemplating.fn.crossplane.io/ready: {{ $secretReady | quote }}
+            spec:
+              forProvider:
+                {{- /* Set explicitly, not via external-name. This resource's id is its ARN, */}}
+                {{- /* so external-name cannot supply the name and the provider would invent */}}
+                {{- /* one, landing outside the platform/ prefix IAM is scoped to.           */}}
+                name: {{ $secretId }}
+                region: {{ $region }}
+                recoveryWindowInDays: {{ $recoveryWindowInDays }}
+                tags:
+                  App: {{ $name }}
+                  Namespace: {{ $ns }}

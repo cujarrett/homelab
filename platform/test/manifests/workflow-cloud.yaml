@@ -1,0 +1,22 @@
+apiVersion: platform.local.lab/v1alpha1
+kind: WorkflowSpace
+metadata:
+  name: e2e-cloud-workflows
+  namespace: platform-e2e
+spec:
+  parameters:
+    backend: public-cloud
+---
+# demo-workflow signs in with its SVID and runs a real order, which demo-api can't do.
+apiVersion: platform.local.lab/v1alpha1
+kind: Api
+metadata:
+  name: e2e-cloud-worker
+  namespace: platform-e2e
+spec:
+  parameters:
+    image: ghcr.io/cujarrett/demo-workflow:latest
+    port: 8080
+    workflowSpaceRef:
+      name: e2e-cloud-workflows
+      backend: public-cloud

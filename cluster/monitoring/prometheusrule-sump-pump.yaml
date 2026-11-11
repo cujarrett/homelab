@@ -1,0 +1,119 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: sump-pump
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: sump-pump
+      interval: 5m
+      rules:
+        # Hourly average of the 0/1 gauge times 60 reads as minutes per hour, normal
+        # ~6. Duty cycle is the primary signal since it ties to motor damage. Scoped
+        # to the consumer - it's scraped every 10s, the bridge's 60s misses short runs.
+        - alert: SumpPumpRunningLongHours
+          expr: |
+            max(avg_over_time(sump_pump_running{job="sump-pump-consumer"}[1h])) * 60 > 12
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
+            summary: "Sump pump ran {{ $value | printf \"%.0f\" }} minutes this hour, normal is ~6"
+            description: >-
+              Water is coming in faster than usual, which is what rain looks like.
+              The resolved notification marks the return to normal.
+
+        - alert: SumpPumpRunningNearlyConstantly
+          expr: |
+            max(avg_over_time(sump_pump_running{job="sump-pump-consumer"}[1h])) * 60 > 15
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
+            summary: "Sump pump ran {{ $value | printf \"%.0f\" }} minutes of the last hour"
+            description: >-
+              At this duty cycle there is little idle time to cool between runs.
+              Sustained, that is how the motor burns out. Suspect a stuck float, or
+              a discharge line blocked or frozen.
+
+        # Duty cycle / cycle count = avg seconds per run, separating more water in
+        # from each run moving less of it (impeller wear, blocked discharge). Normal
+        # ~11.5s; the run-count guard matters - low counts make the ratio meaningless.
+        # sum() not max() over the counter - a consumer restart starts a new series at
+        # zero, and max() would then see only the new pod's runs while the duty-cycle
+        # gauge stays whole, inflating the ratio to a false alert for a full 6h.
+        - alert: SumpPumpRunsGettingLonger
+          expr: |
+            (
+              (max(avg_over_time(sump_pump_running{job="sump-pump-consumer"}[6h])) * 21600)
+              /
+              sum(increase(sump_pump_runs_total{job="sump-pump-consumer"}[6h]))
+            ) > 30
+            and
+            sum(increase(sump_pump_runs_total{job="sump-pump-consumer"}[6h])) > 60
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
+            summary: "Sump pump runs averaging {{ $value | printf \"%.0f\" }}s, normal is ~12s"
+            description: >-
+              Each cycle is taking far longer than it should to clear the pit. The
+              pump is moving less water per run than it used to - suspect a worn
+              impeller, or a discharge line partly blocked or frozen.
+
+        # Idle is normal - 20 of 104 six-hour windows were near zero. Rain is what
+        # makes idle suspicious.
+        - alert: SumpPumpIdleDespiteRain
+          expr: |
+            max(max_over_time(weather_precipitation_mm[6h])) > 2
+            and
+            sum(increase(sump_pump_runs_total{job="sump-pump-consumer"}[6h])) < 5
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
+            summary: "Rain in the last 6h but the sump pump barely ran"
+            description: >-
+              Measurable rain with almost no pump activity points at a dead pump, a
+              stuck float, or a sensor that has frozen at a fixed reading. This is
+              the failure that a runtime alert cannot see.
+
+        # Dry-weather backstop for a sensor stuck at zero. One 48h window in the
+        # archive was this quiet, so expect roughly monthly.
+        - alert: SumpPumpIdleTooLong
+          expr: |
+            sum(increase(sump_pump_runs_total{job="sump-pump-consumer"}[24h])) < 10
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
+            summary: "Sump pump has run fewer than 10 times in 24 hours"
+            description: >-
+              Normal even in dry weather, but only just - this was true for a single
+              24 window across the whole archive. Worth confirming the pit is
+              actually dry rather than the sensor being stuck.
+
+        # absent() can't see this - exporters stay up publishing 0 with no device
+        # behind them. The bridge reconciles the meter's config on a timer instead,
+        # so a successful reconcile is the real signal, not webhook arrival rate.
+        - alert: SumpPumpNotReporting
+          expr: |
+            max(shelly_webhook_configured) == 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/sump-pump/sump-pump"
+            summary: "Sump pump power meter has been unreachable for 10 minutes"
+            description: >-
+              Every other sump pump alert reads healthy when the feed is dead, so
+              absence needs its own alert. Readings may still be arriving for now,
+              but nothing is maintaining the device config, so the next reboot
+              would stop them silently instead of self-healing.

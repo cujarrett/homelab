@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/argoproj.io/application_v1alpha1.json
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: blackbox-exporter
+  namespace: argocd
+spec:
+  project: observability
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: prometheus-blackbox-exporter
+    targetRevision: 11.20.2
+    helm:
+      releaseName: blackbox-exporter
+      values: |
+        fullnameOverride: blackbox-exporter
+        config:
+          modules:
+            # The chart default, restated because setting modules replaces it.
+            http_2xx:
+              prober: http
+              timeout: 5s
+              http:
+                valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+                follow_redirects: true
+                preferred_ip_protocol: "ip4"
+            # An unsigned POST to an ArgoCD webhook path is refused with 400. Getting
+            # that 400 proves Cloudflare, the tunnel, Traefik and the handler all answer.
+            http_webhook_rejects_unsigned:
+              prober: http
+              timeout: 5s
+              http:
+                method: POST
+                headers:
+                  Content-Type: application/json
+                  X-GitHub-Event: ping
+                body: "{}"
+                valid_status_codes: [400]
+                preferred_ip_protocol: "ip4"
+        serviceMonitor:
+          enabled: false
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            memory: 64Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true

@@ -1,0 +1,87 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nats
+  namespace: argocd
+spec:
+  project: cluster
+  sources:
+    - repoURL: https://nats-io.github.io/k8s/helm/charts/
+      chart: nats
+      targetRevision: 2.15.2
+      helm:
+        releaseName: nats
+        values: |
+          config:
+            cluster:
+              enabled: true
+              # 3 replicas - one per worker node (work-1, work-2, work-3)
+              replicas: 3
+            jetstream:
+              enabled: true
+              fileStore:
+                enabled: true
+                pvc:
+                  size: 5Gi
+                  storageClassName: longhorn
+          promExporter:
+            enabled: true
+            # The chart's image tags trail upstream releases that carry CVE fixes.
+            image:
+              # renovate: datasource=docker depName=natsio/prometheus-nats-exporter
+              tag: 0.20.3
+            container:
+              merge:
+                resources:
+                  limits:
+                    cpu: "50m"
+                    memory: "64Mi"
+          container:
+            merge:
+              resources:
+                limits:
+                  cpu: "200m"
+                  memory: "256Mi"
+                requests:
+                  cpu: "50m"
+                  memory: "64Mi"
+          reloader:
+            image:
+              # renovate: datasource=docker depName=natsio/nats-server-config-reloader
+              tag: 0.25.0
+            container:
+              merge:
+                resources:
+                  limits:
+                    cpu: "50m"
+                    memory: "64Mi"
+          # Pin pods to worker nodes, keep control plane clean
+          podTemplate:
+            merge:
+              spec:
+                nodeSelector:
+                  node-role.kubernetes.io/worker: worker
+          # Nothing uses the toolbox pod.
+          # Start a temporary nats-box pod when one is needed.
+          natsBox:
+            enabled: false
+    - repoURL: https://github.com/cujarrett/homelab.git
+      targetRevision: main
+      path: cluster/nats
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nats
+  ignoreDifferences:
+    # Kubernetes adds status.phase to volumeClaimTemplates at runtime.
+    # The Helm chart doesn't include it, causing a perpetual OutOfSync loop.
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/volumeClaimTemplates
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

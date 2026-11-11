@@ -1,0 +1,20 @@
+# Gives trivy-operator the Istio sidecar image to scan.
+# - Sidecars are injected at pod creation, so no workload template trivy-operator reads holds one
+# - Suspended, so no pod ever runs
+# - The tag must match istiod's targetRevision and variant in cluster/argocd/istio.yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: istio-proxy-scan
+  namespace: monitoring
+spec:
+  suspend: true
+  schedule: "0 0 1 1 *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: istio-proxy
+              image: registry.istio.io/release/proxyv2:1.30.8-distroless@sha256:ff17cf1cb0a9659eac744b7398b17797996b723e1962d94d3b6a85f670e36bf8

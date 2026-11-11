@@ -1,0 +1,97 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: cluster
+  namespace: argocd
+spec:
+  description: Cluster primitives - storage, ingress, DNS, TLS, tunnels
+  sourceRepos:
+    - "https://github.com/cujarrett/homelab.git"
+    - "https://nats-io.github.io/k8s/helm/charts/"
+    - "https://charts.jetstack.io"
+    - "https://spiffe.github.io/helm-charts-hardened/"
+    - "https://charts.external-secrets.io"
+    - "https://istio-release.storage.googleapis.com/charts"
+    - "https://kyverno.github.io/kyverno/"
+    - "https://stakater.github.io/stakater-charts"
+    - "https://charts.longhorn.io"
+    - "https://go.temporal.io/helm-charts"
+    # OCI Helm, so no scheme prefix - ArgoCD matches the registry path as written.
+    - "registry-1.docker.io/apollograph"
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  description: Platform layer - ArgoCD, Crossplane, compositions, bootstrap
+  sourceRepos:
+    - "https://github.com/cujarrett/homelab.git"
+    - "https://argoproj.github.io/argo-helm"
+    - "https://charts.crossplane.io/stable"
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: observability
+  namespace: argocd
+spec:
+  description: Monitoring stack - Prometheus, Grafana, Loki, Alloy, Alertmanager
+  sourceRepos:
+    - "https://github.com/cujarrett/homelab.git"
+    - "https://prometheus-community.github.io/helm-charts"
+    - "https://grafana.github.io/helm-charts"
+    - "https://aquasecurity.github.io/helm-charts"
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: workloads
+  namespace: argocd
+spec:
+  description: User-facing applications - blogs, sites, APIs, Crossplane-managed XRs
+  sourceRepos:
+    - "https://github.com/cujarrett/homelab-workspaces.git"
+  # Anyone who can commit to homelab-workspaces gets exactly this. Listing namespaces
+  # stops a directory named after a cluster namespace from deploying into it, so a new
+  # workspace needs its namespace added here first, and to every namespace list in
+  # cluster/kyverno/workspace-rbac.yaml.
+  destinations:
+    - {server: https://kubernetes.default.svc, namespace: github-exporter}
+    - {server: https://kubernetes.default.svc, namespace: graph-test}
+    - {server: https://kubernetes.default.svc, namespace: graph-prod}
+    - {server: https://kubernetes.default.svc, namespace: js-pollock}
+    - {server: https://kubernetes.default.svc, namespace: kentjarrett-com}
+    - {server: https://kubernetes.default.svc, namespace: launchpad}
+    - {server: https://kubernetes.default.svc, namespace: mattjarrett-com}
+    - {server: https://kubernetes.default.svc, namespace: mattjarrett-dev}
+    - {server: https://kubernetes.default.svc, namespace: my-vinyl}
+    - {server: https://kubernetes.default.svc, namespace: platform-connections-demo}
+    - {server: https://kubernetes.default.svc, namespace: platform-graph-demo}
+    - {server: https://kubernetes.default.svc, namespace: sump-pump}
+    - {server: https://kubernetes.default.svc, namespace: "guest-*"}
+  clusterResourceWhitelist:
+    - {group: "", kind: Namespace}
+  namespaceResourceWhitelist:
+    - {group: platform.local.lab, kind: "*"}
+    - {group: "", kind: ConfigMap}
+    - {group: "", kind: Service}

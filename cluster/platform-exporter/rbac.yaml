@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: platform-exporter
+  namespace: platform-exporter
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: platform-exporter
+rules:
+  - apiGroups: ["platform.local.lab"]
+    resources: ["apis", "spas", "sqls", "nosqls", "objectstorages", "caches", "topics", "subscriptions", "managedsecrets", "wordpresses", "graphapis", "federatedgraphs", "workflowspaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["dynamodb.aws.m.upbound.io"]
+    resources: ["tables"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["elasticache.aws.m.upbound.io"]
+    resources: ["replicationgroups", "users", "usergroups"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["iam.aws.m.upbound.io"]
+    resources: ["roles"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["rds.aws.m.upbound.io"]
+    resources: ["instances"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["s3.aws.m.upbound.io"]
+    resources: ["buckets"]
+    verbs: ["get", "list", "watch"]
+  # Entra, read-only. Only status conditions are read - no spec, which is where an
+  # Application can carry a password.
+  - apiGroups: ["applications.azuread.m.upbound.io"]
+    resources: ["applications", "federatedidentitycredentials", "approles"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["serviceprincipals.azuread.m.upbound.io"]
+    resources: ["principals"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["app.azuread.m.upbound.io"]
+    resources: ["roleassignments"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["temporal.local.lab"]
+    resources: ["temporalnamespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["jetstream.nats.io"]
+    resources: ["streams", "consumers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: platform-exporter
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: platform-exporter
+subjects:
+  - kind: ServiceAccount
+    name: platform-exporter
+    namespace: platform-exporter

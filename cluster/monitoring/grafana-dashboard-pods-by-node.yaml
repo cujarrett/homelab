@@ -1,0 +1,1402 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-pods-by-node
+  namespace: monitoring
+  labels:
+    grafana_dashboard: '1'
+data:
+  pods-by-node.json: |
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "liveNow": false,
+      "preload": false,
+      "refresh": "30s",
+      "schemaVersion": 42,
+      "time": {
+        "from": "now-5m",
+        "to": "now"
+      },
+      "timepicker": {
+        "refresh_intervals": [
+          "5s",
+          "10s",
+          "30s",
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ]
+      },
+      "timezone": "browser",
+      "title": "Pods by Node",
+      "uid": "homelab-pods-by-node",
+      "panels": [
+        {
+          "gridPos": {
+            "h": 3,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "id": 100,
+          "transparent": true,
+          "options": {
+            "mode": "markdown",
+            "content": "### Pods by node\n**Used** is what is actually running. **Requested** is what pods reserved, and it is the only figure the scheduler looks at when deciding where a new pod fits. A node can be busy on one and idle on the other."
+          },
+          "type": "text"
+        },
+        {
+          "description": "Requested approximates the scheduler's own accounting, which also folds in native sidecar init containers, so it can read a little under what kubectl describe reports.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "left",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": false,
+                "inspect": false
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU used"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 100
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 70
+                        },
+                        {
+                          "color": "red",
+                          "value": 85
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "gauge",
+                      "mode": "gradient"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU requested"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 100
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 70
+                        },
+                        {
+                          "color": "red",
+                          "value": 85
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "gauge",
+                      "mode": "gradient"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Mem used"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 100
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 70
+                        },
+                        {
+                          "color": "red",
+                          "value": 85
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "gauge",
+                      "mode": "gradient"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU free"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Mem free"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "bytes"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Mem requested"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 100
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 70
+                        },
+                        {
+                          "color": "red",
+                          "value": 85
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "gauge",
+                      "mode": "gradient"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Mem limits"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": 0
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 100
+                        },
+                        {
+                          "color": "red",
+                          "value": 150
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 3
+          },
+          "id": 101,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": false,
+                "displayName": "Node"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "count by (node) (kube_pod_info * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1))",
+              "instant": true,
+              "refId": "A",
+              "format": "table"
+            },
+            {
+              "expr": "100 - avg by (node) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m]) * on(instance) group_left(node) label_replace(kube_node_info, \"instance\", \"$1:9100\", \"internal_ip\", \"(.*)\")) * 100",
+              "instant": true,
+              "refId": "B",
+              "format": "table"
+            },
+            {
+              "expr": "(sum by (node) (((sum by (namespace,pod,node) ((kube_pod_container_resource_requests{resource=\"cpu\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)))) > (max by (namespace,pod,node) ((kube_pod_init_container_resource_requests{resource=\"cpu\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1))))) or ((sum by (namespace,pod,node) ((kube_pod_container_resource_requests{resource=\"cpu\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)))) unless (max by (namespace,pod,node) ((kube_pod_init_container_resource_requests{resource=\"cpu\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1))))) or (max by (namespace,pod,node) ((kube_pod_init_container_resource_requests{resource=\"cpu\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)))))) / sum by (node) (kube_node_status_allocatable{resource=\"cpu\"}) * 100",
+              "instant": true,
+              "refId": "C",
+              "format": "table"
+            },
+            {
+              "expr": "(sum by (node) (kube_node_status_allocatable{resource=\"cpu\"}) - (sum by (node) (((sum by (namespace,pod,node) ((kube_pod_container_resource_requests{resource=\"cpu\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)))) > (max by (namespace,pod,node) ((kube_pod_init_container_resource_requests{resource=\"cpu\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1))))) or ((sum by (namespace,pod,node) ((kube_pod_container_resource_requests{resource=\"cpu\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)))) unless (max by (namespace,pod,node) ((kube_pod_init_container_resource_requests{resource=\"cpu\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1))))) or (max by (namespace,pod,node) ((kube_pod_init_container_resource_requests{resource=\"cpu\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1))))))) * 1000",
+              "instant": true,
+              "refId": "D",
+              "format": "table"
+            },
+            {
+              "expr": "100 * (1 - sum by (node) (node_memory_MemAvailable_bytes * on(instance) group_left(node) label_replace(kube_node_info, \"instance\", \"$1:9100\", \"internal_ip\", \"(.*)\")) / sum by (node) (node_memory_MemTotal_bytes * on(instance) group_left(node) label_replace(kube_node_info, \"instance\", \"$1:9100\", \"internal_ip\", \"(.*)\")))",
+              "instant": true,
+              "refId": "E",
+              "format": "table"
+            },
+            {
+              "expr": "sum by (node) (node_memory_MemAvailable_bytes * on(instance) group_left(node) label_replace(kube_node_info, \"instance\", \"$1:9100\", \"internal_ip\", \"(.*)\"))",
+              "instant": true,
+              "refId": "F",
+              "format": "table"
+            },
+            {
+              "expr": "(sum by (node) (((sum by (namespace,pod,node) ((kube_pod_container_resource_requests{resource=\"memory\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)))) > (max by (namespace,pod,node) ((kube_pod_init_container_resource_requests{resource=\"memory\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1))))) or ((sum by (namespace,pod,node) ((kube_pod_container_resource_requests{resource=\"memory\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)))) unless (max by (namespace,pod,node) ((kube_pod_init_container_resource_requests{resource=\"memory\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1))))) or (max by (namespace,pod,node) ((kube_pod_init_container_resource_requests{resource=\"memory\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)))))) / sum by (node) (kube_node_status_allocatable{resource=\"memory\"}) * 100",
+              "instant": true,
+              "refId": "G",
+              "format": "table"
+            },
+            {
+              "expr": "(sum by (node) (((sum by (namespace,pod,node) ((kube_pod_container_resource_limits{resource=\"memory\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)))) > (max by (namespace,pod,node) ((kube_pod_init_container_resource_limits{resource=\"memory\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1))))) or ((sum by (namespace,pod,node) ((kube_pod_container_resource_limits{resource=\"memory\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)))) unless (max by (namespace,pod,node) ((kube_pod_init_container_resource_limits{resource=\"memory\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1))))) or (max by (namespace,pod,node) ((kube_pod_init_container_resource_limits{resource=\"memory\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1)))))) / sum by (node) (kube_node_status_allocatable{resource=\"memory\"}) * 100",
+              "instant": true,
+              "refId": "H",
+              "format": "table"
+            }
+          ],
+          "title": "Nodes",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "node",
+                    "Value #A",
+                    "Value #B",
+                    "Value #C",
+                    "Value #D",
+                    "Value #E",
+                    "Value #F",
+                    "Value #G",
+                    "Value #H"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "renameByName": {
+                  "node": "Node",
+                  "Value #A": "Pods",
+                  "Value #B": "CPU used",
+                  "Value #C": "CPU requested",
+                  "Value #D": "CPU free",
+                  "Value #E": "Mem used",
+                  "Value #F": "Mem free",
+                  "Value #G": "Mem requested",
+                  "Value #H": "Mem limits"
+                },
+                "indexByName": {
+                  "node": 0,
+                  "Value #A": 1,
+                  "Value #B": 2,
+                  "Value #C": 3,
+                  "Value #D": 4,
+                  "Value #E": 5,
+                  "Value #G": 6,
+                  "Value #H": 7,
+                  "Value #F": 8
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": [
+                  {
+                    "desc": false,
+                    "displayName": "Node"
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "gridPos": {
+            "h": 2,
+            "w": 6,
+            "x": 0,
+            "y": 10
+          },
+          "id": 102,
+          "transparent": true,
+          "options": {
+            "mode": "markdown",
+            "content": "### ctrl-1"
+          },
+          "type": "text"
+        },
+        {
+          "description": "Pods on this node. Req is the CPU it reserved, CPU is what it is using. A large gap is capacity nothing else can schedule into.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "left",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Req"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Mem"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "bytes"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 22,
+            "w": 6,
+            "x": 0,
+            "y": 23
+          },
+          "id": 103,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Req"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "(kube_pod_info{node=\"ctrl-1\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1))",
+              "instant": true,
+              "refId": "A",
+              "format": "table"
+            },
+            {
+              "expr": "sum by (namespace, pod) ((kube_pod_container_resource_requests{node=\"ctrl-1\", resource=\"cpu\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1))) * 1000",
+              "instant": true,
+              "refId": "B",
+              "format": "table"
+            },
+            {
+              "expr": "sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{node=\"ctrl-1\", container!=\"\"}[5m])) * 1000",
+              "instant": true,
+              "refId": "C",
+              "format": "table"
+            },
+            {
+              "expr": "sum by (namespace, pod) (container_memory_working_set_bytes{node=\"ctrl-1\", container!=\"\"})",
+              "instant": true,
+              "refId": "D",
+              "format": "table"
+            }
+          ],
+          "title": "Pods",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "namespace",
+                    "pod",
+                    "Value #B",
+                    "Value #C",
+                    "Value #D"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "renameByName": {
+                  "namespace": "Namespace",
+                  "pod": "Pod",
+                  "Value #B": "Req",
+                  "Value #C": "CPU",
+                  "Value #D": "Mem"
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": [
+                  {
+                    "desc": true,
+                    "displayName": "Req"
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "gridPos": {
+            "h": 2,
+            "w": 6,
+            "x": 6,
+            "y": 10
+          },
+          "id": 104,
+          "transparent": true,
+          "options": {
+            "mode": "markdown",
+            "content": "### work-1"
+          },
+          "type": "text"
+        },
+        {
+          "description": "Pods on this node. Req is the CPU it reserved, CPU is what it is using. A large gap is capacity nothing else can schedule into.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "left",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Req"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Mem"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "bytes"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 22,
+            "w": 6,
+            "x": 6,
+            "y": 23
+          },
+          "id": 105,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Req"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "(kube_pod_info{node=\"work-1\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1))",
+              "instant": true,
+              "refId": "A",
+              "format": "table"
+            },
+            {
+              "expr": "sum by (namespace, pod) ((kube_pod_container_resource_requests{node=\"work-1\", resource=\"cpu\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1))) * 1000",
+              "instant": true,
+              "refId": "B",
+              "format": "table"
+            },
+            {
+              "expr": "sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{node=\"work-1\", container!=\"\"}[5m])) * 1000",
+              "instant": true,
+              "refId": "C",
+              "format": "table"
+            },
+            {
+              "expr": "sum by (namespace, pod) (container_memory_working_set_bytes{node=\"work-1\", container!=\"\"})",
+              "instant": true,
+              "refId": "D",
+              "format": "table"
+            }
+          ],
+          "title": "Pods",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "namespace",
+                    "pod",
+                    "Value #B",
+                    "Value #C",
+                    "Value #D"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "renameByName": {
+                  "namespace": "Namespace",
+                  "pod": "Pod",
+                  "Value #B": "Req",
+                  "Value #C": "CPU",
+                  "Value #D": "Mem"
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": [
+                  {
+                    "desc": true,
+                    "displayName": "Req"
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "gridPos": {
+            "h": 2,
+            "w": 6,
+            "x": 12,
+            "y": 10
+          },
+          "id": 106,
+          "transparent": true,
+          "options": {
+            "mode": "markdown",
+            "content": "### work-2"
+          },
+          "type": "text"
+        },
+        {
+          "description": "Pods on this node. Req is the CPU it reserved, CPU is what it is using. A large gap is capacity nothing else can schedule into.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "left",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Req"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Mem"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "bytes"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 22,
+            "w": 6,
+            "x": 12,
+            "y": 23
+          },
+          "id": 107,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Req"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "(kube_pod_info{node=\"work-2\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1))",
+              "instant": true,
+              "refId": "A",
+              "format": "table"
+            },
+            {
+              "expr": "sum by (namespace, pod) ((kube_pod_container_resource_requests{node=\"work-2\", resource=\"cpu\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1))) * 1000",
+              "instant": true,
+              "refId": "B",
+              "format": "table"
+            },
+            {
+              "expr": "sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{node=\"work-2\", container!=\"\"}[5m])) * 1000",
+              "instant": true,
+              "refId": "C",
+              "format": "table"
+            },
+            {
+              "expr": "sum by (namespace, pod) (container_memory_working_set_bytes{node=\"work-2\", container!=\"\"})",
+              "instant": true,
+              "refId": "D",
+              "format": "table"
+            }
+          ],
+          "title": "Pods",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "namespace",
+                    "pod",
+                    "Value #B",
+                    "Value #C",
+                    "Value #D"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "renameByName": {
+                  "namespace": "Namespace",
+                  "pod": "Pod",
+                  "Value #B": "Req",
+                  "Value #C": "CPU",
+                  "Value #D": "Mem"
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": [
+                  {
+                    "desc": true,
+                    "displayName": "Req"
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "gridPos": {
+            "h": 2,
+            "w": 6,
+            "x": 18,
+            "y": 10
+          },
+          "id": 108,
+          "transparent": true,
+          "options": {
+            "mode": "markdown",
+            "content": "### work-3"
+          },
+          "type": "text"
+        },
+        {
+          "description": "Pods on this node. Req is the CPU it reserved, CPU is what it is using. A large gap is capacity nothing else can schedule into.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "left",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Req"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Mem"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "bytes"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 0
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 22,
+            "w": 6,
+            "x": 18,
+            "y": 23
+          },
+          "id": 109,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Req"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "(kube_pod_info{node=\"work-3\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1))",
+              "instant": true,
+              "refId": "A",
+              "format": "table"
+            },
+            {
+              "expr": "sum by (namespace, pod) ((kube_pod_container_resource_requests{node=\"work-3\", resource=\"cpu\"} * on(namespace,pod,uid) group_left() (kube_pod_status_phase{phase=\"Running\"} == 1))) * 1000",
+              "instant": true,
+              "refId": "B",
+              "format": "table"
+            },
+            {
+              "expr": "sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{node=\"work-3\", container!=\"\"}[5m])) * 1000",
+              "instant": true,
+              "refId": "C",
+              "format": "table"
+            },
+            {
+              "expr": "sum by (namespace, pod) (container_memory_working_set_bytes{node=\"work-3\", container!=\"\"})",
+              "instant": true,
+              "refId": "D",
+              "format": "table"
+            }
+          ],
+          "title": "Pods",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "namespace",
+                    "pod",
+                    "Value #B",
+                    "Value #C",
+                    "Value #D"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "renameByName": {
+                  "namespace": "Namespace",
+                  "pod": "Pod",
+                  "Value #B": "Req",
+                  "Value #C": "CPU",
+                  "Value #D": "Mem"
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": [
+                  {
+                    "desc": true,
+                    "displayName": "Req"
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "description": "Every persistent volume in the cluster and how full it is.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "left",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "red",
+                    "value": 85
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Used"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "bytes"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "% Used"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "max",
+                    "value": 100
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "gauge",
+                      "mode": "gradient"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 24,
+            "x": 0,
+            "y": 45
+          },
+          "id": 110,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "% Used"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "kubelet_volume_stats_used_bytes",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            },
+            {
+              "expr": "kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes * 100",
+              "format": "table",
+              "instant": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Persistent Volumes",
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "namespace",
+                    "persistentvolumeclaim",
+                    "node",
+                    "Value #A",
+                    "Value #B"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "renameByName": {
+                  "namespace": "Namespace",
+                  "persistentvolumeclaim": "PVC",
+                  "node": "Node",
+                  "Value #A": "Used",
+                  "Value #B": "% Used"
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": [
+                  {
+                    "desc": true,
+                    "displayName": "% Used"
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "type": "bargauge",
+          "title": "Memory by Namespace",
+          "description": "Working set summed per namespace. Platform components (longhorn-system, crossplane-system, kube-system) dominate here and are the first place to look before trimming an app.",
+          "id": 111,
+          "gridPos": {
+            "h": 11,
+            "w": 24,
+            "x": 0,
+            "y": 11
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "decimals": 1,
+              "min": 0,
+              "color": {
+                "mode": "continuous-BlPu"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": 0
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "displayMode": "gradient",
+            "orientation": "horizontal",
+            "valueMode": "color",
+            "showUnfilled": true,
+            "minVizWidth": 8,
+            "minVizHeight": 16,
+            "sizing": "auto",
+            "namePlacement": "left",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          },
+          "pluginVersion": "13.1.0",
+          "targets": [
+            {
+              "expr": "sort_desc(topk(15, sum by (namespace) (container_memory_working_set_bytes{container!=\"\"})))",
+              "instant": true,
+              "legendFormat": "{{namespace}}",
+              "refId": "A"
+            }
+          ]
+        }
+      ]
+    }

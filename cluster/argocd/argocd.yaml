@@ -1,0 +1,154 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/argoproj.io/application_v1alpha1.json
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  project: platform
+  source:
+    repoURL: https://argoproj.github.io/argo-helm
+    chart: argo-cd
+    targetRevision: 10.14.0
+    helm:
+      releaseName: argocd
+      values: |
+        global:
+          networkPolicy:
+            # The chart's policies allow ingress only from named ArgoCD pods, so under
+            # k3s's kube-router the kubelet probe matches no rule and the pod never goes Ready.
+            # They exist to separate tenants. This cluster has one tenant.
+            create: false
+        dex:
+          enabled: false
+        controller:
+          extraArgs:
+            - --status-processors=5
+            - --operation-processors=5
+          # Live heap idles near 400Mi, but Go's default GC lets it double before collecting.
+          # 2GiB leaves 0.5Gi under the limit for non-heap memory, so GC tightens before an OOM kill.
+          env:
+            - name: GOMEMLIMIT
+              value: 2GiB
+          resources:
+            # Request equals limit so a full re-sync of every app always has room on the node.
+            requests:
+              memory: 2.5Gi
+            limits:
+              memory: 2.5Gi
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  preference:
+                    matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: DoesNotExist
+        repoServer:
+          resources:
+            requests:
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+        server:
+          extraArgs:
+            # ArgoCD's server has built-in TLS. --insecure disables it, so it listens on
+            # plain HTTP internally.
+            # Traefik terminates TLS and proxies plain HTTP here. Without --insecure that
+            # is double TLS and the ingress breaks.
+            - --insecure
+          # Idles near 60Mi.
+          # A diff of the longhorn app, with its chart CRDs, OOMKilled it at 256Mi.
+          resources:
+            requests:
+              memory: 96Mi
+            limits:
+              memory: 512Mi
+        applicationSet:
+          resources:
+            requests:
+              memory: 160Mi
+            limits:
+              memory: 512Mi
+        notifications:
+          resources:
+            requests:
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+        redis:
+          resources:
+            limits:
+              memory: 64Mi
+        configs:
+          params:
+            server.insecure: "true"
+          cm:
+            # Self-heal runs off watches, so this timer only sets how fast a new Git commit
+            # is noticed.
+            # Jitter spreads apps across the interval. Without it they refresh on one tick
+            # and the controller spikes. It idles near 1Gi against a 2560Mi limit.
+            timeout.reconciliation: 60s
+            timeout.reconciliation.jitter: 30s
+            controller.diff.server.side: "true"
+            # No group prefix. A PVC's API group is the empty string, not "core",
+            # so a "core_" key matches nothing and the ignore never applies.
+            resource.customizations.ignoreDifferences.PersistentVolumeClaim: |
+              jsonPointers:
+              - /spec/volumeName
+            # Kyverno never sets ready on a DeletingPolicy, so ArgoCD's built-in check always says Degraded.
+            # Delete this once argoproj/argo-cd#30797 ships.
+            resource.customizations.health.policies.kyverno.io_DeletingPolicy: |
+              local cs = obj.status and obj.status.conditionStatus
+              if cs ~= nil and cs.ready == false then
+                return {status = "Degraded", message = "Policy is not ready"}
+              end
+              return {status = "Healthy", message = "Policy is active"}
+        # The repo server and Redis take requests with no auth, so only named callers reach ArgoCD.
+        # argocd namespace: the components call each other.
+        # kube-system Traefik: the UI and the GitHub webhooks.
+        # monitoring: Prometheus, for metrics.
+        # Node cni0 addresses: kubelet probes. kube-router matches on address alone, so these are each
+        #   node's cni0 bridge, the first address of its pod CIDR. Re-check them if a node is rebuilt.
+        extraObjects:
+          - apiVersion: networking.k8s.io/v1
+            kind: NetworkPolicy
+            metadata:
+              name: argocd-callers
+              namespace: argocd
+            spec:
+              podSelector: {}
+              policyTypes: ["Ingress"]
+              ingress:
+                - from:
+                    - podSelector: {}
+                - from:
+                    - namespaceSelector:
+                        matchLabels:
+                          kubernetes.io/metadata.name: kube-system
+                      podSelector:
+                        matchLabels:
+                          app.kubernetes.io/name: traefik
+                - from:
+                    - namespaceSelector:
+                        matchLabels:
+                          kubernetes.io/metadata.name: monitoring
+                - from:
+                    - ipBlock:
+                        cidr: 10.42.0.1/32
+                    - ipBlock:
+                        cidr: 10.42.1.1/32
+                    - ipBlock:
+                        cidr: 10.42.3.1/32
+                    - ipBlock:
+                        cidr: 10.42.5.1/32
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true
