@@ -16,7 +16,7 @@ Every team ships its own small GraphQL API. A router joins them into one API tha
 
 ## Index
 
-Start with [Design](#design), then [What a team writes](#what-a-team-writes) and [The lifecycle](#the-lifecycle). Build order is [issue #240](https://github.com/cujarrett/homelab/issues/240).
+Start with [Design](#design), then [What a team writes](#what-a-team-writes) and [The lifecycle](#the-lifecycle).
 
 | Chapter | What's in it |
 |---|---|
