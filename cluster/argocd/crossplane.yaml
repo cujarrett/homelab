@@ -1,0 +1,84 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane
+  namespace: argocd
+spec:
+  project: platform
+  sources:
+    - repoURL: https://charts.crossplane.io/stable
+      chart: crossplane
+      targetRevision: 2.4.3
+      helm:
+        releaseName: crossplane
+        values: |
+          args:
+            - --enable-realtime-compositions
+          metrics:
+            enabled: true
+          # Sized to the 7 day p95. The chart default of 256Mi undercounts it by
+          # more than half, so the scheduler stacked it with the providers.
+          resourcesCrossplane:
+            requests:
+              memory: 640Mi
+            limits:
+              memory: 1Gi
+          # Every active type is a CRD held in API server memory on ctrl-1.
+          # - Listed: the kinds platform/ compositions create. A new kind there needs adding here
+          # - Active is one-way: an MRD dropped from this list stays Active until deleted by hand
+          provider:
+            defaultActivations:
+              - applications.applications.azuread.m.upbound.io
+              - approles.applications.azuread.m.upbound.io
+              - federatedidentitycredentials.applications.azuread.m.upbound.io
+              - principals.serviceprincipals.azuread.m.upbound.io
+              - permissiongrants.serviceprincipaldelegated.azuread.m.upbound.io
+              - roleassignments.app.azuread.m.upbound.io
+              - roles.iam.aws.m.upbound.io
+              - secrets.secretsmanager.aws.m.upbound.io
+              - tables.dynamodb.aws.m.upbound.io
+              - buckets.s3.aws.m.upbound.io
+              - instances.rds.aws.m.upbound.io
+              - replicationgroups.elasticache.aws.m.upbound.io
+              - usergroups.elasticache.aws.m.upbound.io
+              - users.elasticache.aws.m.upbound.io
+          rbacManager: {}
+          # Peaks at 54Mi over 30 days. The chart's 512Mi limit stays as the ceiling.
+          resourcesRBACManager:
+            requests:
+              cpu: 10m
+              memory: 96Mi
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  preference:
+                    matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: DoesNotExist
+    - repoURL: https://github.com/cujarrett/homelab.git
+      targetRevision: main
+      path: cluster/crossplane
+      # The IAM policy documents beside the manifests are for the aws cli. ArgoCD
+      # reads any .json as a manifest and fails the whole comparison on them.
+      directory:
+        exclude: "*.json"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  ignoreDifferences:
+    # `just test-e2e` scales worker-nodes-idle to 1 for the run and back to 0 after.
+    # Without this selfHeal reverts the scale-up mid-run and the RDS/ElastiCache
+    # resources never reconcile.
+    - group: pkg.crossplane.io
+      kind: DeploymentRuntimeConfig
+      name: worker-nodes-idle
+      jsonPointers:
+        - /spec/deploymentTemplate/spec/replicas
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

@@ -1,0 +1,65 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/argoproj.io/application_v1alpha1.json
+# Scans every running image for CVEs and exports them to Prometheus for the Security dashboard.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trivy-operator
+  namespace: argocd
+  # Deleting this Application also deletes what it deployed, so a revert leaves nothing running.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: observability
+  source:
+    repoURL: https://aquasecurity.github.io/helm-charts
+    chart: trivy-operator
+    targetRevision: 0.38.1
+    helm:
+      releaseName: trivy-operator
+      values: |
+        operator:
+          # Security reviews read image CVEs, config audits and secrets baked into images.
+          # Config audits read manifests only, so they cost the Pis little.
+          # Secret scanning rides along in each image scan job.
+          # The other scanners add load and nothing reads them.
+          configAuditScannerEnabled: true
+          rbacAssessmentScannerEnabled: false
+          infraAssessmentScannerEnabled: false
+          clusterComplianceEnabled: false
+          exposedSecretScannerEnabled: true
+          sbomGenerationEnabled: false
+          # One scan job at a time keeps a cold start from saturating a node.
+          scanJobsConcurrentLimit: 1
+          # A report is deleted at its TTL and missing until the one-at-a-time queue rescans it.
+          # 72h makes those gaps rarer. New CVEs reach a report within 3 days.
+          scannerReportTTL: "72h"
+          # Server holds one copy of the vulnerability DB.
+          # Standalone scan jobs each unpack their own copy, about 100MB/s of writes per job.
+          builtInTrivyServer: true
+          # Per-CVE series carry fixed_version, which the open-items rule needs.
+          metricsVulnIdEnabled: true
+        trivy:
+          # Chart 0.38.1 pins Trivy 0.76.1, which carries CVE-2026-111497.
+          # Remove this once the chart ships 0.76.2 or newer.
+          image:
+            tag: 0.76.2
+          severity: CRITICAL,HIGH
+          # Trivy pulls linux/amd64 unless told otherwise.
+          # That fails on the arm64-only ghcr images and scans the wrong variant of multi-arch ones.
+          configFile:
+            image:
+              platform: linux/arm64
+        serviceMonitor:
+          enabled: true
+          labels:
+            release: monitoring
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: trivy-system
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true

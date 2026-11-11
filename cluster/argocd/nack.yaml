@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nack
+  namespace: argocd
+spec:
+  project: cluster
+  source:
+    repoURL: https://nats-io.github.io/k8s/helm/charts/
+    chart: nack
+    targetRevision: 0.35.0
+    helm:
+      releaseName: nack
+      # The chart ships streamtemplates.jetstream.nats.io with served=false, which
+      # wedges the garbage collector and hangs every namespace in Terminating.
+      # Skipping chart CRDs keeps it deleted - apply the five in-use ones by hand on upgrade.
+      skipCrds: true
+      values: |
+        jetstream:
+          # The chart's image tag trails upstream releases that carry CVE fixes.
+          image:
+            # renovate: datasource=docker depName=natsio/jetstream-controller
+            tag: 0.25.0
+          nats:
+            # Points the NACK controller at the in-cluster NATS service.
+            # NACK reconciles Stream and Consumer CRDs against this server.
+            url: nats://nats.nats.svc.cluster.local:4222
+        resources:
+          limits:
+            cpu: "100m"
+            memory: "64Mi"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nats
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

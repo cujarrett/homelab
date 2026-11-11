@@ -1,0 +1,51 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: argocd-server
+  namespace: argocd
+spec:
+  parentRefs:
+    - {name: traefik-gateway, namespace: kube-system}
+  hostnames: [argocd.local.lab]
+  rules:
+    - backendRefs:
+        - {name: argocd-server, port: 80}
+---
+# Public, for GitHub push webhooks only. Exact paths, so nothing else on argocd-server
+# is reachable from the internet.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: argocd-webhook
+  namespace: argocd
+spec:
+  parentRefs:
+    - {name: traefik-gateway, namespace: kube-system}
+  hostnames: [argocd-webhook.mattjarrett.dev]
+  rules:
+    - matches:
+        - path: {type: Exact, value: /api/webhook}
+      backendRefs:
+        - {name: argocd-server, port: 80}
+---
+# The ApplicationSet controller serves its own webhook, also at /api/webhook, so it
+# gets a second path that is rewritten on the way in. This one is what makes a new
+# sandbox directory appear without waiting on the requeue.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: argocd-applicationset-webhook
+  namespace: argocd
+spec:
+  parentRefs:
+    - {name: traefik-gateway, namespace: kube-system}
+  hostnames: [argocd-webhook.mattjarrett.dev]
+  rules:
+    - matches:
+        - path: {type: Exact, value: /applicationset/api/webhook}
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path: {type: ReplaceFullPath, replaceFullPath: /api/webhook}
+      backendRefs:
+        - {name: argocd-applicationset-controller, port: 7000}

@@ -1,0 +1,54 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: xrs
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: https://github.com/cujarrett/homelab-workspaces.git
+        revision: main
+        # A fallback only. The GitHub push webhook at argocd-webhook.mattjarrett.dev
+        # refreshes this the moment launchpad-api commits.
+        requeueAfterSeconds: 60
+        directories:
+          - path: "*"
+          - path: ".github"
+            exclude: true
+  template:
+    metadata:
+      name: "{{path.basename}}"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      revisionHistoryLimit: 5
+      project: workloads
+      source:
+        repoURL: https://github.com/cujarrett/homelab-workspaces.git
+        targetRevision: main
+        path: "{{path}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{path.basename}}"
+      syncPolicy:
+        # Labels every workspace namespace so admission policy can tell a platform
+        # workload namespace from a cluster one. The invariant that every workload here
+        # is an Api or Spa is what lets a caller's own declarations be the whole grant.
+        managedNamespaceMetadata:
+          labels:
+            platform.local.lab/workloads: "true"
+        automated:
+          prune: true
+          selfHeal: true
+        # A reused demo slot is denied while the old sandbox's route still exists.
+        # The retry outlasts that teardown.
+        retry:
+          limit: 5
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - allowEmpty=true

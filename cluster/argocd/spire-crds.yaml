@@ -1,0 +1,26 @@
+# CRDs for spire-controller-manager. Shipped as their own chart rather than
+# inside the spire chart, and they must exist before the controller-manager
+# starts. Renovate tracks targetRevision as it does for the spire chart.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: spire-crds
+  namespace: argocd
+spec:
+  project: cluster
+  source:
+    repoURL: https://spiffe.github.io/helm-charts-hardened/
+    chart: spire-crds
+    targetRevision: 0.6.1
+    helm:
+      releaseName: spire-crds
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: spire-server
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

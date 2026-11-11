@@ -1,0 +1,89 @@
+# Kyverno - admission validation for platform XRs. Exists for the two checks CEL
+# can't do, since both must read an object other than the one being admitted -
+# does the app a consumes entry names exist, and is this egress host denied.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kyverno
+  namespace: argocd
+spec:
+  project: cluster
+  sources:
+    - repoURL: https://kyverno.github.io/kyverno/
+      chart: kyverno
+      targetRevision: 3.9.2
+      helm:
+        releaseName: kyverno
+        values: |
+          # The migration Job is a Helm hook whose ServiceAccount ArgoCD deletes the moment
+          # it is created, so the Job dies Unauthorized and alerts. Run it by hand before an
+          # upgrade whose release notes drop an old CRD version.
+          crds:
+            migration:
+              enabled: false
+          # kyverno-api.labels/.annotations default to {}, which Kubernetes drops on write,
+          # so desired says "empty map present" and live says "absent" forever - neither
+          # ignoreDifferences nor a reinstall closes that gap. Real values fix it.
+          kyverno-api:
+            labels:
+              platform.local.lab/managed-by: argocd
+            annotations:
+              platform.local.lab/chart: kyverno
+          # Four Raspberry Pis, and only the admission controller is on the hot path.
+          # One replica each: a second would need leader election for no gain here, and
+          # the chart defaults to three for the admission controller.
+          admissionController:
+            replicas: 1
+            serviceMonitor:
+              enabled: true
+              additionalLabels:
+                release: monitoring
+            resources:
+              requests:
+                cpu: 50m
+                memory: 192Mi
+              limits:
+                memory: 384Mi
+          backgroundController:
+            replicas: 1
+            resources:
+              requests:
+                cpu: 25m
+                memory: 160Mi
+              limits:
+                memory: 192Mi
+          # Admission reports record every allowed request, ~11 API calls/s from Crossplane applies alone.
+          # Enforce already rejects a bad request, so only background results become PolicyReports.
+          features:
+            admissionReports:
+              enabled: false
+          # Runs platform-public-cloud-time-limit, which deletes public-cloud workflow spaces after 2 hours.
+          cleanupController:
+            enabled: true
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 128Mi
+          reportsController:
+            enabled: true
+            resources:
+              requests:
+                cpu: 25m
+                memory: 192Mi
+              limits:
+                memory: 256Mi
+    - repoURL: https://github.com/cujarrett/homelab.git
+      targetRevision: main
+      path: cluster/kyverno
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kyverno
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

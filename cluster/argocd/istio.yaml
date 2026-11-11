@@ -1,0 +1,153 @@
+# Istio service mesh, sidecar mode. See docs/platform-connections.md.
+# Three charts ordered by sync-wave, base (CRDs) then istiod and cni.
+# istio-cni chains onto flannel's conflist.
+---
+# istio-base: CRDs and cluster RBAC. Must apply before istiod and cni.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio-base
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: cluster
+  source:
+    repoURL: https://istio-release.storage.googleapis.com/charts
+    chart: base
+    targetRevision: 1.30.8
+    helm:
+      releaseName: istio-base
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  # istiod patches its validating webhook at runtime. It injects the CA (caBundle) and
+  # flips failurePolicy from Ignore to Fail once healthy.
+  # Both are ignored here, or ArgoCD shows drift and reverts them on selfHeal.
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions:
+        - '.webhooks[].clientConfig.caBundle'
+        - '.webhooks[].failurePolicy'
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+---
+# istiod: control plane, sidecar mode. Pinned to ctrl-1, next to the apiserver.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istiod
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: cluster
+  source:
+    repoURL: https://istio-release.storage.googleapis.com/charts
+    chart: istiod
+    targetRevision: 1.30.8
+    helm:
+      releaseName: istiod
+      values: |
+        # Uses the istio-cni DaemonSet instead of a NET_ADMIN init container in every pod.
+        # Without it istiod injects istio-init even with the CNI installed, and that init
+        # container fails Pod Security Admission.
+        cni:
+          enabled: true
+        # Two fixed replicas on different nodes. No HPA on a 4-node Pi cluster.
+        # The injection webhook fails closed, so one replica must survive any single drain
+        # or every mesh pod evicted after istiod stays absent until the node is uncordoned.
+        autoscaleEnabled: false
+        replicaCount: 2
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchLabels:
+                    istio: pilot
+                topologyKey: kubernetes.io/hostname
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            memory: 512Mi
+        # Every mesh pod gets one sidecar, so the chart's 1Gi limit adds up to more than a node holds.
+        # Sidecars measure 32-60Mi. Request equals limit so the scheduler reserves what it allows.
+        # CPU peaks under 7m per sidecar, against a chart default request of 100m.
+        global:
+          proxy:
+            resources:
+              requests:
+                cpu: 10m
+                memory: 128Mi
+              limits:
+                memory: 128Mi
+          # No shell or OS packages in the proxy and pilot images.
+          # cluster/monitoring/istio-proxy-scan.yaml and the graph-lane Kyverno allow list expect this tag.
+          variant: distroless
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  # Same caBundle drift as istio-base (istiod patches its own validating webhook).
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions:
+        - '.webhooks[].clientConfig.caBundle'
+        - '.webhooks[].failurePolicy'
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+---
+# istio-cni: a DaemonSet on all nodes installing the CNI plugin.
+# Wires sidecar traffic redirection at pod creation, not a NET_ADMIN init container.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio-cni
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: cluster
+  source:
+    repoURL: https://istio-release.storage.googleapis.com/charts
+    chart: cni
+    targetRevision: 1.30.8
+    helm:
+      releaseName: istio-cni
+      values: |
+        # k3s keeps CNI config and plugin binaries under /var/lib/rancher, not the
+        # /etc/cni/net.d and /opt/cni/bin the chart defaults to.
+        # data/cni is the only directory k3s searches. data/current/bin holds k3s's own
+        # symlinks and is never searched, so a binary there is invisible and every pod on
+        # the node fails to get a sandbox.
+        chained: true
+        cniBinDir: /var/lib/rancher/k3s/data/cni
+        cniConfDir: /var/lib/rancher/k3s/agent/etc/cni/net.d
+        # No shell or OS packages in the install-cni image.
+        global:
+          variant: distroless
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
