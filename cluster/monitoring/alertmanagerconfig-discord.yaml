@@ -18,7 +18,7 @@ spec:
     groupInterval: 5m
     repeatInterval: 12h
     routes:
-      # Fires for 30 days after any spend, and each new $5 step sends its own message.
+      # Fires while anything was billed in the last 24h, and each new $5 step sends its own message.
       # 120h matches Alertmanager's retention. A longer interval would not be honoured.
       - receiver: discord
         repeatInterval: 120h

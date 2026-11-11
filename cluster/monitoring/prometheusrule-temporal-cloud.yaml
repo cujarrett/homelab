@@ -41,8 +41,12 @@ spec:
           expr: sum(sum_over_time(temporal_cloud_v1_billable_action_count[30d])) * 60 * 0.000055
         # The value is the last $5 step passed, and 0 means any spend under $5.
         # The label holds the step, so each new step is a new alert and a new message.
+        # 24h term: the alert clears a day after billing stops, since nothing is left to act on.
         - alert: TemporalCloudSpend
-          expr: floor(temporal_cloud:spend_dollars:30d / 5) * 5 and temporal_cloud:spend_dollars:30d > 0
+          expr: |
+            floor(temporal_cloud:spend_dollars:30d / 5) * 5
+            and temporal_cloud:spend_dollars:30d > 0
+            and sum(sum_over_time(temporal_cloud_v1_billable_action_count[24h])) > 0
           labels:
             severity: critical
             reached: '{{ printf "%.0f" $value }}'
