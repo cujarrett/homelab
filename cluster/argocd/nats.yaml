@@ -23,6 +23,8 @@ spec:
                 enabled: true
                 pvc:
                   size: 5Gi
+                  # JetStream keeps 3 copies itself, so each Longhorn volume was set to 1 replica by hand.
+                  # A recreated PVC comes back with the StorageClass default of 3.
                   storageClassName: longhorn
           promExporter:
             enabled: true

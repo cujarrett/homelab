@@ -31,9 +31,10 @@ spec:
             - name: GOMEMLIMIT
               value: 2GiB
           resources:
-            # Request equals limit so a full re-sync of every app always has room on the node.
+            # Request: 30 day p99 is 1.4Gi.
+            # Limit: 30 day peak is 2Gi, during full re-syncs.
             requests:
-              memory: 2.5Gi
+              memory: 1.5Gi
             limits:
               memory: 2.5Gi
           affinity:
