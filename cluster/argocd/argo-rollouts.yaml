@@ -1,0 +1,41 @@
+# Argo Rollouts runs the AnalysisRuns that Kargo creates to verify a Stage.
+# Nothing here deploys apps with Rollouts.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-rollouts
+  namespace: argocd
+spec:
+  project: cluster
+  source:
+    repoURL: https://argoproj.github.io/argo-helm
+    chart: argo-rollouts
+    targetRevision: 2.43.12
+    helm:
+      releaseName: argo-rollouts
+      values: |
+        controller:
+          replicas: 1
+          nodeSelector:
+            node-role.kubernetes.io/worker: worker
+          resources:
+            requests: {cpu: 10m, memory: 64Mi}
+            limits: {memory: 256Mi}
+        dashboard:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argo-rollouts
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    managedNamespaceMetadata:
+      labels:
+        pod-security.kubernetes.io/enforce: restricted
+        pod-security.kubernetes.io/warn: restricted
+        pod-security.kubernetes.io/audit: restricted
+    syncOptions:
+      - CreateNamespace=true
+      # The Rollouts CRDs are too large for client-side apply's annotation.
+      - ServerSideApply=true

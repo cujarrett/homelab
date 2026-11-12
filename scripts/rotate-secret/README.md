@@ -22,7 +22,8 @@ Regenerate the value on the page named, then run the block and paste it at the p
 | cert-manager Cloudflare token | [Cloudflare API tokens](https://dash.cloudflare.com/profile/api-tokens), Roll |
 | Cloudflare tunnel token | Cloudflare Zero Trust, Networks → Tunnels → the tunnel → Refresh token |
 | Alertmanager Discord webhook | Discord channel settings, Integrations → Webhooks |
-| Apollo operator keys | Apollo Studio, `storefront-homelab` → Settings → API keys, one per lane |
+| Apollo operator keys | [Apollo org API keys](https://studio.apollographql.com/org/matt-jarretts-team-ms9dcawbqk44ps/api-keys), `homelab-test` and `homelab-prod`, Rotate. The old key works for one more day, so delete it once the operator restarts |
+| Kargo Apollo graph key | [storefront-homelab graph API keys](https://studio.apollographql.com/graph/storefront-homelab/variant/prod/settings/graph/api-keys), Create new key named `kargo`, then delete the old one |
 | Temporal Cloud keys | Temporal Cloud, Settings → API keys |
 | github-exporter PAT | [GitHub fine-grained tokens](https://github.com/settings/personal-access-tokens) |
 | Discogs token | [Discogs developer settings](https://www.discogs.com/settings/developers) |
@@ -36,6 +37,7 @@ scripts/rotate-secret/rotate-secret.sh /homelab/cloudflare/tunnel-token cloudfla
 scripts/rotate-secret/rotate-secret.sh /homelab/monitoring/discord-webhook-url
 scripts/rotate-secret/rotate-secret.sh /homelab/apollo-operator-test/apollo-api-key apollo-operator-test/deployment/apollo-operator
 scripts/rotate-secret/rotate-secret.sh /homelab/apollo-operator-prod/apollo-api-key apollo-operator-prod/deployment/apollo-operator
+scripts/rotate-secret/rotate-secret.sh /homelab/kargo/apollo-graph-key
 scripts/rotate-secret/rotate-secret.sh /homelab/temporal-cloud/api-key temporal-controller/deployment/temporal-controller
 scripts/rotate-secret/rotate-secret.sh /homelab/monitoring/temporal-cloud-metrics-api-key
 scripts/rotate-secret/rotate-secret.sh platform/github-exporter/github-exporter-token github-exporter/deployment/github-exporter

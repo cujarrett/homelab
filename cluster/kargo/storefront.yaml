@@ -84,6 +84,61 @@ spec:
       config:
         path: ./src
 ---
+# Runs the checks the storefront CI promote job ran.
+# Each new subgraph schema must compose with prod and pass prod's recent operations.
+# The image volumes read /schema.graphql straight from the promoted images.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: prod-schema-check
+  namespace: kargo-storefront
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    # The argo-rollouts app installs this kind, and it may sync after this app.
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  args:
+    - name: records-image
+    - name: reviews-image
+  metrics:
+    - name: prod-schema-check
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            template:
+              spec:
+                restartPolicy: Never
+                securityContext:
+                  runAsNonRoot: true
+                  # The image names its user rover, so the kubelet needs the number to check runAsNonRoot.
+                  runAsUser: 10001
+                  seccompProfile: {type: RuntimeDefault}
+                containers:
+                  - name: rover
+                    image: ghcr.io/apollographql/rover:1.0.1@sha256:1e55c1aa335ae9a94200c35b1478c83889be67173808a384fcb181b8fc8ac338
+                    command: [sh, -ec]
+                    args:
+                      - |
+                        rover subgraph check storefront-homelab@prod --name records --schema /records/schema.graphql
+                        rover subgraph check storefront-homelab@prod --name reviews --schema /reviews/schema.graphql
+                    env:
+                      - {name: APOLLO_ELV2_LICENSE, value: accept}
+                      - name: APOLLO_KEY
+                        valueFrom:
+                          secretKeyRef: {name: apollo-graph-key, key: key}
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      capabilities: {drop: [ALL]}
+                    volumeMounts:
+                      - {name: records, mountPath: /records, readOnly: true}
+                      - {name: reviews, mountPath: /reviews, readOnly: true}
+                volumes:
+                  - name: records
+                    image: {reference: "{{args.records-image}}", pullPolicy: IfNotPresent}
+                  - name: reviews
+                    image: {reference: "{{args.reviews-image}}", pullPolicy: IfNotPresent}
+---
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
@@ -96,6 +151,15 @@ spec:
     - origin: {kind: Warehouse, name: storefront}
       sources:
         direct: true
+  # Freight reaches graph-prod only after this passes.
+  verification:
+    analysisTemplates:
+      - name: prod-schema-check
+    args:
+      - name: records-image
+        value: ghcr.io/cujarrett/storefront-records@${{ imageFrom("ghcr.io/cujarrett/storefront-records").Digest }}
+      - name: reviews-image
+        value: ghcr.io/cujarrett/storefront-reviews@${{ imageFrom("ghcr.io/cujarrett/storefront-reviews").Digest }}
   promotionTemplate:
     spec:
       steps:
@@ -110,7 +174,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
-  # Only Freight that passed graph-test can reach prod.
+  # Only Freight verified in graph-test can reach prod.
   requestedFreight:
     - origin: {kind: Warehouse, name: storefront}
       sources:
