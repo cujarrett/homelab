@@ -11,7 +11,7 @@ metadata:
     policies.kyverno.io/title: Image provenance
     policies.kyverno.io/description: >-
       An image built by this account runs only if the shared build workflow
-      on homelab main built it and signed its provenance.
+      on homelab main built it from main of the image's own repo.
 spec:
   validationActions: [Audit]
   # Pods still start when the registry can't be reached.
@@ -38,7 +38,31 @@ spec:
               subject: https://github.com/cujarrett/homelab/.github/workflows/build-image.yml@refs/heads/main
         ctlog:
           url: https://rekor.sigstore.dev
+  variables:
+    # Each image must come from main of its own repo.
+    # An image is built by the repo with the same name, unless it is listed here.
+    - name: repoFor
+      expression: >-
+        {
+          "platform-connections-demo-api": "platform-connections-demo",
+          "platform-connections-demo-downstream": "platform-connections-demo",
+          "platform-connections-demo-spa": "platform-connections-demo",
+          "platform-graph-demo-backend": "platform-graph-demo",
+          "platform-graph-demo-spa": "platform-graph-demo",
+          "sump-pump-bridge": "sump-pump",
+          "sump-pump-consumer": "sump-pump"
+        }
   validations:
     - expression: >-
-        images.containers.map(image, verifyAttestationSignatures(image, attestations.slsa, [attestors.github])).all(e, e > 0)
+        images.containers.all(image, verifyAttestationSignatures(image, attestations.slsa, [attestors.github]) > 0)
       message: image has no provenance signed by the homelab build-image workflow on main
+    # ghcr.io has no port, so the first colon starts the tag.
+    - expression: >-
+        images.containers.all(image,
+          cel.bind(name, image.split("@")[0].split(":")[0].replace("ghcr.io/cujarrett/", ""),
+          cel.bind(workflow, verifyAttestationSignatures(image, attestations.slsa, [attestors.github]) > 0
+              ? extractPayload(image, attestations.slsa).predicate.buildDefinition.externalParameters.workflow
+              : {"repository": "", "ref": ""},
+            workflow.repository == "https://github.com/cujarrett/" + (name in variables.repoFor ? variables.repoFor[name] : name)
+            && workflow.ref == "refs/heads/main")))
+      message: image was not built from main of its own repo
