@@ -84,13 +84,13 @@ spec:
       config:
         path: ./src
 ---
-# Runs the checks the storefront CI promote job ran.
-# Each new subgraph schema must compose with prod and pass prod's recent operations.
-# The image volumes read /schema.graphql straight from the promoted images.
+# Gates graph-prod. Both metrics must pass.
+#   prod-schema-check, each new subgraph schema composes with prod and passes prod's recent operations.
+#   test-router-query, the graph-test router answers a query that joins both subgraphs.
 apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
 metadata:
-  name: prod-schema-check
+  name: graph-test-checks
   namespace: kargo-storefront
   annotations:
     argocd.argoproj.io/sync-wave: "1"
@@ -101,6 +101,7 @@ spec:
     - name: records-image
     - name: reviews-image
   metrics:
+    # The image volumes read /schema.graphql straight from the promoted images.
     - name: prod-schema-check
       provider:
         job:
@@ -138,6 +139,39 @@ spec:
                     image: {reference: "{{args.records-image}}", pullPolicy: IfNotPresent}
                   - name: reviews
                     image: {reference: "{{args.reviews-image}}", pullPolicy: IfNotPresent}
+    # One query that needs both subgraphs, sent to the graph-test router.
+    # The router accepts only mesh callers, so this pod joins the mesh.
+    - name: test-router-query
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            template:
+              metadata:
+                labels:
+                  sidecar.istio.io/inject: "true"
+              spec:
+                restartPolicy: Never
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 100
+                  seccompProfile: {type: RuntimeDefault}
+                containers:
+                  - name: query
+                    image: curlimages/curl:8.17.0@sha256:935d9100e9ba842cdb060de42472c7ca90cfe9a7c96e4dacb55e79e560b3ff40
+                    command: [sh, -ec]
+                    args:
+                      - |
+                        out=$(curl -sSf --retry 5 --retry-all-errors --retry-delay 3 \
+                          -H 'content-type: application/json' \
+                          -d '{"query":"{ records { id title reviews { id } } }"}' \
+                          http://storefront-router.graph-test.svc.cluster.local/)
+                        echo "$out"
+                        echo "$out" | grep -q '"reviews"'
+                        ! echo "$out" | grep -q '"errors"'
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      capabilities: {drop: [ALL]}
 ---
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
@@ -154,7 +188,7 @@ spec:
   # Freight reaches graph-prod only after this passes.
   verification:
     analysisTemplates:
-      - name: prod-schema-check
+      - name: graph-test-checks
     args:
       - name: records-image
         value: ghcr.io/cujarrett/storefront-records@${{ imageFrom("ghcr.io/cujarrett/storefront-records").Digest }}
