@@ -1,0 +1,44 @@
+# Checks that our own images were built by the shared build workflow (SLSA Build L3).
+# Audit mode for now. The policy report lists the repos still to move over.
+# Tracking issue https://github.com/cujarrett/homelab/issues/58
+apiVersion: policies.kyverno.io/v1
+kind: ImageValidatingPolicy
+metadata:
+  name: image-provenance
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Image provenance
+    policies.kyverno.io/description: >-
+      An image built by this account runs only if the shared build workflow
+      on homelab main built it and signed its provenance.
+spec:
+  validationActions: [Audit]
+  # Pods still start when the registry can't be reached.
+  failurePolicy: Ignore
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+  matchImageReferences:
+    - glob: "ghcr.io/cujarrett/*"
+  attestations:
+    - name: slsa
+      intoto:
+        type: https://slsa.dev/provenance/v1
+  attestors:
+    - name: github
+      cosign:
+        keyless:
+          identities:
+            - issuer: https://token.actions.githubusercontent.com
+              # The signing certificate names the shared workflow as its signer.
+              subject: https://github.com/cujarrett/homelab/.github/workflows/build-image.yml@refs/heads/main
+        ctlog:
+          url: https://rekor.sigstore.dev
+  validations:
+    - expression: >-
+        images.containers.map(image, verifyAttestationSignatures(image, attestations.slsa, [attestors.github])).all(e, e > 0)
+      message: image has no provenance signed by the homelab build-image workflow on main
