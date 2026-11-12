@@ -127,4 +127,4 @@ UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/12
 curl -s -o /dev/null -w "%{http_code}\n" -A "$UA" https://<hostname>/
 ```
 
-Then add the hostname to the **Public Hostnames** list in `AGENTS.md`.
+e Then add the hostname to [Cluster → Public](../../docs/cluster.md#public).
