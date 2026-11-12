@@ -163,6 +163,7 @@ SSH access: `ssh pi@192.168.10.10x`
 | `spire-server`, `spire-system` | SPIRE | Workload identity (SPIFFE). Agent DaemonSet on all nodes. OIDC discovery provider serving `oidc.mattjarrett.dev` |
 | `trivy-system` | Trivy operator | Image CVE scans for the Security dashboard |
 | `kargo` | Kargo | API, controller, management controller and webhooks server. UI at `kargo.local.lab`. The chart also creates `kargo-system-resources` and `kargo-shared-resources` |
+| `kargo-storefront` | Kargo project | Promotes the storefront subgraph images from `graph-test` to `graph-prod`. Kargo creates the namespace from the `Project` in [cluster/kargo/storefront.yaml](./cluster/kargo/storefront.yaml) |
 | `temporal` | Temporal | Frontend, history, matching, worker and UI, plus `temporal-postgres` (5Gi on `longhorn-retain`). UI at `temporal.local.lab`, signed in through Entra |
 | `temporal-controller` | temporal-controller | Kubebuilder controller that creates, corrects and deletes Temporal namespaces from `TemporalNamespace` resources |
 

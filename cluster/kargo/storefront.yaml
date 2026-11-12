@@ -1,0 +1,122 @@
+# Promotes the storefront subgraphs from graph-test to graph-prod.
+# Kargo creates the kargo-storefront namespace from the Project.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: kargo-storefront
+---
+# graph-test takes every new Freight. graph-prod waits for a person to promote.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: kargo-storefront
+  namespace: kargo-storefront
+  annotations:
+    # The namespace comes from the Project, so these wait for it.
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  promotionPolicies:
+    - stageSelector:
+        name: graph-test
+      autoPromotionEnabled: true
+---
+# One Freight holds both subgraph images, so prod always gets a pair that ran together in test.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: storefront
+  namespace: kargo-storefront
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  interval: 5m
+  subscriptions:
+    # CI tags each image sha-<commit> only once, so the tag names the source commit.
+    # The regex leaves out cosign's signature and attestation tags.
+    - image:
+        repoURL: ghcr.io/cujarrett/storefront-records
+        imageSelectionStrategy: NewestBuild
+        allowTagsRegexes: ['^sha-[0-9a-f]{40}$']
+        cacheByTag: true
+    - image:
+        repoURL: ghcr.io/cujarrett/storefront-reviews
+        imageSelectionStrategy: NewestBuild
+        allowTagsRegexes: ['^sha-[0-9a-f]{40}$']
+        cacheByTag: true
+---
+# Both Stages run these steps, so test and prod are promoted the same way.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: PromotionTask
+metadata:
+  name: promote
+  namespace: kargo-storefront
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  steps:
+    # ctx.stage is graph-test or graph-prod, which is also the workspace directory.
+    - uses: git-clone
+      config:
+        repoURL: https://github.com/cujarrett/homelab-workspaces.git
+        checkout:
+          - branch: main
+            path: ./src
+    - uses: yaml-update
+      as: records
+      config:
+        path: ./src/${{ ctx.stage }}/records.yaml
+        updates:
+          - key: spec.parameters.image
+            value: ghcr.io/cujarrett/storefront-records@${{ imageFrom("ghcr.io/cujarrett/storefront-records").Digest }}
+    - uses: yaml-update
+      as: reviews
+      config:
+        path: ./src/${{ ctx.stage }}/reviews.yaml
+        updates:
+          - key: spec.parameters.image
+            value: ghcr.io/cujarrett/storefront-reviews@${{ imageFrom("ghcr.io/cujarrett/storefront-reviews").Digest }}
+    # No commit is made when both digests already match.
+    - uses: git-commit
+      config:
+        path: ./src
+        message: "${{ ctx.stage }}: promote ${{ imageFrom(\"ghcr.io/cujarrett/storefront-records\").Tag }} records, ${{ imageFrom(\"ghcr.io/cujarrett/storefront-reviews\").Tag }} reviews"
+    - uses: git-push
+      config:
+        path: ./src
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: graph-test
+  namespace: kargo-storefront
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  requestedFreight:
+    - origin: {kind: Warehouse, name: storefront}
+      sources:
+        direct: true
+  promotionTemplate:
+    spec:
+      steps:
+        - task:
+            name: promote
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: graph-prod
+  namespace: kargo-storefront
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  # Only Freight that passed graph-test can reach prod.
+  requestedFreight:
+    - origin: {kind: Warehouse, name: storefront}
+      sources:
+        stages: [graph-test]
+  promotionTemplate:
+    spec:
+      steps:
+        - task:
+            name: promote
