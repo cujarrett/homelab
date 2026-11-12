@@ -1,0 +1,72 @@
+# Kargo promotes artifacts between stages. Plus the namespace and route in cluster/kargo.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kargo
+  namespace: argocd
+spec:
+  project: cluster
+  sources:
+    - repoURL: ghcr.io/akuity/kargo-charts
+      chart: kargo
+      targetRevision: 1.12.5
+      helm:
+        releaseName: kargo
+        values: |
+          global:
+            nodeSelector:
+              node-role.kubernetes.io/worker: worker
+            # The chart puts this on every container, which is where restricted PSS checks it.
+            securityContext:
+              runAsNonRoot: true
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: [ALL]
+              seccompProfile:
+                type: RuntimeDefault
+          api:
+            host: kargo.local.lab
+            # Holds the admin password hash and token signing key, from cluster/external-secrets/kargo.yaml.
+            secret:
+              name: kargo-api
+            # The Gateway terminates TLS with the local.lab wildcard cert.
+            tls:
+              enabled: false
+              terminatedUpstream: true
+            resources:
+              requests: {cpu: 10m, memory: 64Mi}
+              limits: {memory: 256Mi}
+          controller:
+            resources:
+              requests: {cpu: 25m, memory: 128Mi}
+              limits: {memory: 512Mi}
+          managementController:
+            resources:
+              requests: {cpu: 10m, memory: 48Mi}
+              limits: {memory: 128Mi}
+          webhooksServer:
+            resources:
+              requests: {cpu: 10m, memory: 48Mi}
+              limits: {memory: 128Mi}
+          garbageCollector:
+            resources:
+              requests: {cpu: 10m, memory: 48Mi}
+              limits: {memory: 128Mi}
+          # Receives pushes from registries and Git hosts. Warehouses poll instead,
+          # so nothing public points at the cluster.
+          externalWebhooksServer:
+            enabled: false
+    - repoURL: https://github.com/cujarrett/homelab.git
+      targetRevision: main
+      path: cluster/kargo
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kargo
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # Kargo's CRDs are too large for client-side apply's annotation.
+      - ServerSideApply=true
