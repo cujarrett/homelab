@@ -29,6 +29,10 @@ spec:
             replicaCount: 1
             # 1 year - avoids frequent CA rotation with no automated rotation tooling in place.
             caTTL: 8760h
+            # Chart 0.30.4 ships 1.15.5, open to CVE-2026-116587 (go-jose).
+            # Drop this once the chart's appVersion reaches 1.16.0.
+            image:
+              tag: 1.16.0
             caSubject:
               country: US
               organization: Homelab
@@ -74,6 +78,10 @@ spec:
 
           spire-agent:
             logLevel: INFO
+            # Chart 0.30.4 ships 1.15.5, open to CVE-2026-116587 (go-jose).
+            # Drop this once the chart's appVersion reaches 1.16.0.
+            image:
+              tag: 1.16.0
             # The chart requests nothing, so the scheduler counted each agent as free.
             resources:
               requests:
@@ -101,6 +109,10 @@ spec:
           # Public by necessity - both clouds fetch the discovery doc and JWKS from the internet.
           spiffe-oidc-discovery-provider:
             enabled: true
+            # Chart 0.30.4 ships 1.15.5, open to CVE-2026-116587 (go-jose).
+            # Drop this once the chart's appVersion reaches 1.16.0.
+            image:
+              tag: 1.16.0
             # Traefik terminates TLS at the edge; the provider serves plain HTTP behind it.
             tls:
               spire:
