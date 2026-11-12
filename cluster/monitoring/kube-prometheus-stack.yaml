@@ -33,8 +33,45 @@ spec:
           serviceMonitor:
             metricRelabelings:
               - sourceLabels: [__name__]
-                regex: "apiserver_.+|etcd_.+|workqueue_.+_bucket|prober_.+_bucket|scheduler_.+_bucket|kubelet_runtime_operations_duration_seconds_bucket|container_blkio_device_usage_total|storage_operation_duration_seconds_bucket|rest_client_request_duration_seconds_bucket|kubernetes_feature_enabled"
+                regex: "apiserver_.+|etcd_.+|workqueue_.+_bucket|prober_.+_bucket|scheduler_.+_bucket|kubelet_runtime_operations_duration_seconds_bucket|container_blkio_device_usage_total|storage_operation_duration_seconds_bucket|rest_client_request_duration_seconds_bucket|kubernetes_feature_enabled|csi_operations_seconds_bucket|volume_operation_total_seconds_bucket|watch_cache_capacity|apiextensions_openapi_v[23]_regeneration_count|rest_client_re(quest|sponse)_size_bytes_bucket|kubelet_http_requests_duration_seconds_bucket|kubeproxy_network_programming_duration_seconds_bucket"
                 action: drop
+            # A list here replaces the chart defaults, so the first seven rules copy chart 92.17.1.
+            # The last rule is ours. No dashboard, rule or app reads those metrics.
+            cAdvisorMetricRelabelings:
+              - sourceLabels: [__name__]
+                action: drop
+                regex: "container_cpu_(cfs_throttled_seconds_total|load_average_10s|system_seconds_total|user_seconds_total)"
+              - sourceLabels: [__name__]
+                action: drop
+                regex: "container_fs_(io_current|io_time_seconds_total|io_time_weighted_seconds_total|reads_merged_total|sector_reads_total|sector_writes_total|writes_merged_total)"
+              - sourceLabels: [__name__]
+                action: drop
+                regex: "container_memory_mapped_file"
+              - sourceLabels: [__name__]
+                action: drop
+                regex: "container_(file_descriptors|tasks_state|threads_max)"
+              - sourceLabels: [__name__, interface]
+                action: drop
+                regex: "container_network_.*;(cali|cilium|cni|lxc|nodelocaldns|tunl).*"
+              - sourceLabels: [__name__]
+                action: drop
+                regex: "container_spec.*"
+              - sourceLabels: [id, pod]
+                action: drop
+                regex: ".+;"
+              - sourceLabels: [__name__]
+                action: drop
+                regex: "container_(memory_(failures_total|failcnt|total_.+|pgsteal_total|pgscan_total|file_.+|workingset_refault_.+|events_.+|max_usage_bytes|kernel_usage|usage_bytes)|last_seen|health_state|threads|processes|sockets|creation_time_seconds|start_time_seconds|ulimits_soft)"
+        # Not built at all, which also trims kube-state-metrics' own memory.
+        # kube_replicaset_owner stays, because the workload recording rules join on it.
+        kube-state-metrics:
+          metricDenylist:
+            - kube_replicaset_status_.+
+            - kube_replicaset_spec_replicas
+            - kube_replicaset_metadata_generation
+            - kube_replicaset_created
+            - kube_pod_tolerations
+            - kube_configmap_.+
         prometheusOperator:
           serviceMonitor:
             selfMonitor: false

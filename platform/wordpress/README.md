@@ -33,8 +33,8 @@ theme installs and updates are unaffected and still work normally from the UI.
 
 | Size | WP CPU request/limit | WP Memory request/limit | DB CPU request/limit | DB Memory request/limit |
 |---|---|---|---|---|
-| `sm` | 50m / 1000m | 768Mi / 768Mi | 50m / 500m | 512Mi / 512Mi |
-| `md` | 100m / 1500m | 1280Mi / 1280Mi | 50m / 500m | 512Mi / 512Mi |
+| `sm` | 50m / 1000m | 768Mi / 768Mi | 50m / 500m | 384Mi / 384Mi |
+| `md` | 100m / 1500m | 1280Mi / 1280Mi | 50m / 500m | 384Mi / 384Mi |
 | `lg` | 150m / 2000m | 2Gi / 2Gi | 100m / 1000m | 1Gi / 1Gi |
 
 ## Example instance

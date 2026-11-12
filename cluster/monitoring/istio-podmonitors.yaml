@@ -50,6 +50,11 @@ spec:
         - action: drop
           sourceLabels: [namespace, __name__]
           regex: "temporal;(service_latency.*|client_latency|persistence_latency|event_blob_size|service_authorization_latency|visibility_persistence_latency)_bucket"
+        # Envoy internals and request/response size are about 15k series.
+        # No dashboard, rule or app reads them.
+        - action: drop
+          sourceLabels: [__name__]
+          regex: "envoy_.+|istio_(request|response)_bytes_.+"
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor

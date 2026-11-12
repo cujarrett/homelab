@@ -49,6 +49,16 @@ spec:
           configFile:
             image:
               platform: linux/arm64
+          server:
+            # Request: 30 day peak is 149Mi, including DB updates.
+            # Limit stays at the chart default of 1Gi.
+            resources:
+              requests:
+                cpu: 200m
+                memory: 192Mi
+              limits:
+                cpu: 1
+                memory: 1Gi
         serviceMonitor:
           enabled: true
           labels:

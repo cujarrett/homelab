@@ -38,6 +38,12 @@ spec:
               enabled: true
               additionalLabels:
                 release: monitoring
+              # No dashboard or rule reads the histograms, about 5k series.
+              # Counters and _sum/_count stay.
+              metricRelabelings:
+                - sourceLabels: [__name__]
+                  regex: "kyverno_.+_bucket"
+                  action: drop
             resources:
               requests:
                 cpu: 50m
