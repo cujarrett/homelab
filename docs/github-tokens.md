@@ -1,6 +1,6 @@
 # GitHub Tokens
 
-CI pushes image tag bumps as one of two GitHub Apps, so deploy commits and promote pull requests are credited to the App and signed by GitHub. Each deploy job mints a one-hour token from the App's private key.
+CI pushes image tag bumps as one of two GitHub Apps, so deploy commits are credited to the App and signed by GitHub. Kargo pushes storefront promotions as `homelab-workspaces-deployer` too. Each deploy job mints a one-hour token from the App's private key.
 
 | App | Grants | Installed on | Key lives as |
 |---|---|---|---|

@@ -238,17 +238,17 @@ The schema lives in `schema.graphql` beside the resolvers and ships inside the i
 | Stage | CI | KRM |
 |---|---|---|
 | Local | none. `rover dev --graph-ref storefront-homelab@test` composes the laptop's subgraph with everything test already publishes | none |
-| PR opens | `rover subgraph check` against `prod`. Composition, and every operation prod clients sent in the retention window | |
+| PR opens | `rover subgraph check` against `test`. Composition, and every operation test clients sent in the retention window | |
 | Review | CODEOWNERS requests the graph team on `schema.graphql`. Branch protection requires the check and the review | |
-| Merge to main | build the ARM64 image, cosign sign it by digest, write the digest into `graph-test/records.yaml` in `homelab-workspaces` | ArgoCD syncs. Kyverno admits the signed digest |
+| Merge to main | build the ARM64 image and cosign sign it by digest | Kargo finds the new digest and writes it into `graph-test/records.yaml` in `homelab-workspaces`. ArgoCD syncs. Kyverno admits the signed digest |
 | Test | | the operator pulls the same digest the pod runs, reads `/schema.graphql` from it and publishes to `test`. Composition runs. The router reloads |
-| Promote | CI checks against `prod` again and opens a PR moving the digest into `graph-prod/records.yaml`. Merging it is the promotion | |
-| Prod | merging that PR is the release | same flow, variant `prod`, the prod operator |
-| Rollback | revert the digest PR | ArgoCD syncs the old digest, the operator republishes |
+| Promote | | Kargo checks both subgraph schemas against `prod`. Freight that passes can be promoted to `graph-prod` with one click |
+| Prod | | Kargo writes the digests into `graph-prod/`. Same flow, variant `prod`, the prod operator |
+| Rollback | | promote an older Freight in Kargo. ArgoCD syncs the old digest, the operator republishes |
 
 A composition failure anywhere leaves that router serving its last good supergraph, and shows on the `SupergraphSchema` status.
 
-CI never publishes a schema and never touches the cluster. It writes digests to git.
+CI never publishes a schema, never touches the cluster and never writes to `homelab-workspaces`. Kargo moves every digest.
 
 The check composes the proposed schema against every other subgraph currently published to the variant. A change to a `@key` that another team extends fails on this PR, not theirs.
 
