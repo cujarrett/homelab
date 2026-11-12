@@ -362,7 +362,7 @@ data:
             "type": "loki",
             "uid": "P8E80F9AEF21F6940"
           },
-          "description": "One dot per city and site. The color is the site, and red is an attack. Hover a dot to see the pages. Bigger dots mean more requests. US only. mattjarrett.com and kentjarrett.com send no location, so they are never on the map.",
+          "description": "One dot per city and site. The color is the site. Hover a dot to see the pages. Bigger dots mean more requests. US only. mattjarrett.com and kentjarrett.com send no location, so they are never on the map.",
           "gridPos": {
             "h": 16,
             "w": 16,
@@ -429,11 +429,6 @@ data:
                           "sandbox": {
                             "color": "semi-dark-blue",
                             "index": 9
-                          },
-                          "attack": {
-                            "color": "red",
-                            "index": 10,
-                            "text": "Attack"
                           }
                         }
                       }
@@ -508,7 +503,7 @@ data:
                 "type": "loki",
                 "uid": "P8E80F9AEF21F6940"
               },
-              "expr": "sum by (site, city, region, lat, lon, path) (sum by (visitor, site, city, region, lat, lon, path) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range]))) or sum by (site, city, region, lat, lon, path) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" | label_format path=\"{{.host}}\", site=\"attack\" [$__range]))",
+              "expr": "sum by (site, city, region, lat, lon, path) (sum by (visitor, site, city, region, lat, lon, path) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range])))",
               "refId": "A",
               "queryType": "instant"
             }
@@ -1240,6 +1235,218 @@ data:
           "panels": []
         },
         {
+          "id": 35,
+          "type": "geomap",
+          "title": "Where attacks came from",
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "description": "One dot per city and site that sent probes. Hover a dot to see what it probed. Bigger dots mean more probes. US only. mattjarrett.com and kentjarrett.com send no location, so they are never on the map.",
+          "gridPos": {
+            "h": 14,
+            "w": 24,
+            "x": 0,
+            "y": 32
+          },
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "red"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "basemap": {
+              "config": {
+                "showLabels": true,
+                "theme": "dark"
+              },
+              "type": "carto"
+            },
+            "controls": {
+              "mouseWheelZoom": false,
+              "showAttribution": true,
+              "showDebug": false,
+              "showMeasure": false,
+              "showScale": false,
+              "showZoom": true
+            },
+            "layers": [
+              {
+                "config": {
+                  "showLegend": false,
+                  "style": {
+                    "color": {
+                      "fixed": "red"
+                    },
+                    "opacity": 0.85,
+                    "size": {
+                      "field": "Probes",
+                      "fixed": 6,
+                      "min": 5,
+                      "max": 14
+                    },
+                    "symbol": {
+                      "fixed": "img/icons/marker/circle.svg",
+                      "mode": "fixed"
+                    }
+                  }
+                },
+                "location": {
+                  "latitude": "lat",
+                  "longitude": "lon",
+                  "mode": "coords"
+                },
+                "name": "Attacks",
+                "tooltip": true,
+                "type": "markers"
+              }
+            ],
+            "tooltip": {
+              "mode": "details"
+            },
+            "view": {
+              "allLayers": true,
+              "id": "coords",
+              "lat": 39.5,
+              "lon": -98.35,
+              "zoom": 3.8
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "expr": "sum by (site, city, region, lat, lon, path) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" | label_format site=\"{{.host}}\" [$__range]))",
+              "refId": "A",
+              "queryType": "instant"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "labelsToFields",
+              "options": {
+                "mode": "columns"
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "convertFieldType",
+              "options": {
+                "conversions": [
+                  {
+                    "destinationType": "number",
+                    "targetField": "lat"
+                  },
+                  {
+                    "destinationType": "number",
+                    "targetField": "lon"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "filterByValue",
+              "options": {
+                "type": "exclude",
+                "match": "any",
+                "filters": [
+                  {
+                    "fieldName": "lat",
+                    "config": {
+                      "id": "isNull",
+                      "options": {}
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "groupBy",
+              "options": {
+                "fields": {
+                  "site": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "city": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "region": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "lat": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "lon": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "Value #A": {
+                    "aggregations": [
+                      "sum"
+                    ],
+                    "operation": "aggregate"
+                  },
+                  "path": {
+                    "aggregations": [
+                      "uniqueValues"
+                    ],
+                    "operation": "aggregate"
+                  }
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "sort": [
+                  {
+                    "field": "Value #A (sum)",
+                    "desc": true
+                  }
+                ]
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "renameByName": {
+                  "site": "Site",
+                  "city": "City",
+                  "region": "State",
+                  "Value #A (sum)": "Probes",
+                  "path (uniqueValues)": "Probed"
+                },
+                "indexByName": {
+                  "site": 0,
+                  "city": 1,
+                  "region": 2,
+                  "Value #A (sum)": 3,
+                  "path (uniqueValues)": 4,
+                  "lat": 5,
+                  "lon": 6
+                }
+              }
+            }
+          ]
+        },
+        {
           "id": 31,
           "type": "timeseries",
           "title": "Attacks per hour",
@@ -1252,7 +1459,7 @@ data:
             "h": 9,
             "w": 10,
             "x": 0,
-            "y": 32
+            "y": 46
           },
           "fieldConfig": {
             "defaults": {
@@ -1351,7 +1558,7 @@ data:
             "h": 9,
             "w": 14,
             "x": 10,
-            "y": 32
+            "y": 46
           },
           "fieldConfig": {
             "defaults": {
@@ -1544,7 +1751,7 @@ data:
             "h": 9,
             "w": 14,
             "x": 0,
-            "y": 41
+            "y": 55
           },
           "fieldConfig": {
             "defaults": {
@@ -1707,7 +1914,7 @@ data:
             "h": 9,
             "w": 10,
             "x": 14,
-            "y": 41
+            "y": 55
           },
           "fieldConfig": {
             "defaults": {
@@ -1759,7 +1966,7 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 50
+            "y": 64
           },
           "panels": []
         },
@@ -1776,7 +1983,7 @@ data:
             "h": 9,
             "w": 9,
             "x": 0,
-            "y": 51
+            "y": 65
           },
           "fieldConfig": {
             "defaults": {
@@ -1983,7 +2190,7 @@ data:
             "h": 9,
             "w": 9,
             "x": 9,
-            "y": 51
+            "y": 65
           },
           "fieldConfig": {
             "defaults": {
@@ -2137,7 +2344,7 @@ data:
             "h": 9,
             "w": 6,
             "x": 18,
-            "y": 51
+            "y": 65
           },
           "fieldConfig": {
             "defaults": {
