@@ -1,0 +1,13 @@
+# The Kargo chart reads both keys by these exact names.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: kargo-api
+  namespace: kargo
+spec:
+  secretStoreRef: {kind: ClusterSecretStore, name: aws-parameter-store}
+  data:
+    - secretKey: ADMIN_ACCOUNT_PASSWORD_HASH
+      remoteRef: {key: /homelab/kargo/admin-password-hash}
+    - secretKey: ADMIN_ACCOUNT_TOKEN_SIGNING_KEY
+      remoteRef: {key: /homelab/kargo/token-signing-key}
