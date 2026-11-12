@@ -66,6 +66,11 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    # The kargo-storefront namespace appears only after Kargo reconciles the Project.
+    # Retrying lets the resources that live in it apply once it exists.
+    retry:
+      limit: 5
+      backoff: {duration: 10s, factor: 2, maxDuration: 2m}
     syncOptions:
       - CreateNamespace=true
       # Kargo's CRDs are too large for client-side apply's annotation.

@@ -4,8 +4,8 @@ CI pushes image tag bumps as one of two GitHub Apps, so deploy commits and promo
 
 | App | Grants | Installed on | Key lives as |
 |---|---|---|---|
-| `homelab-workspaces-deployer` | Contents and Pull requests, read and write | `homelab-workspaces` | `HOMELAB_WORKSPACES_APP_KEY` Actions secret in workspaces app repos |
-| `cujarrett-homelab-deployer` | Contents, read and write | `homelab` | `HOMELAB_APP_KEY` Actions secret in `platform-exporter` and `temporal-controller` |
+| [`homelab-workspaces-deployer`](https://github.com/settings/apps/homelab-workspaces-deployer) | Contents and Pull requests, read and write | `homelab-workspaces` | `HOMELAB_WORKSPACES_APP_KEY` Actions secret in workspaces app repos, and `/homelab/kargo/homelab-workspaces-app-key` in Parameter Store for Kargo |
+| [`cujarrett-homelab-deployer`](https://github.com/settings/apps/cujarrett-homelab-deployer) | Contents, read and write | `homelab` | `HOMELAB_APP_KEY` Actions secret in `platform-exporter` and `temporal-controller` |
 
 The Apps are split so repos that only touch `homelab-workspaces` can't rewrite cluster manifests. Client IDs are written into the workflows, since they are not secret.
 
@@ -21,20 +21,24 @@ Commit the repo's workspace file first, because `deploy` edits it.
 
 ## Rotating an App key
 
-Every repo holding the key gets the new one in one pass. Set `APP` and `SECRET` from the table above.
+Each App keeps exactly one private key. Rotation adds the new key everywhere, then deletes the old one.
 
-```bash
-APP=homelab-workspaces-deployer SECRET=HOMELAB_WORKSPACES_APP_KEY
-open https://github.com/settings/apps   # pick $APP, then Private keys → Generate a private key
-PEM=$(ls -t ~/Downloads/$APP.*.private-key.pem | head -1)
-for repo in $(gh repo list cujarrett --no-archived --limit 200 --json name --jq '.[].name'); do
-  gh secret list -R "cujarrett/$repo" 2>/dev/null | grep -q "^$SECRET[[:space:]]" \
-    && gh secret set "$SECRET" -R "cujarrett/$repo" < "$PEM" && echo "set $repo"
-done
-rm -P "$PEM"
-```
+1. Open the App's page from the table above, then **Credentials → Key pairs → New key**. The `.pem` file downloads.
+2. Run this with `APP` and `SECRET` from the table. It sets the new key in every repo holding the secret, and in Parameter Store for Kargo.
 
-Then delete the old key under **Private keys** on the App's page. For `cujarrett-homelab-deployer`, run it again with `APP=cujarrett-homelab-deployer SECRET=HOMELAB_APP_KEY`.
+   ```bash
+   APP=homelab-workspaces-deployer SECRET=HOMELAB_WORKSPACES_APP_KEY
+   PEM=$(ls -t ~/Downloads/$APP.*.private-key.pem ~/Desktop/$APP.*.private-key.pem 2>/dev/null | head -1)
+   for repo in $(gh repo list cujarrett --no-archived --limit 200 --json name --jq '.[].name'); do
+     gh secret list -R "cujarrett/$repo" 2>/dev/null | grep -q "^${SECRET}[[:space:]]" \
+       && gh secret set "$SECRET" -R "cujarrett/$repo" < "$PEM" && echo "set $repo"
+   done
+   [ "$APP" = homelab-workspaces-deployer ] && aws ssm put-parameter --overwrite \
+     --name /homelab/kargo/homelab-workspaces-app-key --type SecureString --value "$(cat "$PEM")"
+   rm -P "$PEM"
+   ```
+
+3. Back on **Key pairs**, delete every key except the one added now. The App is left with one key.
 
 ## Repo Actions secrets
 

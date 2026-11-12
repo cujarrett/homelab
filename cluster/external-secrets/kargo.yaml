@@ -11,3 +11,28 @@ spec:
       remoteRef: {key: /homelab/kargo/admin-password-hash}
     - secretKey: ADMIN_ACCOUNT_TOKEN_SIGNING_KEY
       remoteRef: {key: /homelab/kargo/token-signing-key}
+---
+# Kargo pushes promotions to homelab-workspaces as the deployer GitHub App.
+# The cred-type label is how Kargo finds this Secret.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: homelab-workspaces-git
+  namespace: kargo-storefront
+spec:
+  secretStoreRef: {kind: ClusterSecretStore, name: aws-parameter-store}
+  target:
+    template:
+      metadata:
+        labels:
+          kargo.akuity.io/cred-type: git
+      data:
+        repoURL: https://github.com/cujarrett/homelab-workspaces.git
+        githubAppClientID: Iv23liC9AQ1xrWzEe4nX
+        githubAppPrivateKey: "{{ .privateKey }}"
+        githubAppInstallationID: "{{ .installationID }}"
+  data:
+    - secretKey: privateKey
+      remoteRef: {key: /homelab/kargo/homelab-workspaces-app-key}
+    - secretKey: installationID
+      remoteRef: {key: /homelab/kargo/homelab-workspaces-app-installation-id}
