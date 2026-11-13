@@ -156,6 +156,7 @@ Scripts are in [scripts/wordpress/](./scripts/wordpress/). The procedure is in [
 ## Key Conventions
 - Every app has ArgoCD `automated: { prune: true, selfHeal: true }`, so the cluster converges to the repo on its own.
 - Most apps use `ServerSideApply: true`.
+- Every repo has "Automatically delete head branches" on. Turn it on for a new repo with `gh repo edit cujarrett/<repo> --delete-branch-on-merge`. The `GitHubRepoKeepsMergedBranches` alert fires for any repo that has it off.
 - Never hand-create or commit a cluster-setup Secret. Add a parameter and an `ExternalSecret` instead. See [External Secrets](./docs/external-secrets.md).
 - Secrets that controllers generate (cert-manager TLS, Crossplane provider TLS, webhook CAs) hold no credential anyone chose. They stay in-cluster.
 - Every `HTTPRoute` has `parentRefs: [{name: traefik-gateway, namespace: kube-system}]`. Traefik Middlewares attach as `ExtensionRef` filters.

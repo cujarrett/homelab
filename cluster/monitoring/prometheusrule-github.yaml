@@ -110,3 +110,14 @@ spec:
               The homelab-workspaces-launchpad token expired or was revoked, so Launchpad
               cannot list workspaces or create sandboxes. Regenerate it on GitHub and run
               ./scripts/github-token-rotate/github-token-rotate.sh.
+        # Off leaves every merged PR's branch behind.
+        - alert: GitHubRepoKeepsMergedBranches
+          expr: github_exporter_repo_delete_branch_on_merge == 0
+          for: 2h
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.repo }} keeps a PR's branch after it merges"
+            description: |-
+              Turn on automatic branch deletion.
+              gh repo edit cujarrett/{{ $labels.repo }} --delete-branch-on-merge
