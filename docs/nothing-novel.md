@@ -15,6 +15,7 @@ A homelab is for learning what the industry already agreed on, so being recognis
 | A workload names who may call it; everything else is refused | `AuthorizationPolicy`, `PeerAuthentication` STRICT | [Istio](https://istio.io) - the first ALLOW policy making a workload deny-by-default is documented behaviour, and deny-by-default is as old as a firewall rule |
 | A workload names what it calls; nothing else is reachable | `Sidecar` `REGISTRY_ONLY` + `ServiceEntry` | Istio's own egress control task |
 | One namespace per environment, branch, or engineer | Kubernetes multi-tenancy | The usual way ephemeral environments are built |
+| Each open pull request gets its own environment, deleted when the PR closes | Argo CD ApplicationSet pull request generator | [Argo CD Pull Request Generator](https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Generators-Pull-Request/), Argo's own preview environment pattern |
 | CI writes the new image tag to Git; ArgoCD converges | GitOps | OpenGitOps principles; Flux and Argo both ship image automation that does this |
 | Steps that keep their progress through crashes, restarts and long waits | Durable execution | [Temporal](https://temporal.io), open source, from the engineers who built Uber's Cadence |
 | A team's workflow namespace is created from a Kubernetes resource | A custom controller for an outside system | The [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/), the same approach as AWS ACK and Crossplane providers |

@@ -1,6 +1,7 @@
 # The schema a subgraph publishes is read from its image, so an unsigned image
 # could publish a schema without its pod ever running. Both places the image
-# appears are verified against the same signature, made only by CI on main.
+# appears must have provenance from the shared build workflow, built from main
+# of that subgraph's own repo.
 apiVersion: policies.kyverno.io/v1
 kind: ImageValidatingPolicy
 metadata:
@@ -11,7 +12,8 @@ metadata:
     policies.kyverno.io/title: Platform graph image signatures
     policies.kyverno.io/description: >-
       A subgraph image runs in a graph lane, or has its schema published,
-      only if CI on main signed that exact digest.
+      only if the shared build workflow built that exact digest from main of
+      the subgraph's own repo.
 spec:
   validationActions: [Deny]
   failurePolicy: Fail
@@ -36,28 +38,40 @@ spec:
   images:
     - name: subgraphSchema
       expression: "has(object.spec) && has(object.spec.schema) && has(object.spec.schema.ociImage) ? [object.spec.schema.ociImage.reference] : []"
+  attestations:
+    - name: slsa
+      intoto:
+        type: https://slsa.dev/provenance/v1
   attestors:
     - name: github
       cosign:
         keyless:
           identities:
             - issuer: https://token.actions.githubusercontent.com
-              # Only the two subgraph workflows, and only from main. A branch build
-              # is never signed, so a signature here means the commit was reviewed.
-              subjectRegExp: "^https://github\\.com/cujarrett/storefront-(records|reviews)/\\.github/workflows/ci\\.yml@refs/heads/main$"
+              subject: https://github.com/cujarrett/homelab/.github/workflows/build-image.yml@refs/heads/main
         ctlog:
           url: https://rekor.sigstore.dev
   # Every expression runs against every matched kind, so each one applies only
   # where its image list exists.
+  # Main is protected, so a build from main means the commit was reviewed.
+  # ghcr.io has no port, so the first colon starts the tag.
   validations:
     - expression: >-
         !has(images.containers) ||
-        images.containers.map(image, verifyImageSignatures(image, [attestors.github])).all(e, e > 0)
-      message: pod image is not signed by its subgraph repo CI on main
+        images.containers.all(image,
+          verifyAttestationSignatures(image, attestations.slsa, [attestors.github]) > 0
+          && cel.bind(workflow, extractPayload(image, attestations.slsa).predicate.buildDefinition.externalParameters.workflow,
+               workflow.repository == "https://github.com/cujarrett/" + image.split("@")[0].split(":")[0].replace("ghcr.io/cujarrett/", "")
+               && workflow.ref == "refs/heads/main"))
+      message: pod image was not built by the shared build workflow from main of its subgraph repo
     - expression: >-
         !has(images.subgraphSchema) ||
-        images.subgraphSchema.map(image, verifyImageSignatures(image, [attestors.github])).all(e, e > 0)
-      message: subgraph schema image is not signed by its subgraph repo CI on main
+        images.subgraphSchema.all(image,
+          verifyAttestationSignatures(image, attestations.slsa, [attestors.github]) > 0
+          && cel.bind(workflow, extractPayload(image, attestations.slsa).predicate.buildDefinition.externalParameters.workflow,
+               workflow.repository == "https://github.com/cujarrett/" + image.split("@")[0].split(":")[0].replace("ghcr.io/cujarrett/", "")
+               && workflow.ref == "refs/heads/main"))
+      message: subgraph schema image was not built by the shared build workflow from main of its subgraph repo
 ---
 # The policy stays not ready until the reports controller can read every kind it matches.
 apiVersion: rbac.authorization.k8s.io/v1

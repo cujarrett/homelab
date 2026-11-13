@@ -19,17 +19,18 @@ permissions:
   contents: read
 
 jobs:
-  spa:
+  spa-check:
     runs-on: ubuntu-26.04-arm
     permissions:
       contents: read
-      packages: write
+      packages: read
+    outputs:
+      build: ${{ steps.check.outputs.build }}
+      dated: ${{ steps.check.outputs.dated }}
     env:
       IMAGE: ghcr.io/cujarrett/base-spa
       TAG: nginx1.31-alpine
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         if: github.event_name != 'pull_request'
         with:
@@ -64,23 +65,45 @@ jobs:
           echo "$upgrades"
           if [ -n "$upgrades" ]; then echo "build=true"; else echo "build=false"; fi >> "$GITHUB_OUTPUT"
 
-      # no-cache: a cached apk upgrade layer would keep old packages.
-      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        if: steps.check.outputs.build == 'true'
-        with:
-          context: images/base-spa
-          platforms: linux/arm64
-          no-cache: true
-          pull: true
-          sbom: true
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ env.IMAGE }}:${{ steps.check.outputs.dated }}
-          labels: org.opencontainers.image.source=https://github.com/cujarrett/homelab
+  spa-build:
+    needs: spa-check
+    if: needs.spa-check.outputs.build == 'true'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    # Build from scratch each time, so it picks up the latest Alpine security fixes.
+    uses: ./.github/workflows/build-image.yml
+    with:
+      image: ghcr.io/cujarrett/base-spa
+      tags: ghcr.io/cujarrett/base-spa:${{ needs.spa-check.outputs.dated }}
+      context: images/base-spa
+      fresh: true
+      check-only: ${{ github.event_name == 'pull_request' }}
 
-      # Apps follow the main tag, so a build reaches them only after 7 days.
-      # Retagging keeps the digest, so a nightly run with nothing new to promote changes nothing.
+  # Apps follow the main tag, so a build reaches them only after 7 days.
+  # Retagging keeps the digest, so the provenance still applies.
+  spa-promote:
+    needs: [spa-check, spa-build]
+    if: ${{ always() && github.event_name != 'pull_request' && needs.spa-check.result == 'success' && needs.spa-build.result != 'failure' }}
+    runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/cujarrett/base-spa
+      TAG: nginx1.31-alpine
+    steps:
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
       - name: Promote the newest build that is 7 days old
-        if: github.event_name != 'pull_request'
         env:
           PROMOTE: ${{ inputs.promote }}
         run: |
@@ -106,31 +129,18 @@ jobs:
   go:
     # The distroless base changes only when Renovate bumps its FROM, which already waited 7 days.
     if: github.event_name != 'schedule' && inputs.promote == ''
-    runs-on: ubuntu-26.04-arm
     permissions:
       contents: read
       packages: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
-        if: github.event_name != 'pull_request'
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-
-      # amd64 too, because temporal-controller's e2e test builds its image on an amd64 runner.
-      # The Dockerfile has no RUN step, so no emulation is needed.
-      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: images/base-go
-          platforms: linux/arm64,linux/amd64
-          no-cache: true
-          pull: true
-          sbom: true
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ghcr.io/cujarrett/base-go:static-debian13
-          labels: org.opencontainers.image.source=https://github.com/cujarrett/homelab
+      id-token: write
+      attestations: write
+    # amd64 too, because temporal-controller's e2e test builds its image on an amd64 runner.
+    # The Dockerfile has no RUN step, so no emulation is needed.
+    uses: ./.github/workflows/build-image.yml
+    with:
+      image: ghcr.io/cujarrett/base-go
+      tags: ghcr.io/cujarrett/base-go:static-debian13
+      context: images/base-go
+      platforms: linux/arm64,linux/amd64
+      fresh: true
+      check-only: ${{ github.event_name == 'pull_request' }}

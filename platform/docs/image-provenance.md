@@ -1,6 +1,6 @@
 # Image Provenance
 
-Every image this account builds carries a signed record of how it was built.
+Only images built from main can run.
 This meets SLSA Build Level 3.
 
 [SLSA](https://slsa.dev/spec/v1.2/build-track-basics) is an industry scale for how far you can trust a build.
@@ -36,8 +36,8 @@ jobs:
 
 ## What the cluster checks
 
-The cluster checks every `ghcr.io/cujarrett/` image when a pod starts.
-A failed check shows up in the policy report.
+The cluster checks every `ghcr.io/cujarrett/` image before a pod starts.
+A failed check blocks the pod.
 
 - **Signer:** `build-image.yml` on homelab main.
 - **Repo:** the repo with the same name as the image.

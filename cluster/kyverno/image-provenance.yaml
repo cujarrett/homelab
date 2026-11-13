@@ -1,5 +1,5 @@
 # Checks that our own images were built by the shared build workflow (SLSA Build L3).
-# Blocking comes back in https://github.com/cujarrett/homelab/issues/58
+# Tracking issue https://github.com/cujarrett/homelab/issues/58
 apiVersion: policies.kyverno.io/v1
 kind: ImageValidatingPolicy
 metadata:
@@ -9,12 +9,12 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
     policies.kyverno.io/title: Image provenance
     policies.kyverno.io/description: >-
-      Reports any image built by this account that the shared build workflow
-      on homelab main did not build from main of the image's own repo.
+      An image built by this account runs only if the shared build workflow
+      on homelab main built it from main of the image's own repo.
 spec:
-  # Report only for now.
-  validationActions: [Audit]
-  failurePolicy: Ignore
+  validationActions: [Deny]
+  # An image that can't be checked doesn't run.
+  failurePolicy: Fail
   # Each check calls the registry, so it can take a while.
   webhookConfiguration:
     timeoutSeconds: 30
@@ -64,7 +64,7 @@ spec:
     # One signature check per image. && skips the rest when it fails.
     # ghcr.io has no port, so the first colon starts the tag.
     - expression: >-
-        images.containers.all(image,
+        (images.containers + (has(images.initContainers) ? images.initContainers : [])).all(image,
           verifyAttestationSignatures(image, attestations.slsa, [attestors.github]) > 0
           && cel.bind(name, image.split("@")[0].split(":")[0].replace("ghcr.io/cujarrett/", ""),
              cel.bind(workflow, extractPayload(image, attestations.slsa).predicate.buildDefinition.externalParameters.workflow,

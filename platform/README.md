@@ -8,7 +8,7 @@ Crossplane-based internal developer platform. Declare what your app needs. The p
 - **Credentials reach the pod as files, not env vars.** The [servicebinding.io](https://servicebinding.io) convention makes bindings portable. The app reads `/bindings/sql/host` whether that is Postgres on Longhorn or RDS, so switching backends changes the XR and not the app.
 - **Data resources outlive APIs.** `Sql`, `NoSql`, `ObjectStorage` have lifecycles independent of any one `Api`. Create them once, reference them by name.
 - **No app holds a static identity credential.** Every AWS and Entra identity is federated from the pod's short-lived SVID. No access keys, no client secrets, nothing to rotate or expire. A third-party API key is a value, not an identity, and arrives as a file.
-- **Every image says how it was built.** Each image this account builds meets SLSA Build Level 3. It carries a signed build record, and the cluster checks it when a pod starts. See [Image Provenance](./docs/image-provenance.md).
+- **Every image says how it was built.** Each image this account builds meets SLSA Build Level 3. It carries a signed build record, and the cluster blocks any image without one. See [Image Provenance](./docs/image-provenance.md).
 - **Nothing is reachable without being declared.** Sitting in the same cluster, or the same namespace, grants nothing on its own.
 - **Apps never see Istio.** No Istio kinds, no SPIFFE strings, no Envoy in any workspace file.
 - **Nobody invents an `aud`, `iss`, scope, redirect URI, or role GUID.** The platform derives every value for a registration it owns. For one it does not own, the values come from whoever does.

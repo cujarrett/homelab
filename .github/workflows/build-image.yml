@@ -35,6 +35,10 @@ on:
         description: True builds the image and stops there. Use it on pull requests.
         type: boolean
         default: false
+      fresh:
+        description: True builds from scratch with the latest packages.
+        type: boolean
+        default: false
     outputs:
       digest:
         description: Digest of the pushed image
@@ -75,6 +79,8 @@ jobs:
           push: ${{ !inputs.check-only }}
           provenance: false
           sbom: false
+          no-cache: ${{ inputs.fresh }}
+          pull: ${{ inputs.fresh }}
           cache-from: ${{ inputs.cache-scope != '' && format('type=gha,scope={0}', inputs.cache-scope) || '' }}
           cache-to: ${{ inputs.cache-scope != '' && format('type=gha,mode=max,scope={0}', inputs.cache-scope) || '' }}
 
