@@ -22,6 +22,7 @@ A 4-node Raspberry Pi 5 cluster running k3s, built around platform engineering a
 | **Remote Access** | Tailscale subnet router on ctrl-1 |
 | **Workload Identity** | SPIRE - SPIFFE identity per pod, published over OIDC so AWS and Entra trust it |
 | **Platform API** | Crossplane - XRDs and Compositions expose self-service infrastructure APIs |
+| **Supply Chain** | [SLSA Build Level 3](./platform/docs/image-provenance.md) - every image built here has signed provenance, checked by Kyverno |
 
 ## Hardware
 
