@@ -47,7 +47,8 @@ spec:
               )
             ) or vector(0)
         - record: homelab:security_overdue_renovate_blocked:count
-          expr: count(min_over_time(github_exporter_pr_open_blocked[2d]) > 0) or vector(0)
+          # The last clause keeps a series from a replaced github-exporter pod from counting for 2 more days.
+          expr: count(min_over_time(github_exporter_pr_open_blocked[2d]) > 0 and on(repo) github_exporter_pr_open_blocked > 0) or vector(0)
         - record: homelab:security_overdue:count
           expr: |
             homelab:security_overdue_node_updates:count
@@ -78,6 +79,7 @@ spec:
           labels:
             severity: warning
           annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-security"
             summary: "{{ $value }} security item(s) automation has not fixed in time"
             description: >-
               Open the Security dashboard for which nodes, images or Renovate PRs.

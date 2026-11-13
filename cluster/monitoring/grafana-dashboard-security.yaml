@@ -416,15 +416,15 @@ data:
               "values": false
             },
             "showPercentChange": false,
-            "textMode": "auto",
+            "textMode": "value_and_name",
             "wideLayout": true
           },
           "pluginVersion": "13.2.4",
           "targets": [
             {
-              "expr": "homelab:security_overdue:count",
+              "expr": "label_replace(homelab:security_overdue_node_updates:count > 0, \"item\", \"Node updates 3d+\", \"\", \"\") or label_replace(homelab:security_overdue_node_reboot:count > 0, \"item\", \"Reboot 7d+\", \"\", \"\") or label_replace(homelab:security_open_unattended_stale:count > 0, \"item\", \"Auto-update stopped\", \"\", \"\") or label_replace(homelab:security_overdue_image_cves:count > 0, \"item\", \"Critical CVE 9d+\", \"\", \"\") or label_replace(homelab:security_overdue_renovate_blocked:count > 0, \"item\", \"PR blocked 2d+\", \"\", \"\") or (label_replace(vector(0), \"item\", \"Nothing overdue\", \"\", \"\") unless on() homelab:security_overdue:count > 0)",
               "instant": true,
-              "legendFormat": "",
+              "legendFormat": "{{item}}",
               "refId": "A"
             }
           ],
