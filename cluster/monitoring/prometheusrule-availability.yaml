@@ -1,0 +1,44 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: availability
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: availability
+      interval: 30s
+      rules:
+        # These probes go out to the internet and back in through Cloudflare, the tunnel and Traefik.
+        # Every public hostname shares that path, so all of them failing means every public site is down.
+        # InternetOutageRecovered covers the case where the uplink itself is down.
+        - alert: PublicSitesDown
+          expr: |
+            max(probe_success{probe_group=~"aws-oidc|argocd-webhook"}) == 0
+            and on() max(probe_success{probe_group="internet"}) == 1
+          for: 3m
+          labels:
+            severity: critical
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-mbp/homelab"
+            summary: "Public sites are down through the Cloudflare tunnel"
+            description: >-
+              The internet is up but no public hostname answers.
+              Check `k -n cloudflare logs deploy/cloudflared --since=10m` for the origin error,
+              then `k get nodes` for a node that went down.
+
+        # KubeNodeNotReady waits 15m and lands in the same burst as every pod alert on the node.
+        # This fires first, on its own.
+        - alert: NodeDown
+          expr: |
+            up{job="node-exporter"} == 0
+          for: 3m
+          labels:
+            severity: critical
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-mbp/homelab"
+            summary: "{{ $labels.instance }} has stopped answering"
+            description: >-
+              Ping the node. No reply means the Pi is hung or has lost power, so power-cycle it.
+              A reply means the node is up and only node-exporter is down, so check its pod.

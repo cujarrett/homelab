@@ -15,8 +15,8 @@ differently:
 Existing hostnames already have their DNS records, which is why only the ingress half is
 usually visible. A genuinely new hostname needs both.
 
-All hostnames route to `https://192.168.10.101:443` with `noTLSVerify: false` and
-`originServerName` set to the hostname. The Gateway already serves a cert for any
+All hostnames route to `https://traefik.kube-system.svc.cluster.local:443` with `noTLSVerify: false` and
+`originServerName` set to the hostname. The Service reaches Traefik on every healthy node, so one node going down takes no site with it. The Gateway already serves a cert for any
 `*.mattjarrett.dev` name. A new zone needs its name in
 [cluster/traefik/certificates.yaml](../../cluster/traefik/certificates.yaml) first, or the tunnel 502s.
 
@@ -67,7 +67,7 @@ d = json.load(open('/tmp/cf-config.json'))
 cfg = d['result']['config']
 ing = cfg['ingress']
 assert ing[-1].get('service') == 'http_status:404', "catch-all not last - aborting"
-new = {"hostname": "<new-hostname>", "service": "https://192.168.10.101:443",
+new = {"hostname": "<new-hostname>", "service": "https://traefik.kube-system.svc.cluster.local:443",
        "originRequest": {"noTLSVerify": False, "originServerName": "<new-hostname>"}}
 cfg['ingress'] = ing[:-1] + [new] + [ing[-1]]
 json.dump({"config": cfg}, open('/tmp/cf-put.json', 'w'))

@@ -1,0 +1,47 @@
+# Keeps each node's journal on disk, so the log from before a crash survives the reboot.
+# - Raspberry Pi OS ships Storage=volatile in /usr/lib/systemd/journald.conf.d/40-rpi-volatile-storage.conf
+# - 60- sorts after 40-, so this file wins
+# - 1G cap: NVMe has room, and it holds weeks of logs
+# - Timing: takes effect at the next journald restart or reboot. No restart from here
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: journald
+  namespace: node-sysctls
+spec:
+  selector:
+    matchLabels:
+      app: journald
+  template:
+    metadata:
+      labels:
+        app: journald
+    spec:
+      automountServiceAccountToken: false
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+      containers:
+        - name: journald
+          image: busybox:1.38@sha256:a46257e06c82ad85242d0d38077d0a52d9896389ca60a1a59d3463db586e5fa4
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              printf '[Journal]\nStorage=persistent\nSystemMaxUse=1G\n' > /host/journald.conf.d/60-persistent.conf
+              sleep infinity
+          volumeMounts:
+            - name: journald-dropin
+              mountPath: /host/journald.conf.d
+          resources:
+            requests:
+              cpu: 5m
+              memory: 16Mi
+            limits:
+              memory: 32Mi
+      volumes:
+        - name: journald-dropin
+          hostPath:
+            path: /etc/systemd/journald.conf.d
+            type: DirectoryOrCreate
