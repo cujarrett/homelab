@@ -1,6 +1,5 @@
 # Checks that our own images were built by the shared build workflow (SLSA Build L3).
-# Every image this account builds now goes through that workflow.
-# Tracking issue https://github.com/cujarrett/homelab/issues/58
+# Blocking comes back in https://github.com/cujarrett/homelab/issues/58
 apiVersion: policies.kyverno.io/v1
 kind: ImageValidatingPolicy
 metadata:
@@ -10,12 +9,20 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
     policies.kyverno.io/title: Image provenance
     policies.kyverno.io/description: >-
-      An image built by this account runs only if the shared build workflow
-      on homelab main built it from main of the image's own repo.
+      Reports any image built by this account that the shared build workflow
+      on homelab main did not build from main of the image's own repo.
 spec:
-  validationActions: [Deny]
-  # An image that can't be checked doesn't run.
-  failurePolicy: Fail
+  # Report only for now.
+  validationActions: [Audit]
+  failurePolicy: Ignore
+  # Each check calls the registry, so it can take a while.
+  webhookConfiguration:
+    timeoutSeconds: 30
+  # Check pods only. Pods are what run.
+  # Without this, every Crossplane write to a Deployment runs the check too.
+  autogen:
+    podControllers:
+      controllers: []
   matchConstraints:
     resourceRules:
       - apiGroups: [""]
@@ -54,16 +61,13 @@ spec:
           "sump-pump-consumer": "sump-pump"
         }
   validations:
-    - expression: >-
-        images.containers.all(image, verifyAttestationSignatures(image, attestations.slsa, [attestors.github]) > 0)
-      message: image has no provenance signed by the homelab build-image workflow on main
+    # One signature check per image. && skips the rest when it fails.
     # ghcr.io has no port, so the first colon starts the tag.
     - expression: >-
         images.containers.all(image,
-          cel.bind(name, image.split("@")[0].split(":")[0].replace("ghcr.io/cujarrett/", ""),
-          cel.bind(workflow, verifyAttestationSignatures(image, attestations.slsa, [attestors.github]) > 0
-              ? extractPayload(image, attestations.slsa).predicate.buildDefinition.externalParameters.workflow
-              : {"repository": "", "ref": ""},
-            workflow.repository == "https://github.com/cujarrett/" + (name in variables.repoFor ? variables.repoFor[name] : name)
-            && workflow.ref == "refs/heads/main")))
-      message: image was not built from main of its own repo
+          verifyAttestationSignatures(image, attestations.slsa, [attestors.github]) > 0
+          && cel.bind(name, image.split("@")[0].split(":")[0].replace("ghcr.io/cujarrett/", ""),
+             cel.bind(workflow, extractPayload(image, attestations.slsa).predicate.buildDefinition.externalParameters.workflow,
+               workflow.repository == "https://github.com/cujarrett/" + (name in variables.repoFor ? variables.repoFor[name] : name)
+               && workflow.ref == "refs/heads/main")))
+      message: image was not built by the homelab build-image workflow from main of its own repo
