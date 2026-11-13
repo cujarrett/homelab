@@ -1,5 +1,5 @@
 # Checks that our own images were built by the shared build workflow (SLSA Build L3).
-# Audit mode for now. The policy report lists the repos still to move over.
+# Every image this account builds now goes through that workflow.
 # Tracking issue https://github.com/cujarrett/homelab/issues/58
 apiVersion: policies.kyverno.io/v1
 kind: ImageValidatingPolicy
@@ -13,9 +13,9 @@ metadata:
       An image built by this account runs only if the shared build workflow
       on homelab main built it from main of the image's own repo.
 spec:
-  validationActions: [Audit]
-  # Pods still start when the registry can't be reached.
-  failurePolicy: Ignore
+  validationActions: [Deny]
+  # An image that can't be checked doesn't run.
+  failurePolicy: Fail
   matchConstraints:
     resourceRules:
       - apiGroups: [""]
@@ -39,8 +39,9 @@ spec:
         ctlog:
           url: https://rekor.sigstore.dev
   variables:
-    # Each image must come from main of its own repo.
-    # An image is built by the repo with the same name, unless it is listed here.
+    # An image must come from the repo with the same name.
+    # List here: images from a repo that builds more than one.
+    # A prefix match is unsafe. Repo my-vinyl could then pass as my-vinyl-api.
     - name: repoFor
       expression: >-
         {
