@@ -17,6 +17,9 @@ metadata:
 spec:
   validationActions: [Deny]
   failurePolicy: Fail
+  # Each check calls the registry, so it can take a while.
+  webhookConfiguration:
+    timeoutSeconds: 30
   matchConstraints:
     namespaceSelector:
       matchExpressions:
