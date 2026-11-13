@@ -3,7 +3,7 @@
 Every image this account builds carries a signed record of how it was built.
 This meets SLSA Build Level 3.
 
-[SLSA](https://slsa.dev/spec/v1.2/levels) is an industry scale for how far you can trust a build.
+[SLSA](https://slsa.dev/spec/v1.2/build-track-basics) is an industry scale for how far you can trust a build.
 
 - **Level 1:** the build says how it made the image.
 - **Level 2:** a hosted build service signs that record.
