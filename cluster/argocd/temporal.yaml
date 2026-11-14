@@ -131,7 +131,7 @@ spec:
             # Delete this override once the chart's own UI tag catches up, or it pins an older UI.
             image:
               # renovate: datasource=docker depName=temporalio/ui
-              tag: 2.58.0
+              tag: 2.58.1
             # Sign in through Entra. The UI sends the signed-in user's token to Temporal.
             additionalEnv:
               - name: TEMPORAL_AUTH_ENABLED
