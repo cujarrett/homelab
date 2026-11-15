@@ -28,8 +28,6 @@ spec:
             {{- $base := printf "graph-%s" (splitList "@" $xr.spec.parameters.graphRef | last) }}
             {{- $service := printf "%s-router" $name }}
             {{- $labels := dict "app.kubernetes.io/name" $service }}
-            {{- /* Must match the supergraph plugin built into the rover image, images/rover. */ -}}
-            {{- $federation := "=2.15.6" }}
             {{- $routerReady := "False" }}
             {{- with index (.observed.resources | default dict) "router" }}
             {{- if ge (.resource.status.availableReplicas | default 0 | int) 1 }}{{- $routerReady = "True" }}{{- end }}
@@ -45,7 +43,7 @@ spec:
             {{- $g := .resource }}
             {{- $_ := set $subgraphs $g.metadata.name (dict "url" (printf "http://%s.%s.svc.cluster.local/graphql" $g.metadata.name $ns) "image" $g.spec.parameters.image) }}
             {{- end }}
-            {{- $supergraphYaml := printf "federation_version: %s\nsubgraphs:\n" $federation }}
+            {{- $supergraphYaml := "subgraphs:\n" }}
             {{- range $n, $s := $subgraphs }}
             {{- $supergraphYaml = printf "%s  %s:\n    routing_url: %s\n    schema:\n      file: /schemas/%s/schema.graphql\n" $supergraphYaml $n $s.url $n }}
             {{- end }}
@@ -134,9 +132,14 @@ spec:
                       type: RuntimeDefault
                   initContainers:
                     # Joins every schema file into one supergraph before the router starts.
+                    # The image names the federation version, so it matches the plugin built into it.
                     - name: compose
-                      image: ghcr.io/cujarrett/rover:1.0.1-supergraph2.15.6
-                      command: [rover, supergraph, compose, --config, /config/supergraph.yaml, --output, /supergraph/schema.graphql]
+                      image: ghcr.io/cujarrett/rover:main
+                      command: [sh, -ec]
+                      args:
+                        - |
+                          { echo "federation_version: =$SUPERGRAPH_VERSION"; cat /config/supergraph.yaml; } > /supergraph/config.yaml
+                          rover supergraph compose --config /supergraph/config.yaml --output /supergraph/schema.graphql
                       securityContext:
                         # The image names its user rover, so the kubelet needs the number.
                         runAsUser: 10001

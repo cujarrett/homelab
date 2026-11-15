@@ -5,7 +5,7 @@
     "helpers:pinGitHubActionDigestsToSemver"
   ],
   "reviewers": ["cujarrett"],
-  "enabledManagers": ["argocd", "crossplane", "kubernetes", "github-actions", "custom.regex"],
+  "enabledManagers": ["argocd", "crossplane", "kubernetes", "github-actions", "dockerfile", "custom.regex"],
   "customManagers": [
     {
       "customType": "regex",
@@ -22,6 +22,14 @@
       "managerFilePatterns": ["/\\.github/workflows/ci\\.yml$/", "/cluster/.+\\.yaml$/"],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: registryUrl=(?<registryUrl>\\S+))?\\n\\s+\\w+: (?<currentValue>\\S+)"
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "The supergraph plugin version, an ARG in the rover image.",
+      "managerFilePatterns": ["/^images/rover/Dockerfile$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+) extractVersion=(?<extractVersion>\\S+)\\nARG \\w+=(?<currentValue>\\S+)"
       ]
     }
   ],
@@ -183,8 +191,29 @@
       "automergeType": "pr",
       "platformAutomerge": true,
       "labels": ["automerge"]
+    },
+    {
+      "description": [
+        "A federation minor needs a router that supports it.",
+        "Patches compose the same supergraph, so they merge on their own."
+      ],
+      "matchPackageNames": ["apollographql/federation-rs"],
+      "matchUpdateTypes": ["minor"],
+      "automerge": false,
+      "labels": [],
+      "prBodyNotes": [
+        "⚠️ Check the router in `platform/federated-graph/composition-pr.yaml` supports this federation version: https://www.apollographql.com/docs/graphos/reference/federation/versions"
+      ]
+    },
+    {
+      "description": "Each rover image is a Renovate bump that already waited 7 days, so a second wait only delays it.",
+      "matchPackageNames": ["ghcr.io/cujarrett/rover"],
+      "minimumReleaseAge": null
     }
   ],
+  "dockerfile": {
+    "managerFilePatterns": ["/^images/rover/Dockerfile$/"]
+  },
   "argocd": {
     "managerFilePatterns": [
       "/cluster/argocd/.+\\.yaml$/",

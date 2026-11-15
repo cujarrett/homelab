@@ -6,7 +6,7 @@ The platform builds one runtime base image per app kind. App images build `FROM`
 |---|---|---|
 | `ghcr.io/cujarrett/base-spa:nginx1.31-alpine` | nginx Alpine, plus `apk upgrade` | Angular SPAs |
 | `ghcr.io/cujarrett/base-go:static-debian13` | distroless static, Debian 13 | Go services |
-| `ghcr.io/cujarrett/rover:1.0.1-supergraph2.15.6` | Apollo's rover, plus the `supergraph` plugin | PR routers, which compose their schema at startup |
+| `ghcr.io/cujarrett/rover:main` | Apollo's rover, plus the `supergraph` plugin | PR routers, which compose their schema at startup |
 
 Each tag names what is inside. A new nginx minor or Debian release gets a new tag, and each app moves to it by hand.
 

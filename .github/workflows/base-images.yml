@@ -146,7 +146,7 @@ jobs:
       check-only: ${{ github.event_name == 'pull_request' }}
 
   rover:
-    # Changes only when this folder changes. Renovate bumps the rover base after its 7-day wait.
+    # Renovate bumps the Dockerfile. Each merge rebuilds main, and Renovate then moves composition-pr.yaml to the new digest.
     if: github.event_name != 'schedule' && inputs.promote == ''
     permissions:
       contents: read
@@ -156,6 +156,6 @@ jobs:
     uses: ./.github/workflows/build-image.yml
     with:
       image: ghcr.io/cujarrett/rover
-      tags: ghcr.io/cujarrett/rover:1.0.1-supergraph2.15.6
+      tags: ghcr.io/cujarrett/rover:main
       context: images/rover
       check-only: ${{ github.event_name == 'pull_request' }}
