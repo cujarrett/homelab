@@ -1,5 +1,6 @@
-# A PR environment's router. It serves every subgraph of the base environment, with
-# this namespace's subgraphs in place of their namesakes. GraphOS never sees it.
+# The router for one PR environment.
+# It serves all of test, with the PR's subgraph swapped in.
+# GraphOS never sees it.
 # The graph-pr ApplicationSet picks this Composition by name.
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
@@ -32,7 +33,7 @@ spec:
             {{- with index (.observed.resources | default dict) "router" }}
             {{- if ge (.resource.status.availableReplicas | default 0 | int) 1 }}{{- $routerReady = "True" }}{{- end }}
             {{- end }}
-            {{- /* Base subgraphs first, then this namespace's GraphApis replace any namesake. */ -}}
+            {{- /* Start with test's subgraphs. A PR subgraph with the same name replaces one. */ -}}
             {{- $found := .extraResources | default dict }}
             {{- $subgraphs := dict }}
             {{- range (get (get $found "base" | default dict) "items" | default list) }}
@@ -48,6 +49,7 @@ spec:
             {{- $supergraphYaml = printf "%s  %s:\n    routing_url: %s\n    schema:\n      file: /schemas/%s/schema.graphql\n" $supergraphYaml $n $s.url $n }}
             {{- end }}
             ---
+            # Asks Crossplane for the objects the subgraph list above is built from.
             apiVersion: meta.gotemplating.fn.crossplane.io/v1alpha1
             kind: ExtraResources
             requirements:
@@ -67,6 +69,7 @@ spec:
                 matchLabels:
                   platform.local.lab/graph: {{ $name }}
             ---
+            # The router's identity. Test's subgraphs admit it from any graph-pr- namespace.
             apiVersion: v1
             kind: ServiceAccount
             metadata:
@@ -76,6 +79,7 @@ spec:
                 gotemplating.fn.crossplane.io/composition-resource-name: service-account
                 gotemplating.fn.crossplane.io/ready: "True"
             ---
+            # The subgraph list for Rover, and the router's settings.
             apiVersion: v1
             kind: ConfigMap
             metadata:
@@ -102,7 +106,8 @@ spec:
                       capacity: 100
                       interval: 1s
             ---
-            # Image volumes name each digest, so a new test digest rolls the router.
+            # The router pod. Rover builds the schema first, then the router serves it.
+            # A new test image changes a volume digest, so the router restarts.
             apiVersion: apps/v1
             kind: Deployment
             metadata:
@@ -132,7 +137,7 @@ spec:
                       type: RuntimeDefault
                   initContainers:
                     # Joins every schema file into one supergraph before the router starts.
-                    # The image names the federation version, so it matches the plugin built into it.
+                    # The image sets the federation version to match its plugin.
                     - name: compose
                       image: ghcr.io/cujarrett/rover:main
                       command: [sh, -ec]
@@ -141,7 +146,7 @@ spec:
                           { echo "federation_version: =$SUPERGRAPH_VERSION"; cat /config/supergraph.yaml; } > /supergraph/config.yaml
                           rover supergraph compose --config /supergraph/config.yaml --output /supergraph/schema.graphql
                       securityContext:
-                        # The image names its user rover, so the kubelet needs the number.
+                        # The image's user is a name. The kubelet needs a number to check non-root.
                         runAsUser: 10001
                         allowPrivilegeEscalation: false
                         capabilities:
@@ -154,7 +159,7 @@ spec:
                         {{- end }}
                   containers:
                     - name: router
-                      # Apollo's image aborts on the Pi's 16K-page kernel. Same source, one build flag.
+                      # Apollo's image crashes on the Pi's 16K-page kernel. This is the same code, rebuilt.
                       image: ghcr.io/cujarrett/apollo-router-arm64:2.18.0@sha256:608ab4c366168b39a40f0bb795135fceb4509dc73ae6c1cf713bce35684bdbb9
                       args: [--config, /config/router.yaml, --supergraph, /supergraph/schema.graphql]
                       ports:
@@ -190,6 +195,7 @@ spec:
                         pullPolicy: IfNotPresent
                     {{- end }}
             ---
+            # The router's address inside the cluster.
             apiVersion: v1
             kind: Service
             metadata:
@@ -218,7 +224,7 @@ spec:
               mtls:
                 mode: STRICT
             ---
-            # REGISTRY_ONLY, three destinations.
+            # Outbound calls reach these three places only.
             # istio-system: the control plane.
             # ./*: the PR's own subgraphs.
             # The base namespace: every other subgraph.

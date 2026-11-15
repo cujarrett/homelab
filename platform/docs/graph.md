@@ -10,9 +10,9 @@ Every team ships its own small GraphQL API. A router joins them into one API tha
 
 1. A PR changes `schema.graphql` beside the resolvers. CI checks it against `test`, CODEOWNERS requests the platform team, branch protection requires both.
 2. Merge to main builds the image with signed build provenance. Kargo sees it and writes its digest into `graph-test/<subgraph>.yaml` in `homelab-workspaces`.
-3. ArgoCD syncs, Kyverno checks the image's provenance, Crossplane renders the subgraph. The test operator reads the schema from that image, publishes it to `test`, GraphOS composes, the router reloads.
+3. ArgoCD syncs, Kyverno checks the image's provenance, Crossplane renders the subgraph. The Apollo operator for test reads the schema from that image and publishes it to `test`. GraphOS composes, and the router reloads.
 4. Kargo checks both schemas against `prod` and queries the test router. A person clicks Promote, and Kargo writes the digests into `graph-prod/<subgraph>.yaml`.
-5. Prod repeats step 3 with its own operator and key. Rollback is promoting an older Freight in Kargo.
+5. Prod repeats step 3 with its own Apollo operator and key. Rollback is promoting an older Freight in Kargo.
 
 ## Index
 
@@ -260,9 +260,13 @@ The check composes the proposed schema against every other subgraph currently pu
 Each open subgraph PR gets its own router. It serves all of test, with the PR's subgraph swapped in. GraphOS never sees it.
 
 - **Image:** CI builds the PR's image and tags it `pr-<number>-<commit>`. Kargo only picks up `sha-` tags.
-- **Environment:** the `graph-pr` ApplicationSet in [graph-pr-appset.yaml](../../cluster/argocd/graph-pr-appset.yaml) checks GitHub every minute. It makes `graph-pr-<subgraph>-<number>` from [pr-chart](../federated-graph/pr-chart/).
+- **Environment:** the `graph-pr` ApplicationSet in [graph-pr-appset.yaml](../../cluster/argocd/graph-pr-appset.yaml) asks GitHub for open PRs every minute. For each one, ArgoCD applies [pr-chart](../federated-graph/pr-chart/) into a namespace named `graph-pr-<subgraph>-<number>`.
+- **Chart:** three objects. The namespace, a `FederatedGraph` that picks the `federated-graph-pr` Composition, and a `GraphApi` for the PR's image.
 - **Subgraph:** the PR's GraphApi runs the image and publishes nothing.
-- **Router:** the `federated-graph-pr` Composition lists test's Subgraphs and mounts every image as a volume. Rover joins their `/schema.graphql` files into one supergraph, and the router loads it.
+- **Subgraph list:** the router needs the name, image and address of every subgraph. Crossplane runs the `federated-graph-pr` Composition, which copies that list from the `Subgraph` objects in `graph-test`. It then swaps in the PR's own subgraph. A PR on `reviews` gets `records` from test and `reviews` from the PR.
+- **Schema files:** the router pod mounts each of those images as a read-only image volume. The kubelet pulls them from the registry, and nothing in them runs.
+- **Supergraph:** an init container runs Rover from [images/rover](../../images/rover/). It joins every mounted `/schema.graphql` into one supergraph file, and the router loads it.
+- **Traffic:** the router calls the PR's subgraph in the PR namespace. It calls test's running pods for every other subgraph.
 - **Test changes:** a promotion changes an image digest, so the router restarts with the new schemas.
 - **Cleanup:** closing the PR deletes the namespace.
 
@@ -319,7 +323,7 @@ The backend is an `Api` with one endpoint per query and one for the live rows. E
 |---|---|
 | GraphOS org on the Developer plan, graph `storefront-homelab`, variants `test` and `prod` | apollographql.com |
 | Two operator API keys, test and prod, from `rover api-key create <ORG_ID> operator <NAME>` | Parameter Store, each rendered to its operator's namespace by an `ExternalSecret` |
-| Operator Helm chart `registry-1.docker.io/apollograph/operator-chart`, installed twice. The prod install sets `installCRDs: false` and `rbac.create: false`. The chart's CRDs ship empty lists the API server drops, so the Application needs `ignoreDifferences` on them | [apollo-operator.yaml](../../cluster/argocd/apollo-operator.yaml) |
+| Operator Helm chart `registry-1.docker.io/apollograph/operator-chart`, installed twice. The prod install sets `installCRDs: false` and `rbac.create: false`. The chart's CRDs ship empty lists the API server drops, so the Application needs `ignoreDifferences` on them | [apollo-operator-test.yaml](../../cluster/argocd/apollo-operator-test.yaml) and [apollo-operator-prod.yaml](../../cluster/argocd/apollo-operator-prod.yaml) |
 | The operator's namespace in the ESO store `conditions` | [store.yaml](../../cluster/external-secrets/store.yaml) |
 | Crossplane RBAC for `apollographql.com` Kinds | [rbac.yaml](../../cluster/crossplane/rbac.yaml) |
 | `graph-test` and `graph-prod` in the `workloads` project destinations and every namespace list of the workspace RBAC policy | [projects.yaml](../../cluster/argocd/projects.yaml), [workspace-rbac.yaml](../../cluster/kyverno/workspace-rbac.yaml) |
@@ -330,7 +334,7 @@ The backend is an `Api` with one endpoint per query and one for the live rows. E
 ## Known limits
 
 - **The operator is a black box the platform depends on.** Its Kinds are `v1alpha2` and `v1alpha4`, so expect breaking upgrades.
-- **The test operator's Application owns the CRDs and ClusterRoles prod borrows.** Deleting that Application deletes every `Subgraph` and `Supergraph` in both lanes. Apollo ships no CRDs-only chart, and vendoring 16,000 lines of CRD goes stale, so the dependency stays and the Application keeps its name.
+- **The Apollo operator's test Application owns the CRDs and ClusterRoles prod borrows.** Deleting that Application deletes every `Subgraph` and `Supergraph` in both lanes. Apollo ships no CRDs-only chart, and vendoring 16,000 lines of CRD goes stale, so the dependency stays and the Application keeps its name.
 - **An operator that starts before its RoleBindings exist never recovers.** Its watches fail with 403 and stay dead after the bindings land, so its CRs sit with no status. Restart the pod. Happens on every fresh install, because ArgoCD creates the Deployment and the RoleBindings in the same sync.
 - **No user authorization yet.** Anyone on the LAN can query any field. See [TODO](#todo).
 - **The operator writes a graph API key Secret into each router namespace.** It is controller-generated, like cert-manager TLS, so it stays out of ESO.
