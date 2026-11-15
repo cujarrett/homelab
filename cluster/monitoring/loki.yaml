@@ -73,6 +73,17 @@ spec:
                   enabled: true
                   max_size_mb: 64
                   ttl: 24h
+          # Rules come from ConfigMaps labelled loki_rule, which the sidecar writes to /rules.
+          rulerConfig:
+            wal:
+              dir: /var/loki/ruler-wal
+            storage:
+              type: local
+              local:
+                directory: /rules
+            # Scratch copy of the rules. Kept off /rules so it never mixes with the sidecar's files.
+            rule_path: /var/loki/ruler-scratch
+            alertmanager_url: http://monitoring-kube-prometheus-alertmanager.monitoring.svc:9093
           compactor:
             retention_enabled: true
             delete_request_store: filesystem

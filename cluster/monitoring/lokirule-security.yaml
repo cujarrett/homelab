@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loki-rules-security
+  namespace: monitoring
+  labels:
+    # The Loki rules sidecar loads ConfigMaps with this label.
+    loki_rule: ""
+  annotations:
+    # Loki reads rules per tenant. With auth off the tenant is "fake".
+    k8s-sidecar-target-directory: /rules/fake
+data:
+  security.yaml: |
+    groups:
+      - name: security
+        interval: 1m
+        rules:
+          # Same scanner path filter as the Probes answered panel on the Web Traffic dashboard.
+          - alert: ScannerProbeAnswered
+            expr: |
+              sum by (host, path, status) (
+                count_over_time(
+                  {log_type=~"access|sandbox"}
+                  | json host="RequestHost", path="RequestPath", status="DownstreamStatus"
+                  | host!~"oidc.*|argocd-webhook.*"
+                  | (path=~`(?i).*(/\.[a-z_]|\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\.php|wlwmanifest).*` or (host!~`(kentjarrett|mattjarrett)\.com` and path=~`(?i).*(\.php|/wp-).*`))
+                  | path!~`/\.(well-known|ghost)/.*`
+                  | status < 300
+                  [10m]
+                )
+              ) > 0
+            labels:
+              severity: warning
+            annotations:
+              dashboard_url: "https://grafana.local.lab/d/web-traffic/web-traffic?from=now-24h&to=now"
+              summary: "{{ $labels.host }} answered a scanner probe for {{ $labels.path }} with {{ $labels.status }}"
+              description: >-
+                A scanner path got a 2xx back.
+                Check what the response body held.
+                Then make that site return 404 for the path.
