@@ -87,6 +87,14 @@ spec:
             {{- $entraAppObs := index $observedResources "entra-application" | default dict }}
             {{- $entraClientId := "" }}
             {{- if $entraAppObs.resource }}{{- $entraClientId = $entraAppObs.resource.status.atProvider.clientId | default "" }}{{- end }}
+            {{- /* IDs the app's own Entra resources need from each other, read from observed state. */ -}}
+            {{- /* A resource given the ID is created at once. */ -}}
+            {{- /* A resource left to resolve a reference retries on a doubling timer, up to 16s idle. */ -}}
+            {{- $entraAppId := "" }}
+            {{- if $entraAppObs.resource }}{{- $entraAppId = dig "status" "atProvider" "id" "" $entraAppObs.resource }}{{- end }}
+            {{- $entraSpObs := index $observedResources "entra-principal" | default dict }}
+            {{- $entraSpObjectId := "" }}
+            {{- if $entraSpObs.resource }}{{- $entraSpObjectId = dig "status" "atProvider" "objectId" "" $entraSpObs.resource }}{{- end }}
             {{- $sqlRefName := "" }}
             {{- if $xr.spec.parameters.sqlRef }}{{- $sqlRefName = $xr.spec.parameters.sqlRef.name }}{{- end }}
             {{- $nosqlRefName := "" }}
@@ -836,8 +844,12 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               forProvider:
+                {{- if $entraClientId }}
+                clientId: {{ $entraClientId | quote }}
+                {{- else }}
                 clientIdRef:
                   name: {{ $ns }}-{{ $name }}-entra
+                {{- end }}
                 owners:
                   - {{ $crossplaneEntraSpId }}
             ---
@@ -852,8 +864,12 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               forProvider:
+                {{- if $entraAppId }}
+                applicationId: {{ $entraAppId | quote }}
+                {{- else }}
                 applicationIdRef:
                   name: {{ $ns }}-{{ $name }}-entra
+                {{- end }}
                 displayName: workload-identity
                 issuer: https://{{ $oidcIssuerHost }}
                 subject: spiffe://homelab.local/ns/{{ $ns }}/sa/{{ $name }}
@@ -883,8 +899,12 @@ spec:
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               forProvider:
+                {{- if $entraAppId }}
+                applicationId: {{ $entraAppId | quote }}
+                {{- else }}
                 applicationIdRef:
                   name: {{ $ns }}-{{ $name }}-entra
+                {{- end }}
                 roleId: {{ $roleId }}
                 value: {{ $role.name | quote }}
                 displayName: {{ $role.name | quote }}
@@ -911,8 +931,12 @@ spec:
                 # stays unresolved and retries rather than rendering something wrong.
                 principalObjectIdRef:
                   name: {{ $caller.namespace }}-{{ $caller.app }}-entra
+                {{- if $entraSpObjectId }}
+                resourceObjectId: {{ $entraSpObjectId | quote }}
+                {{- else }}
                 resourceObjectIdRef:
                   name: {{ $ns }}-{{ $name }}-entra
+                {{- end }}
             {{- end }}
             {{- end }}
             {{- range $scope := $delegatedScopes }}
@@ -957,8 +981,12 @@ spec:
             spec:
               forProvider:
                 appRoleId: {{ $wfRoleId }}
+                {{- if $entraSpObjectId }}
+                principalObjectId: {{ $entraSpObjectId | quote }}
+                {{- else }}
                 principalObjectIdRef:
                   name: {{ $ns }}-{{ $name }}-entra
+                {{- end }}
                 resourceObjectId: {{ $temporalSpObjectId | quote }}
             {{- end }}
             {{- end }}{{- /* end entraNeeded */}}
