@@ -73,13 +73,13 @@ spec:
             - kube_pod_tolerations
             - kube_configmap_.+
         prometheusOperator:
-          # v0.95.1 ships amd64-only images, so the arm64 nodes can't pull it.
-          # Drop both pins once the chart's operator version has an arm64 image.
+          # The chart's v0.95.1 images are amd64-only, so the arm64 nodes can't pull them.
+          # Drop both pins once the chart's appVersion is past v0.95.1.
           image:
-            tag: v0.94.2
+            tag: v0.95.2
           prometheusConfigReloader:
             image:
-              tag: v0.94.2
+              tag: v0.95.2
           serviceMonitor:
             selfMonitor: false
           admissionWebhooks:
