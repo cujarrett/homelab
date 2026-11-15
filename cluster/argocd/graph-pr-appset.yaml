@@ -17,7 +17,7 @@ spec:
                 - subgraph: records
                 - subgraph: reviews
           - pullRequest:
-              # Two repos at one call a minute each stays far under GitHub's 5,000 an hour.
+              # One GitHub call per repo per minute. GitHub allows 5,000 an hour.
               requeueAfterSeconds: 60
               github:
                 owner: cujarrett
@@ -40,7 +40,8 @@ spec:
         helm:
           valuesObject:
             subgraph: "{{ .subgraph }}"
-            # CI tags each PR build pr-<number>-<head commit>. Kargo only watches sha- tags.
+            # CI tags PR builds pr-<number>-<commit>.
+            # Kargo only watches sha- tags, so PR builds never reach test.
             image: "ghcr.io/cujarrett/storefront-{{ .subgraph }}:pr-{{ .number }}-{{ .head_sha }}"
       destination:
         server: https://kubernetes.default.svc

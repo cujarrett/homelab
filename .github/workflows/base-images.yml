@@ -146,7 +146,8 @@ jobs:
       check-only: ${{ github.event_name == 'pull_request' }}
 
   rover:
-    # Renovate bumps the Dockerfile. Each merge rebuilds main, and Renovate then moves composition-pr.yaml to the new digest.
+    # Renovate bumps the Dockerfile. Each merge rebuilds rover:main.
+    # PR routers pick up the new build the next time they start.
     if: github.event_name != 'schedule' && inputs.promote == ''
     permissions:
       contents: read

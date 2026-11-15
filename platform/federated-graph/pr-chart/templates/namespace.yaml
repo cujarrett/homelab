@@ -10,6 +10,6 @@ metadata:
     # PR code is unreviewed, so its pods need the sidecar's egress control most of all.
     istio-injection: enabled
   annotations:
-    # Prune after the XRs. A namespace that starts terminating while managed
-    # resources still hold finalizers never finishes.
+    # Delete after the XRs.
+    # Deleting it first can leave it stuck in Terminating.
     argocd.argoproj.io/sync-wave: "-1"

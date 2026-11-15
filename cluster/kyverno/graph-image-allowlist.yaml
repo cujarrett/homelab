@@ -27,7 +27,8 @@ spec:
         apiVersions: [v1alpha2]
         operations: [CREATE, UPDATE]
         resources: [subgraphs]
-  # A namespace selector can't match a prefix, so the lanes are matched here.
+  # Runs in graph-test, graph-prod and every graph-pr- namespace.
+  # A namespace selector can't match a prefix, so CEL does it.
   matchConditions:
     - name: graph-lane
       expression: "namespaceObject.metadata.name in ['graph-test', 'graph-prod'] || namespaceObject.metadata.name.startsWith('graph-pr-')"
@@ -40,7 +41,8 @@ spec:
     # A PR router reads every subgraph's schema from its image.
     - name: volumeImages
       expression: "object.spec.?volumes.orValue([]).filter(v, has(v.image)).map(v, v.image.reference)"
-    # pr-<number>-<commit>: a PR build. Tags elsewhere are refused by platform-graph-api-digest.
+    # A pr-<number>-<commit> tag is a PR build.
+    # platform-graph-api-digest refuses tags outside PR namespaces.
     - name: subgraph
       expression: >-
         r'ghcr\.io/cujarrett/storefront-[a-z0-9-]+(@sha256:[a-f0-9]{64}|:pr-[0-9]+-[0-9a-f]{40}(@sha256:[a-f0-9]{64})?)'

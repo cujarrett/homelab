@@ -1,8 +1,9 @@
-# Rover with the supergraph plugin built in. PR routers compose their schema with it.
-# The stock image downloads the plugin on first use, and PR router pods have no internet.
+# Rover with the supergraph plugin already installed.
+# PR routers use it to build their schema.
+# The stock image downloads the plugin, and PR router pods have no internet.
 FROM ghcr.io/apollographql/rover:1.0.1@sha256:1e55c1aa335ae9a94200c35b1478c83889be67173808a384fcb181b8fc8ac338
 
-# The PR router composes with this version, so a bump here is the whole upgrade.
+# PR routers build with this version. Bump it here to upgrade.
 # renovate: datasource=github-releases depName=apollographql/federation-rs extractVersion=^supergraph@v(?<version>.+)$
 ARG SUPERGRAPH_VERSION=2.15.6
 

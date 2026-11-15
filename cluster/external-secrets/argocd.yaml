@@ -16,7 +16,7 @@ spec:
       remoteRef: {key: /homelab/argocd/webhook-github-secret}
 ---
 # The graph-pr ApplicationSet uses this token to find open PRs.
-# The label keeps it readable if Argo strict mode is turned on.
+# Argo's strict mode only reads tokens with this label.
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
