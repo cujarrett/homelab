@@ -78,7 +78,6 @@ Applies to every `.md` file in this repo, on top of the [Writing](#writing) rule
 - **Every chapter does one job.** A chapter titled "where we are today" must not contain timeless explanation. Move it.
 - **No meta-content.** Never document what changed from an earlier draft, critique a previous plan, or narrate the doc's own history. Same principle as the code-comment rule: state current rationale only.
 - **No time-bound content.** No "tonight", "this session", "first night", no timeboxes. Say "Phases 0, 1 and 6 touch no cluster". Docs outlive the session that wrote them.
-- **Index at the top** for any doc with more than three chapters: one "start here" line, then a table of every chapter. Verify every anchor resolves before finishing.
 - **Link to real paths**, such as `[Api](../platform/api/)`.
 - **Cross-doc links use the human title and a `./` relative path**, such as `[Platform Connections](./platform/docs/connections.md)`. The reader sees what the doc is. Deep links keep the title too: `[Platform Connections → Known limits](./platform/docs/connections.md#known-limits)`.
 - **Never link to a doc under `local-only/`.** It is gitignored, so the link is dead for every reader but you.
