@@ -53,9 +53,9 @@ spec:
 
 Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
 
-## App repo contract
+## Workload repo contract
 
-App repos ship a static build into `nginx:alpine`. **Do not add an `nginx.conf` to the app repo or `COPY` one in the Dockerfile.** The composition mounts its ConfigMap directly over `/etc/nginx/conf.d/default.conf` at runtime, overwriting anything baked into the image. Security headers, probe blocking, caching rules, and the API proxy are all owned here.
+Workload repos ship a static build into `nginx:alpine`. **Do not add an `nginx.conf` to the workload repo or `COPY` one in the Dockerfile.** The composition mounts its ConfigMap directly over `/etc/nginx/conf.d/default.conf` at runtime, overwriting anything baked into the image. Security headers, probe blocking, caching rules, and the API proxy are all owned here.
 
 A correct app Dockerfile looks like:
 

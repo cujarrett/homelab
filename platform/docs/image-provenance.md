@@ -11,7 +11,7 @@ This meets SLSA Build Level 3.
 
 ## Building an image
 
-Call the platform's shared workflow from your repo's CI.
+Call the platform's shared workflow from the workload repo's CI.
 
 ```yaml
 jobs:
@@ -36,13 +36,13 @@ jobs:
 
 ## How a build works
 
-Your repo holds the Dockerfile. The platform holds the steps that build it.
+The workload repo holds the Dockerfile. The platform holds the steps that build it.
 
-1. **Your repo's CI calls the platform's shared `build-image.yml`.** It runs on a fresh GitHub ARM machine.
-2. **It checks out your repo** at the commit that started the run.
-3. **Docker runs your Dockerfile**, line by line. Most start `FROM` a platform base image, such as `base-go` or `base-spa`.
-4. **It pushes the image to ghcr.io** with each tag you passed. The registry gives it a digest, a fingerprint of its exact contents.
-5. **GitHub signs a build record** for that digest. The record names your repo, the commit, the branch and the workflow that built it.
+1. **The workload repo's CI calls the platform's shared `build-image.yml`.** It runs on a fresh GitHub ARM machine.
+2. **It checks out the workload repo** at the commit that started the run.
+3. **Docker runs the workload's Dockerfile**, line by line. Most start `FROM` a platform base image, such as `base-go` or `base-spa`.
+4. **It pushes the image to ghcr.io** with each tag the workload repo passed. The registry gives it a digest, a fingerprint of its exact contents.
+5. **GitHub signs a build record** for that digest. The record names the workload repo, the commit, the branch and the workflow that built it.
 6. **It lists every package in the image** (the SBOM) and signs that list too.
 7. **Both signed records are stored** in ghcr.io, next to the image.
 
@@ -76,4 +76,4 @@ gh attestation verify oci://ghcr.io/cujarrett/foo:sha-abc123 \
 
 - **GitHub runs the build** on a fresh machine.
 - **GitHub signs the build record.**
-- **The platform owns the build steps.** An app repo can't change them.
+- **The platform owns the build steps.** A workload repo can't change them.

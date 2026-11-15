@@ -1,5 +1,5 @@
-# Builds and pushes an image for any app repo, with signed provenance and an SBOM (SLSA Build L3).
-# App repos call this workflow at @main.
+# Builds and pushes an image for any workload repo, with signed provenance and an SBOM (SLSA Build L3).
+# Workload repos call this workflow at @main.
 # Every image is signed by this workflow, so the cluster has one signer to trust.
 name: build-image
 
@@ -55,7 +55,7 @@ jobs:
     outputs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
-      # This checks out the app repo that called the workflow.
+      # This checks out the workload repo that called the workflow.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
@@ -85,7 +85,7 @@ jobs:
           cache-to: ${{ inputs.cache-scope != '' && format('type=gha,mode=max,scope={0}', inputs.cache-scope) || '' }}
 
       # With no sbom-path, actions/attest makes SLSA build provenance.
-      # Storage records are off, so app repos need one less permission.
+      # Storage records are off, so workload repos need one less permission.
       - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         if: ${{ !inputs.check-only }}
         with:

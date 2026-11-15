@@ -4,7 +4,7 @@ CI pushes image tag bumps as one of two GitHub Apps, so deploy commits are credi
 
 | App | Grants | Installed on | Key lives as |
 |---|---|---|---|
-| [`homelab-workspaces-deployer`](https://github.com/settings/apps/homelab-workspaces-deployer) | Contents and Pull requests, read and write | `homelab-workspaces` | `HOMELAB_WORKSPACES_APP_KEY` Actions secret in workspaces app repos, and `/homelab/kargo/homelab-workspaces-app-key` in Parameter Store for Kargo |
+| [`homelab-workspaces-deployer`](https://github.com/settings/apps/homelab-workspaces-deployer) | Contents and Pull requests, read and write | `homelab-workspaces` | `HOMELAB_WORKSPACES_APP_KEY` Actions secret in each workload repo that deploys, and `/homelab/kargo/homelab-workspaces-app-key` in Parameter Store for Kargo |
 | [`cujarrett-homelab-deployer`](https://github.com/settings/apps/cujarrett-homelab-deployer) | Contents, read and write | `homelab` | `HOMELAB_APP_KEY` Actions secret in `platform-exporter` and `temporal-controller` |
 
 The Apps are split so repos that only touch `homelab-workspaces` can't rewrite cluster manifests. Client IDs are written into the workflows, since they are not secret.

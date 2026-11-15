@@ -55,7 +55,7 @@ Before telling the user to commit, run `/security-review`. It checks the pending
 
 ## Writing
 
-Prose is hard for this repo's owner to read. Write **plain language** in chat replies, docs, code comments, commit messages, and UI copy in the app repos.
+Prose is hard for this repo's owner to read. Write **plain language** in chat replies, docs, code comments, commit messages, and UI copy in the workload repos.
 
 - **One idea per sentence.** Keep most sentences under 15 words.
 - **Everyday words.** Say what a technical term means the first time it appears.
@@ -64,7 +64,7 @@ Prose is hard for this repo's owner to read. Write **plain language** in chat re
 - **State facts directly.** A slogan ("One boundary, not two"), a "not X, Y" contrast or jargon ("thrash", "blast radius") becomes a plain statement. "Hand-made objects on this map: one, the commit" becomes "The commit is the only thing on this map a person wrote by hand."
 - **Full stops, commas and brackets.** Never a spaced hyphen (` - `) doing a dash's job.
 - **Friendly and easy.** Write like a helpful note to a teammate. Say what the code does and why, in positive terms.
-  - "Storage records need an extra permission and nothing here reads them" becomes "Storage records are off, so app repos need one less permission."
+  - "Storage records need an extra permission and nothing here reads them" becomes "Storage records are off, so workload repos need one less permission."
   - Never frame a design choice as a workaround, a trade-off or a limitation.
 
 ## Documentation
@@ -111,7 +111,7 @@ Crossplane core runs with `--enable-realtime-compositions`, set in the Helm `arg
 
 `platform/` defines thirteen platform types, each as `<plural>.platform.local.lab`. The canonical list is [Platform → Offerings](./platform/README.md#offerings). That list leaves out these facts:
 
-- `Spa`: the composition generates the nginx config. App repos must not include an `nginx.conf`.
+- `Spa`: the composition generates the nginx config. Workload repos must not include an `nginx.conf`.
 - `Wordpress`: a MariaDB StatefulSet and a WordPress Deployment. Credentials derive from the XR UID.
 - `Sql`, `NoSql`, `ObjectStorage`: used by Launchpad guest demo sandboxes. `NoSql` and `ObjectStorage` stay within the AWS free tier by design.
 - `ManagedSecret`: the value never becomes a Kubernetes Secret.
