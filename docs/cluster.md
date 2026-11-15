@@ -28,12 +28,18 @@ Four Raspberry Pi 5 nodes sit in one small rack on their own VLAN.
 
 | Node | Hostname | IP | Role |
 |---|---|---|---|
-| Raspberry Pi 5 #1 | `ctrl-1` | `192.168.10.100` | k3s server (control plane) |
+| Raspberry Pi 5 #1 | `ctrl-1` | `192.168.10.100` | k3s server (control plane). Tainted `PreferNoSchedule`, so pods go to the workers first |
 | Raspberry Pi 5 #2 | `work-1` | `192.168.10.101` | k3s agent |
 | Raspberry Pi 5 #3 | `work-2` | `192.168.10.102` | k3s agent |
 | Raspberry Pi 5 #4 | `work-3` | `192.168.10.103` | k3s agent |
 
 SSH access: `ssh pi@192.168.10.10x`
+
+The `ctrl-1` taint lives on the node, not in Git. A rebuilt `ctrl-1` needs it again.
+
+```bash
+kubectl taint nodes ctrl-1 node-role.kubernetes.io/control-plane=:PreferNoSchedule
+```
 
 ---
 
@@ -53,7 +59,7 @@ Each row is one layer of the cluster and the tool that fills it.
 | GitOps | ArgoCD | App-of-apps. `cluster/argocd/bootstrap.yaml` applies every Application in `cluster/argocd/`. The `cluster-apps` ApplicationSet adds one Application per plain directory under `cluster/` |
 | Ingress | Traefik | A DaemonSet, deployed through a k3s HelmChartConfig. Binds hostPorts 80 and 443. Every route is a Gateway API `HTTPRoute` on the shared `traefik-gateway` in `kube-system`. That gateway serves one HTTPS listener with the certs in [cluster/traefik/certificates.yaml](../cluster/traefik/certificates.yaml) |
 | TLS | cert-manager | `.local.lab` hosts use the local CA issuer (`local-lab-ca-issuer`). Public hosts use Let's Encrypt (staging and prod) through a Cloudflare DNS-01 challenge. The Gateway holds one wildcard cert per zone, so workloads issue no certs. Workload mTLS uses Istio's own CA (`istio-ca-secret`), and cert-manager plays no part in it |
-| Storage | Longhorn | Three StorageClasses: `longhorn` (default, Delete), `longhorn-retain` (Retain, for stateful platform XRs) and `longhorn-delete` (explicit Delete) |
+| Storage | Longhorn | Three StorageClasses: `longhorn` (default, Delete), `longhorn-retain` (Retain, for stateful platform XRs) and `longhorn-delete` (Delete, two copies, for short-lived data such as Launchpad sandboxes). StorageClass parameters can't change in place. To change one, delete the StorageClass and let ArgoCD recreate it. Existing volumes keep their settings |
 | DNS | AdGuard Home | Runs in the `adguard` namespace, pinned to `ctrl-1` by nodeSelector. Uses hostPort 53 UDP |
 | External Access | Cloudflare Tunnel (`cloudflared`) | 2 replicas in the `cloudflare` namespace. Token from the secret `cloudflare-tunnel-token` |
 | Platform Abstraction | Crossplane | Thirteen XR types. See [Platform → Offerings](../platform/README.md#offerings) |
