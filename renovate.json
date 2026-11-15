@@ -211,13 +211,19 @@
       "minimumReleaseAge": null
     },
     {
+      "description": "The new-go-api scaffold stays unpinned, so each new repo pins fresh digests on its first run.",
+      "matchManagers": ["dockerfile"],
+      "matchFileNames": [".claude/assets/new-go-api/Dockerfile"],
+      "enabled": false
+    },
+    {
       "description": [
-        "Renovate owns the Dockerfiles of the rover and base-go images only.",
-        "base-spa takes Alpine fixes from its nightly rebuild, and its tag names the nginx minor.",
-        "The new-go-api scaffold stays unpinned, so each new repo pins fresh digests on its first run."
+        "base-spa gets new nginx patches through digest updates.",
+        "Its tag names the nginx minor, so a new minor is a new tag made by hand."
       ],
       "matchManagers": ["dockerfile"],
-      "matchFileNames": ["!images/rover/Dockerfile", "!images/base-go/Dockerfile"],
+      "matchFileNames": ["images/base-spa/Dockerfile"],
+      "matchUpdateTypes": ["major", "minor"],
       "enabled": false
     }
   ],
