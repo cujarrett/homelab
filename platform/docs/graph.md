@@ -9,10 +9,10 @@ Every team ships its own small GraphQL API. A router joins them into one API tha
 `test` and `prod` are two fixed variants, one per environment. Nobody creates variants and nobody publishes a schema.
 
 1. A PR changes `schema.graphql` beside the resolvers. CI checks it against `test`, CODEOWNERS requests the platform team, branch protection requires both.
-2. Merge to main builds and signs the image, then writes its digest into `graph-test/<subgraph>.yaml` in `homelab-workspaces`.
-3. ArgoCD syncs, Kyverno admits the signed digest, Crossplane renders the subgraph. The test operator reads the schema from that image, publishes it to `test`, GraphOS composes, the router reloads.
-4. The same CI run checks against `prod` and opens a PR moving the digest into `graph-prod/<subgraph>.yaml`. Merging it is the release.
-5. Prod repeats step 3 with its own operator and key. Rollback is reverting the digest PR.
+2. Merge to main builds the image with signed build provenance. Kargo sees it and writes its digest into `graph-test/<subgraph>.yaml` in `homelab-workspaces`.
+3. ArgoCD syncs, Kyverno checks the image's provenance, Crossplane renders the subgraph. The test operator reads the schema from that image, publishes it to `test`, GraphOS composes, the router reloads.
+4. Kargo checks both schemas against `prod` and queries the test router. A person clicks Promote, and Kargo writes the digests into `graph-prod/<subgraph>.yaml`.
+5. Prod repeats step 3 with its own operator and key. Rollback is promoting an older Freight in Kargo.
 
 ## Index
 
@@ -30,6 +30,7 @@ Start with [Design](#design), then [What a team writes](#what-a-team-writes) and
 | [What gets rendered](#what-gets-rendered) | each platform Kind mapped onto the objects it becomes |
 | [Topology](#topology) | where everything runs |
 | [The lifecycle](#the-lifecycle) | a schema change from a laptop to prod |
+| [PR environments](#pr-environments) | a router per open PR, serving test plus the PR |
 | [Protecting the graph](#protecting-the-graph) | one control per threat |
 | [What a request costs](#what-a-request-costs) | why the bill stays at zero |
 | [The demo](#the-demo) | the chain animated, then real queries, at `graph.mattjarrett.dev` |
@@ -254,6 +255,19 @@ The check composes the proposed schema against every other subgraph currently pu
 
 **Operation checks are only as good as the traffic behind them.** They compare against operations the variant has seen inside the retention window, 7 days on the Developer plan. A graph with no real users has little to compare against, so a green check here is weaker than the same command against real client traffic.
 
+## PR environments
+
+Each open subgraph PR gets its own router. It serves all of test, with the PR's subgraph swapped in. GraphOS never sees it.
+
+- **Image:** CI builds the PR's image and tags it `pr-<number>-<commit>`. Kargo only picks up `sha-` tags.
+- **Environment:** the `graph-pr` ApplicationSet in [graph-pr-appset.yaml](../../cluster/argocd/graph-pr-appset.yaml) checks GitHub every minute. It makes `graph-pr-<subgraph>-<number>` from [pr-chart](../federated-graph/pr-chart/).
+- **Subgraph:** the PR's GraphApi runs the image and publishes nothing.
+- **Router:** the `federated-graph-pr` Composition lists test's Subgraphs and mounts every image as a volume. Rover joins their `/schema.graphql` files into one supergraph, and the router loads it.
+- **Test changes:** a promotion changes an image digest, so the router restarts with the new schemas.
+- **Cleanup:** closing the PR deletes the namespace.
+
+The router reaches test's subgraphs as its own ServiceAccount. Test admits that account from any `graph-pr-*` namespace, so PR code itself can't call test. Kyverno lets `refs/pull/` builds run only in `graph-pr-*` namespaces.
+
 ## Protecting the graph
 
 Each control fails closed.
@@ -327,7 +341,6 @@ The backend is an `Api` with one endpoint per query and one for the live rows. E
 
 Post initial scope. Each builds on a working demo.
 
-- **Branch environments.** A namespace and variant per open PR, claimed and released by CI.
 - **User authorization.** JWT authentication on the router with Entra as the issuer, then `@authenticated` and `@requiresScopes` on fields.
 - **Schema governance.** Proposals for shared types, `@contact` on every subgraph, linting in checks. Decision [3](#3-governance-of-schema-changes).
 - **Router fleet.** Internal, partner and canary routers reading one variant.

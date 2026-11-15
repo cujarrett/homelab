@@ -97,3 +97,21 @@ spec:
     - {group: platform.local.lab, kind: "*"}
     - {group: "", kind: ConfigMap}
     - {group: "", kind: Service}
+---
+# One short-lived environment per open subgraph PR, made by the graph-pr ApplicationSet.
+# Kept apart from workloads, so a homelab-workspaces commit can't deploy into a PR namespace.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: graph-pr
+  namespace: argocd
+spec:
+  description: PR environments for graph subgraphs
+  sourceRepos:
+    - "https://github.com/cujarrett/homelab.git"
+  destinations:
+    - {server: https://kubernetes.default.svc, namespace: "graph-pr-*"}
+  clusterResourceWhitelist:
+    - {group: "", kind: Namespace}
+  namespaceResourceWhitelist:
+    - {group: platform.local.lab, kind: "*"}

@@ -1,0 +1,53 @@
+# One environment per open PR in each subgraph repo. It runs all of graph-test with
+# the PR's subgraph swapped in. Closing the PR deletes it.
+# See https://github.com/cujarrett/homelab/issues/66
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: graph-pr
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - list:
+              elements:
+                - subgraph: records
+                - subgraph: reviews
+          - pullRequest:
+              # Two repos at one call a minute each stays far under GitHub's 5,000 an hour.
+              requeueAfterSeconds: 60
+              github:
+                owner: cujarrett
+                repo: "storefront-{{ .subgraph }}"
+                tokenRef:
+                  secretName: graph-pr-github
+                  key: token
+  template:
+    metadata:
+      # Kyverno requires the Application and its namespace to share a name.
+      name: "graph-pr-{{ .subgraph }}-{{ .number }}"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: graph-pr
+      source:
+        repoURL: https://github.com/cujarrett/homelab.git
+        targetRevision: main
+        path: platform/federated-graph/pr-chart
+        helm:
+          valuesObject:
+            subgraph: "{{ .subgraph }}"
+            # CI tags each PR build pr-<number>-<head commit>. Kargo only watches sha- tags.
+            image: "ghcr.io/cujarrett/storefront-{{ .subgraph }}:pr-{{ .number }}-{{ .head_sha }}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "graph-pr-{{ .subgraph }}-{{ .number }}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - ServerSideApply=true

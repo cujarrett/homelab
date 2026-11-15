@@ -8,6 +8,9 @@ spec:
   names:
     kind: FederatedGraph
     plural: federatedgraphs
+  # PR environments name their own Composition. Everything else gets this one.
+  defaultCompositionRef:
+    name: federated-graph
   versions:
     - name: v1alpha1
       served: true

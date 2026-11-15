@@ -31,9 +31,9 @@ spec:
                       description: "Name of the FederatedGraph in this namespace this subgraph joins. The graph composes every subgraph that names it."
                     image:
                       type: string
-                      pattern: "^[A-Za-z0-9][A-Za-z0-9._/@-]*@sha256:[a-f0-9]{64}$"
+                      pattern: "^[A-Za-z0-9][A-Za-z0-9._/-]*(@sha256:[a-f0-9]{64}|:[A-Za-z0-9._-]+)$"
                       maxLength: 255
-                      description: "Container image, pinned by digest. The schema is read from /schema.graphql inside it, so the schema published is the one this image serves. Managed by CI, updated on each merge to main."
+                      description: "Container image, pinned by digest. The schema is read from /schema.graphql inside it, so the schema published is the one this image serves. Managed by CI, updated on each merge to main. A PR environment names its PR build by tag instead."
                     size:
                       type: string
                       default: sm

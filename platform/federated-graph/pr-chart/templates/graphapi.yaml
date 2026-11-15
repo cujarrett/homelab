@@ -1,0 +1,13 @@
+apiVersion: platform.local.lab/v1alpha1
+kind: GraphApi
+metadata:
+  name: {{ required "subgraph is required" .Values.subgraph }}
+  namespace: {{ .Release.Namespace }}
+  # The PR router finds this namespace's subgraphs by this label.
+  labels:
+    platform.local.lab/graph: storefront
+spec:
+  parameters:
+    graph: storefront
+    image: {{ required "image is required" .Values.image }}
+    size: sm

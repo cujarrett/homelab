@@ -10,11 +10,16 @@ metadata:
     policies.kyverno.io/title: Image provenance
     policies.kyverno.io/description: >-
       An image built by this account runs only if the shared build workflow
-      on homelab main built it from main of the image's own repo.
+      on homelab main built it from main of the image's own repo. PR
+      environments also run images built from a pull request.
 spec:
   validationActions: [Deny]
   # An image that can't be checked doesn't run.
   failurePolicy: Fail
+  # Containers by tag are pinned to a digest before they run. Image volumes are not,
+  # so a PR router can mount its PR image by tag. The last rule keeps digests everywhere else.
+  validationConfigurations:
+    verifyDigest: false
   # Each check calls the registry, so it can take a while.
   webhookConfiguration:
     timeoutSeconds: 30
@@ -31,6 +36,10 @@ spec:
         resources: [pods]
   matchImageReferences:
     - glob: "ghcr.io/cujarrett/*"
+  # Image volumes are pulled and read like containers, so they are checked too.
+  images:
+    - name: volumes
+      expression: "object.spec.?volumes.orValue([]).filter(v, has(v.image)).map(v, v.image.reference)"
   attestations:
     - name: slsa
       intoto:
@@ -57,17 +66,23 @@ spec:
           "platform-connections-demo-spa": "platform-connections-demo",
           "platform-graph-demo-backend": "platform-graph-demo",
           "platform-graph-demo-spa": "platform-graph-demo",
+          "rover": "homelab",
           "sump-pump-bridge": "sump-pump",
           "sump-pump-consumer": "sump-pump"
         }
+    # PR environments run unreviewed code by design. Everywhere else needs main.
+    - name: prBuildsAllowed
+      expression: "request.namespace.startsWith('graph-pr-')"
   validations:
     # One signature check per image. && skips the rest when it fails.
     # ghcr.io has no port, so the first colon starts the tag.
     - expression: >-
-        (images.containers + (has(images.initContainers) ? images.initContainers : [])).all(image,
+        (images.containers + (has(images.initContainers) ? images.initContainers : []) + (has(images.volumes) ? images.volumes : [])).all(image,
           verifyAttestationSignatures(image, attestations.slsa, [attestors.github]) > 0
           && cel.bind(name, image.split("@")[0].split(":")[0].replace("ghcr.io/cujarrett/", ""),
              cel.bind(workflow, extractPayload(image, attestations.slsa).predicate.buildDefinition.externalParameters.workflow,
                workflow.repository == "https://github.com/cujarrett/" + (name in variables.repoFor ? variables.repoFor[name] : name)
-               && workflow.ref == "refs/heads/main")))
+               && (workflow.ref == "refs/heads/main" || (variables.prBuildsAllowed && workflow.ref.startsWith("refs/pull/"))))))
       message: image was not built by the homelab build-image workflow from main of its own repo
+    - expression: "variables.prBuildsAllowed || !has(images.volumes) || images.volumes.all(image, image.contains('@sha256:'))"
+      message: an image volume outside a PR environment must name a digest

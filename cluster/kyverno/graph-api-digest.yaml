@@ -1,0 +1,29 @@
+# GraphApi accepts a tag so PR environments can name a PR build.
+# Everywhere else the image stays pinned, so the schema published is the one that runs.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: platform-graph-api-digest
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform graph API digest
+    policies.kyverno.io/description: >-
+      A subgraph names its image by digest. Only a PR environment may use a tag.
+spec:
+  validationActions: [Deny]
+  # Admission only. The reports controller can't read platform kinds.
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [platform.local.lab]
+        apiVersions: ["*"]
+        operations: [CREATE, UPDATE]
+        resources: [graphapis]
+  validations:
+    - expression: >-
+        namespaceObject.metadata.name.startsWith('graph-pr-') ||
+        object.spec.parameters.image.contains('@sha256:')
+      message: A subgraph image must be pinned by digest outside a PR environment.

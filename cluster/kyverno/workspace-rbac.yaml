@@ -29,9 +29,9 @@ spec:
   variables:
     - name: name
       expression: "object.metadata.name"
-    # Mirrors the workloads AppProject destinations in cluster/argocd/projects.yaml.
+    # Mirrors the workloads and graph-pr AppProject destinations in cluster/argocd/projects.yaml.
     - name: isWorkspace
-      expression: "variables.name.startsWith('guest-') || variables.name in ['github-exporter', 'graph-test', 'graph-prod', 'js-pollock', 'kentjarrett-com', 'launchpad', 'mattjarrett-com', 'mattjarrett-dev', 'my-vinyl', 'platform-connections-demo', 'platform-graph-demo', 'sump-pump']"
+      expression: "variables.name.startsWith('guest-') || variables.name.startsWith('graph-pr-') || variables.name in ['github-exporter', 'graph-test', 'graph-prod', 'js-pollock', 'kentjarrett-com', 'launchpad', 'mattjarrett-com', 'mattjarrett-dev', 'my-vinyl', 'platform-connections-demo', 'platform-graph-demo', 'sump-pump']"
     # The tracking annotation names the Application, which is the workspace directory.
     - name: tracking
       expression: "object.metadata.?annotations['argocd.argoproj.io/tracking-id'].orValue('')"
@@ -86,9 +86,9 @@ spec:
   matchConditions:
     - name: synced-by-argocd
       expression: "request.userInfo.username == 'system:serviceaccount:argocd:argocd-application-controller'"
-    # Mirrors the workloads AppProject destinations in cluster/argocd/projects.yaml.
+    # Mirrors the workloads and graph-pr AppProject destinations in cluster/argocd/projects.yaml.
     - name: in-a-workspace-namespace
-      expression: "object.metadata.namespace.startsWith('guest-') || object.metadata.namespace in ['github-exporter', 'graph-test', 'graph-prod', 'js-pollock', 'kentjarrett-com', 'launchpad', 'mattjarrett-com', 'mattjarrett-dev', 'my-vinyl', 'platform-connections-demo', 'platform-graph-demo', 'sump-pump']"
+      expression: "object.metadata.namespace.startsWith('guest-') || object.metadata.namespace.startsWith('graph-pr-') || object.metadata.namespace in ['github-exporter', 'graph-test', 'graph-prod', 'js-pollock', 'kentjarrett-com', 'launchpad', 'mattjarrett-com', 'mattjarrett-dev', 'my-vinyl', 'platform-connections-demo', 'platform-graph-demo', 'sump-pump']"
   validations:
     # The AppProject allows every workspace namespace to every workspace, and a manifest
     # that sets metadata.namespace overrides the Application's destination.

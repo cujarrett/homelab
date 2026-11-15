@@ -1,0 +1,12 @@
+# Serves graph-test's subgraphs, with this namespace's subgraph in place of its namesake.
+apiVersion: platform.local.lab/v1alpha1
+kind: FederatedGraph
+metadata:
+  name: storefront
+  namespace: {{ .Release.Namespace }}
+spec:
+  crossplane:
+    compositionRef:
+      name: federated-graph-pr
+  parameters:
+    graphRef: storefront-homelab@test

@@ -40,6 +40,16 @@ Each App keeps exactly one private key. Rotation adds the new key everywhere, th
 
 3. Back on **Key pairs**, delete every key except the one added now. The App is left with one key.
 
+## Cluster tokens
+
+| Token | Used by | Grants | Lives as |
+|---|---|---|---|
+| `graph-pr-github` | the `graph-pr` ApplicationSet, to list open subgraph PRs | [Fine-grained token](https://github.com/settings/personal-access-tokens), `storefront-records` and `storefront-reviews`, Pull requests read | `/homelab/argocd/graph-pr-github-token` in Parameter Store |
+
+```bash
+aws ssm put-parameter --overwrite --name /homelab/argocd/graph-pr-github-token --type SecureString --value "$(read -rs t && echo "$t")"
+```
+
 ## Repo Actions secrets
 
 Each command prompts for the value, so it stays out of shell history.

@@ -14,3 +14,21 @@ spec:
   data:
     - secretKey: webhook.github.secret
       remoteRef: {key: /homelab/argocd/webhook-github-secret}
+---
+# The graph-pr ApplicationSet uses this token to find open PRs.
+# The label keeps it readable if Argo strict mode is turned on.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: graph-pr-github
+  namespace: argocd
+spec:
+  secretStoreRef: {kind: ClusterSecretStore, name: aws-parameter-store}
+  target:
+    template:
+      metadata:
+        labels:
+          argocd.argoproj.io/secret-type: scm-creds
+  data:
+    - secretKey: token
+      remoteRef: {key: /homelab/argocd/graph-pr-github-token}

@@ -13,7 +13,8 @@ spec:
     directory:
       recurse: true
       # test/** holds the platform test scripts and the e2e manifests they apply - never applied by ArgoCD
-      exclude: "test/**"
+      # pr-chart is a Helm chart the graph-pr ApplicationSet renders, so it is never applied raw.
+      exclude: "{test/**,federated-graph/pr-chart/**}"
   destination:
     server: https://kubernetes.default.svc
     namespace: default

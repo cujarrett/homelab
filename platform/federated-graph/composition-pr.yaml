@@ -1,0 +1,239 @@
+# A PR environment's router. It serves every subgraph of the base environment, with
+# this namespace's subgraphs in place of their namesakes. GraphOS never sees it.
+# The graph-pr ApplicationSet picks this Composition by name.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: federated-graph-pr
+spec:
+  compositeTypeRef:
+    apiVersion: platform.local.lab/v1alpha1
+    kind: FederatedGraph
+  mode: Pipeline
+  pipeline:
+    - step: render-pr-router
+      functionRef:
+        name: function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            {{- $xr := .observed.composite.resource }}
+            {{- $name := $xr.metadata.name }}
+            {{- $ns := $xr.metadata.namespace }}
+            {{- $replicas := $xr.spec.parameters.replicas | default 1 }}
+            {{- /* The variant names the base environment. storefront-homelab@test reads graph-test. */ -}}
+            {{- $base := printf "graph-%s" (splitList "@" $xr.spec.parameters.graphRef | last) }}
+            {{- $service := printf "%s-router" $name }}
+            {{- $labels := dict "app.kubernetes.io/name" $service }}
+            {{- /* Must match the supergraph plugin built into the rover image, images/rover. */ -}}
+            {{- $federation := "=2.15.6" }}
+            {{- $routerReady := "False" }}
+            {{- with index (.observed.resources | default dict) "router" }}
+            {{- if ge (.resource.status.availableReplicas | default 0 | int) 1 }}{{- $routerReady = "True" }}{{- end }}
+            {{- end }}
+            {{- /* Base subgraphs first, then this namespace's GraphApis replace any namesake. */ -}}
+            {{- $found := .extraResources | default dict }}
+            {{- $subgraphs := dict }}
+            {{- range (get (get $found "base" | default dict) "items" | default list) }}
+            {{- $s := .resource.spec }}
+            {{- $_ := set $subgraphs $s.name (dict "url" $s.endpoint "image" $s.schema.ociImage.reference) }}
+            {{- end }}
+            {{- range (get (get $found "own" | default dict) "items" | default list) }}
+            {{- $g := .resource }}
+            {{- $_ := set $subgraphs $g.metadata.name (dict "url" (printf "http://%s.%s.svc.cluster.local/graphql" $g.metadata.name $ns) "image" $g.spec.parameters.image) }}
+            {{- end }}
+            {{- $supergraphYaml := printf "federation_version: %s\nsubgraphs:\n" $federation }}
+            {{- range $n, $s := $subgraphs }}
+            {{- $supergraphYaml = printf "%s  %s:\n    routing_url: %s\n    schema:\n      file: /schemas/%s/schema.graphql\n" $supergraphYaml $n $s.url $n }}
+            {{- end }}
+            ---
+            apiVersion: meta.gotemplating.fn.crossplane.io/v1alpha1
+            kind: ExtraResources
+            requirements:
+              # Every subgraph published in the base environment.
+              base:
+                apiVersion: apollographql.com/v1alpha2
+                kind: Subgraph
+                namespace: {{ $base }}
+                matchLabels:
+                  platform.local.lab/graph: {{ $name }}
+                  platform.local.lab/environment: {{ $base }}
+              # The PR's own subgraphs. They publish nothing, so their GraphApis are read instead.
+              own:
+                apiVersion: platform.local.lab/v1alpha1
+                kind: GraphApi
+                namespace: {{ $ns }}
+                matchLabels:
+                  platform.local.lab/graph: {{ $name }}
+            ---
+            apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+              name: {{ $service }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: service-account
+                gotemplating.fn.crossplane.io/ready: "True"
+            ---
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: {{ $service }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: config
+                gotemplating.fn.crossplane.io/ready: "True"
+            data:
+              supergraph.yaml: {{ $supergraphYaml | quote }}
+              router.yaml: |
+                supergraph:
+                  listen: 0.0.0.0:4000
+                  introspection: false
+                health_check:
+                  listen: 0.0.0.0:8088
+                  enabled: true
+                plugins:
+                  # Sent back only when a request asks with Apollo-Expose-Query-Plan: true.
+                  experimental.expose_query_plan: true
+                traffic_shaping:
+                  router:
+                    global_rate_limit:
+                      capacity: 100
+                      interval: 1s
+            ---
+            # Image volumes name each digest, so a new test digest rolls the router.
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: {{ $service }}
+              namespace: {{ $ns }}
+              labels: {{ $labels | toJson }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: router
+                gotemplating.fn.crossplane.io/ready: {{ $routerReady | quote }}
+            spec:
+              replicas: {{ $replicas }}
+              selector:
+                matchLabels: {{ $labels | toJson }}
+              template:
+                metadata:
+                  labels: {{ $labels | toJson }}
+                  annotations:
+                    # A changed subgraph list or address restarts the router too.
+                    platform.local.lab/supergraph-config: {{ sha256sum $supergraphYaml | trunc 16 }}
+                spec:
+                  serviceAccountName: {{ $service }}
+                  nodeSelector:
+                    node-role.kubernetes.io/worker: worker
+                  securityContext:
+                    runAsNonRoot: true
+                    seccompProfile:
+                      type: RuntimeDefault
+                  initContainers:
+                    # Joins every schema file into one supergraph before the router starts.
+                    - name: compose
+                      image: ghcr.io/cujarrett/rover:1.0.1-supergraph2.15.6
+                      command: [rover, supergraph, compose, --config, /config/supergraph.yaml, --output, /supergraph/schema.graphql]
+                      securityContext:
+                        # The image names its user rover, so the kubelet needs the number.
+                        runAsUser: 10001
+                        allowPrivilegeEscalation: false
+                        capabilities:
+                          drop: [ALL]
+                      volumeMounts:
+                        - {name: config, mountPath: /config, readOnly: true}
+                        - {name: supergraph, mountPath: /supergraph}
+                        {{- range $n, $s := $subgraphs }}
+                        - {name: schema-{{ $n }}, mountPath: /schemas/{{ $n }}, readOnly: true}
+                        {{- end }}
+                  containers:
+                    - name: router
+                      # Apollo's image aborts on the Pi's 16K-page kernel. Same source, one build flag.
+                      image: ghcr.io/cujarrett/apollo-router-arm64:2.18.0@sha256:608ab4c366168b39a40f0bb795135fceb4509dc73ae6c1cf713bce35684bdbb9
+                      args: [--config, /config/router.yaml, --supergraph, /supergraph/schema.graphql]
+                      ports:
+                        - {name: http, containerPort: 4000}
+                        - {name: health, containerPort: 8088}
+                      readinessProbe:
+                        httpGet: {path: /health, port: health}
+                      securityContext:
+                        runAsUser: 1000
+                        runAsGroup: 1000
+                        allowPrivilegeEscalation: false
+                        capabilities:
+                          drop: [ALL]
+                      resources:
+                        requests:
+                          cpu: 50m
+                          memory: 64Mi
+                        limits:
+                          memory: 256Mi
+                      volumeMounts:
+                        - {name: config, mountPath: /config, readOnly: true}
+                        - {name: supergraph, mountPath: /supergraph, readOnly: true}
+                  volumes:
+                    - name: config
+                      configMap:
+                        name: {{ $service }}
+                    - name: supergraph
+                      emptyDir: {}
+                    {{- range $n, $s := $subgraphs }}
+                    - name: schema-{{ $n }}
+                      image:
+                        reference: {{ $s.image }}
+                        pullPolicy: IfNotPresent
+                    {{- end }}
+            ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: {{ $service }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: service
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector: {{ $labels | toJson }}
+              ports:
+                - {name: http, port: 80, targetPort: http}
+            ---
+            # Callers must prove a mesh identity.
+            apiVersion: security.istio.io/v1
+            kind: PeerAuthentication
+            metadata:
+              name: {{ $service }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-peerauth
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels: {{ $labels | toJson }}
+              mtls:
+                mode: STRICT
+            ---
+            # REGISTRY_ONLY, three destinations.
+            # istio-system: the control plane.
+            # ./*: the PR's own subgraphs.
+            # The base namespace: every other subgraph.
+            apiVersion: networking.istio.io/v1
+            kind: Sidecar
+            metadata:
+              name: {{ $service }}
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-sidecar
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              workloadSelector:
+                labels: {{ $labels | toJson }}
+              outboundTrafficPolicy:
+                mode: REGISTRY_ONLY
+              egress:
+                - hosts:
+                    - "istio-system/*"
+                    - "./*"
+                    - "{{ $base }}/*"

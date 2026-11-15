@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Release.Namespace }}
+  labels:
+    platform.local.lab/workloads: "true"
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
+    # PR code is unreviewed, so its pods need the sidecar's egress control most of all.
+    istio-injection: enabled
+  annotations:
+    # Prune after the XRs. A namespace that starts terminating while managed
+    # resources still hold finalizers never finishes.
+    argocd.argoproj.io/sync-wave: "-1"

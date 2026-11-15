@@ -144,3 +144,18 @@ jobs:
       platforms: linux/arm64,linux/amd64
       fresh: true
       check-only: ${{ github.event_name == 'pull_request' }}
+
+  rover:
+    # Changes only when this folder changes. Renovate bumps the rover base after its 7-day wait.
+    if: github.event_name != 'schedule' && inputs.promote == ''
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/build-image.yml
+    with:
+      image: ghcr.io/cujarrett/rover
+      tags: ghcr.io/cujarrett/rover:1.0.1-supergraph2.15.6
+      context: images/rover
+      check-only: ${{ github.event_name == 'pull_request' }}

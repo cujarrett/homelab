@@ -106,6 +106,7 @@ Each row is one namespace and the apps that run in it.
 | `reloader` | Stakater Reloader | Restarts a workload when a ConfigMap it names changes. It watches only workloads annotated `reloader.stakater.com/auto`. The Api composition sets that annotation whenever `configFrom` is used. Secrets are ignored, because they reach apps as files that kubelet refreshes in place |
 | `graph-test` | GraphApi ×2 + FederatedGraph | `records` and `reviews` subgraphs, one repo each (`storefront-records`, `storefront-reviews`). Composed into `storefront-homelab@test`. Router at `graph-test.local.lab` |
 | `graph-prod` | GraphApi ×2 + FederatedGraph | `records` and `reviews` subgraphs at the digests Kargo promotes from test. Composed into `storefront-homelab@prod`. Router at `graph-prod.local.lab`. Only the prod operator in `apollo-operator-prod` publishes here, with its own key |
+| `graph-pr-<subgraph>-<number>` | GraphApi + FederatedGraph | One per open PR in `storefront-records` or `storefront-reviews`. Serves every `graph-test` subgraph, with the PR's subgraph in its place. Closing the PR deletes it. See [Platform Graph → PR environments](../platform/docs/graph.md#pr-environments) |
 | `node-sysctls` | node-sysctls, k3s-env | DaemonSets that write host settings from Git. `node-sysctls` applies sysctls on every node. `k3s-env` writes a `GOMEMLIMIT` drop-in to ctrl-1's `/etc/systemd/system/k3s.service.d/`. It takes effect on the next daemon-reload and k3s restart |
 | `spire-server`, `spire-system` | SPIRE | Workload identity (SPIFFE). Agent DaemonSet on all nodes. OIDC discovery provider serving `oidc.mattjarrett.dev` |
 | `trivy-system` | Trivy operator | Image CVE scans for the Security dashboard |
@@ -251,13 +252,14 @@ Cluster-setup Secrets (tunnel tokens, admin credentials) are rendered from AWS P
 
 ### AppProjects
 
-Four projects group workloads by concern:
+Five projects group workloads by concern:
 | Project | Allowed source repos | Contents |
 |---|---|---|
 | `platform` | homelab git + `argoproj.github.io/argo-helm` + `charts.crossplane.io/stable` | ArgoCD, Crossplane, compositions, bootstrap |
 | `cluster` | homelab git + `nats-io.github.io/k8s/helm/charts` + `charts.jetstack.io` + `spiffe.github.io/helm-charts-hardened` + `registry-1.docker.io/apollograph` + `go.temporal.io/helm-charts` + `ghcr.io/akuity/kargo-charts` + `argoproj.github.io/argo-helm` | Longhorn, Traefik, cert-manager, AdGuard, Cloudflare, NATS + NACK, SPIRE, Apollo operator, Temporal, temporal-controller, Kargo, Argo Rollouts |
 | `observability` | homelab git + `prometheus-community.github.io/helm-charts` + `grafana.github.io/helm-charts` | kube-prometheus-stack, Loki, Alloy, platform-exporter |
 | `workloads` | homelab git + homelab-workspaces git | All workspace apps (one Application per homelab-workspaces directory) + blog |
+| `graph-pr` | homelab git | One environment per open subgraph PR, made by the `graph-pr` ApplicationSet from [pr-chart](../platform/federated-graph/pr-chart/). Deploys only to `graph-pr-*` |
 
 ---
 

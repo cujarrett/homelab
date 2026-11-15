@@ -23,6 +23,10 @@ spec:
             {{- $params := $xr.spec.parameters }}
             {{- $graph := $params.graph }}
             {{- $image := $params.image }}
+            {{- /* A PR environment publishes nothing. Its router composes from images instead. */ -}}
+            {{- $pr := hasPrefix "graph-pr-" $ns }}
+            {{- /* The FederatedGraph router's ServiceAccount. The operator runs it as default. */ -}}
+            {{- $router := ternary (printf "%s-router" $graph) "default" $pr }}
             {{- /* An absent ready annotation never counts as ready, so each nested resource */ -}}
             {{- /* reports what it actually observed, the same way Sql and Cache do.         */ -}}
             {{- $apiReady := "False" }}
@@ -54,12 +58,38 @@ spec:
                 size: {{ $params.size | default "sm" }}
                 replicas: {{ $params.replicas | default 1 }}
                 # The router is the only caller.
-                # The operator runs it as the namespace's default ServiceAccount.
                 provides:
                   - name: graphql
                     auth: mesh
                     allowedCallers:
-                      - { namespace: {{ $ns }}, app: default }
+                      - { namespace: {{ $ns }}, app: {{ $router }} }
+            {{- if eq $ns "graph-test" }}
+            ---
+            # Every PR environment's router also reads from test's subgraphs.
+            # Both fields must match, so a PR's own subgraph code is still refused.
+            # Istio ORs ALLOW policies, so this adds PR routers and no one else.
+            apiVersion: security.istio.io/v1
+            kind: AuthorizationPolicy
+            metadata:
+              name: {{ $name }}-from-pr-routers
+              namespace: {{ $ns }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: pr-router-authz
+                gotemplating.fn.crossplane.io/ready: "True"
+            spec:
+              selector:
+                matchLabels: { app.kubernetes.io/instance: {{ $name }} }
+              action: ALLOW
+              rules:
+                - from:
+                    - source:
+                        namespaces: ["graph-pr-*"]
+                        principals: ["*/sa/{{ $graph }}-router"]
+                  # The Api's default port. Metrics stay closed to PR routers.
+                  to:
+                    - operation: { ports: ["8080"] }
+            {{- end }}
+            {{- if not $pr }}
             ---
             # The operator reads /schema.graphql from this exact digest and publishes it.
             # Same digest as the Api above, so the registry never advertises a schema
@@ -82,3 +112,4 @@ spec:
                 ociImage:
                   reference: {{ $image }}
                   path: /schema.graphql
+            {{- end }}
