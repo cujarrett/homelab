@@ -209,11 +209,18 @@
       "description": "Each rover image is a Renovate bump that already waited 7 days, so a second wait only delays it.",
       "matchPackageNames": ["ghcr.io/cujarrett/rover"],
       "minimumReleaseAge": null
+    },
+    {
+      "description": [
+        "Renovate owns the Dockerfiles of the rover and base-go images only.",
+        "base-spa takes Alpine fixes from its nightly rebuild, and its tag names the nginx minor.",
+        "The new-go-api scaffold stays unpinned, so each new repo pins fresh digests on its first run."
+      ],
+      "matchManagers": ["dockerfile"],
+      "matchFileNames": ["!images/rover/Dockerfile", "!images/base-go/Dockerfile"],
+      "enabled": false
     }
   ],
-  "dockerfile": {
-    "managerFilePatterns": ["/^images/rover/Dockerfile$/"]
-  },
   "argocd": {
     "managerFilePatterns": [
       "/cluster/argocd/.+\\.yaml$/",
