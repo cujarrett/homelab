@@ -209,11 +209,18 @@
       "description": "Each rover image is a Renovate bump that already waited 7 days, so a second wait only delays it.",
       "matchPackageNames": ["ghcr.io/cujarrett/rover"],
       "minimumReleaseAge": null
+    },
+    {
+      "description": [
+        "base-spa gets new nginx patches through digest updates.",
+        "Its tag names the nginx minor, so a new minor is a new tag made by hand."
+      ],
+      "matchManagers": ["dockerfile"],
+      "matchFileNames": ["images/base-spa/Dockerfile"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
     }
   ],
-  "dockerfile": {
-    "managerFilePatterns": ["/^images/rover/Dockerfile$/"]
-  },
   "argocd": {
     "managerFilePatterns": [
       "/cluster/argocd/.+\\.yaml$/",

@@ -1,5 +1,6 @@
-# GraphApi accepts a tag so PR environments can name a PR build.
-# Everywhere else the image stays pinned, so the schema published is the one that runs.
+# GraphApi takes a tag so PR environments can run a PR build.
+# Everywhere else it needs a digest.
+# A digest means GraphOS gets the schema that is really running.
 apiVersion: policies.kyverno.io/v1
 kind: ValidatingPolicy
 metadata:
@@ -12,7 +13,7 @@ metadata:
       A subgraph names its image by digest. Only a PR environment may use a tag.
 spec:
   validationActions: [Deny]
-  # Admission only. The reports controller can't read platform kinds.
+  # Checks new writes only. Kyverno's background scan can't read GraphApis.
   evaluation:
     background:
       enabled: false

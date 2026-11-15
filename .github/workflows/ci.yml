@@ -36,8 +36,9 @@ jobs:
           curl -sSfL https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz | tar xz
           sudo install kubeconform /usr/local/bin/kubeconform
       # The catalog supplies schemas for CRDs (Argo CD, Crossplane, Istio); kinds in neither source are skipped.
+      # pr-chart holds Helm templates. They are only valid YAML after Helm renders them.
       - run: >
-          kubeconform -summary -ignore-missing-schemas -ignore-filename-pattern '\.json$'
+          kubeconform -summary -ignore-missing-schemas -ignore-filename-pattern '\.json$' -ignore-filename-pattern 'pr-chart/'
           -schema-location default
           -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
           cluster platform

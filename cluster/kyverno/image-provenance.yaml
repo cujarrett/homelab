@@ -16,8 +16,9 @@ spec:
   validationActions: [Deny]
   # An image that can't be checked doesn't run.
   failurePolicy: Fail
-  # Containers by tag are pinned to a digest before they run. Image volumes are not,
-  # so a PR router can mount its PR image by tag. The last rule keeps digests everywhere else.
+  # Kyverno swaps container tags for digests. It leaves image volumes alone.
+  # PR routers mount their PR image by tag, so this digest check is off.
+  # The last rule still needs a digest outside graph-pr-* namespaces.
   validationConfigurations:
     verifyDigest: false
   # Each check calls the registry, so it can take a while.
@@ -36,7 +37,7 @@ spec:
         resources: [pods]
   matchImageReferences:
     - glob: "ghcr.io/cujarrett/*"
-  # Image volumes are pulled and read like containers, so they are checked too.
+  # Image volumes get the same check as containers.
   images:
     - name: volumes
       expression: "object.spec.?volumes.orValue([]).filter(v, has(v.image)).map(v, v.image.reference)"
@@ -70,7 +71,7 @@ spec:
           "sump-pump-bridge": "sump-pump",
           "sump-pump-consumer": "sump-pump"
         }
-    # PR environments run unreviewed code by design. Everywhere else needs main.
+    # graph-pr-* namespaces may run PR builds. Everywhere else needs a main build.
     - name: prBuildsAllowed
       expression: "request.namespace.startsWith('graph-pr-')"
   validations:

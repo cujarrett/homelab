@@ -2,10 +2,6 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: longhorn-delete
-  annotations:
-    # StorageClass parameters cannot change in place, so a sync deletes and recreates it.
-    # Volumes that already exist keep the settings they were made with.
-    argocd.argoproj.io/sync-options: Replace=true,Force=true
 provisioner: driver.longhorn.io
 reclaimPolicy: Delete
 volumeBindingMode: Immediate

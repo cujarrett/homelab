@@ -23,9 +23,9 @@ spec:
             {{- $params := $xr.spec.parameters }}
             {{- $graph := $params.graph }}
             {{- $image := $params.image }}
-            {{- /* A PR environment publishes nothing. Its router composes from images instead. */ -}}
+            {{- /* PR environments publish nothing. Their router reads schemas from images. */ -}}
             {{- $pr := hasPrefix "graph-pr-" $ns }}
-            {{- /* The FederatedGraph router's ServiceAccount. The operator runs it as default. */ -}}
+            {{- /* The router's ServiceAccount. PR routers use <graph>-router. Others use default. */ -}}
             {{- $router := ternary (printf "%s-router" $graph) "default" $pr }}
             {{- /* An absent ready annotation never counts as ready, so each nested resource */ -}}
             {{- /* reports what it actually observed, the same way Sql and Cache do.         */ -}}
@@ -65,9 +65,10 @@ spec:
                       - { namespace: {{ $ns }}, app: {{ $router }} }
             {{- if eq $ns "graph-test" }}
             ---
-            # Every PR environment's router also reads from test's subgraphs.
-            # Both fields must match, so a PR's own subgraph code is still refused.
-            # Istio ORs ALLOW policies, so this adds PR routers and no one else.
+            # Lets PR routers call test's subgraphs.
+            # The caller needs a graph-pr-* namespace and the router account.
+            # PR subgraph code has neither, so it can't call test.
+            # Istio adds ALLOW policies together. The normal rule still applies.
             apiVersion: security.istio.io/v1
             kind: AuthorizationPolicy
             metadata:
