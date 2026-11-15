@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       promote:
-        description: "Dated base-spa tag to promote now, skipping the 7-day cooldown. Leave empty for a normal run."
+        description: "Dated base-nginx tag to promote now, skipping the 7-day cooldown. Leave empty for a normal run."
         required: false
         default: ""
 
@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 jobs:
-  spa-check:
+  nginx-check:
     runs-on: ubuntu-26.04-arm
     permissions:
       contents: read
@@ -29,19 +29,19 @@ jobs:
       dated: ${{ steps.check.outputs.dated }}
       tag: ${{ steps.tag.outputs.tag }}
     env:
-      IMAGE: ghcr.io/cujarrett/base-spa
+      IMAGE: ghcr.io/cujarrett/base-nginx
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          sparse-checkout: images/base-spa
+          sparse-checkout: images/base-nginx
 
       # The tag matches nginx's own tag, such as 1.31-alpine.
       # Renovate then reads it as a version and moves apps to each new minor.
       - name: Read the nginx tag
         id: tag
         run: |
-          tag=$(sed -nE 's#^FROM nginx:([0-9]+\.[0-9]+-alpine)@.*#\1#p' images/base-spa/Dockerfile)
-          if [ -z "$tag" ]; then echo "FROM in images/base-spa/Dockerfile must look like nginx:1.31-alpine@sha256:..."; exit 1; fi
+          tag=$(sed -nE 's#^FROM nginx:([0-9]+\.[0-9]+-alpine)@.*#\1#p' images/base-nginx/Dockerfile)
+          if [ -z "$tag" ]; then echo "FROM in images/base-nginx/Dockerfile must look like nginx:1.31-alpine@sha256:..."; exit 1; fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "TAG=$tag" >> "$GITHUB_ENV"
 
@@ -79,9 +79,9 @@ jobs:
           echo "$upgrades"
           if [ -n "$upgrades" ]; then echo "build=true"; else echo "build=false"; fi >> "$GITHUB_OUTPUT"
 
-  spa-build:
-    needs: spa-check
-    if: needs.spa-check.outputs.build == 'true'
+  nginx-build:
+    needs: nginx-check
+    if: needs.nginx-check.outputs.build == 'true'
     permissions:
       contents: read
       packages: write
@@ -90,24 +90,24 @@ jobs:
     # Build from scratch each time, so it picks up the latest Alpine security fixes.
     uses: ./.github/workflows/build-image.yml
     with:
-      image: ghcr.io/cujarrett/base-spa
-      tags: ghcr.io/cujarrett/base-spa:${{ needs.spa-check.outputs.dated }}
-      context: images/base-spa
+      image: ghcr.io/cujarrett/base-nginx
+      tags: ghcr.io/cujarrett/base-nginx:${{ needs.nginx-check.outputs.dated }}
+      context: images/base-nginx
       fresh: true
       check-only: ${{ github.event_name == 'pull_request' }}
 
   # Apps follow the main tag, so a build reaches them only after 7 days.
   # Retagging keeps the digest, so the provenance still applies.
-  spa-promote:
-    needs: [spa-check, spa-build]
-    if: ${{ always() && github.event_name != 'pull_request' && needs.spa-check.result == 'success' && needs.spa-build.result != 'failure' }}
+  nginx-promote:
+    needs: [nginx-check, nginx-build]
+    if: ${{ always() && github.event_name != 'pull_request' && needs.nginx-check.result == 'success' && needs.nginx-build.result != 'failure' }}
     runs-on: ubuntu-26.04-arm
     permissions:
       contents: read
       packages: write
     env:
-      IMAGE: ghcr.io/cujarrett/base-spa
-      TAG: ${{ needs.spa-check.outputs.tag }}
+      IMAGE: ghcr.io/cujarrett/base-nginx
+      TAG: ${{ needs.nginx-check.outputs.tag }}
     steps:
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
@@ -140,7 +140,7 @@ jobs:
           done
           echo "No build is 7 days old yet."
 
-  go:
+  distroless:
     # The distroless base changes only when Renovate bumps its FROM, which already waited 7 days.
     if: github.event_name != 'schedule' && inputs.promote == ''
     permissions:
@@ -152,9 +152,9 @@ jobs:
     # The Dockerfile has no RUN step, so no emulation is needed.
     uses: ./.github/workflows/build-image.yml
     with:
-      image: ghcr.io/cujarrett/base-go
-      tags: ghcr.io/cujarrett/base-go:static-debian13
-      context: images/base-go
+      image: ghcr.io/cujarrett/base-distroless
+      tags: ghcr.io/cujarrett/base-distroless:static-debian13
+      context: images/base-distroless
       platforms: linux/arm64,linux/amd64
       fresh: true
       check-only: ${{ github.event_name == 'pull_request' }}

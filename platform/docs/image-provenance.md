@@ -40,7 +40,7 @@ The workload repo holds the Dockerfile. The platform holds the steps that build 
 
 1. **The workload repo's CI calls the platform's shared `build-image.yml`.** It runs on a fresh GitHub ARM machine.
 2. **It checks out the workload repo** at the commit that started the run.
-3. **Docker runs the workload's Dockerfile**, line by line. Most start `FROM` a platform base image, such as `base-go` or `base-spa`.
+3. **Docker runs the workload's Dockerfile**, line by line. Most start `FROM` a platform base image, such as `base-distroless` or `base-nginx`.
 4. **It pushes the image to ghcr.io** with each tag the workload repo passed. The registry gives it a digest, a fingerprint of its exact contents.
 5. **GitHub signs a build record** for that digest. The record names the workload repo, the commit, the branch and the workflow that built it.
 6. **It lists every package in the image** (the SBOM) and signs that list too.
