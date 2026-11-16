@@ -77,6 +77,36 @@ spec:
               memory: 64Mi
             limits:
               memory: 128Mi
+          argocdUrl: https://argocd.local.lab
+          notifiers:
+            service.github: |
+              appID: $github-appID
+              installationID: $github-installationID
+              privateKey: $github-privateKey
+          # A PR environment posts a GitHub deployment to its PR once it is up.
+          # The PR then shows the environment's name and a button to its Argo app.
+          triggers:
+            trigger.on-pr-env-ready: |
+              - when: app.status.health.status == 'Healthy' and app.status.sync.status == 'Synced'
+                oncePer: app.metadata.annotations['pr-env.platform.local.lab/head-sha']
+                send: [pr-env-ready]
+          templates:
+            template.pr-env-ready: |
+              message: "{{.app.metadata.name}} is ready."
+              github:
+                # The Application's own source is homelab, so the PR's repo and commit come from annotations.
+                repoURLPath: '{{index .app.metadata.annotations "pr-env.platform.local.lab/repo"}}'
+                revisionPath: '{{index .app.metadata.annotations "pr-env.platform.local.lab/head-sha"}}'
+                deployment:
+                  state: success
+                  environment: "{{.app.metadata.name}}"
+                  environmentURL: "{{.context.argocdUrl}}/applications/argocd/{{.app.metadata.name}}"
+                  logURL: "{{.context.argocdUrl}}/applications/argocd/{{.app.metadata.name}}"
+                  transientEnvironment: true
+                  # GitHub would otherwise merge main into the PR branch before deploying.
+                  autoMerge: false
+                  # GitHub would otherwise wait for every check on the commit.
+                  requiredContexts: []
         redis:
           resources:
             limits:

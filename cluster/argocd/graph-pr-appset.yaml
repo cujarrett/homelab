@@ -29,6 +29,11 @@ spec:
     metadata:
       # Kyverno requires the Application and its namespace to share a name.
       name: "graph-pr-{{ .subgraph }}-{{ .number }}"
+      # Argo notifications posts a GitHub deployment to the PR from these.
+      annotations:
+        notifications.argoproj.io/subscribe.on-pr-env-ready.github: ""
+        pr-env.platform.local.lab/repo: "https://github.com/cujarrett/storefront-{{ .subgraph }}"
+        pr-env.platform.local.lab/head-sha: "{{ .head_sha }}"
       finalizers:
         - resources-finalizer.argocd.argoproj.io
     spec:

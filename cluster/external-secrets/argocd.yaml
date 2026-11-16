@@ -32,3 +32,23 @@ spec:
   data:
     - secretKey: token
       remoteRef: {key: /homelab/argocd/graph-pr-github-token}
+---
+# Argo notifications signs in as this GitHub App to post PR environment deployments.
+# Merged into the chart's empty argocd-notifications-secret, the same way as argocd-secret above.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: argocd-notifications-github
+  namespace: argocd
+spec:
+  secretStoreRef: {kind: ClusterSecretStore, name: aws-parameter-store}
+  target:
+    name: argocd-notifications-secret
+    creationPolicy: Merge
+  data:
+    - secretKey: github-appID
+      remoteRef: {key: /homelab/argocd/notifications-github-app-id}
+    - secretKey: github-installationID
+      remoteRef: {key: /homelab/argocd/notifications-github-installation-id}
+    - secretKey: github-privateKey
+      remoteRef: {key: /homelab/argocd/notifications-github-app-key}

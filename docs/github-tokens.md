@@ -45,9 +45,13 @@ Each App keeps exactly one private key. Rotation adds the new key everywhere, th
 | Token | Used by | Grants | Lives as |
 |---|---|---|---|
 | `graph-pr-github` | the `graph-pr` ApplicationSet, to list open subgraph PRs | [Fine-grained token](https://github.com/settings/personal-access-tokens), `storefront-records` and `storefront-reviews`, Pull requests read | `/homelab/argocd/graph-pr-github-token` in Parameter Store |
+| `homelab-argocd-notifier` | Argo notifications, to post each PR environment as a GitHub deployment | [GitHub App](https://github.com/settings/apps/homelab-argocd-notifier), installed on `storefront-records` and `storefront-reviews`, Deployments read and write | `/homelab/argocd/notifications-github-app-id`, `-installation-id` and `-app-key` in Parameter Store |
 
 ```bash
 aws ssm put-parameter --overwrite --name /homelab/argocd/graph-pr-github-token --type SecureString --value "$(read -rs t && echo "$t")"
+aws ssm put-parameter --overwrite --name /homelab/argocd/notifications-github-app-id --type String --value <app id>
+aws ssm put-parameter --overwrite --name /homelab/argocd/notifications-github-installation-id --type String --value <installation id>
+aws ssm put-parameter --overwrite --name /homelab/argocd/notifications-github-app-key --type SecureString --value "$(cat ~/Downloads/homelab-argocd-notifier.*.private-key.pem)"
 ```
 
 ## Repo Actions secrets
