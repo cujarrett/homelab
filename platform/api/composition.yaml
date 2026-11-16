@@ -1160,7 +1160,12 @@ spec:
                 {{- if $host }}
                 # Traefik is unmeshed, so the routed port can't be limited by identity.
                 # The host decides whether it reaches the internet or only the homelab network.
-                - to:
+                # notPrincipals "*" matches only callers with no mesh identity.
+                # Meshed callers still need a provides rule below.
+                - from:
+                    - source:
+                        notPrincipals: ["*"]
+                  to:
                     - operation: { ports: ["{{ $appPort }}"] }
                 {{- end }}
                 {{- range $iface := $provides }}
