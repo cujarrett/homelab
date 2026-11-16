@@ -152,9 +152,16 @@ Shutting one off is a pull request against `platform-egress-denials` (below) plu
 
 ## Admission checks
 
-Five Kyverno policies catch what a CEL rule on the XRD cannot, because each has to read an object other than the one being admitted, or a resource no XRD governs. `platform-reference-integrity` refuses an `app` named in `consumes` or `apiProxies` that is not a real Api in the namespace the reference claims, an `apiProxies` entry that names another namespace, and a `configFrom` entry that is not a ConfigMap in this namespace. `platform-host-ownership` refuses a `host` already set by an XR in another namespace. `platform-egress-denials` refuses a host on the denial list, which is empty until someone puts one there. `platform-workload-ownership` refuses a workload in a platform namespace that no XR composed, since a pod the platform did not compose gets no Istio Sidecar. `platform-namespace-posture` refuses a platform namespace that is not meshed, since the sidecar is the only egress control on its pods.
+Kyverno policies catch what a CEL rule on the XRD cannot. Each reads an object other than the one being admitted, or a resource no XRD governs. All of them deny.
 
-All five run as `Enforce`.
+- `platform-reference-integrity`: refuses an `app` in `consumes` or `apiProxies` that is not a real Api in the namespace the reference claims. Also refuses an `apiProxies` entry that names another namespace, and a `configFrom` entry that is not a ConfigMap in this namespace.
+- `platform-host-ownership`: refuses a `host` already served by another namespace.
+- `platform-stream-ownership`: refuses a Topic, Subscription or Api naming a stream that a Topic in another namespace owns.
+- `platform-image-registry`: refuses an Api, Spa or GraphApi image outside `ghcr.io/cujarrett/`, so every app image gets the provenance check.
+- `platform-egress-denials`: refuses a host on the denial list, which is empty until someone puts one there.
+- `platform-workload-ownership`: refuses a workload in a platform namespace that no XR composed. A pod the platform did not compose gets no Istio Sidecar.
+- `platform-namespace-posture`: refuses a platform namespace that is not meshed. The sidecar is the only egress control on its pods.
+- `platform-service-types`: refuses a workload Service that sets `externalIPs` or is not ClusterIP. A NodePort is allowed only when the policy names it.
 
 ## Not built yet
 
