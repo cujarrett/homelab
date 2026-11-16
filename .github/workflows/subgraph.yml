@@ -58,7 +58,7 @@ jobs:
       id-token: write
       attestations: write
     # Full path, because ./ inside a called workflow resolves against the caller's repo.
-    uses: cujarrett/homelab/.github/workflows/build-image.yml@b9f2e04f413caf65463ff59ce64de0ff4a759aa6 # main
+    uses: cujarrett/homelab/.github/workflows/build-image.yml@main
     with:
       image: ghcr.io/cujarrett/${{ github.event.repository.name }}
       tags: >-

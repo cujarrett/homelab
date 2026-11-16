@@ -34,6 +34,12 @@
       "labels": ["automerge"]
     },
     {
+      "description": "Never pin homelab workflows. Images must be built by build-image.yml@main, or the cluster won't run them.",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["cujarrett/homelab"],
+      "enabled": false
+    },
+    {
       "description": "Debian and Alpine security fixes arrive as a rebuild of the same base tag. A digest pin makes each rebuild a PR, which rebuilds and redeploys the app image.",
       "matchManagers": ["dockerfile"],
       "pinDigests": true
