@@ -1,0 +1,28 @@
+# The image provenance policy checks only ghcr.io/cujarrett/ images.
+# An app image from any other registry would skip that check and run.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: platform-image-registry
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform image registry
+    policies.kyverno.io/description: >-
+      An Api, Spa or GraphApi runs only an image built by this account, so every app
+      image goes through the provenance check.
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [platform.local.lab]
+        apiVersions: [v1alpha1]
+        operations: [CREATE, UPDATE]
+        resources: [apis, spas, graphapis]
+  validations:
+    - expression: "object.spec.?parameters.?image.orValue('').startsWith('ghcr.io/cujarrett/')"
+      messageExpression: "'image ' + object.spec.?parameters.?image.orValue('') + ' is not allowed. App images come from ghcr.io/cujarrett/.'"
+      message: App images come from ghcr.io/cujarrett/.

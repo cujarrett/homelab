@@ -52,6 +52,7 @@ With `check-only: true`, steps 1 to 3 run and nothing is pushed.
 
 The cluster reads the signed build record for every `ghcr.io/cujarrett/` image before a pod starts.
 Image volumes are checked too. A failed check blocks the pod.
+An Api, Spa or GraphApi may only name a `ghcr.io/cujarrett/` image, so every app image gets this check.
 
 - **Signer:** the platform's `build-image.yml`, from main of the homelab repo.
 - **Repo:** the repo with the same name as the image.
