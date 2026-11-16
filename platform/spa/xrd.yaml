@@ -47,7 +47,9 @@ spec:
                     contentSecurityPolicy:
                       type: string
                       default: "default-src 'self'; frame-ancestors 'none'; base-uri 'self';"
-                      pattern: "^[^\"\\r\\n]+$"
+                      # Printable ASCII without a double quote.
+                      # A Unicode line break would end the YAML block the value is rendered into.
+                      pattern: "^[ !#-~]+$"
                       description: >
                         Value for the Content-Security-Policy response header.
                         Override with app-specific origins (e.g. Google Fonts, external APIs).
