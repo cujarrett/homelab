@@ -49,6 +49,11 @@ spec:
             # Watches pods and issues each a SPIFFE ID from its namespace + service account.
             controllerManager:
               enabled: true
+              # Chart 0.30.4 ships 0.8.0. 0.8.1 is built on a newer Go with stdlib CVE fixes.
+              # Drop this once the chart's default tag reaches 0.8.1.
+              image:
+                # renovate: datasource=docker depName=ghcr.io/spiffe/spire-controller-manager
+                tag: 0.8.1
               identities:
                 clusterSPIFFEIDs:
                   # By default the chart IDs every pod; we only want platform pods.
