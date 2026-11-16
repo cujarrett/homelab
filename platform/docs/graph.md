@@ -268,7 +268,7 @@ Each open subgraph PR gets its own router. It serves all of test, with the PR's 
 - **Supergraph:** an init container runs Rover from [images/rover](../../images/rover/). It joins every mounted `/schema.graphql` into one supergraph file, and the router loads it.
 - **Traffic:** the router calls the PR's subgraph in the PR namespace. It calls test's running pods for every other subgraph.
 - **Test changes:** a promotion changes an image digest, so the router restarts with the new schemas.
-- **On the PR:** once the environment is up, the PR shows a deployment named after its namespace. Its button opens the Argo app.
+- **On the PR:** once the environment is up, a comment names its namespace, links its Argo app and gives the command to query it. Each new commit updates that one comment. The PR also shows a deployment with the same name.
 - **Cleanup:** closing the PR deletes the namespace.
 
 The router reaches test's subgraphs as its own ServiceAccount. Test admits that account from any `graph-pr-*` namespace, so PR code itself can't call test. Kyverno lets `refs/pull/` builds run only in `graph-pr-*` namespaces.

@@ -107,6 +107,20 @@ spec:
                   autoMerge: false
                   # GitHub would otherwise wait for every check on the commit.
                   requiredContexts: []
+                # The tag makes each new commit update one comment instead of adding another.
+                pullRequestComment:
+                  commentTag: pr-env
+                  content: |
+                    **PR environment ready:** `{{.app.metadata.name}}`, at commit `{{index .app.metadata.annotations "pr-env.platform.local.lab/head-sha" | trunc 7}}`.
+
+                    It runs all of test, with this PR's subgraph swapped in. Closing the PR deletes it.
+
+                    - **Argo app:** {{.context.argocdUrl}}/applications/argocd/{{.app.metadata.name}}
+                    - **Query it:** run the command below, then open http://localhost:4000
+
+                    ```bash
+                    kubectl port-forward -n {{.app.metadata.name}} svc/storefront-router 4000:80
+                    ```
         redis:
           resources:
             limits:
