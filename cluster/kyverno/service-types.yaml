@@ -1,0 +1,42 @@
+# Workspaces may commit a raw Service, and kube-proxy acts on it on every node.
+# externalIPs can claim any address, such as a node IP, and pull its traffic to a tenant pod.
+# LoadBalancer and ExternalName reach outside the namespace too.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: platform-service-types
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform service types
+    policies.kyverno.io/description: >-
+      A workload namespace runs only ClusterIP Services with no external IPs. A
+      NodePort is allowed only for a Service named here.
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: true
+  matchConstraints:
+    namespaceSelector:
+      matchLabels:
+        platform.local.lab/workloads: "true"
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [services]
+  variables:
+    - name: key
+      expression: "object.metadata.namespace + '/' + object.metadata.name"
+    # The sump pump sensor posts readings to a node port.
+    - name: nodePortAllowed
+      expression: "variables.key in ['sump-pump/sump-pump-bridge-nodeport']"
+  validations:
+    - expression: "size(object.spec.?externalIPs.orValue([])) == 0"
+      message: A workload Service cannot set externalIPs.
+    - expression: >-
+        object.spec.?type.orValue('ClusterIP') == 'ClusterIP' ||
+        (object.spec.type == 'NodePort' && variables.nodePortAllowed)
+      messageExpression: "'Service ' + variables.key + ' has type ' + object.spec.type + '. Workload Services are ClusterIP. A NodePort must be named in platform-service-types.'"
+      message: Workload Services are ClusterIP. A NodePort must be named in platform-service-types.
