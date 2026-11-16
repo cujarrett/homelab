@@ -1,0 +1,68 @@
+# NATS stream names are global across the cluster.
+# A Topic naming another namespace's stream would change it, and deleting it would delete that stream.
+# A Subscription or Api naming it would read or write another team's messages.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: platform-stream-ownership
+  annotations:
+    # Kyverno's CRDs have to exist before this can apply.
+    argocd.argoproj.io/sync-wave: "1"
+    policies.kyverno.io/title: Platform stream ownership
+    policies.kyverno.io/description: >-
+      One namespace owns each stream. A Topic, Subscription or Api is denied when a
+      Topic in another namespace already owns the stream it names.
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [platform.local.lab]
+        apiVersions: [v1alpha1]
+        operations: [CREATE, UPDATE]
+        resources: [topics, subscriptions, apis]
+  matchConditions:
+    - name: names-a-stream
+      expression: "has(object.spec.parameters) && (has(object.spec.parameters.streamName) || has(object.spec.parameters.topicRef))"
+  variables:
+    # Matches the compositions. A topicRef with no streamName means the Topic name in upper case.
+    - name: stream
+      expression: >-
+        has(object.spec.parameters.streamName)
+          ? object.spec.parameters.streamName
+          : object.spec.parameters.topicRef.?streamName.orValue(object.spec.parameters.topicRef.name.upperAscii())
+    # A stream that was already named is not checked again.
+    # Its owner may be gone by the time Crossplane removes this XR's finalizer.
+    - name: unchanged
+      expression: >-
+        request.operation == 'UPDATE' &&
+        (has(oldObject.spec.parameters.streamName) ? oldObject.spec.parameters.streamName == variables.stream
+          : has(oldObject.spec.parameters.topicRef) &&
+            oldObject.spec.parameters.topicRef.?streamName.orValue(oldObject.spec.parameters.topicRef.name.upperAscii()) == variables.stream)
+    - name: otherOwners
+      expression: >-
+        resource.List("platform.local.lab/v1alpha1", "topics", "").items.orValue([])
+        .filter(t, t.metadata.namespace != object.metadata.namespace
+          && t.spec.?parameters.?streamName.orValue('') == variables.stream)
+        .map(t, t.metadata.namespace)
+  validations:
+    - expression: "variables.unchanged || size(variables.otherOwners) == 0"
+      messageExpression: "'stream ' + variables.stream + ' belongs to namespace ' + variables.otherOwners[0] + '. Pick a different stream name.'"
+      message: The stream belongs to another namespace. Pick a different stream name.
+---
+# The chart binds each Kyverno controller to "view", which holds no platform kinds.
+# Without this read the lookup above fails and every Topic is denied.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kyverno:admission-controller:platform-topics
+  labels:
+    rbac.kyverno.io/aggregate-to-admission-controller: "true"
+    rbac.kyverno.io/aggregate-to-background-controller: "true"
+    rbac.kyverno.io/aggregate-to-reports-controller: "true"
+rules:
+  - apiGroups: ["platform.local.lab"]
+    resources: ["topics"]
+    verbs: ["get", "list"]
