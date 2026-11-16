@@ -111,16 +111,21 @@ spec:
                 pullRequestComment:
                   commentTag: pr-env
                   content: |
-                    **PR environment ready:** `{{.app.metadata.name}}`, at commit `{{index .app.metadata.annotations "pr-env.platform.local.lab/head-sha" | trunc 7}}`.
+                    ### 🧪 Your PR environment is live
 
-                    It runs all of test, with this PR's subgraph swapped in. Closing the PR deletes it.
+                    `{{.app.metadata.name}}` runs **the whole storefront supergraph** at `{{index .app.metadata.annotations "pr-env.platform.local.lab/head-sha" | trunc 7}}`. This PR's subgraph, plus every other subgraph from test. 🔀
 
-                    - **Argo app:** {{.context.argocdUrl}}/applications/argocd/{{.app.metadata.name}}
-                    - **Query it:** run the command below, then open http://localhost:4000
+                    - 🔭 **Watch it:** [Argo app]({{.context.argocdUrl}}/applications/argocd/{{.app.metadata.name}})
+                    - 🛰️ **Query it:** one query, answered by both subgraphs
 
                     ```bash
-                    kubectl port-forward -n {{.app.metadata.name}} svc/storefront-router 4000:80
+                    kubectl port-forward -n {{.app.metadata.name}} svc/storefront-router 4000:80 &
+                    curl -s localhost:4000 -H 'content-type: application/json' -d '{"query":"{ records { title reviews { rating } } }"}'
                     ```
+
+                    🧩 **How the schema is built:** at startup, rover composes a supergraph from each subgraph image's schema file. Nothing is published to GraphOS. When test promotes a new subgraph image, this router restarts and composes again.
+
+                    ♻️ Each push updates this comment. Merge or close the PR, and the environment cleans itself up. 🧹
         redis:
           resources:
             limits:
