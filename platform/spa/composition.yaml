@@ -120,9 +120,9 @@ spec:
                         return 403;
                     }
 
-                    # WordPress user-enumeration probe via query string on any path (?rest_route=/wp/v2/users/)
-                    # Not path-based, so it slips past every location block above and hits the SPA catch-all.
-                    if ($args ~* "^rest_route=") {
+                    # Query-string probes on any path, such as ?rest_route=/wp/v2/users/ and ?phpinfo=1.
+                    # Not path-based, so they slip past every location block and hit the SPA catch-all.
+                    if ($args ~* "^(rest_route|phpinfo)=") {
                         return 404;
                     }
 
@@ -217,6 +217,18 @@ spec:
                     }
                     {{- end }}
 
+                    {{- $apiRootProxied := false }}
+                    {{- range $proxies }}
+                    {{- if eq (trimSuffix "/" .path) "/api" }}{{- $apiRootProxied = true }}{{- end }}
+                    {{- end }}
+                    {{- if not $apiRootProxied }}
+                    # No backend owns /api/ on this Spa, so an /api/ path is a probe.
+                    # A longer proxy path, such as /api/stats/, still wins over this one.
+                    location /api/ {
+                        return 404;
+                    }
+                    {{- end }}
+
                     # Scanner probes, all answered 404 so the SPA catch-all never returns 200
                     # and tells a scanner the stack is here. Grouped by suffix: ";" is a
                     # terminator alongside "/" so /actuator;/env cannot slip past, _profiler and
@@ -243,6 +255,12 @@ spec:
                     }
 
                     location ~* "^/(setup|install|installer|installation|wizard|admin/setup|api/user|api/v[0-9]+/(user|config|env)|_internal)(/|$)|^/(app/)?config/(packages|routes|services|security)(/|$)" {
+                        return 404;
+                    }
+
+                    # Ops endpoints, debug toolbars, database admin tools and extensionless server files.
+                    # "\.php/" catches a script used as a directory, such as /index.php/admin/.
+                    location ~* "^/(metrics|debug|_debugbar|nginx_status|kubeconfig|graphql|api-docs|horizon|solr|jenkins|manager/html|developmentserver|latest/meta-data|cpanel|phpmyadmin|pma|myadmin|dbadmin|adminer|error_log|php_errorlog|Vagrantfile|Procfile|(v[0-9]+/)?config)(/|\?|$)|^/api$|^/\?|\.php/" {
                         return 404;
                     }
 
@@ -287,8 +305,9 @@ spec:
                 gotemplating.fn.crossplane.io/composition-resource-name: public-config
                 gotemplating.fn.crossplane.io/ready: "True"
             data:
-              config.json: |
-                {{ $publicConfig | toJson }}
+              # Quoted so every character is escaped.
+              # A Unicode line break in a value would otherwise end this YAML value.
+              config.json: {{ $publicConfig | toJson | quote }}
             {{- end }}
             ---
             # --- ServiceAccount ---
