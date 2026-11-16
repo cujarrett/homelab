@@ -271,7 +271,7 @@ Each open subgraph PR gets its own router. It serves all of test, with the PR's 
 - **On the PR:** once the environment is up, a comment names its namespace, links its Argo app and gives the command to query it. Each new commit updates that one comment. The PR also shows a deployment with the same name.
 - **Cleanup:** closing the PR deletes the namespace.
 
-The router reaches test's subgraphs as its own ServiceAccount. Test admits that account from any `graph-pr-*` namespace, so PR code itself can't call test. Kyverno lets `refs/pull/` builds run only in `graph-pr-*` namespaces.
+The router reaches test's subgraphs as its own ServiceAccount. Test admits that account from any `graph-pr-*` namespace, so PR code itself can't call test. Kyverno lets `refs/pull/` builds run only in `graph-pr-*` namespaces. Only PRs opened by an allowed author get an environment. The list is the `selector` in the ApplicationSet, so a fork PR gets none.
 
 ## Protecting the graph
 

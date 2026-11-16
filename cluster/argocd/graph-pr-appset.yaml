@@ -25,6 +25,12 @@ spec:
                 tokenRef:
                   secretName: graph-pr-github
                   key: token
+            # The generator lists fork PRs too. Only PRs from these authors get an environment.
+            selector:
+              matchExpressions:
+                - key: author
+                  operator: In
+                  values: [cujarrett]
   template:
     metadata:
       # Kyverno requires the Application and its namespace to share a name.
