@@ -259,7 +259,7 @@ The check composes the proposed schema against every other subgraph currently pu
 
 Each open subgraph PR gets its own router. It serves all of test, with the PR's subgraph swapped in. GraphOS never sees it.
 
-- **Image:** CI builds the PR's image and tags it `pr-<number>-<commit>`. Kargo only picks up `sha-` tags.
+- **Image:** the shared [subgraph workflow](../../.github/workflows/subgraph.yml) builds the PR's image and tags it `pr-<number>-<commit>`. Kargo only picks up `sha-` tags. Subgraph repos call that workflow, so they hold no build steps of their own.
 - **Environment:** the `graph-pr` ApplicationSet in [graph-pr-appset.yaml](../../cluster/argocd/graph-pr-appset.yaml) asks GitHub for open PRs every minute. For each one, ArgoCD applies [pr-chart](../federated-graph/pr-chart/) into a namespace named `graph-pr-<subgraph>-<number>`.
 - **Chart:** three objects. The namespace, a `FederatedGraph` that picks the `federated-graph-pr` Composition, and a `GraphApi` for the PR's image.
 - **Subgraph:** the PR's GraphApi runs the image and publishes nothing.

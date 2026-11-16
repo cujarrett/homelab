@@ -1,0 +1,68 @@
+# CI for every Go subgraph. Subgraph repos call this workflow at @main.
+# A change here reaches every subgraph with no change in their repos.
+name: subgraph
+
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: The subgraph's name in the graph, such as records
+        type: string
+        required: true
+      graph-ref:
+        description: The graph variant the schema is checked against
+        type: string
+        default: storefront-homelab@test
+    secrets:
+      APOLLO_KEY:
+        description: A GraphOS key that can run schema checks
+        required: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: go tool gqlgen generate
+      # gqlgen adds a panicking stub for any new field. A diff here means a resolver is missing.
+      - run: git diff --exit-code graph/resolver.go
+      - run: go vet ./...
+      - run: go test -race ./...
+
+  schema-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      APOLLO_KEY: ${{ secrets.APOLLO_KEY }}
+      APOLLO_ELV2_LICENSE: accept
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: apollographql/rover-actions/install-rover-cli@e92ac8924d93ce89232b2d618625131479c499c2 # v1.4.0
+      - run: rover subgraph check ${{ inputs.graph-ref }} --name ${{ inputs.name }} --schema schema.graphql
+
+  # Main: sha-<commit>, which Kargo promotes.
+  # PRs: pr-<number>-<head commit>, which only the PR environment runs. Kargo ignores the tag.
+  # Manual runs off main build nothing, so no branch build gets a sha- tag.
+  build-and-push:
+    needs: [test, schema-check]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    # Full path, because ./ inside a called workflow resolves against the caller's repo.
+    uses: cujarrett/homelab/.github/workflows/build-image.yml@main
+    with:
+      image: ghcr.io/cujarrett/${{ github.event.repository.name }}
+      tags: >-
+        ${{ github.event_name == 'pull_request'
+          && format('ghcr.io/cujarrett/{0}:pr-{1}-{2}', github.event.repository.name, github.event.number, github.event.pull_request.head.sha)
+          || format('ghcr.io/cujarrett/{0}:sha-{1}', github.event.repository.name, github.sha) }}
+      cache-scope: ${{ github.event.repository.name }}
