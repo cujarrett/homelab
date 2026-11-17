@@ -3794,14 +3794,14 @@ data:
           }
         },
         {
-          "description": "Time since every node last booted, read from the kernel boot time. A single node rebooting for an upgrade does not move it. Only a full-cluster power cycle does.",
+          "description": "Time since every node booted within the same five minutes, read from the kernel boot time. That is the same rule as the ClusterPowerLoss alert. Rolling reboots and missed scrapes do not move it.",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "fixedColor": "blue",
                 "mode": "fixed"
               },
-              "noValue": "No node data",
+              "noValue": "None recorded",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -3850,7 +3850,7 @@ data:
                 "uid": "cluster-availability-archive"
               },
               "editorMode": "code",
-              "expr": "time() - max_over_time(timestamp(count(up{job=\"node-exporter\"} == 1) < 3)[365d:30s])",
+              "expr": "time() - max_over_time((max(node_boot_time_seconds) and on() (max(node_boot_time_seconds) - min(node_boot_time_seconds) < 300))[365d:5m])",
               "instant": true,
               "legendFormat": "Time Since Last Power Outage",
               "refId": "A"

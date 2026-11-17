@@ -31,9 +31,10 @@ subjects:
     name: prometheus-cluster-availability
     namespace: monitoring
 ---
-# Targets the same Service as the shared node-exporter ServiceMonitor but drops
-# every scraped metric via metricRelabelings - only the synthetic `up` series
-# (added by Prometheus itself) survives, which is all the availability archive needs.
+# Targets the same Service as the shared node-exporter ServiceMonitor.
+# It keeps two series per node.
+# - up: added by Prometheus itself, the availability signal.
+# - node_boot_time_seconds: the power signal, all nodes booting together.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -52,8 +53,8 @@ spec:
       scheme: http
       metricRelabelings:
         - sourceLabels: [__name__]
-          regex: ".*"
-          action: drop
+          regex: node_boot_time_seconds
+          action: keep
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: Prometheus
@@ -68,8 +69,8 @@ spec:
   retention: 1825d
   scrapeInterval: 30s
   evaluationInterval: 30s
-  # node-exporter's `up` is the power signal (target unreachable == node down);
-  # the blackbox Probe is the internet signal. Nothing else - keep this archive small.
+  # node-exporter `up` and boot time are the availability and power signals.
+  # The blackbox Probe is the internet signal. Nothing else, so the archive stays small.
   serviceMonitorSelector:
     matchLabels:
       archive: cluster-availability
