@@ -7,6 +7,8 @@ until curl -sk https://grafana.local.lab/api/health | grep -q '"database": "ok"'
 done
 
 while true; do
-  chromium --noerrdialogs --disable-infobars --kiosk --incognito --disable-translate --disable-features=TranslateUI --ignore-certificate-errors --force-device-scale-factor=1 --window-size=1424,280 --disable-dev-shm-usage "--js-flags=--max-old-space-size=64" --renderer-process-limit=1 --disable-extensions --disable-background-networking --disable-sync --disable-hang-monitor --disable-component-update --process-per-site "https://grafana.local.lab/playlists/play/adc6g24?kiosk"
+  # A crashed page leaves the browser running, so the loop alone never recovers it.
+  # A daily exit starts Chromium fresh.
+  timeout 24h chromium --noerrdialogs --disable-infobars --kiosk --incognito --disable-translate --disable-features=TranslateUI --ignore-certificate-errors --force-device-scale-factor=1 --window-size=1424,280 --disable-dev-shm-usage "--js-flags=--max-old-space-size=64" --renderer-process-limit=1 --disable-extensions --disable-background-networking --disable-sync --disable-hang-monitor --disable-component-update --process-per-site "https://grafana.local.lab/playlists/play/adc6g24?kiosk"
   sleep 2
 done

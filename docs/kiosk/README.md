@@ -9,6 +9,7 @@ Runs a fullscreen Chromium kiosk on `ctrl-1`'s attached 1U display, showing the 
 3. Waits for Grafana to be healthy before launching
 4. Launches Chromium in kiosk mode pointing at the playlist
 5. Restarts Chromium automatically if it crashes (`while true` loop)
+6. Restarts Chromium every 24 hours (`timeout 24h`), so a crashed page ("Aw, Snap!") recovers
 
 ## Display
 
