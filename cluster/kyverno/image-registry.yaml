@@ -26,3 +26,15 @@ spec:
     - expression: "object.spec.?parameters.?image.orValue('').startsWith('ghcr.io/cujarrett/')"
       messageExpression: "'image ' + object.spec.?parameters.?image.orValue('') + ' is not allowed. App images come from ghcr.io/cujarrett/.'"
       message: App images come from ghcr.io/cujarrett/.
+---
+# The policy stays not ready until the reports controller can read every kind it matches.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kyverno:reports-controller:platform-app-images
+  labels:
+    rbac.kyverno.io/aggregate-to-reports-controller: "true"
+rules:
+  - apiGroups: ["platform.local.lab"]
+    resources: ["apis", "spas", "graphapis"]
+    verbs: ["get", "list", "watch"]
