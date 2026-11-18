@@ -10,6 +10,30 @@ spec:
     - name: security
       interval: 5m
       rules:
+        # Maps each namespace to the repos whose images run there.
+        # The CVEs dashboard uses it to filter dependency alerts by namespace.
+        # - Image named after its repo, such as launchpad-api: matched as is.
+        # - Monorepo image, such as sump-pump-bridge: the last word is dropped to find the repo.
+        - record: homelab:workload_repo:info
+          expr: |
+            group by (namespace, repo) (
+              (
+                label_replace({__name__=~"kube_pod_container_info|kube_pod_init_container_info", image_spec=~"ghcr.io/cujarrett/.+"}, "repo", "$1", "image_spec", "ghcr.io/cujarrett/([^:@]+).*")
+                and on (repo) github_exporter_repo_vulnerability_alerts
+              )
+              or
+              (
+                (
+                  label_replace({__name__=~"kube_pod_container_info|kube_pod_init_container_info", image_spec=~"ghcr.io/cujarrett/.+"}, "repo", "$1", "image_spec", "ghcr.io/cujarrett/([^:@]+)-[^-:@]+[:@].*")
+                  and on (repo) github_exporter_repo_vulnerability_alerts
+                )
+                unless on (image_spec)
+                (
+                  label_replace({__name__=~"kube_pod_container_info|kube_pod_init_container_info", image_spec=~"ghcr.io/cujarrett/.+"}, "repo", "$1", "image_spec", "ghcr.io/cujarrett/([^:@]+).*")
+                  and on (repo) github_exporter_repo_vulnerability_alerts
+                )
+              )
+            )
         # homelab:security_open*  = open right now. The Homelab stat and Security dashboard show this.
         # homelab:security_overdue* = open longer than automation needs. Only the Discord alert uses this.
         - record: homelab:security_open_node_updates:count

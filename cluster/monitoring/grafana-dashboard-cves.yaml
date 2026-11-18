@@ -1,0 +1,992 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-cves
+  namespace: monitoring
+  labels:
+    grafana_dashboard: '1'
+data:
+  cves.json: |
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "links": [
+        {
+          "title": "Security",
+          "type": "link",
+          "url": "/d/homelab-security",
+          "icon": "dashboard"
+        }
+      ],
+      "liveNow": false,
+      "panels": [
+        {
+          "description": "Distinct CVEs that Trivy finds inside running images, counted once per image.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "targets": [
+            {
+              "expr": "count(count by (image_repository, vuln_id) (trivy_vulnerability_id{namespace=~\"$namespace\", severity=~\"$severity\", resource_kind!=\"Job\"})) or vector(0)",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "CVEs in Running Images",
+          "type": "stat"
+        },
+        {
+          "description": "Distinct open Dependabot alerts on the repos that run in the chosen namespaces. GitHub reads the lockfile, so child packages count.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "purple",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          },
+          "id": 2,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "targets": [
+            {
+              "expr": "count(count by (repo, id, package) (github_exporter_dependency_alert{repo=~\"$repo\", severity=~\"$severity\"})) or vector(0)",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "CVEs in Source Dependencies",
+          "type": "stat"
+        },
+        {
+          "description": "CVEs from both lists where a fixed version exists.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 12,
+            "y": 0
+          },
+          "id": 3,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "targets": [
+            {
+              "expr": "(count(count by (image_repository, vuln_id) (trivy_vulnerability_id{namespace=~\"$namespace\", severity=~\"$severity\", resource_kind!=\"Job\", fixed_version!=\"\"})) or vector(0)) + (count(count by (repo, id, package) (github_exporter_dependency_alert{repo=~\"$repo\", severity=~\"$severity\", fixed_version!=\"\"})) or vector(0))",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "With a Fix Released",
+          "type": "stat"
+        },
+        {
+          "description": "Repos in the chosen namespaces whose Dependabot alerts the exporter cannot read. Alerts are off there, or the token lacks the Dependabot alerts permission. Their rows are missing below.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 18,
+            "y": 0
+          },
+          "id": 4,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "targets": [
+            {
+              "expr": "count(github_exporter_dependency_alerts_visible{repo=~\"$repo\"} == 0) or vector(0)",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Repos With Unreadable Alerts",
+          "type": "stat"
+        },
+        {
+          "description": "Distinct CVEs in running images, per namespace.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "blue",
+                "mode": "fixed"
+              },
+              "min": 0,
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 4
+          },
+          "id": 5,
+          "options": {
+            "displayMode": "basic",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "valueMode": "color",
+            "minVizHeight": 16,
+            "minVizWidth": 8,
+            "namePlacement": "left",
+            "sizing": "auto"
+          },
+          "targets": [
+            {
+              "expr": "sort_desc(count by (namespace) (count by (namespace, image_repository, vuln_id) (trivy_vulnerability_id{namespace=~\"$namespace\", severity=~\"$severity\", resource_kind!=\"Job\"})))",
+              "instant": true,
+              "legendFormat": "{{namespace}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Image CVEs by Namespace",
+          "type": "bargauge"
+        },
+        {
+          "description": "Open Dependabot alerts per repo, for repos that run in the chosen namespaces.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "purple",
+                "mode": "fixed"
+              },
+              "min": 0,
+              "unit": "short"
+            }
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 4
+          },
+          "id": 6,
+          "options": {
+            "displayMode": "basic",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "valueMode": "color",
+            "minVizHeight": 16,
+            "minVizWidth": 8,
+            "namePlacement": "left",
+            "sizing": "auto"
+          },
+          "targets": [
+            {
+              "expr": "sort_desc(count by (repo) (count by (repo, id, package) (github_exporter_dependency_alert{repo=~\"$repo\", severity=~\"$severity\"})))",
+              "instant": true,
+              "legendFormat": "{{repo}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Dependency CVEs by Repo",
+          "type": "bargauge"
+        },
+        {
+          "description": "One row per vulnerable package in each workload.\nTrivy lists every package inside the image: OS packages, Go modules built into a binary, and any node_modules the image ships.\nDirect and child packages are both here. An image does not record which is which.\nTrivy reports critical and high. Red is critical. Yellow is high. Purple is unknown severity.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "text",
+                "mode": "fixed"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CVE"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "Critical\\|(.*)",
+                          "result": {
+                            "index": 0,
+                            "text": "$1",
+                            "color": "red"
+                          }
+                        }
+                      },
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "High\\|(.*)",
+                          "result": {
+                            "index": 1,
+                            "text": "$1",
+                            "color": "yellow"
+                          }
+                        }
+                      },
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "Medium\\|(.*)",
+                          "result": {
+                            "index": 2,
+                            "text": "$1",
+                            "color": "blue"
+                          }
+                        }
+                      },
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "Low\\|(.*)",
+                          "result": {
+                            "index": 3,
+                            "text": "$1",
+                            "color": "light-blue"
+                          }
+                        }
+                      },
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "Unknown\\|(.*)",
+                          "result": {
+                            "index": 4,
+                            "text": "$1",
+                            "color": "purple"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "${__value.text} on osv.dev",
+                        "url": "https://osv.dev/vulnerability/${__value.text}"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 200
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Kind"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 110
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Namespace"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 150
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Installed"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 150
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Fixed in"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 150
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 24,
+            "x": 0,
+            "y": 12
+          },
+          "id": 7,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": false,
+                "displayName": "CVE"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "count by (cve, namespace, kind, workload, resource, installed_version, fixed_version, image_repository, vuln_title) (label_join(label_replace(label_replace(trivy_vulnerability_id{namespace=~\"$namespace\", severity=~\"$severity\", resource_kind!=\"Job\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{namespace=~\"$namespace\", severity=~\"$severity\", resource_kind!=\"Job\", resource_kind!=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"), \"cve\", \"|\", \"severity\", \"vuln_id\"))",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "CVEs in Running Images",
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Value": true
+                },
+                "indexByName": {
+                  "cve": 0,
+                  "namespace": 1,
+                  "workload": 2,
+                  "kind": 3,
+                  "resource": 4,
+                  "installed_version": 5,
+                  "fixed_version": 6,
+                  "image_repository": 7,
+                  "vuln_title": 8
+                },
+                "renameByName": {
+                  "cve": "CVE",
+                  "namespace": "Namespace",
+                  "workload": "Workload",
+                  "kind": "Kind",
+                  "resource": "Vulnerable package",
+                  "installed_version": "Installed",
+                  "fixed_version": "Fixed in",
+                  "image_repository": "Image",
+                  "vuln_title": "What it is"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "description": "One row per open Dependabot alert, for repos that run in the chosen namespaces.\nGitHub reads each repo's lockfile, so this covers npm and Go packages that never reach an image, such as build tools.\nA child package is one that another package pulled in.\nRed is critical. Yellow is high. Blue is medium or low.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "text",
+                "mode": "fixed"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": true,
+                "inspect": false
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CVE"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "Critical\\|(.*)",
+                          "result": {
+                            "index": 0,
+                            "text": "$1",
+                            "color": "red"
+                          }
+                        }
+                      },
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "High\\|(.*)",
+                          "result": {
+                            "index": 1,
+                            "text": "$1",
+                            "color": "yellow"
+                          }
+                        }
+                      },
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "Medium\\|(.*)",
+                          "result": {
+                            "index": 2,
+                            "text": "$1",
+                            "color": "blue"
+                          }
+                        }
+                      },
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "Low\\|(.*)",
+                          "result": {
+                            "index": 3,
+                            "text": "$1",
+                            "color": "light-blue"
+                          }
+                        }
+                      },
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "Unknown\\|(.*)",
+                          "result": {
+                            "index": 4,
+                            "text": "$1",
+                            "color": "purple"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "${__value.text} on osv.dev",
+                        "url": "https://osv.dev/vulnerability/${__value.text}"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 200
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Direct or child"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "direct": {
+                            "index": 0,
+                            "text": "Direct"
+                          },
+                          "transitive": {
+                            "index": 1,
+                            "text": "Child package"
+                          },
+                          "unknown": {
+                            "index": 2,
+                            "text": "Unknown"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 140
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Where it runs"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "runtime": {
+                            "index": 0,
+                            "text": "Ships in the app"
+                          },
+                          "development": {
+                            "index": 1,
+                            "text": "Build only"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 150
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Repo"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 220
+                  },
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "Dependabot alerts for ${__value.text}",
+                        "url": "https://github.com/cujarrett/${__value.text}/security/dependabot"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Ecosystem"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 110
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Installed"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 150
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Fixed in"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 150
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 24,
+            "x": 0,
+            "y": 26
+          },
+          "id": 8,
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": false,
+                "displayName": "CVE"
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "count by (cve, repo, package, relationship, scope, ecosystem, installed_version, fixed_version) (label_join(github_exporter_dependency_alert{repo=~\"$repo\", severity=~\"$severity\"}, \"cve\", \"|\", \"severity\", \"id\"))",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "CVEs in Source Dependencies",
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Value": true
+                },
+                "indexByName": {
+                  "cve": 0,
+                  "repo": 1,
+                  "package": 2,
+                  "relationship": 3,
+                  "scope": 4,
+                  "ecosystem": 5,
+                  "installed_version": 6,
+                  "fixed_version": 7
+                },
+                "renameByName": {
+                  "cve": "CVE",
+                  "repo": "Repo",
+                  "package": "Vulnerable package",
+                  "relationship": "Direct or child",
+                  "scope": "Where it runs",
+                  "ecosystem": "Ecosystem",
+                  "installed_version": "Installed",
+                  "fixed_version": "Fixed in"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ],
+      "preload": false,
+      "refresh": "5m",
+      "schemaVersion": 42,
+      "tags": [
+        "homelab",
+        "security"
+      ],
+      "templating": {
+        "list": [
+          {
+            "allowCustomValue": false,
+            "current": {
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "hide": 0,
+            "includeAll": true,
+            "allValue": ".*",
+            "label": "Namespace",
+            "multi": true,
+            "name": "namespace",
+            "options": [],
+            "query": {
+              "query": "label_values(kube_pod_info, namespace)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "type": "query"
+          },
+          {
+            "allValue": ".*",
+            "current": {
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "hide": 0,
+            "includeAll": true,
+            "label": "Severity",
+            "multi": true,
+            "name": "severity",
+            "options": [
+              {
+                "selected": true,
+                "text": "All",
+                "value": "$__all"
+              },
+              {
+                "selected": false,
+                "text": "Critical",
+                "value": "Critical"
+              },
+              {
+                "selected": false,
+                "text": "High",
+                "value": "High"
+              },
+              {
+                "selected": false,
+                "text": "Medium",
+                "value": "Medium"
+              },
+              {
+                "selected": false,
+                "text": "Low",
+                "value": "Low"
+              },
+              {
+                "selected": false,
+                "text": "Unknown",
+                "value": "Unknown"
+              }
+            ],
+            "query": "Critical,High,Medium,Low,Unknown",
+            "skipUrlSync": false,
+            "type": "custom"
+          },
+          {
+            "allowCustomValue": false,
+            "current": {
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "hide": 2,
+            "includeAll": true,
+            "label": "Repo",
+            "multi": true,
+            "name": "repo",
+            "options": [],
+            "query": {
+              "query": "label_values(homelab:workload_repo:info{namespace=~\"$namespace\"}, repo)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "type": "query"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-24h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "CVEs",
+      "uid": "homelab-cves"
+    }
