@@ -107,6 +107,9 @@ spec:
         job:
           spec:
             backoffLimit: 0
+            # A pod that never starts would leave the Stage on Verifying forever.
+            # The deadline turns it into a Failed check that Kargo shows and can reverify.
+            activeDeadlineSeconds: 300
             template:
               spec:
                 restartPolicy: Never
@@ -146,6 +149,7 @@ spec:
         job:
           spec:
             backoffLimit: 0
+            activeDeadlineSeconds: 300
             template:
               metadata:
                 labels:

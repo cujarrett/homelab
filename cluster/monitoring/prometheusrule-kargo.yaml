@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kargo
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: kargo
+      interval: 1m
+      rules:
+        # Kargo shows a blocked verification pod only as a Failed check, with no reason.
+        # Kargo projects run their checks in a namespace named after the project.
+        - alert: KargoVerificationBlocked
+          expr: |
+            sum by (resource_namespace, policy_name) (
+              increase({__name__=~"kyverno_(image_)?validating_policy_results_total", resource_namespace=~"kargo-.*", resource_kind="Pod", result="fail"}[10m])
+            ) > 0
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://kargo.local.lab/project/{{ $labels.resource_namespace }}"
+            summary: "Kyverno policy {{ $labels.policy_name }} blocks Kargo verification in {{ $labels.resource_namespace }}"
+            description: >-
+              A verification check could not start its pod, so Kargo marks it Failed.
+              The Freight's images do not pass {{ $labels.policy_name }}.
+              Fix the image, then click Reverify on the Stage in Kargo.
+              Image rules are in https://github.com/cujarrett/homelab/blob/main/platform/docs/image-provenance.md

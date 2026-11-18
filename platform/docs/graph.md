@@ -30,6 +30,7 @@ Start with [Design](#design), then [What a team writes](#what-a-team-writes) and
 | [What gets rendered](#what-gets-rendered) | each platform Kind mapped onto the objects it becomes |
 | [Topology](#topology) | where everything runs |
 | [The lifecycle](#the-lifecycle) | a schema change from a laptop to prod |
+| [Promoting in Kargo](#promoting-in-kargo) | reading a stage card, and the fix for each failed check |
 | [PR environments](#pr-environments) | a router per open PR, serving test plus the PR |
 | [Protecting the graph](#protecting-the-graph) | one control per threat |
 | [What a request costs](#what-a-request-costs) | why the bill stays at zero |
@@ -254,6 +255,26 @@ CI never publishes a schema, never touches the cluster and never writes to `home
 The check composes the proposed schema against every other subgraph currently published to the variant. A change to a `@key` that another team extends fails on this PR, not theirs.
 
 **Operation checks are only as good as the traffic behind them.** They compare against operations the variant has seen inside the retention window, 7 days on the Developer plan. A graph with no real users has little to compare against, so a green check here is weaker than the same command against real client traffic.
+
+## Promoting in Kargo
+
+Kargo at [kargo.local.lab](https://kargo.local.lab/project/kargo-storefront) is the only tool a team needs to move a change to prod. Each card is a stage, and its two badges answer two questions.
+
+- **Freight:** one pair of subgraph images that ran together, named by a random alias such as `opining-abalone`.
+- **Middle of a stage card:** the Freight that stage runs now.
+- **Left badge, Verifying:** the checks are running. They finish within five minutes.
+- **Left badge, Ready:** the checks passed. That Freight can go to prod.
+- **Left badge, Failed:** a check failed. Click the card, open Verifications, and read which check failed.
+- **Right badge, Healthy:** the stage's app is up.
+- **⚠ on Select:** that Freight has not passed test. Kargo offers a manual approval. Leave it, and fix the cause instead.
+
+Each check has its own fix.
+
+| Check | Fails when | Fix |
+|---|---|---|
+| `prod-schema-check` | a schema breaks composition with prod, or breaks an operation prod clients send | change `schema.graphql`, merge, and the new Freight runs the checks again |
+| `test-router-query` | the test router cannot answer a query that joins both subgraphs | check the test router at `graph-test.local.lab` |
+| either, after exactly five minutes | an image fails [Image Provenance](./image-provenance.md), so the check never started. A Discord alert names the policy | merge a change to main so a new image builds, then click Reverify on the stage |
 
 ## PR environments
 
