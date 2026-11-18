@@ -67,9 +67,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Kargo picks the image with the newest created time.
+      # A cached build keeps the old created time, so the commit time sets it instead.
+      - id: commit
+        run: echo "epoch=$(git log -1 --format=%ct)" >> "$GITHUB_OUTPUT"
+
       # The attest steps below add the provenance and SBOM.
       - id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        env:
+          SOURCE_DATE_EPOCH: ${{ steps.commit.outputs.epoch }}
         with:
           context: ${{ inputs.context }}
           file: ${{ inputs.file }}
