@@ -90,6 +90,10 @@ spec:
               - when: app.status.health.status == 'Healthy' and app.status.sync.status == 'Synced'
                 oncePer: app.metadata.annotations['pr-env.platform.local.lab/head-sha']
                 send: [pr-env-ready]
+            # Argo deletes the Application when the PR closes, so the comment can say it is gone.
+            trigger.on-pr-env-closed: |
+              - when: app.metadata.deletionTimestamp != nil
+                send: [pr-env-closed]
           templates:
             template.pr-env-ready: |
               message: "{{.app.metadata.name}} is ready."
@@ -126,6 +130,26 @@ spec:
                     🧩 **How the schema is built:** at startup, rover composes a supergraph from each subgraph image's schema file. Nothing is published to GraphOS. When test promotes a new subgraph image, this router restarts and composes again.
 
                     ♻️ Each push updates this comment. Merge or close the PR, and the environment cleans itself up. 🧹
+            template.pr-env-closed: |
+              message: "{{.app.metadata.name}} is gone."
+              github:
+                repoURLPath: '{{index .app.metadata.annotations "pr-env.platform.local.lab/repo"}}'
+                revisionPath: '{{index .app.metadata.annotations "pr-env.platform.local.lab/head-sha"}}'
+                deployment:
+                  state: inactive
+                  environment: "{{.app.metadata.name}}"
+                  transientEnvironment: true
+                  autoMerge: false
+                  requiredContexts: []
+                # Same tag, so this replaces the "live" comment instead of adding one.
+                pullRequestComment:
+                  commentTag: pr-env
+                  content: |
+                    ### 🧹 Your PR environment is cleaned up
+
+                    `{{.app.metadata.name}}` is gone, along with everything it ran. Nothing to tidy by hand.
+
+                    Reopen the PR or open a new one, and you get a fresh environment. 🌱
         redis:
           resources:
             limits:
