@@ -76,6 +76,9 @@ jobs:
           platforms: ${{ inputs.platforms }}
           build-args: ${{ inputs.build-args }}
           tags: ${{ inputs.tags }}
+          # The commit label gives every build its own digest.
+          # A PR build of unchanged code would otherwise attest the main digest, and Kyverno then reads the PR attestation.
+          labels: org.opencontainers.image.revision=${{ github.sha }}
           push: ${{ !inputs.check-only }}
           provenance: false
           sbom: false
