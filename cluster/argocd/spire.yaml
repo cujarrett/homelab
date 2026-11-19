@@ -8,7 +8,7 @@ spec:
   sources:
     - repoURL: https://spiffe.github.io/helm-charts-hardened/
       chart: spire
-      targetRevision: 0.30.4
+      targetRevision: 0.31.0
       helm:
         releaseName: spire
         values: |
@@ -29,10 +29,6 @@ spec:
             replicaCount: 1
             # 1 year - avoids frequent CA rotation with no automated rotation tooling in place.
             caTTL: 8760h
-            # Chart 0.30.4 ships 1.15.5, open to CVE-2026-116587 (go-jose).
-            # Drop this once the chart's appVersion reaches 1.16.0.
-            image:
-              tag: 1.16.0
             caSubject:
               country: US
               organization: Homelab
@@ -49,11 +45,6 @@ spec:
             # Watches pods and issues each a SPIFFE ID from its namespace + service account.
             controllerManager:
               enabled: true
-              # Chart 0.30.4 ships 0.8.0. 0.8.1 is built on a newer Go with stdlib CVE fixes.
-              # Drop this once the chart's default tag reaches 0.8.1.
-              image:
-                # renovate: datasource=docker depName=ghcr.io/spiffe/spire-controller-manager
-                tag: 0.8.1
               identities:
                 clusterSPIFFEIDs:
                   # By default the chart IDs every pod; we only want platform pods.
@@ -83,19 +74,10 @@ spec:
 
           spire-agent:
             logLevel: INFO
-            # Chart 0.30.4 ships 1.15.5, open to CVE-2026-116587 (go-jose).
-            # Drop this once the chart's appVersion reaches 1.16.0.
-            image:
-              tag: 1.16.0
             # The chart requests nothing, so the scheduler counted each agent as free.
             resources:
               requests:
                 memory: 128Mi
-            # The chart's pinned digest ships brotli 1.2.0, open to CVE-2026-111497.
-            # Drop this once the chart's own digest ships brotli 1.2.1 or newer.
-            socketAlternate:
-              image:
-                tag: latest@sha256:a93eed832b139af32b39d78a5ac1d9c708647dda1fe52ebd800e2b684d0fb0c7
 
           # CSI driver mounts each pod's SVID (cert + key) as files via a volume.
           # Required before any workload can consume its identity for AWS credential exchange.
@@ -114,10 +96,6 @@ spec:
           # Public by necessity - both clouds fetch the discovery doc and JWKS from the internet.
           spiffe-oidc-discovery-provider:
             enabled: true
-            # Chart 0.30.4 ships 1.15.5, open to CVE-2026-116587 (go-jose).
-            # Drop this once the chart's appVersion reaches 1.16.0.
-            image:
-              tag: 1.16.0
             # Traefik terminates TLS at the edge; the provider serves plain HTTP behind it.
             tls:
               spire:
