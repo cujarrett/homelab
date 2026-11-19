@@ -122,13 +122,25 @@ spec:
             tls:
               spire:
                 enabled: false
-            # The chart's nginx tag trails upstream patch releases.
+            # Applies to every container in the pod, nginx included.
+            # A read-only root stops a foothold from loading an nginx module or dropping tools.
+            # nginx writes only to /tmp, an emptyDir. Both images already run as non-root.
+            securityContext:
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: [ALL]
             # This nginx is the public face of oidc.mattjarrett.dev.
+            # base-nginx-unprivileged takes Alpine fixes nightly, after a 7-day cooldown.
+            # Upstream nginx-unprivileged rebuilds weeks later.
             insecureScheme:
               nginx:
                 image:
-                  # renovate: datasource=docker depName=nginxinc/nginx-unprivileged
-                  tag: 1.31.7-alpine
+                  registry: ghcr.io
+                  repository: cujarrett/base-nginx-unprivileged
+                  # renovate: datasource=docker depName=ghcr.io/cujarrett/base-nginx-unprivileged
+                  tag: 1.31-alpine@sha256:769f017a78079d1ce77e88a633b686048a82d69ab2eaba2570ee00ec7b501192
             config:
               # Advertise the /.well-known/ path that Cloudflare lets datacenter callers reach.
               # Traefik rewrites it back to /keys - see cluster/spire/oidc-jwks-ingress.yaml.
