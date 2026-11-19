@@ -64,12 +64,15 @@
     },
     {
       "description": [
-        "ECR Public publishes no release dates.",
-        "Without a date, the 7-day wait never ends.",
-        "Skipping the date check lets aws-cli update."
+        "ECR Public publishes no release dates, so minimumReleaseAge cannot count.",
+        "The 7 days count from the branch's last commit instead, the same as Upbound below.",
+        "rebaseWhen conflicted: a rebase is a new commit and would restart the 7 days."
       ],
       "matchPackageNames": ["public.ecr.aws/**"],
-      "minimumReleaseAgeBehaviour": "timestamp-optional"
+      "minimumReleaseAgeBehaviour": "timestamp-optional",
+      "prCreation": "not-pending",
+      "prNotPendingHours": 168,
+      "rebaseWhen": "conflicted"
     },
     {
       "description": [

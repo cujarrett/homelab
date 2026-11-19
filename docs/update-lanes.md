@@ -13,7 +13,7 @@ Most updates wait 7 days after release before they reach the cluster. The wait g
 | WordPress digest rebuild | None | Automerge | PHP and Debian security fixes arrive as a rebuild of the same tag |
 | CVE fix in source code (`go.mod`, `package.json`) | 3 days | Automerge | Renovate learns of it from the OSV vulnerability database |
 | Minor, patch or digest of any other image, chart or package | 7 days | Automerge | The default |
-| Upbound providers | 7 days from the PR branch's last commit | Automerge | `xpkg.upbound.io` publishes no release dates |
+| Upbound providers and `public.ecr.aws` images | 7 days from the PR branch's last commit | Automerge | Neither registry publishes release dates |
 | Major version | 7 days | A person | A major can break the app |
 | Exploited CVE fix | None | A person, by hand | See below |
 
