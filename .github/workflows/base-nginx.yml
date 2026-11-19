@@ -102,6 +102,8 @@ jobs:
 
   # Apps follow the main tag, so a build reaches them only after 7 days.
   # Retagging keeps the digest, so the provenance still applies.
+  # --prefer-index=false copies the manifest as is.
+  # An index wrapper gets a new digest with no attestation, so Kyverno denies it.
   promote:
     needs: [check, build]
     if: ${{ always() && github.event_name != 'pull_request' && needs.check.result == 'success' && needs.build.result != 'failure' }}
@@ -132,13 +134,13 @@ jobs:
               exit 1
             fi
             echo "$GITHUB_ACTOR promoted $PROMOTE without the cooldown"
-            docker buildx imagetools create -t "$IMAGE:$TAG" "$IMAGE:$PROMOTE"
+            docker buildx imagetools create --prefer-index=false -t "$IMAGE:$TAG" "$IMAGE:$PROMOTE"
             exit 0
           fi
           for n in $(seq 7 60); do
             src="$IMAGE:$TAG-$(date -u -d "-$n days" +%F)"
             if docker buildx imagetools inspect "$src" >/dev/null 2>&1; then
-              docker buildx imagetools create -t "$IMAGE:$TAG" "$src"
+              docker buildx imagetools create --prefer-index=false -t "$IMAGE:$TAG" "$src"
               exit 0
             fi
           done
