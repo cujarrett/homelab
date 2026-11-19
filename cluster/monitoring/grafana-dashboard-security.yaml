@@ -51,7 +51,7 @@ data:
               "unit": "short"
             }
           },
-          "description": "Items only a person can clear: a node waiting on a reboot, auto-updates that stopped, a Renovate PR stuck on a failing check, or anything automation has failed to fix in its window. 0 means nothing needs you.",
+          "description": "Items only a person can clear: a node waiting on a reboot, auto-updates that stopped, a Renovate PR stuck on a failing check, a running CVE that CISA lists as exploited, or anything automation has failed to fix in its window. 0 means nothing needs you.",
           "gridPos": {
             "h": 5,
             "w": 12,
@@ -144,7 +144,7 @@ data:
           "type": "stat"
         },
         {
-          "description": "Critical and high CVEs, counted per image, that ran at some point in the last 7 days and are gone now.",
+          "description": "Critical, high and unrated CVEs, counted per image, that ran at some point in the last 7 days and are gone now.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -190,7 +190,7 @@ data:
           "pluginVersion": "13.2.4",
           "targets": [
             {
-              "expr": "count(count by (image_repository, vuln_id) (max_over_time(trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version!=\"\", resource_kind!=\"Job\"}[7d])) unless count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version!=\"\", resource_kind!=\"Job\"})) or vector(0)",
+              "expr": "count(count by (image_repository, vuln_id) (max_over_time(trivy_vulnerability_id{severity=~\"Critical|High|Unknown\", fixed_version!=\"\", resource_kind!=\"Job\"}[7d])) unless count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=~\"Critical|High|Unknown\", fixed_version!=\"\", resource_kind!=\"Job\"})) or vector(0)",
               "instant": true,
               "legendFormat": "",
               "refId": "A"
@@ -972,7 +972,7 @@ data:
           "type": "table"
         },
         {
-          "description": "Counted per image and CVE. Falls as fixes land, rises as new CVEs are published.",
+          "description": "Counted per image and CVE. Falls as fixes land, rises as new CVEs are published. Unrated means Trivy found the CVE but gave no severity. Most are high.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1091,22 +1091,224 @@ data:
               "expr": "count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=\"High\", fixed_version!=\"\", resource_kind!=\"Job\"}))",
               "legendFormat": "High",
               "refId": "B"
+            },
+            {
+              "expr": "count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity=\"Unknown\", fixed_version!=\"\", resource_kind!=\"Job\"}))",
+              "legendFormat": "Unrated",
+              "refId": "C"
             }
           ],
           "timeFrom": "30d",
-          "title": "Open Critical and High CVEs With a Fix",
+          "title": "Open CVEs With a Fix",
           "type": "timeseries"
+        },
+        {
+          "description": "Running CVEs that CISA lists as known exploited (KEV), any severity, fixed or not.\nEach row needs a decision. A fix skips the 7-day wait only when the image serves a public host and the running process loads the package.\nRun /cve-check with the CVE to decide.\nRed is critical. Yellow is high. Purple is unknown severity.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "fixedColor": "text",
+                "mode": "fixed"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "footer": {
+                  "reducers": []
+                },
+                "inspect": false
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "noValue": "No running CVE is on CISA's exploited list"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CVE"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "Critical\\|(.*)",
+                          "result": {
+                            "index": 0,
+                            "text": "$1",
+                            "color": "red"
+                          }
+                        }
+                      },
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "High\\|(.*)",
+                          "result": {
+                            "index": 1,
+                            "text": "$1",
+                            "color": "yellow"
+                          }
+                        }
+                      },
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "Unknown\\|(.*)",
+                          "result": {
+                            "index": 2,
+                            "text": "$1",
+                            "color": "purple"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  },
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "${__value.text} on cve.org",
+                        "url": "https://www.cve.org/CVERecord?id=${__value.text}"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 200
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Kind"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 110
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Namespace"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 150
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 24,
+            "x": 0,
+            "y": 15
+          },
+          "id": 20,
+          "links": [
+            {
+              "targetBlank": true,
+              "title": "Renovate Dependency Dashboard",
+              "url": "https://github.com/cujarrett/homelab/issues/32"
+            }
+          ],
+          "options": {
+            "cellHeight": "sm",
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": false,
+                "displayName": "CVE"
+              }
+            ]
+          },
+          "pluginVersion": "13.2.4",
+          "targets": [
+            {
+              "expr": "count by (cve, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_join(label_replace(label_replace((trivy_vulnerability_id{resource_kind=\"ReplicaSet\"} and on (vuln_id) max_over_time(cisa_kev_listed[2h])), \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace((trivy_vulnerability_id{resource_kind!~\"ReplicaSet|Job\"} and on (vuln_id) max_over_time(cisa_kev_listed[2h])), \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"), \"cve\", \"|\", \"severity\", \"vuln_id\"))",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Exploited and Running",
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Value": true
+                },
+                "indexByName": {
+                  "cve": 0,
+                  "namespace": 1,
+                  "workload": 2,
+                  "kind": 3,
+                  "resource": 4,
+                  "installed_version": 5,
+                  "fixed_version": 6,
+                  "image_repository": 7
+                },
+                "renameByName": {
+                  "cve": "CVE",
+                  "fixed_version": "Fixed in",
+                  "image_repository": "Image",
+                  "installed_version": "Installed",
+                  "kind": "Kind",
+                  "namespace": "Namespace",
+                  "resource": "Vulnerable package",
+                  "workload": "Workload"
+                }
+              }
+            }
+          ],
+          "type": "table"
         },
         {
           "id": 19,
           "type": "marcusolsson-treemap-panel",
-          "title": "Critical and High CVEs by App",
-          "description": "One block per app. A bigger, darker block carries more critical and high CVEs, fixable or not. Each CVE counts once per app.",
+          "title": "CVEs by App",
+          "description": "One block per app. A bigger, darker block carries more critical, high and unrated CVEs, fixable or not. Each CVE counts once per app.",
           "gridPos": {
             "h": 10,
             "w": 24,
             "x": 0,
-            "y": 15
+            "y": 21
           },
           "fieldConfig": {
             "defaults": {
@@ -1128,7 +1330,7 @@ data:
           },
           "targets": [
             {
-              "expr": "sort_desc(count by (namespace, app) (count by (namespace, app, vuln_id) (label_replace(trivy_vulnerability_id{severity=~\"Critical|High\", resource_kind=\"ReplicaSet\"}, \"app\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\") or label_replace(trivy_vulnerability_id{severity=~\"Critical|High\", resource_kind!~\"ReplicaSet|Job\"}, \"app\", \"$1\", \"resource_name\", \"(.+?)(-[0-9a-f]{32})?\"))))",
+              "expr": "sort_desc(count by (namespace, app) (count by (namespace, app, vuln_id) (label_replace(trivy_vulnerability_id{severity=~\"Critical|High|Unknown\", resource_kind=\"ReplicaSet\"}, \"app\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\") or label_replace(trivy_vulnerability_id{severity=~\"Critical|High|Unknown\", resource_kind!~\"ReplicaSet|Job\"}, \"app\", \"$1\", \"resource_name\", \"(.+?)(-[0-9a-f]{32})?\"))))",
               "format": "table",
               "instant": true,
               "refId": "A"
@@ -1264,7 +1466,7 @@ data:
             "h": 12,
             "w": 24,
             "x": 0,
-            "y": 25
+            "y": 31
           },
           "id": 9,
           "links": [
@@ -1332,7 +1534,7 @@ data:
           "type": "table"
         },
         {
-          "description": "Updates Renovate has found and holds until they are 7 days old.\nEach opens its own PR when the hold ends. To open one now, tick its box on the repo's Dependency Dashboard.",
+          "description": "Updates Renovate has found and holds until the wait for their lane ends. Most wait 7 days. A CVE fix in source code waits 3 days.\nEach opens its own PR when the hold ends. To open one now, tick its box on the repo's Dependency Dashboard.\nThe lanes are in docs/update-lanes.md.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1392,7 +1594,7 @@ data:
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 37
+            "y": 43
           },
           "id": 15,
           "options": {
@@ -1413,7 +1615,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Updates Found: Waiting Out the 7-Day Hold",
+          "title": "Updates Found: Waiting Out Renovate's Hold",
           "transformations": [
             {
               "id": "organize",
@@ -1436,7 +1638,7 @@ data:
           "type": "table"
         },
         {
-          "description": "Vulnerable packages with no fixed version anywhere yet.\nNothing to update to. They move to the table above once upstream ships a fix.\nRed is critical. Yellow is high.",
+          "description": "Vulnerable packages with no fixed version anywhere yet.\nNothing to update to. They move to the table above once upstream ships a fix.\nRed is critical. Yellow is high. Purple is unknown severity.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1498,6 +1700,17 @@ data:
                             "color": "yellow"
                           }
                         }
+                      },
+                      {
+                        "type": "regex",
+                        "options": {
+                          "pattern": "Unknown\\|(.*)",
+                          "result": {
+                            "index": 2,
+                            "text": "$1",
+                            "color": "purple"
+                          }
+                        }
                       }
                     ]
                   },
@@ -1553,7 +1766,7 @@ data:
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 45
+            "y": 51
           },
           "id": 12,
           "options": {
@@ -1569,7 +1782,7 @@ data:
           "pluginVersion": "13.2.4",
           "targets": [
             {
-              "expr": "count by (cve, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_join(label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High\", fixed_version=\"\", resource_kind!~\"ReplicaSet|Job\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"), \"cve\", \"|\", \"severity\", \"vuln_id\"))",
+              "expr": "count by (cve, namespace, kind, workload, resource, installed_version, fixed_version, image_repository) (label_join(label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High|Unknown\", fixed_version=\"\", resource_kind=\"ReplicaSet\"}, \"workload\", \"$1\", \"resource_name\", \"(.+)-[a-z0-9]+\"), \"kind\", \"Deployment\", \"resource_kind\", \".*\") or label_replace(label_replace(trivy_vulnerability_id{severity=~\"Critical|High|Unknown\", fixed_version=\"\", resource_kind!~\"ReplicaSet|Job\"}, \"workload\", \"$1\", \"resource_name\", \"(.*)\"), \"kind\", \"$1\", \"resource_kind\", \"(.*)\"), \"cve\", \"|\", \"severity\", \"vuln_id\"))",
               "format": "table",
               "instant": true,
               "refId": "A"
@@ -1640,7 +1853,7 @@ data:
             "h": 6,
             "w": 24,
             "x": 0,
-            "y": 53
+            "y": 59
           },
           "id": 16,
           "options": {

@@ -42,6 +42,18 @@ spec:
                       extension: '{.extensionName}'
                     values:
                       installs: '{.statistics[?(@.statisticName=="install")].value}'
+              # CISA's list of CVEs known to be exploited (KEV). One series per CVE.
+              # The Security dashboard joins it with Trivy's per-CVE series on vuln_id.
+              kev:
+                metrics:
+                  - name: cisa_kev
+                    type: object
+                    help: A CVE on CISA's Known Exploited Vulnerabilities list.
+                    path: '{.vulnerabilities[*]}'
+                    labels:
+                      vuln_id: '{.cveID}'
+                    values:
+                      listed: 1
         serviceMonitor:
           enabled: true
           defaults:
@@ -55,12 +67,20 @@ spec:
               module: marketplace
               interval: 4m
               scrapeTimeout: 30s
+            # CISA's official GitHub mirror. cisa.gov answers this exporter with 403.
+            # The list changes about once a day, so rules read it with max_over_time over 2h.
+            - name: cisa-kev
+              url: https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json
+              module: kev
+              interval: 1h
+              scrapeTimeout: 30s
         resources:
           requests:
             cpu: 10m
-            memory: 16Mi
-          limits:
             memory: 32Mi
+          limits:
+            # The KEV file is about 1.5MB and parses in memory.
+            memory: 64Mi
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

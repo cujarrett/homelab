@@ -47,6 +47,16 @@ spec:
           expr: count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity="Critical", fixed_version!="", resource_kind!="Job"})) or vector(0)
         - record: homelab:security_open_renovate_blocked:count
           expr: count(sum by (repo) (github_exporter_pr_open_blocked) > 0) or vector(0)
+        # Exploited: a running image carries a CVE on CISA's KEV list.
+        # Any severity and any fix state counts. Trivy rates some of these Unknown.
+        - record: homelab:security_open_kev:count
+          expr: |
+            count(
+              count by (image_repository, vuln_id) (
+                trivy_vulnerability_id{resource_kind!="Job"}
+                and on (vuln_id) max_over_time(cisa_kev_listed[2h])
+              )
+            ) or vector(0)
         - record: homelab:security_open:count
           expr: |
             homelab:security_open_node_updates:count
@@ -54,6 +64,7 @@ spec:
             + homelab:security_open_unattended_stale:count
             + homelab:security_open_image_cves:count
             + homelab:security_open_renovate_blocked:count
+            + homelab:security_open_kev:count
         # image CVE: Jobs are left out. A finished Job's image no longer runs, but its report stays while the Job object exists.
         # image CVE: Renovate waits 7 days, so a fixable critical running 9 days after Trivy listed a fix means it missed
         # Renovate PR: blocked for 2 days means a fix is stuck behind a failing check
@@ -83,6 +94,7 @@ spec:
         # Defined after the open and overdue rules, so one evaluation computes all of them in order.
         # needs_you: only a person can clear these. Reboots and blocked PRs never fix themselves,
         #   and an overdue item has outlived the automation meant to fix it. The Security dashboard leads with this.
+        # needs_you, exploited CVE: a person decides whether it skips the 7-day wait.
         # waiting: automation or an upstream release will clear these without anyone acting.
         - record: homelab:security_needs_you:count
           expr: |
@@ -91,6 +103,7 @@ spec:
             + homelab:security_open_renovate_blocked:count
             + homelab:security_overdue_node_updates:count
             + homelab:security_overdue_image_cves:count
+            + homelab:security_open_kev:count
         - record: homelab:security_waiting:count
           expr: |
             (homelab:security_open_node_updates:count - homelab:security_overdue_node_updates:count)
@@ -111,6 +124,34 @@ spec:
         # Query: the Security dashboard's Running but Not Scanned table, counted per image.
         # 3h: normal rescans leave gaps of up to 2.5 hours.
         # istio-proxy: matched on the tag that istio-proxy-scan.yaml scans.
+        # Same join as homelab:security_open_kev:count, one alert per image and CVE.
+        - alert: ExploitedCVERunning
+          expr: |
+            count by (image_repository, vuln_id) (
+              trivy_vulnerability_id{resource_kind!="Job"}
+              and on (vuln_id) max_over_time(cisa_kev_listed[2h])
+            )
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-security"
+            summary: "{{ $labels.image_repository }} carries {{ $labels.vuln_id }}, which CISA lists as exploited"
+            description: >-
+              Run /cve-check {{ $labels.vuln_id }}. A fix skips the 7-day wait when the
+              image serves a public host and the running process loads the package.
+              Otherwise it waits like any other update.
+        # Without the feed, ExploitedCVERunning can never fire.
+        - alert: KevFeedMissing
+          expr: absent(max_over_time(cisa_kev_listed[3h]))
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "CISA's exploited-CVE list has not been scraped for 3 hours"
+            description: >-
+              json-exporter fetches it from the cisagov/kev-data GitHub mirror.
+              Check the cisa-kev target in Prometheus and the json-exporter logs.
         - alert: ImageNotScanned
           expr: |
             count by (image_spec) (

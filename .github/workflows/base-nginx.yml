@@ -1,0 +1,146 @@
+# Builds an nginx base image nightly and moves its main tag after a 7-day cooldown.
+# base-images.yml calls this once per image in images/.
+name: base-nginx
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: Full image name with no tag, such as ghcr.io/cujarrett/base-nginx
+        type: string
+        required: true
+      context:
+        description: Folder holding the Dockerfile
+        type: string
+        required: true
+      promote:
+        description: Dated tag to promote now, skipping the cooldown. Empty for a normal run.
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      build: ${{ steps.check.outputs.build }}
+      dated: ${{ steps.check.outputs.dated }}
+      tag: ${{ steps.tag.outputs.tag }}
+    env:
+      IMAGE: ${{ inputs.image }}
+      DOCKERFILE: ${{ inputs.context }}/Dockerfile
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: ${{ inputs.context }}
+
+      # The tag matches nginx's own tag, such as 1.31-alpine.
+      # Renovate then reads it as a version and moves apps to each new minor.
+      - name: Read the nginx tag
+        id: tag
+        run: |
+          tag=$(sed -nE 's#^FROM [^:]+:([0-9]+\.[0-9]+-alpine)@.*#\1#p' "$DOCKERFILE")
+          if [ -z "$tag" ]; then echo "FROM in $DOCKERFILE must look like nginx:1.31-alpine@sha256:..."; exit 1; fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Nightly, a build happens only when the newest dated build has Alpine upgrades waiting.
+      # Each build is a new digest, so building on a quiet night would restart the cooldown for nothing.
+      - name: Decide whether to build
+        id: check
+        env:
+          PROMOTE: ${{ inputs.promote }}
+        run: |
+          echo "dated=$TAG-$(date -u +%F)" >> "$GITHUB_OUTPUT"
+          newest=""
+          for n in $(seq 0 60); do
+            tag="$TAG-$(date -u -d "-$n days" +%F)"
+            if docker buildx imagetools inspect "$IMAGE:$tag" >/dev/null 2>&1; then newest="$tag"; break; fi
+          done
+          if [ -n "$PROMOTE" ]; then
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$GITHUB_EVENT_NAME" != "schedule" ] || [ -z "$newest" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          upgrades=$(docker run --rm --user root --entrypoint sh "$IMAGE:$newest" -c 'apk update -q && apk list -u')
+          echo "$upgrades"
+          if [ -n "$upgrades" ]; then echo "build=true"; else echo "build=false"; fi >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: check
+    if: needs.check.outputs.build == 'true'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    # Build from scratch each time, so it picks up the latest Alpine security fixes.
+    uses: ./.github/workflows/build-image.yml
+    with:
+      image: ${{ inputs.image }}
+      tags: ${{ inputs.image }}:${{ needs.check.outputs.dated }}
+      context: ${{ inputs.context }}
+      fresh: true
+      check-only: ${{ github.event_name == 'pull_request' }}
+
+  # Apps follow the main tag, so a build reaches them only after 7 days.
+  # Retagging keeps the digest, so the provenance still applies.
+  promote:
+    needs: [check, build]
+    if: ${{ always() && github.event_name != 'pull_request' && needs.check.result == 'success' && needs.build.result != 'failure' }}
+    runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ${{ inputs.image }}
+      TAG: ${{ needs.check.outputs.tag }}
+    steps:
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Promote the newest build that is 7 days old
+        env:
+          PROMOTE: ${{ inputs.promote }}
+        run: |
+          # A manual promote skips the cooldown. The run log records who did it and which tag.
+          if [ -n "$PROMOTE" ]; then
+            if ! [[ "$PROMOTE" =~ ^$TAG-[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+              echo "promote must look like $TAG-YYYY-MM-DD, got $PROMOTE"
+              exit 1
+            fi
+            echo "$GITHUB_ACTOR promoted $PROMOTE without the cooldown"
+            docker buildx imagetools create -t "$IMAGE:$TAG" "$IMAGE:$PROMOTE"
+            exit 0
+          fi
+          for n in $(seq 7 60); do
+            src="$IMAGE:$TAG-$(date -u -d "-$n days" +%F)"
+            if docker buildx imagetools inspect "$src" >/dev/null 2>&1; then
+              docker buildx imagetools create -t "$IMAGE:$TAG" "$src"
+              exit 0
+            fi
+          done
+          echo "No build is 7 days old yet."
+

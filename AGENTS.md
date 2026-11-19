@@ -104,6 +104,7 @@ GitHub repo: `https://github.com/cujarrett/homelab.git` (branch `main`).
 | Resize a StatefulSet PVC | [Cluster → Resizing a StatefulSet PVC](./docs/cluster.md#resizing-a-statefulset-pvc) |
 | Add an ArgoCD Application or a Helm chart source | [Cluster → AppProjects](./docs/cluster.md#appprojects) |
 | Change the 1U display on `ctrl-1` | [Kiosk](./docs/kiosk/README.md) |
+| Change a Renovate wait, or decide whether a CVE fix skips it | [Update Lanes](./docs/update-lanes.md) |
 
 ## Crossplane Platform
 
