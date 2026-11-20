@@ -97,7 +97,7 @@ Each row is one namespace and the apps that run in it.
 | `nats` | NATS + NACK | JetStream cluster (3 replicas) and the NACK controller for Stream and Consumer CRDs |
 | `mattjarrett-com` | WordPress (Wordpress) | `mattjarrett.com` through Cloudflare Tunnel. 7Gi wp-content, 1Gi MariaDB |
 | `kentjarrett-com` | WordPress (Wordpress) | `kentjarrett.com` through Cloudflare Tunnel. 10Gi wp-content, 2Gi MariaDB |
-| `mattjarrett-dev` | Angular SPA (Spa) + Api | `mattjarrett.dev` through Cloudflare Tunnel. The Spa's nginx proxies `/api/stats/` to `homelab-stats`, which serves the live homelab section |
+| `mattjarrett-dev` | Two Angular SPAs (Spa) + Api | `mattjarrett.dev` and `jerks.mattjarrett.dev` through Cloudflare Tunnel. Each Spa's nginx proxies `/api/stats/` to `homelab-stats`, which serves the live homelab numbers |
 | `blog` | Ghost (Deployment) | `blog.mattjarrett.dev` through Cloudflare Tunnel. 2Gi content PVC |
 | `my-vinyl` | Spa + Api + Cache | `myvinyl.mattjarrett.dev` through Cloudflare Tunnel |
 | `js-pollock` | Spa | `jspollock.mattjarrett.dev` through Cloudflare Tunnel |
@@ -181,6 +181,7 @@ All of these route through Cloudflare Tunnel.
 - `mattjarrett.com`: WordPress
 - `kentjarrett.com`: WordPress
 - `mattjarrett.dev`: static site
+- `jerks.mattjarrett.dev`: live map of scanner requests, with `/api/stats/` proxied to `homelab-stats`
 - `blog.mattjarrett.dev`: Ghost blog
 - `myvinyl.mattjarrett.dev`: my-vinyl SPA
 - `jspollock.mattjarrett.dev`: js-pollock SPA
