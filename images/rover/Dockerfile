@@ -5,7 +5,7 @@ FROM ghcr.io/apollographql/rover:1.0.1@sha256:1e55c1aa335ae9a94200c35b1478c83889
 
 # PR routers build with this version. Bump it here to upgrade.
 # renovate: datasource=github-releases depName=apollographql/federation-rs extractVersion=^supergraph@v(?<version>.+)$
-ARG SUPERGRAPH_VERSION=2.15.6
+ARG SUPERGRAPH_VERSION=2.15.7
 
 ENV APOLLO_ELV2_LICENSE=accept \
     APOLLO_TELEMETRY_DISABLED=true \
