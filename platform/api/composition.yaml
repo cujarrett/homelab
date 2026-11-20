@@ -379,7 +379,7 @@ spec:
                     {{- end }}
                     {{- if or $awsBindings $entraNeeded $managedSecrets }}
                     - name: workload-identity-sidecar
-                      image: ghcr.io/cujarrett/workload-identity-sidecar:main@sha256:33bf0b368ea41f7372beabda69969620f0157f35258e6a7cc6eeffab6ab5db3e
+                      image: ghcr.io/cujarrett/workload-identity-sidecar:main@sha256:d1877cfa5e55807d808156dbd9ec9559c96ceb5b39e512c48a3be908b95c0494
                       imagePullPolicy: Always
                       # A native sidecar. Kubernetes starts the app only after this
                       # container's startupProbe passes.
