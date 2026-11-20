@@ -7,6 +7,15 @@
   "minimumReleaseAge": "7 days",
   "osvVulnerabilityAlerts": true,
   "postUpdateOptions": ["gomodTidy"],
+  "lockFileMaintenance": {
+    "description": "Renovate only bumps packages a repo lists directly. A daily lockfile refresh picks up fixes in the packages those pull in. Each repo's .npmrc min-release-age holds new packages 3 days.",
+    "enabled": true,
+    "schedule": ["before 4am"],
+    "automerge": true,
+    "automergeType": "pr",
+    "platformAutomerge": true,
+    "labels": ["automerge"]
+  },
   "packageRules": [
     {
       "description": "Angular 22 peers typescript >=6.0 <6.1. TypeScript 7 is the native port and no Angular release accepts it yet.",
