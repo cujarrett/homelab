@@ -100,6 +100,9 @@ spec:
 
               {{ end }}{{ end }}
           alertmanagerSpec:
+            # Alertmanager forgets a sent message after this long, then sends it again.
+            # Matches repeatInterval in alertmanagerconfig-discord.yaml.
+            retention: 720h
             # The operator defaults the request to 200Mi. It holds 45Mi.
             resources:
               requests:

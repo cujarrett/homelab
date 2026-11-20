@@ -19,17 +19,12 @@ spec:
       - "..."
     groupWait: 30s
     groupInterval: 5m
-    repeatInterval: 12h
+    # 720h: a firing alert is re-sent once a month at most.
+    # Matches alertmanagerSpec.retention. A longer interval would not be honoured.
+    repeatInterval: 720h
     routes:
-      # Fires while anything was billed in the last 24h, and each new $5 step sends its own message.
-      # 120h matches Alertmanager's retention. A longer interval would not be honoured.
-      - receiver: discord
-        repeatInterval: 120h
-        matchers:
-          - name: alertname
-            value: TemporalCloudSpend
       # Fires permanently by design, for an external dead-man's-switch to watch.
-      # Here it is just a 12h heartbeat carrying no cluster state.
+      # Here it is just a heartbeat carrying no cluster state.
       - receiver: "null"
         matchers:
           - name: alertname
@@ -66,6 +61,8 @@ spec:
         - apiURL:
             name: alertmanager-discord
             key: webhook-url
+          # A cleared alert sends a RESOLVED message, so every exposure gets a closing note.
+          sendResolved: true
           # Formatting lives in alertmanager.templateFiles - operator v0.92.1
           # silently drops title/message from this CRD.
     - name: "null"

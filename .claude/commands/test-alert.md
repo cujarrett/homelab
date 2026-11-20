@@ -32,7 +32,7 @@ kubectl exec -n monitoring $POD -c alertmanager -- sh -c \
   'wget -qO- http://localhost:9093/metrics' | grep '^alertmanager_notifications_total{integration="discord"}'
 ```
 
-Send it. `--end` matters: an alert with no end time stays active and re-notifies every `repeatInterval` (12h) until manually silenced.
+Send it. `--end` matters: an alert with no end time stays active and re-notifies every `repeatInterval` (720h) until manually silenced.
 
 ```bash
 kubectl exec -n monitoring $POD -c alertmanager -- amtool alert add \
