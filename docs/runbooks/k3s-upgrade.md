@@ -135,6 +135,7 @@ for u in \
   https://mattjarrett.com \
   https://kentjarrett.com \
   https://mattjarrett.dev \
+  https://jerks.mattjarrett.dev \
   https://blog.mattjarrett.dev \
   https://myvinyl.mattjarrett.dev \
   https://jspollock.mattjarrett.dev \

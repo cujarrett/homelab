@@ -243,6 +243,7 @@ Prometheus renames the `service` label on Traefik metrics to `exported_service`,
 Current series name the service like this: `httproute-{namespace}-{route}-gw-…-svc-{namespace}-{servicename}-{n}@kubernetesgateway`. Older series use `{namespace}-{servicename}-{port}@kubernetes`. Prefix patterns with `(.*-svc-)?` to match both.
 - `blog.mattjarrett.dev` → `(.*-svc-)?(blog-ghost.*)`
 - `mattjarrett.dev` → `(.*-svc-)?(mattjarrett-dev-mattjarrett-dev.*|web-mattjarrett-dev.*)` (both exist)
+- `jerks.mattjarrett.dev` → `(.*-svc-)?(mattjarrett-dev-jerks.*)`
 - `mattjarrett.com` → `(.*-svc-)?(mattjarrett-com-mattjarrett-com-wordpress.*)`
 - `myvinyl.mattjarrett.dev` → `(.*-svc-)?(my-vinyl-my-vinyl.*)`
 - `jspollock.mattjarrett.dev` → `(.*-svc-)?(js-pollock-js-pollock.*)`
