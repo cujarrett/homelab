@@ -12,6 +12,7 @@ Most updates wait 7 days after release before they reach the cluster. The wait g
 | `ghcr.io/cujarrett/workload-identity-sidecar` | None | Automerge | Built and signed by this account's own CI |
 | WordPress digest rebuild | None | Automerge | PHP and Debian security fixes arrive as a rebuild of the same tag |
 | CVE fix in source code (`go.mod`, `package.json`) | 3 days | Automerge | Renovate learns of it from the OSV vulnerability database |
+| Daily lockfile refresh in npm repos | 3 days, held by npm's `min-release-age` in each repo | Automerge | Renovate only bumps packages a repo lists directly, so this picks up fixes in the packages those pull in |
 | Minor, patch or digest of any other image, chart or package | 7 days | Automerge | The default |
 | Upbound providers and `public.ecr.aws` images | 7 days from the PR branch's last commit | Automerge | Neither registry publishes release dates |
 | Major version | 7 days | A person | A major can break the app |
