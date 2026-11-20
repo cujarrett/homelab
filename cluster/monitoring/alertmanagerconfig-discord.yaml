@@ -12,9 +12,11 @@ spec:
   # old config. apiURL as a secret ref is the path it understands.
   route:
     receiver: discord
-    # One message per severity. Discord rate-limits a burst of messages, and Alertmanager drops a 429 without retrying.
+    # "...": groups by every label, so each alert sends its own message.
+    # An alert joining or clearing never re-sends the others.
+    # Burst: Discord rate-limits, and Alertmanager drops a 429 without retrying.
     groupBy:
-      - severity
+      - "..."
     groupWait: 30s
     groupInterval: 5m
     repeatInterval: 12h
