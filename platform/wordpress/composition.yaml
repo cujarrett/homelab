@@ -22,6 +22,14 @@ spec:
             {{- $uid := .observed.composite.resource.metadata.uid }}
             {{- $params := .observed.composite.resource.spec.parameters }}
             {{- $observedResources := .observed.resources | default dict }}
+            {{- /* Ready once every replica is Ready, so the XR never reports Ready before its pods. */ -}}
+            {{- $wpObs := index $observedResources "wordpress-deployment" | default dict }}
+            {{- $dbObs := index $observedResources "mariadb-statefulset" | default dict }}
+            {{- $wpReplicas := 0 }}{{- $dbReplicas := 0 }}
+            {{- if $wpObs.resource }}{{- $wpReplicas = $wpObs.resource.status.readyReplicas | default 0 }}{{- end }}
+            {{- if $dbObs.resource }}{{- $dbReplicas = $dbObs.resource.status.readyReplicas | default 0 }}{{- end }}
+            {{- $wpReady := ternary "True" "False" (ge (int $wpReplicas) (int ($params.replicas | default 1))) }}
+            {{- $dbReady := ternary "True" "False" (ge (int $dbReplicas) 1) }}
             {{- $size := $params.size | default "sm" }}
             # CPU requests track measured steady state, which is tens of milli-cores even on
             # the busier site. CPU limits stay generous because CPU bursts only throttle.
@@ -145,7 +153,7 @@ spec:
               namespace: {{ $namespace }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: mariadb-statefulset
-                gotemplating.fn.crossplane.io/ready: "True"
+                gotemplating.fn.crossplane.io/ready: {{ $dbReady | quote }}
             spec:
               selector:
                 matchLabels:
@@ -257,7 +265,7 @@ spec:
               namespace: {{ $namespace }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: wordpress-deployment
-                gotemplating.fn.crossplane.io/ready: "True"
+                gotemplating.fn.crossplane.io/ready: {{ $wpReady | quote }}
             spec:
               selector:
                 matchLabels:

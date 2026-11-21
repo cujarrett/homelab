@@ -56,6 +56,11 @@ spec:
             {{- $sizeKey := $params.size | default "sm" }}
             {{- $sizeRes := get $sizeResourceMap $sizeKey | default (get $sizeResourceMap "sm") }}
             {{- $observedResources := .observed.resources | default dict }}
+            {{- /* Ready once every replica is Ready, so the XR never reports Ready before its pods. */ -}}
+            {{- $deployObs := index $observedResources "deployment" | default dict }}
+            {{- $readyReplicas := 0 }}
+            {{- if $deployObs.resource }}{{- $readyReplicas = $deployObs.resource.status.readyReplicas | default 0 }}{{- end }}
+            {{- $deployReady := ternary "True" "False" (ge (int $readyReplicas) (int ($params.replicas | default 1))) }}
             # subPath mounts never receive ConfigMap updates, so a changed nginx.conf is
             # silently ignored by the running pod until something restarts it. Feeding the
             # hash into a pod annotation makes the change roll the Deployment instead.
@@ -331,7 +336,7 @@ spec:
                 app: spa
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: deployment
-                gotemplating.fn.crossplane.io/ready: "True"
+                gotemplating.fn.crossplane.io/ready: {{ $deployReady | quote }}
             spec:
               replicas: {{ $params.replicas | default 1 }}
               # A rolling update that never goes Ready holds the old pods forever.
