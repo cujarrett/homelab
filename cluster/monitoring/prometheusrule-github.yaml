@@ -60,6 +60,18 @@ spec:
             description: >-
               Run gh api -X PUT repos/cujarrett/{{ $labels.repo }}/vulnerability-alerts.
               Without alerts, Renovate cannot fast-track security fixes in this repo.
+        # Every repo, because demo-spa runs only inside short-lived guest sandboxes.
+        - alert: RepoDependencyAlertsUnreadable
+          expr: github_exporter_dependency_alerts_visible == 0
+          for: 2h
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-cves/cves"
+            summary: "Dependency CVEs in {{ $labels.repo }} cannot be read"
+            description: >-
+              Run gh api -X PUT repos/cujarrett/{{ $labels.repo }}/vulnerability-alerts.
+              Until then, the CVE dashboard misses this repo's dependency CVEs.
         # An errored update never becomes a PR, so it is invisible everywhere except the dashboard issue.
         - alert: RenovateUpdateErrored
           expr: github_exporter_renovate_errored > 0
