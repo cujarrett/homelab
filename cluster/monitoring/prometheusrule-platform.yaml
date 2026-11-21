@@ -1,0 +1,25 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: platform
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: platform
+      interval: 1m
+      rules:
+        # Guest sandboxes live 10 minutes and are watched by Launchpad.
+        # The slowest normal start seen is 3 minutes, a PR environment.
+        - alert: PlatformXRNotReady
+          expr: platform_xr_ready{exported_namespace!~"guest-.*"} == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-platform"
+            summary: "{{ $labels.kind }} {{ $labels.exported_namespace }}/{{ $labels.name }} has not been Ready for 15 minutes"
+            description: >-
+              Check `k get {{ $labels.kind | toLower }} {{ $labels.name }} -n {{ $labels.exported_namespace }}`
+              for its conditions, then `crossplane beta trace` for the composed resource that is not Ready.

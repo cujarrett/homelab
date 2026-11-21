@@ -60,3 +60,16 @@ spec:
             description: >-
               The commit reached Git and the cluster could not make it real.
               Check `argocd app get {{ $labels.name }} --grpc-web` for the failing resource.
+
+        # The longest normal sync seen is 5 minutes.
+        - alert: ArgoCDAppOutOfSync
+          expr: argocd_app_info{name!~"guest-.*",sync_status!="Synced"} == 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/sdlc-delivery/sdlc"
+            summary: "ArgoCD app {{ $labels.name }} has been {{ $labels.sync_status }} for 15 minutes"
+            description: >-
+              Git and the cluster disagree and self-heal has not closed the gap.
+              Check `argocd app diff {{ $labels.name }} --grpc-web` for the drifted resource.
