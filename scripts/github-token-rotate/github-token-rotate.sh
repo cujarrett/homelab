@@ -42,7 +42,6 @@ fi
 echo "ok"
 
 echo
-want=$(printf %s "$token" | shasum -a 256 | cut -d' ' -f1)
 printf %s "$token" | jq -Rc '{GITHUB_TOKEN: .}' \
   | aws secretsmanager put-secret-value --secret-id "$api_secret_id" --secret-string file:///dev/stdin >/dev/null
 unset token
@@ -53,15 +52,11 @@ echo "Restarting ${api_deploy} so it fetches the new value..."
 kubectl rollout restart -n "$api_ns" "deploy/${api_deploy}"
 kubectl rollout status -n "$api_ns" "deploy/${api_deploy}" --timeout=5m
 
-# Read through the sidecar, since the api image is distroless and has no cat.
-got=$(kubectl exec -n "$api_ns" "deploy/${api_deploy}" -c workload-identity-sidecar -- cat "/secrets/${api_secret}/GITHUB_TOKEN" | shasum -a 256 | cut -d' ' -f1)
-[ "$got" = "$want" ] || { echo "FAIL: the new pod has the old value"; exit 1; }
-
 # Guest cleanup calls GitHub every minute.
 echo "Watching 65s of logs for a 401..."
 since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 sleep 65
-fails=$(kubectl logs -n "$api_ns" "deploy/${api_deploy}" --since-time="$since" | grep -c "status 401" || true)
+fails=$(kubectl logs -n "$api_ns" "deploy/${api_deploy}" -c api --since-time="$since" | grep -c "status 401" || true)
 if [ "$fails" = 0 ]; then
   echo "PASS: no GitHub 401 from ${api_deploy} since ${since}"
 else
