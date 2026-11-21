@@ -50,6 +50,23 @@
       "enabled": false
     },
     {
+      "description": [
+        "A version tag that moves to a new commit is how a hijacked action spreads.",
+        "Renovate dates an action by its commit date, and the publisher sets that date.",
+        "A person reads the new commit before it merges."
+      ],
+      "matchManagers": ["github-actions"],
+      "matchDepTypes": ["action"],
+      "matchUpdateTypes": ["digest"],
+      "automerge": false,
+      "labels": [],
+      "prBodyNotes": [
+        "⚠️ This version tag moved to a new commit. A moved tag is how a hijacked action spreads.",
+        "Closing this PR is always safe. The pinned commit keeps working, and the next real release arrives as its own PR.",
+        "Merge only when both are true: the maintainers say they re-tagged, and the new commit's page on GitHub has no \"does not belong to any branch\" banner."
+      ]
+    },
+    {
       "description": "Debian and Alpine security fixes arrive as a rebuild of the same base tag. A digest pin makes each rebuild a PR, which rebuilds and redeploys the app image.",
       "matchManagers": ["dockerfile"],
       "pinDigests": true

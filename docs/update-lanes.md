@@ -16,6 +16,7 @@ Most updates wait 7 days after release before they reach the cluster. The wait g
 | Minor, patch or digest of any other image, chart or package | 7 days | Automerge | The default |
 | Upbound providers and `public.ecr.aws` images | 7 days from the PR branch's last commit | Automerge | Neither registry publishes release dates |
 | Major version | 7 days | A person | A major can break the app |
+| Action version tag that moved to a new commit | 7 days | A person | A moved tag is how a hijacked action spreads |
 | Exploited CVE fix | None | A person, by hand | See below |
 
 The rules live in the [shared Renovate preset](../.github/renovate-shared.json) and the [homelab Renovate config](../renovate.json).
