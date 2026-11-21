@@ -1180,18 +1180,6 @@ spec:
                           {{- range $iface.allowedCallers }}
                           - "cluster.local/ns/{{ .namespace }}/sa/{{ .app }}"
                           {{- end }}
-                  {{- $m := $iface.methods | default list }}
-                  {{- $p := $iface.paths | default list }}
-                  {{- if or (gt (len $m) 0) (gt (len $p) 0) }}
-                  to:
-                    - operation:
-                        {{- if gt (len $m) 0 }}
-                        methods: [{{ range $i, $v := $m }}{{ if $i }}, {{ end }}{{ $v | quote }}{{ end }}]
-                        {{- end }}
-                        {{- if gt (len $p) 0 }}
-                        paths: [{{ range $i, $v := $p }}{{ if $i }}, {{ end }}{{ $v | quote }}{{ end }}]
-                        {{- end }}
-                  {{- end }}
                 {{- end }}
                 {{- end }}
             {{- if and $sqlRefName (eq $sqlBackend "private-cloud") }}

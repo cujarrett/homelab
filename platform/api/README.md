@@ -46,8 +46,6 @@ The namespace is owned by the tenant - created by `namespace.yaml` in the tenant
 | `workflowSpaceRef.backend` | no | `private-cloud` | Must match the `WorkflowSpace`'s `backend`. `public-cloud` injects `TEMPORAL_TLS_CERT` and `TEMPORAL_TLS_KEY` in place of `TEMPORAL_TOKEN_SCOPE`. See [WorkflowSpace → public-cloud](../workflow-space/README.md#public-cloud). |
 | `provides` | no | - | Interfaces this API exposes, and which apps may call each one. Required to accept any call at all. Each entry requires `name`, `auth` and `allowedCallers`; each caller requires `namespace` and `app`. |
 | `provides[].auth` | yes | - | What a caller must prove. `mesh` = its workload identity is enough, no token, no Entra object. Required rather than defaulted, so every interface states it. `workload` = it must also carry an Entra app role, read from the `roles` claim. `user` = it must carry a delegated scope, read from `scp`, which is what on-behalf-of produces. |
-| `provides[].methods` | no | - | HTTP methods this interface accepts. Omit to accept all. |
-| `provides[].paths` | no | - | Path prefixes this interface covers. Omit to cover the whole API. |
 | `consumes` | no | - | Every destination this API calls, including apps in its own namespace. A `Cache` this API creates itself is allowed automatically - do not list it. Each entry sets exactly one of `host` (off-platform DNS name), `address` (a bare IPv4 with no DNS name, such as a device on the LAN), `app` plus `namespace` (on-platform), or `entraApp` (a registration the platform does not own, carrying `appIdUri`, `role`, and `host`). `port` and `protocol` apply to `host` and `address`. |
 
 ## Example
