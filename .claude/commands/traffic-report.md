@@ -79,6 +79,7 @@ A visit is one visitor's page views with no gap over 30 minutes. The User-Agent 
 
 A visit gets `bot: true` when any of these hold.
 
+- Datacenter network: Cloudflare set `X-Visitor-Type` to `datacenter`, logged as `request_X-Visitor-Type`.
 - Datacenter city: Ashburn VA, Santa Clara CA, Council Bluffs IA, Boardman OR, Columbus OH, The Dalles OR, San Jose CA. These are AWS, Google and Azure regions.
 - Five or more sites inside one minute. That is a link checker, not a reader.
 - Linux desktop, one view, unknown place, sharing its start minute with another such visit. That is a spread-out crawler.
@@ -101,6 +102,7 @@ def device: if test("iPhone") then "iPhone" elif test("iPad") then "iPad" elif t
 | map({
     place: (if .[0]["request_Cf-Ipcity"] then "\(.[0]["request_Cf-Ipcity"]), \(.[0]["request_Cf-Region-Code"])" else "unknown" end),
     device: (.[0]["request_User-Agent"] | device),
+    vtype: (map(.["request_X-Visitor-Type"] // "") | if index("datacenter") then "datacenter" else "" end),
     day: (.[0].time | t | localtime | strftime("%a %m-%d")),
     start: (.[0].time | t | localtime | strftime("%m-%d %H:%M")),
     minutes: (((.[-1].time|t) - (.[0].time|t)) / 60 | floor),
@@ -110,7 +112,8 @@ def device: if test("iPhone") then "iPhone" elif test("iPad") then "iPad" elif t
   })
 | (map(select(.device == "Linux" and .views == 1 and .place == "unknown")) | group_by(.start) | map(select(length > 1) | .[0].start)) as $waves
 | map(. + {bot: (
-    (.place | test("^(Ashburn, VA|Santa Clara, CA|Council Bluffs, IA|Boardman, OR|Columbus, OH|The Dalles, OR|San Jose, CA)$"))
+    (.vtype == "datacenter")
+    or (.place | test("^(Ashburn, VA|Santa Clara, CA|Council Bluffs, IA|Boardman, OR|Columbus, OH|The Dalles, OR|San Jose, CA)$"))
     or (.minutes < 1 and (.site_views | length) >= 5)
     or (.device == "Linux" and .views == 1 and .place == "unknown" and (.start as $s | $waves | index($s) != null))
   )})

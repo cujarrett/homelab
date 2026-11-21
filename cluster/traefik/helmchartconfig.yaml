@@ -87,6 +87,8 @@ spec:
             Cf-Iplatitude: keep
             Cf-Iplongitude: keep
             User-Agent: keep
+            # Set by a Cloudflare request header Transform Rule. "datacenter" means a cloud network, such as AWS.
+            X-Visitor-Type: keep
     metrics:
       prometheus:
         entryPoint: metrics

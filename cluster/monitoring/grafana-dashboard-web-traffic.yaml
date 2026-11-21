@@ -32,15 +32,15 @@ data:
         {
           "id": 1,
           "type": "stat",
-          "title": "Visitors",
-          "description": "People who opened a page. US only. Attackers and known bots are left out.",
+          "title": "Humans",
+          "description": "People who opened a page. US only. Data centers, attackers and known bots are left out.",
           "datasource": {
             "type": "loki",
             "uid": "P8E80F9AEF21F6940"
           },
           "gridPos": {
             "h": 4,
-            "w": 4,
+            "w": 3,
             "x": 0,
             "y": 0
           },
@@ -75,25 +75,25 @@ data:
                 "type": "loki",
                 "uid": "P8E80F9AEF21F6940"
               },
-              "expr": "count(count by (visitor) (sum by (visitor, site) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range])))) or vector(0)",
+              "expr": "count(count by (visitor) (sum by (visitor, site) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | vtype!=\"datacenter\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range])))) or vector(0)",
               "refId": "A",
               "queryType": "instant"
             }
           ]
         },
         {
-          "id": 2,
+          "id": 7,
           "type": "stat",
-          "title": "Page views",
-          "description": "Pages those visitors opened. Images, scripts and API calls are not counted.",
+          "title": "Bots",
+          "description": "Sources in cloud data centers, such as AWS or Google. Most are scanners and crawlers. US only. Bots that name themselves in their User-Agent are never stored.",
           "datasource": {
             "type": "loki",
             "uid": "P8E80F9AEF21F6940"
           },
           "gridPos": {
             "h": 4,
-            "w": 4,
-            "x": 4,
+            "w": 3,
+            "x": 3,
             "y": 0
           },
           "fieldConfig": {
@@ -127,7 +127,59 @@ data:
                 "type": "loki",
                 "uid": "P8E80F9AEF21F6940"
               },
-              "expr": "sum(sum by (visitor, site) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range]))) or vector(0)",
+              "expr": "count(count by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | vtype=\"datacenter\" [$__range]))) or vector(0)",
+              "refId": "A",
+              "queryType": "instant"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Page views",
+          "description": "Pages those visitors opened. Images, scripts and API calls are not counted.",
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 3,
+            "x": 6,
+            "y": 0
+          },
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "unit": "short",
+              "noValue": "0",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "blue"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "expr": "sum(sum by (visitor, site) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | vtype!=\"datacenter\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range]))) or vector(0)",
               "refId": "A",
               "queryType": "instant"
             }
@@ -144,8 +196,8 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 4,
-            "x": 8,
+            "w": 3,
+            "x": 9,
             "y": 0
           },
           "fieldConfig": {
@@ -179,7 +231,7 @@ data:
                 "type": "loki",
                 "uid": "P8E80F9AEF21F6940"
               },
-              "expr": "count(sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range]))) or vector(0)",
+              "expr": "count(sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range]))) or vector(0)",
               "refId": "A",
               "queryType": "instant"
             }
@@ -231,7 +283,7 @@ data:
                 "type": "loki",
                 "uid": "P8E80F9AEF21F6940"
               },
-              "expr": "sum(count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range])) or vector(0)",
+              "expr": "sum(count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range])) or vector(0)",
               "refId": "A",
               "queryType": "instant"
             }
@@ -295,7 +347,7 @@ data:
                 "type": "loki",
                 "uid": "P8E80F9AEF21F6940"
               },
-              "expr": "sum(count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" | status<300 [$__range])) or vector(0)",
+              "expr": "sum(count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" | status<300 [$__range])) or vector(0)",
               "refId": "A",
               "queryType": "instant"
             }
@@ -507,7 +559,7 @@ data:
                 "type": "loki",
                 "uid": "P8E80F9AEF21F6940"
               },
-              "expr": "sum by (site, city, region, lat, lon, path) (sum by (visitor, site, city, region, lat, lon, path) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range])))",
+              "expr": "sum by (site, city, region, lat, lon, path) (sum by (visitor, site, city, region, lat, lon, path) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | vtype!=\"datacenter\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range])))",
               "refId": "A",
               "queryType": "instant"
             }
@@ -775,7 +827,7 @@ data:
                 "type": "loki",
                 "uid": "P8E80F9AEF21F6940"
               },
-              "expr": "count by (site) (sum by (visitor, site) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range])))",
+              "expr": "count by (site) (sum by (visitor, site) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | vtype!=\"datacenter\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range])))",
               "refId": "A",
               "queryType": "instant"
             }
@@ -939,7 +991,7 @@ data:
                 "type": "loki",
                 "uid": "P8E80F9AEF21F6940"
               },
-              "expr": "topk(25, sum by (site, path) (sum by (visitor, site, path) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range]))))",
+              "expr": "topk(25, sum by (site, path) (sum by (visitor, site, path) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | vtype!=\"datacenter\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range]))))",
               "refId": "A",
               "queryType": "instant"
             }
@@ -1157,7 +1209,7 @@ data:
                 "type": "loki",
                 "uid": "P8E80F9AEF21F6940"
               },
-              "expr": "max by (visitor, site, place, device, path) (max_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" | label_format place=\"{{ if .city }}{{.city}}, {{.region}}{{ else }}unknown{{ end }}\" | label_format device=\"{{ if contains \\\"iPhone\\\" .ua }}iPhone{{ else if contains \\\"iPad\\\" .ua }}iPad{{ else if contains \\\"Android\\\" .ua }}Android{{ else if contains \\\"Macintosh\\\" .ua }}Mac{{ else if contains \\\"Windows\\\" .ua }}Windows{{ else }}Linux{{ end }}\" | label_format ts=\"{{ mul (unixEpoch __timestamp__) 1000 }}\" | unwrap ts [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range]))",
+              "expr": "max by (visitor, site, place, device, path) (max_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | method=\"GET\" | status<400 | host!~\"demo[0-9]-api.*\" | vtype!=\"datacenter\" | ua=~\"Mozilla/5\\\\.0 \\\\((iPhone|iPad|Linux; Android|Macintosh|Windows|X11).*\" | ua!~\".*compatible;.*\" | path!~\"(?i).*\\\\.(js|css|png|jpe?g|gif|svg|ico|webp|avif|heic|woff2?|ttf|map|webmanifest|xml|txt|json|php)\" | path!~\"/(api|stats|wp-json|wp-admin|wp-content|wp-includes|ghost|members|content|assets|public)/.*|/feed/?|/healthz|/readyz|/undefined\" | label_format site=\"{{ regexReplaceAll \\\"^demo[0-9](-api)?[.]mattjarrett[.]dev$\\\" .host \\\"sandbox\\\" }}\" | label_format place=\"{{ if .city }}{{.city}}, {{.region}}{{ else }}unknown{{ end }}\" | label_format device=\"{{ if contains \\\"iPhone\\\" .ua }}iPhone{{ else if contains \\\"iPad\\\" .ua }}iPad{{ else if contains \\\"Android\\\" .ua }}Android{{ else if contains \\\"Macintosh\\\" .ua }}Mac{{ else if contains \\\"Windows\\\" .ua }}Windows{{ else }}Linux{{ end }}\" | label_format ts=\"{{ mul (unixEpoch __timestamp__) 1000 }}\" | unwrap ts [$__range])) unless on (visitor) sum by (visitor) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range]))",
               "refId": "A",
               "queryType": "instant"
             }
@@ -1339,7 +1391,7 @@ data:
                 "type": "loki",
                 "uid": "P8E80F9AEF21F6940"
               },
-              "expr": "sum by (site, city, region, lat, lon, path) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" | label_format site=\"{{.host}}\" [$__range]))",
+              "expr": "sum by (site, city, region, lat, lon, path) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" | label_format site=\"{{.host}}\" [$__range]))",
               "refId": "A",
               "queryType": "instant"
             }
@@ -1543,7 +1595,7 @@ data:
                 "type": "loki",
                 "uid": "P8E80F9AEF21F6940"
               },
-              "expr": "sum(count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [1h]))",
+              "expr": "sum(count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [1h]))",
               "refId": "A",
               "queryType": "range",
               "legendFormat": "Probes, US",
@@ -1675,7 +1727,7 @@ data:
                 "type": "loki",
                 "uid": "P8E80F9AEF21F6940"
               },
-              "expr": "sum by (visitor, place, ua, host, status) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" | label_format place=\"{{ if .city }}{{.city}}, {{.region}}{{ else }}unknown{{ end }}\" [$__range]))",
+              "expr": "sum by (visitor, place, ua, host, status) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" | label_format place=\"{{ if .city }}{{.city}}, {{.region}}{{ else }}unknown{{ end }}\" [$__range]))",
               "refId": "A",
               "queryType": "instant"
             }
@@ -1868,7 +1920,7 @@ data:
                 "type": "loki",
                 "uid": "P8E80F9AEF21F6940"
               },
-              "expr": "topk(100, sum by (host, path, status) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range]))) or sum by (host, path, status) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" | status<300 [$__range]))",
+              "expr": "topk(100, sum by (host, path, status) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" [$__range]))) or sum by (host, path, status) (count_over_time({log_type=~\"access|sandbox\"} | json host=\"RequestHost\", path=\"RequestPath\", method=\"RequestMethod\", status=\"DownstreamStatus\", visitor=\"[\\\"request_Cf-Connecting-Ip\\\"]\", city=\"[\\\"request_Cf-Ipcity\\\"]\", region=\"[\\\"request_Cf-Region-Code\\\"]\", lat=\"[\\\"request_Cf-Iplatitude\\\"]\", lon=\"[\\\"request_Cf-Iplongitude\\\"]\", ua=\"[\\\"request_User-Agent\\\"]\", vtype=\"[\\\"request_X-Visitor-Type\\\"]\" | host!~\"oidc.*|argocd-webhook.*\" | host=~\"${site:pipe}\" | (path=~\"(?i).*(/\\\\.[a-z_]|\\\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\\\.php|wlwmanifest).*\" or (host!~\"(kentjarrett|mattjarrett)\\\\.com\" and path=~\"(?i).*(\\\\.php|/wp-).*\")) | path!~\"/\\\\.(well-known|ghost)/.*\" | status<300 [$__range]))",
               "refId": "A",
               "queryType": "instant"
             }
