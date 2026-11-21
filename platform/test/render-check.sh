@@ -32,9 +32,12 @@ cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)" || exit 1
 
 WORKSPACES=${WORKSPACES:-../homelab-workspaces}
 ENVCFG=platform/test/fixtures/aws-platform-config.yaml
-FUNCS=platform/test/fixtures/render-functions.yaml
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
+# Render the same function versions the cluster runs, so a Renovate bump is tested here too.
+FUNCS=$TMP/functions.yaml
+awk 'BEGIN { RS = "\n---\n" } /\nkind: Function\n/ { printf "---\n%s\n", $0 }' \
+  cluster/crossplane/providers.yaml > "$FUNCS"
 fail=0
 red() { printf '\033[31m%s\033[0m\n' "$1"; }
 grn() { printf '\033[32m%s\033[0m\n' "$1"; }
