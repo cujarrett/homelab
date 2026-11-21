@@ -8,9 +8,10 @@
   "osvVulnerabilityAlerts": true,
   "postUpdateOptions": ["gomodTidy"],
   "lockFileMaintenance": {
-    "description": "Renovate only bumps packages a repo lists directly. A daily lockfile refresh picks up fixes in the packages those pull in. Each repo's .npmrc min-release-age holds new packages 3 days.",
+    "description": "Renovate only bumps packages a repo lists directly. A daily lockfile refresh picks up fixes in the packages those pull in. Each repo's .npmrc min-release-age holds new packages 3 days. A refresh has no single release date, so Renovate's own wait would hold it forever.",
     "enabled": true,
     "schedule": ["before 4am"],
+    "minimumReleaseAge": null,
     "automerge": true,
     "automergeType": "pr",
     "platformAutomerge": true,
