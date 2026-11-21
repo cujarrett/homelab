@@ -304,25 +304,6 @@ spec:
               type: object
               description: "What the platform derived. Spec is what you asked for, this is what you got."
               properties:
-                config:
-                  type: object
-                  description: "What the platform put in the container that the spec does not already say. ConfigMaps are not repeated here, because configFrom already names them."
-                  properties:
-                    bindings:
-                      type: array
-                      description: "Directories holding a provisioned datastore's connection details, one file per key."
-                      items:
-                        type: string
-                    files:
-                      type: array
-                      description: "Every other path the platform mounts, including declared Secrets and the credentials refreshed for this pod."
-                      items:
-                        type: string
-                    injectedEnv:
-                      type: array
-                      description: "Environment variable names the platform sets without being asked."
-                      items:
-                        type: string
                 entra:
                   type: object
                   properties:

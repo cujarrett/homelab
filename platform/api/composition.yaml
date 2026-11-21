@@ -1344,31 +1344,6 @@ spec:
             {{- $scopeRows = append $scopeRows (dict "target" $c.entraApp.host "scope" (printf "%s/.default" $c.entraApp.appIdUri) "envVar" (printf "ENTRA_SCOPE_%s" ($c.entraApp.role | upper | replace "." "_" | replace "-" "_"))) }}
             {{- end }}
             {{- end }}
-            {{- /* Every platform-injected variable name, assembled the same way the      */ -}}
-            {{- /* container env is above. Reading it here beats reconstructing the        */ -}}
-            {{- /* derivation rules from a README.                                          */ -}}
-            {{- /* The credential paths are the ones a reader cannot derive, so they belong */ -}}
-            {{- /* here even though an injected variable also names each of them.           */ -}}
-            {{- $mountedFiles := list }}
-            {{- range $ms := $managedSecrets }}{{- $mountedFiles = append $mountedFiles (printf "/secrets/%s" $ms.name) }}{{- end }}
-            {{- if gt (len $awsBindings) 0 }}{{- $mountedFiles = append $mountedFiles "/aws-credentials/credentials" }}{{- end }}
-            {{- if $entraNeeded }}{{- $mountedFiles = append $mountedFiles "/entra-identity/token" }}{{- end }}
-            {{- $injectedEnv := list "SERVICE_BINDING_ROOT" }}
-            {{- if gt (len $awsBindings) 0 }}
-            {{- $injectedEnv = append $injectedEnv "AWS_SHARED_CREDENTIALS_FILE" }}
-            {{- range $b := $awsBindings }}{{- $injectedEnv = append $injectedEnv $b.awsProfileEnv }}{{- end }}
-            {{- end }}
-            {{- if $entraNeeded }}
-            {{- $injectedEnv = append $injectedEnv "AZURE_CLIENT_ID" }}
-            {{- $injectedEnv = append $injectedEnv "AZURE_TENANT_ID" }}
-            {{- $injectedEnv = append $injectedEnv "AZURE_FEDERATED_TOKEN_FILE" }}
-            {{- end }}
-            {{- range $r := $scopeRows }}{{- $injectedEnv = append $injectedEnv $r.envVar }}{{- end }}
-            {{- if or $topicRefName $subscriptionRefName }}{{- $injectedEnv = append $injectedEnv "NATS_URL" }}{{- end }}
-            {{- if $topicRefName }}{{- $injectedEnv = append $injectedEnv "NATS_STREAM" }}{{- end }}
-            {{- if $subscriptionRefName }}{{- $injectedEnv = append $injectedEnv "NATS_CONSUMER" }}{{- end }}
-            {{- if $workflowPrivate }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_ADDRESS" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_NAMESPACE" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_TOKEN_SCOPE" }}{{- end }}
-            {{- if $workflowCloud }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_ADDRESS" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_NAMESPACE" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_TLS_CERT" }}{{- $injectedEnv = append $injectedEnv "TEMPORAL_TLS_KEY" }}{{- end }}
             {{- if $workflowCloud }}
             ---
             apiVersion: v1
@@ -1392,10 +1367,6 @@ spec:
             apiVersion: platform.local.lab/v1alpha1
             kind: Api
             status:
-              config:
-                bindings: [{{ range $i, $b := $bindings }}{{ if $i }}, {{ end }}{{ printf "/bindings/%s" $b.dir | quote }}{{ end }}]
-                files: [{{ range $i, $f := $mountedFiles }}{{ if $i }}, {{ end }}{{ $f | quote }}{{ end }}]
-                injectedEnv: [{{ range $i, $e := $injectedEnv }}{{ if $i }}, {{ end }}{{ $e | quote }}{{ end }}]
               {{- if $entraNeeded }}
               entra:
                 {{- if $entraClientId }}

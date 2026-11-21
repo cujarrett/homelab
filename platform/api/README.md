@@ -117,13 +117,12 @@ Read those files where the value is used rather than once at startup. A rotated 
 
 On top of what the app declares, the composition sets variables named by its own rules. An AWS profile is `AWS_PROFILE_<KIND>_<REF>`, uppercased with `-` and `.` becoming `_`, so an `objectStorageRefs` entry named `foo-assets` gets `AWS_PROFILE_OBJECT_STORAGE_FOO_ASSETS`. `AWS_PROFILE_CACHE` is the exception, because an Api owns at most one cache. An `ENTRA_SCOPE_<APP>` carries the audience of each app in `consumes`.
 
-The XR reports the result, so nothing has to be derived by hand:
+The running pod spec shows every variable and mounted path, so nothing has to be derived by hand:
 
 ```bash
-k get apis.platform.local.lab <app> -n <namespace> -o jsonpath='{.status.config}' | jq
+k get deploy <app> -n <namespace> -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}{"\n"}{end}'
+k get deploy <app> -n <namespace> -o jsonpath='{range .spec.template.spec.containers[0].volumeMounts[*]}{.mountPath}{"\n"}{end}'
 ```
-
-`injectedEnv` names every variable the platform set, `bindings` the directories holding provisioned datastore details, and `files` every other mounted path, including the credentials refreshed for this pod.
 
 ## Binding secrets
 

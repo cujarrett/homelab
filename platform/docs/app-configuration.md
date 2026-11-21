@@ -130,10 +130,10 @@ Which contract a value gets depends on whether it can change under a running pod
 | A key in a ConfigMap named by `configFrom` | [Stakater Reloader](https://github.com/stakater/Reloader) rolls the Deployment, because `envFrom` values cannot change in place |
 | A field in the XR | Crossplane re-renders the Deployment and the rollout happens on its own |
 
-The platform also injects variables nobody declared, named by rules an app should never assemble by hand. Read what an app actually got rather than reconstructing them:
+The platform also injects variables nobody declared, named by rules an app should never assemble by hand. Read what an app actually got from its pod spec rather than reconstructing them:
 
 ```bash
-k get apis.platform.local.lab <app> -n <namespace> -o jsonpath='{.status.config}' | jq
+k get deploy <app> -n <namespace> -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}{"\n"}{end}'
 ```
 
 Every name and path is in [Api](../api/README.md#configuration).
