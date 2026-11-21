@@ -127,4 +127,6 @@ UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/12
 curl -s -o /dev/null -w "%{http_code}\n" -A "$UA" https://<hostname>/
 ```
 
-e Then add the hostname to [Cluster → Public](../../docs/cluster.md#public).
+Then add the hostname to [Cluster → Public](../../docs/cluster.md#public).
+
+If its namespace is new to that list, add it to `homelab:public_namespace:info` in [prometheusrule-security.yaml](../../cluster/monitoring/prometheusrule-security.yaml). The public CVE alerts only watch those namespaces.

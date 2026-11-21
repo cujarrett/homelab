@@ -34,6 +34,20 @@ spec:
                 )
               )
             )
+        # Namespaces that serve a public host, from Cluster -> Public in docs/cluster.md.
+        # /add-cloudflare-tunnel-hostname adds a new one here.
+        # guest-*: Launchpad sandboxes serve the public demo slots.
+        - record: homelab:public_namespace:info
+          expr: |
+            group by (namespace) (kube_namespace_status_phase{namespace=~"mattjarrett-com|kentjarrett-com|mattjarrett-dev|jerks|blog|my-vinyl|js-pollock|launchpad|platform-connections-demo|platform-graph-demo|argocd|spire-server|cloudflare|guest-.*"})
+        # One series per running image and CVE that faces the internet.
+        # Traefik: matched by image, since the rest of kube-system is not public.
+        - record: homelab:public_vulnerability:info
+          expr: |
+            group by (namespace, image_repository, vuln_id, vuln_score, severity, fixed_version) (
+              trivy_vulnerability_id{resource_kind!="Job"} and on (namespace) homelab:public_namespace:info
+              or trivy_vulnerability_id{resource_kind!="Job", image_repository=~".*traefik.*"}
+            )
         # homelab:security_open*  = open right now. The Homelab stat and Security dashboard show this.
         # homelab:security_overdue* = open longer than automation needs. Only the Discord alert uses this.
         - record: homelab:security_open_node_updates:count
@@ -47,13 +61,14 @@ spec:
           expr: count(count by (image_repository, vuln_id) (trivy_vulnerability_id{severity="Critical", fixed_version!="", resource_kind!="Job"})) or vector(0)
         - record: homelab:security_open_renovate_blocked:count
           expr: count(sum by (repo) (github_exporter_pr_open_blocked) > 0) or vector(0)
-        # Exploited: a running image carries a CVE on CISA's KEV list.
+        # Exploited: a public image carries a CVE on CISA's KEV list.
         # Any severity and any fix state counts. Trivy rates some of these Unknown.
+        # Private images wait in their lane, so they never need a person.
         - record: homelab:security_open_kev:count
           expr: |
             count(
               count by (image_repository, vuln_id) (
-                trivy_vulnerability_id{resource_kind!="Job"}
+                homelab:public_vulnerability:info
                 and on (vuln_id) max_over_time(cisa_kev_listed[2h])
               )
             ) or vector(0)
@@ -128,7 +143,7 @@ spec:
         - alert: ExploitedCVERunning
           expr: |
             count by (image_repository, vuln_id) (
-              trivy_vulnerability_id{resource_kind!="Job"}
+              homelab:public_vulnerability:info
               and on (vuln_id) max_over_time(cisa_kev_listed[2h])
             )
           for: 1h
@@ -141,6 +156,23 @@ spec:
               Run /cve-check {{ $labels.vuln_id }}. A fix skips the 7-day wait when the
               image serves a public host and the running process loads the package.
               Otherwise it waits like any other update.
+        # CISA lists an exploit days after it starts, so a critical on a public image alerts first.
+        # Score 9 or higher, or labelled Critical with no score.
+        - alert: CriticalCVEPublic
+          expr: |
+            count by (image_repository, vuln_id) (
+              homelab:public_vulnerability:info{fixed_version!="", vuln_score=~"9.*|10.*"}
+              or homelab:public_vulnerability:info{fixed_version!="", vuln_score="", severity="Critical"}
+            )
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-security"
+            summary: "Public image {{ $labels.image_repository }} carries critical {{ $labels.vuln_id }}"
+            description: >-
+              Run /cve-check {{ $labels.vuln_id }}. Bump now if the running process loads the
+              package. Otherwise it waits like any other update.
         # Without the feed, ExploitedCVERunning can never fire.
         - alert: KevFeedMissing
           expr: absent(max_over_time(cisa_kev_listed[3h]))

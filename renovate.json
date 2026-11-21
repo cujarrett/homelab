@@ -50,7 +50,8 @@
       "pinDigests": false
     },
     {
-      "matchPackageNames": ["ghcr.io/cujarrett/workload-identity-sidecar"],
+      "description": "Built and signed by this account's own CI, so there is no outside release to wait on.",
+      "matchPackageNames": ["ghcr.io/cujarrett/workload-identity-sidecar", "ghcr.io/cujarrett/apollo-router-arm64"],
       "pinDigests": true,
       "minimumReleaseAge": "0 days"
     },
@@ -64,25 +65,33 @@
     },
     {
       "description": [
-        "ECR Public publishes no release dates, so minimumReleaseAge cannot count.",
-        "The 7 days count from the branch's last commit instead, the same as Upbound below.",
+        "These registries publish no release dates, so minimumReleaseAge would hold them forever.",
+        "minimumReleaseAge null: Renovate ignores prNotPendingHours while it is set.",
+        "The branch has no checks, since CI runs only on pull requests, so it stays pending.",
+        "The PR opens 7 days after the branch's last commit.",
         "rebaseWhen conflicted: a rebase is a new commit and would restart the 7 days."
       ],
-      "matchPackageNames": ["public.ecr.aws/**"],
-      "minimumReleaseAgeBehaviour": "timestamp-optional",
+      "matchPackageNames": [
+        "ghcr.io/**",
+        "!ghcr.io/cujarrett/**",
+        "quay.io/**",
+        "gcr.io/**",
+        "registry.k8s.io/**",
+        "public.ecr.aws/**",
+        "xpkg.upbound.io/**",
+        "xpkg.crossplane.io/**"
+      ],
+      "minimumReleaseAge": null,
       "prCreation": "not-pending",
       "prNotPendingHours": 168,
       "rebaseWhen": "conflicted"
     },
     {
-      "description": [
-        "xpkg.upbound.io publishes no release dates, so minimumReleaseAge cannot count.",
-        "The 7 days count from the branch's last commit instead.",
-        "CI runs only on pull requests, so the branch stays pending and the PR opens after prNotPendingHours.",
-        "rebaseWhen conflicted: a rebase is a new commit and would restart the 7 days."
-      ],
-      "matchPackageNames": ["xpkg.upbound.io/**"],
-      "minimumReleaseAgeBehaviour": "timestamp-optional",
+      "description": "A digest update of a tag with no version, such as trixie-slim, has no release date either.",
+      "matchDatasources": ["docker"],
+      "matchUpdateTypes": ["digest"],
+      "matchCurrentValue": "/^[a-z]+(-[a-z]+)*$/",
+      "minimumReleaseAge": null,
       "prCreation": "not-pending",
       "prNotPendingHours": 168,
       "rebaseWhen": "conflicted"
