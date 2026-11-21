@@ -47,14 +47,16 @@ spec:
   retention: 18250d
   scrapeInterval: 30s
   evaluationInterval: 30s
-  # Only pick up ServiceMonitors in the sump-pump namespace.
+  # Only pick up ServiceMonitors for the sump pump and the rain data it is compared against.
   # kubernetes.io/metadata.name is auto-applied to every namespace (k8s 1.21+).
   serviceMonitorSelector:
     matchLabels:
       release: monitoring
   serviceMonitorNamespaceSelector:
-    matchLabels:
-      kubernetes.io/metadata.name: sump-pump
+    matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: In
+        values: [sump-pump, weather-exporter]
   # Don't match any PodMonitors or PrometheusRules.
   podMonitorSelector:
     matchLabels:

@@ -78,16 +78,14 @@ spec:
     - expression: "variables.proxiesUnchanged || size(variables.missingProxies) == 0"
       messageExpression: "'apiProxies names ' + string(variables.missingProxies[0]) + ', which is not an Api on this platform.'"
       message: apiProxies names an app that is not an Api on this platform.
-    # A public Spa proxying another namespace's Api would publish it to the internet.
-    # The host form is taken verbatim, so an in-cluster name there reaches the same Api.
+    # An app in any namespace is fine. Its own allowedCallers must still name this Spa.
+    # The host form skips that derived address, so an in-cluster name there is refused.
     - expression: >-
         variables.proxies.all(p,
-          (!has(p.app) || p.?namespace.orValue(variables.ns) == variables.ns) &&
-          (!has(p.host) || !(p.host.endsWith('.svc') || p.host.endsWith('.cluster.local') || p.host.contains('.svc.'))))
+          !has(p.host) || !(p.host.endsWith('.svc') || p.host.endsWith('.cluster.local') || p.host.contains('.svc.')))
       message: >-
-        apiProxies can only reach an Api in this Spa's own namespace, and a host
-        cannot name an in-cluster address. A public Spa proxying another namespace's
-        Api would publish it to the internet.
+        An apiProxies host cannot name an in-cluster address. Use app and namespace
+        to reach an Api on the platform.
     - expression: "variables.configFromUnchanged || size(variables.missingConfig) == 0"
       messageExpression: "'configFrom names ' + string(variables.missingConfig[0]) + ', which is not a ConfigMap in this namespace.'"
       message: configFrom names a ConfigMap that does not exist in this namespace.

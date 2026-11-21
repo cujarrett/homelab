@@ -99,7 +99,7 @@ spec:
                             type: string
                             pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
                             maxLength: 63
-                            description: "Namespace of app. Must be this SPA's own namespace, which is also the default when omitted. A proxy cannot reach an Api in another namespace."
+                            description: "Namespace of app. Defaults to this SPA's own namespace. The Api must name this SPA in its allowedCallers, wherever it runs."
                           host:
                             type: string
                             pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"

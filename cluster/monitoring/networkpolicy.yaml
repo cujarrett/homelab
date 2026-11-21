@@ -2,7 +2,7 @@
 #
 # monitoring namespace: Prometheus, Grafana, Loki, Alloy and Alertmanager talk to each other.
 # Traefik: the grafana.local.lab and prometheus.local.lab routes.
-# homelab-stats: reads Prometheus and Loki for the homelab sections on mattjarrett.dev.
+# homelab-stats: reads Prometheus and Loki for mattjarrett.dev and jerks.mattjarrett.dev.
 # launchpad-api: reads Loki for the sandbox map on the Launchpad home page.
 # Node addresses: kubelet probes, and the API server reaching the operator webhook.
 #   kube-router matches on address alone, so these are each node's cni0 bridge,
@@ -34,7 +34,7 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: mattjarrett-dev
+              kubernetes.io/metadata.name: homelab-stats
           podSelector:
             matchLabels:
               app.kubernetes.io/instance: homelab-stats

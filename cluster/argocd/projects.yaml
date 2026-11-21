@@ -81,6 +81,8 @@ spec:
     - {server: https://kubernetes.default.svc, namespace: github-exporter}
     - {server: https://kubernetes.default.svc, namespace: graph-test}
     - {server: https://kubernetes.default.svc, namespace: graph-prod}
+    - {server: https://kubernetes.default.svc, namespace: homelab-stats}
+    - {server: https://kubernetes.default.svc, namespace: jerks}
     - {server: https://kubernetes.default.svc, namespace: js-pollock}
     - {server: https://kubernetes.default.svc, namespace: kentjarrett-com}
     - {server: https://kubernetes.default.svc, namespace: launchpad}
@@ -90,6 +92,7 @@ spec:
     - {server: https://kubernetes.default.svc, namespace: platform-connections-demo}
     - {server: https://kubernetes.default.svc, namespace: platform-graph-demo}
     - {server: https://kubernetes.default.svc, namespace: sump-pump}
+    - {server: https://kubernetes.default.svc, namespace: weather-exporter}
     - {server: https://kubernetes.default.svc, namespace: "guest-*"}
   clusterResourceWhitelist:
     - {group: "", kind: Namespace}

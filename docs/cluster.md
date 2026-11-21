@@ -97,11 +97,14 @@ Each row is one namespace and the apps that run in it.
 | `nats` | NATS + NACK | JetStream cluster (3 replicas) and the NACK controller for Stream and Consumer CRDs |
 | `mattjarrett-com` | WordPress (Wordpress) | `mattjarrett.com` through Cloudflare Tunnel. 7Gi wp-content, 1Gi MariaDB |
 | `kentjarrett-com` | WordPress (Wordpress) | `kentjarrett.com` through Cloudflare Tunnel. 10Gi wp-content, 2Gi MariaDB |
-| `mattjarrett-dev` | Two Angular SPAs (Spa) + Api | `mattjarrett.dev` and `jerks.mattjarrett.dev` through Cloudflare Tunnel. Each Spa's nginx proxies `/api/stats/` to `homelab-stats`, which serves the live homelab numbers |
+| `homelab-stats` | Api | Live homelab numbers for `mattjarrett.dev` and `jerks.mattjarrett.dev`. Each site's nginx proxies `/api/stats/` here |
+| `jerks` | Angular SPA (Spa) | `jerks.mattjarrett.dev` through Cloudflare Tunnel |
+| `mattjarrett-dev` | Angular SPA (Spa) | `mattjarrett.dev` through Cloudflare Tunnel |
 | `blog` | Ghost (Deployment) | `blog.mattjarrett.dev` through Cloudflare Tunnel. 2Gi content PVC |
 | `my-vinyl` | Spa + Api + Cache | `myvinyl.mattjarrett.dev` through Cloudflare Tunnel |
 | `js-pollock` | Spa | `jspollock.mattjarrett.dev` through Cloudflare Tunnel |
-| `sump-pump` | Api ×2 + Topic + Subscription | IoT sump pump bridge, consumer and weather-exporter |
+| `sump-pump` | Api ×2 + Topic + Subscription | IoT sump pump bridge and consumer |
+| `weather-exporter` | Api | Rain and temperature from open-meteo, compared against the sump pump |
 | `launchpad` | Spa + Api | `launchpad.mattjarrett.dev` through Cloudflare Tunnel. The Spa's nginx proxies `/api/` to `launchpad-api`. That is a cluster-internal BFF (backend for the frontend) that provisions short-lived demo sandboxes. |
 | `platform-connections-demo` | Api ×3 + Spa | Service mesh walkthrough at `connections.mattjarrett.dev`. Two callers run one image and differ only in what they declare |
 | `platform-graph-demo` | Api + Spa | Schema management walkthrough at `graph.mattjarrett.dev`. The backend runs fixed queries against the `graph-prod` router under a call budget. It reads GitHub every ten minutes |
@@ -243,7 +246,7 @@ Prometheus renames the `service` label on Traefik metrics to `exported_service`,
 Current series name the service like this: `httproute-{namespace}-{route}-gw-…-svc-{namespace}-{servicename}-{n}@kubernetesgateway`. Older series use `{namespace}-{servicename}-{port}@kubernetes`. Prefix patterns with `(.*-svc-)?` to match both.
 - `blog.mattjarrett.dev` → `(.*-svc-)?(blog-ghost.*)`
 - `mattjarrett.dev` → `(.*-svc-)?(mattjarrett-dev-mattjarrett-dev.*|web-mattjarrett-dev.*)` (both exist)
-- `jerks.mattjarrett.dev` → `(.*-svc-)?(mattjarrett-dev-jerks.*)`
+- `jerks.mattjarrett.dev` → `(.*-svc-)?(mattjarrett-dev-jerks.*|jerks-jerks.*)`
 - `mattjarrett.com` → `(.*-svc-)?(mattjarrett-com-mattjarrett-com-wordpress.*)`
 - `myvinyl.mattjarrett.dev` → `(.*-svc-)?(my-vinyl-my-vinyl.*)`
 - `jspollock.mattjarrett.dev` → `(.*-svc-)?(js-pollock-js-pollock.*)`

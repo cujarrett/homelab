@@ -17,6 +17,8 @@ WORK2="pi@192.168.10.102"
 WORK3="pi@192.168.10.103"
 
 TENANT_NAMESPACES=(
+  homelab-stats
+  jerks
   js-pollock
   kentjarrett-com
   launchpad
@@ -24,6 +26,7 @@ TENANT_NAMESPACES=(
   mattjarrett-dev
   my-vinyl
   sump-pump
+  weather-exporter
 )
 
 FAILED=()

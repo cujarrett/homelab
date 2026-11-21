@@ -154,7 +154,7 @@ Shutting one off is a pull request against `platform-egress-denials` (below) plu
 
 Kyverno policies catch what a CEL rule on the XRD cannot. Each reads an object other than the one being admitted, or a resource no XRD governs. All of them deny.
 
-- `platform-reference-integrity`: refuses an `app` in `consumes` or `apiProxies` that is not a real Api in the namespace the reference claims. Also refuses an `apiProxies` entry that names another namespace, and a `configFrom` entry that is not a ConfigMap in this namespace.
+- `platform-reference-integrity`: refuses an `app` in `consumes` or `apiProxies` that is not a real Api in the namespace the reference claims. Also refuses an `apiProxies` host that names an in-cluster address, and a `configFrom` entry that is not a ConfigMap in this namespace.
 - `platform-host-ownership`: refuses a `host` already served by another namespace.
 - `platform-stream-ownership`: refuses a Topic, Subscription or Api naming a stream that a Topic in another namespace owns.
 - `platform-image-registry`: refuses an Api, Spa or GraphApi image outside `ghcr.io/cujarrett/`, so every app image gets the provenance check.
