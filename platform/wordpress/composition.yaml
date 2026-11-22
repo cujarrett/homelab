@@ -564,6 +564,10 @@ spec:
                     MinSpareServers 1
                     MaxSpareServers 3
                 </IfModule>
+                # Apache runs /wp-login.php/x as wp-login.php.
+                # The route rules match exact paths, so the extra segment skipped the rate limit and the PHP blocks.
+                # Off: a path after a .php file is a 404.
+                AcceptPathInfo Off
             ---
             # --- PHP upload limit ConfigMap ---
             # The image default of 2M rejects most phone photos.
