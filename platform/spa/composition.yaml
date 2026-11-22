@@ -37,19 +37,13 @@ spec:
             {{- $userAuth := $params.userAuth | default dict }}
             {{- $signIn := $userAuth.client | default "" }}
             {{- $apiProxies := $params.apiProxies | default list }}
-            {{- /* An entry names an app or a host, never both. The app form derives the   */ -}}
-            {{- /* address so nobody types an FQDN, and upstreamPath puts back a prefix    */ -}}
-            {{- /* nginx strips when the backend registered its routes under one.          */ -}}
+            {{- /* The address is derived from app, so nobody types an FQDN.               */ -}}
+            {{- /* upstreamPath puts back a prefix nginx strips.                           */ -}}
             {{- $proxies := list }}
             {{- range $pr := $apiProxies }}
-            {{- $target := "" }}
-            {{- if $pr.app }}
             {{- $pns := $pr.namespace | default $namespace }}
-            {{- $target = printf "%s.%s.svc.cluster.local" $pr.app $pns }}
-            {{- else }}
-            {{- $target = $pr.host }}
-            {{- end }}
-            {{- $proxies = append $proxies (dict "path" $pr.path "authority" $target "upstream" (printf "%s%s" $target ($pr.upstreamPath | default "")) "onPlatform" (ne ($pr.app | default "") "")) }}
+            {{- $target := printf "%s.%s.svc.cluster.local" $pr.app $pns }}
+            {{- $proxies = append $proxies (dict "path" $pr.path "authority" $target "upstream" (printf "%s%s" $target ($pr.upstreamPath | default ""))) }}
             {{- end }}
             {{- $publicConfig := $params.publicConfig | default dict }}
             {{- $sizeResourceMap := dict "xs" (dict "cpuReq" "25m" "cpuLim" "100m" "memReq" "32Mi" "memLim" "64Mi") "sm" (dict "cpuReq" "50m" "cpuLim" "200m" "memReq" "64Mi" "memLim" "128Mi") "md" (dict "cpuReq" "100m" "cpuLim" "500m" "memReq" "128Mi" "memLim" "256Mi") "lg" (dict "cpuReq" "250m" "cpuLim" "1000m" "memReq" "256Mi" "memLim" "512Mi") }}
@@ -551,12 +545,8 @@ spec:
                 - hosts:
                     - "istio-system/*"
                     {{- range $proxies }}
-                    {{- if .onPlatform }}
                     {{- $parts := splitList "." .authority }}
                     - "{{ index $parts 1 }}/{{ .authority }}"
-                    {{- else }}
-                    - "./{{ .authority }}"
-                    {{- end }}
                     {{- end }}
                     {{- range $c := $consumes }}
                     {{- if $c.host }}
@@ -566,17 +556,11 @@ spec:
                     - "{{ $c.namespace }}/{{ $c.app }}.{{ $c.namespace }}.svc.cluster.local"
                     {{- end }}
                     {{- end }}
-            {{- /* apiProxies off-platform hosts and consumes hosts both need registering. */ -}}
-            {{- /* prefix keeps each one's existing resource name.                         */ -}}
+            {{- /* A consumes host is outside the mesh, so it needs registering. */ -}}
             {{- $serviceEntries := list }}
-            {{- range $pr := $proxies }}
-            {{- if not $pr.onPlatform }}
-            {{- $serviceEntries = append $serviceEntries (dict "prefix" "proxy-se" "host" $pr.authority "port" 443 "protocol" "TLS") }}
-            {{- end }}
-            {{- end }}
             {{- range $c := $consumes }}
             {{- if $c.host }}
-            {{- $serviceEntries = append $serviceEntries (dict "prefix" "connection-se" "host" $c.host "port" ($c.port | default 443) "protocol" ($c.protocol | default "TLS")) }}
+            {{- $serviceEntries = append $serviceEntries (dict "host" $c.host "port" ($c.port | default 443) "protocol" ($c.protocol | default "TLS")) }}
             {{- end }}
             {{- end }}
             {{- range $se := $serviceEntries }}
@@ -587,7 +571,7 @@ spec:
               name: {{ $name }}-{{ $se.host | replace "." "-" }}
               namespace: {{ $namespace }}
               annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: {{ $se.prefix }}-{{ $se.host | replace "." "-" }}
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-se-{{ $se.host | replace "." "-" }}
                 gotemplating.fn.crossplane.io/ready: "True"
             spec:
               hosts:

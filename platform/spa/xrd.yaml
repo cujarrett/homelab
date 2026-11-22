@@ -75,12 +75,7 @@ spec:
                       description: "Use when this SPA has companion backends. Each entry routes one path prefix to one destination; the prefix is stripped before proxying. An on-platform backend needs no hostname or Cloudflare Tunnel entry of its own — only the SPA is exposed, and how far depends on its host."
                       items:
                         type: object
-                        required: [path]
-                        x-kubernetes-validations:
-                          # An entry names what it reaches exactly once. Both would be two
-                          # answers to one question; neither renders nothing at all.
-                          - rule: "has(self.app) != has(self.host)"
-                            message: "each apiProxies entry sets exactly one of app or host"
+                        required: [path, app]
                         properties:
                           path:
                             type: string
@@ -100,11 +95,6 @@ spec:
                             pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
                             maxLength: 63
                             description: "Namespace of app. Defaults to this SPA's own namespace. The Api must name this SPA in its allowedCallers, wherever it runs."
-                          host:
-                            type: string
-                            pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
-                            maxLength: 253
-                            description: "Off-platform destination, taken verbatim (e.g. api.weather.com). In-cluster names such as foo.bar.svc are refused."
                           upstreamPath:
                             type: string
                             pattern: "^/[A-Za-z0-9._~/-]*[A-Za-z0-9._~-]$"

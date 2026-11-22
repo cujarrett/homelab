@@ -83,7 +83,7 @@ spec:
 
 `publicConfig` is served as JSON at `/config.json` and fetched on load, so one image deploys everywhere unchanged. Everything in it reaches any browser that asks, so nothing in it is a secret.
 
-Each `apiProxies` entry names exactly one of `app` or `host`. `app` means the platform derives the address and declares the connection, so no FQDN is typed. `platform-reference-integrity` (below) checks the target exists. `host` is an off-platform destination taken verbatim. This is the same shape `consumes` uses.
+Each `apiProxies` entry names an `app`. The platform derives the address and declares the connection, so no FQDN is typed. `platform-reference-integrity` (below) checks the target exists.
 
 `userAuth.client` names which proxied app completes sign-in and holds the tokens. There can only be one, because only one backend owns the session. A SPA with no user auth omits the block and proxies to as many backends as it likes.
 
@@ -146,7 +146,7 @@ The exception is a grant the platform did not create, in the collapsed section b
 
 ## Third-party egress
 
-A `consumes` or `apiProxies` entry naming a host renders egress immediately. The mesh refuses anything undeclared, so every external destination any workload reaches is visible in git.
+A `consumes` entry naming a host renders egress immediately. The mesh refuses anything undeclared, so every external destination any workload reaches is visible in git.
 
 Shutting one off is a pull request against `platform-egress-denials` (below) plus a sweep of any app that already declares the host - Kyverno only checks admission, so an existing declaration keeps working until it is re-applied or removed by hand.
 
@@ -154,7 +154,7 @@ Shutting one off is a pull request against `platform-egress-denials` (below) plu
 
 Kyverno policies catch what a CEL rule on the XRD cannot. Each reads an object other than the one being admitted, or a resource no XRD governs. All of them deny.
 
-- `platform-reference-integrity`: refuses an `app` in `consumes` or `apiProxies` that is not a real Api in the namespace the reference claims. Also refuses an `apiProxies` host that names an in-cluster address, and a `configFrom` entry that is not a ConfigMap in this namespace.
+- `platform-reference-integrity`: refuses an `app` in `consumes` or `apiProxies` that is not a real Api in the namespace the reference claims. Also refuses a `configFrom` entry that is not a ConfigMap in this namespace.
 - `platform-host-ownership`: refuses a `host` already served by another namespace.
 - `platform-stream-ownership`: refuses a Topic, Subscription or Api naming a stream that a Topic in another namespace owns.
 - `platform-image-registry`: refuses an Api, Spa or GraphApi image outside `ghcr.io/cujarrett/`, so every app image gets the provenance check.

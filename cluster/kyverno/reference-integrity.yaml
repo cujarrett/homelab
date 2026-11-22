@@ -75,17 +75,10 @@ spec:
     - expression: "variables.consumesUnchanged || size(variables.missingConsumes) == 0"
       messageExpression: "'consumes names ' + string(variables.missingConsumes[0]) + ', which is not an Api or a graph router on this platform.'"
       message: consumes names an app that is not an Api or a graph router on this platform.
+    # An app in any namespace is fine. Its own allowedCallers must still name this Spa.
     - expression: "variables.proxiesUnchanged || size(variables.missingProxies) == 0"
       messageExpression: "'apiProxies names ' + string(variables.missingProxies[0]) + ', which is not an Api on this platform.'"
       message: apiProxies names an app that is not an Api on this platform.
-    # An app in any namespace is fine. Its own allowedCallers must still name this Spa.
-    # The host form skips that derived address, so an in-cluster name there is refused.
-    - expression: >-
-        variables.proxies.all(p,
-          !has(p.host) || !(p.host.endsWith('.svc') || p.host.endsWith('.cluster.local') || p.host.contains('.svc.')))
-      message: >-
-        An apiProxies host cannot name an in-cluster address. Use app and namespace
-        to reach an Api on the platform.
     - expression: "variables.configFromUnchanged || size(variables.missingConfig) == 0"
       messageExpression: "'configFrom names ' + string(variables.missingConfig[0]) + ', which is not a ConfigMap in this namespace.'"
       message: configFrom names a ConfigMap that does not exist in this namespace.

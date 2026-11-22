@@ -29,15 +29,13 @@ spec:
     - name: denied
       expression: "[]"
     - name: declared
-      expression: >-
-        object.spec.?parameters.?consumes.orValue([]).filter(c, has(c.host)).map(c, c.host) +
-        object.spec.?parameters.?apiProxies.orValue([]).filter(p, has(p.host)).map(p, p.host)
+      expression: "object.spec.?parameters.?consumes.orValue([]).filter(c, has(c.host)).map(c, c.host)"
     - name: hits
       expression: "variables.declared.filter(h, h in variables.denied)"
   validations:
     - expression: "size(variables.hits) == 0"
       messageExpression: "'Host ' + string(variables.hits[0]) + ' is on the platform egress denial list. Remove the declaration, or open a pull request against cluster/kyverno/egress-denials.yaml if the block is wrong.'"
       message: >-
-        A host declared in consumes or apiProxies is on the platform egress denial
+        A host declared in consumes is on the platform egress denial
         list. Remove the declaration, or open a pull request against
         cluster/kyverno/egress-denials.yaml if the block is wrong.
