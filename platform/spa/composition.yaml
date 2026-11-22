@@ -55,17 +55,6 @@ spec:
             {{- $readyReplicas := 0 }}
             {{- if $deployObs.resource }}{{- $readyReplicas = $deployObs.resource.status.readyReplicas | default 0 }}{{- end }}
             {{- $deployReady := ternary "True" "False" (ge (int $readyReplicas) (int ($params.replicas | default 1))) }}
-            # subPath mounts never receive ConfigMap updates, so a changed nginx.conf is
-            # silently ignored by the running pod until something restarts it. Feeding the
-            # hash into a pod annotation makes the change roll the Deployment instead.
-            {{- $configChecksum := "" }}
-            {{- $observedNginxConfig := index $observedResources "nginx-config" }}
-            {{- if $observedNginxConfig }}
-            {{-   range $_, $v := ($observedNginxConfig.resource.data | default dict) }}
-            {{-     $configChecksum = printf "%s%s" $configChecksum $v }}
-            {{-   end }}
-            {{- end }}
-            {{- $configChecksum = $configChecksum | sha256sum | trunc 16 }}
             {{- /* Every location that sets its own add_header needs these, because nginx */ -}}
             {{- /* drops server-level add_header directives there.                        */ -}}
             {{- define "security-headers" }}
@@ -330,6 +319,9 @@ spec:
                 app: spa
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: deployment
+                # nginx.conf is a subPath mount, which never receives ConfigMap updates.
+                # Reloader rolls the pods when it changes.
+                configmap.reloader.stakater.com/reload: {{ $name }}-nginx-config
                 gotemplating.fn.crossplane.io/ready: {{ $deployReady | quote }}
             spec:
               replicas: {{ $params.replicas | default 1 }}
@@ -346,8 +338,6 @@ spec:
                   labels:
                     app: spa
                     instance: {{ $name }}
-                  annotations:
-                    checksum/config: "{{ $configChecksum }}"
                 spec:
                   automountServiceAccountToken: false
                   # nginx never calls the apiserver - no token to steal from this pod.

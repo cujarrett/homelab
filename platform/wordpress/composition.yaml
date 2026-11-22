@@ -56,19 +56,6 @@ spec:
             {{- else if eq $size "lg" }}
             {{-   $wpMaxWorkers = "12" }}
             {{- end }}
-            # subPath mounts never receive ConfigMap updates, so a changed mu-plugin is
-            # silently ignored by the running pod until something restarts it. Feeding the
-            # hash into a pod annotation makes the change roll the Deployment instead.
-            {{- $configChecksum := "" }}
-            {{- range $key := list "security-mu-plugin-configmap" "mpm-tuning-configmap" }}
-            {{-   $cm := index $observedResources $key }}
-            {{-   if $cm }}
-            {{-     range $_, $v := ($cm.resource.data | default dict) }}
-            {{-       $configChecksum = printf "%s%s" $configChecksum $v }}
-            {{-     end }}
-            {{-   end }}
-            {{- end }}
-            {{- $configChecksum = $configChecksum | sha256sum | trunc 16 }}
             # --- MariaDB credentials Secret ---
             # Read back from the live Secret when it exists, only derived from the XR UID
             # on creation - MariaDB applies MYSQL_*_PASSWORD only on an empty datadir.
@@ -265,6 +252,9 @@ spec:
               namespace: {{ $namespace }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: wordpress-deployment
+                # All three ConfigMaps are subPath mounts, which never receive updates.
+                # Reloader restarts the pod when any of them changes.
+                reloader.stakater.com/auto: "true"
                 gotemplating.fn.crossplane.io/ready: {{ $wpReady | quote }}
             spec:
               selector:
@@ -279,8 +269,6 @@ spec:
                   labels:
                     app: wordpress
                     instance: {{ $name }}
-                  annotations:
-                    checksum/config: "{{ $configChecksum }}"
                 spec:
                   # Keep off the control-plane node (ctrl-1) - WordPress + MariaDB are memory-heavy
                   nodeSelector:

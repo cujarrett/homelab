@@ -16,8 +16,8 @@ spec:
       releaseName: reloader
       values: |
         reloader:
-          # Only workloads carrying reloader.stakater.com/auto are watched. The Api
-          # composition sets that annotation, so nothing outside the platform is touched.
+          # Only workloads that opt in with a reloader annotation are watched.
+          # The Api, Spa and Wordpress compositions set one, so nothing outside the platform is touched.
           autoReloadAll: false
           # Secrets reach an app as mounted files, which kubelet refreshes in place, so a
           # restart on secret change would be a pointless outage.
