@@ -88,6 +88,8 @@ spec:
           # Redefines discord.default.* here because operator v0.92.1 drops title/message
           # from the AlertmanagerConfig CRD, and templateFiles skips Helm's tpl so Go syntax
           # survives. Keeps description alongside summary, unlike the old template.
+          # No query link. Loki sends a relative URL, which Discord prints raw.
+          # Prometheus sends an in-cluster URL, which no phone can open.
           templateFiles:
             discord.tmpl: |
               {{ define "discord.default.title" }}{{ if eq .Status "firing" }}🔴 FIRING{{ else }}✅ RESOLVED{{ end }}{{ if .GroupLabels.namespace }} · {{ .GroupLabels.namespace }}{{ end }} ({{ .Alerts | len }}){{ end }}
@@ -96,8 +98,7 @@ spec:
               {{ with .Annotations.summary }}{{ . }}
               {{ end }}{{ with .Annotations.description }}> {{ . }}
               {{ end }}{{ with .Labels.pod }}`pod={{ . }}` {{ end }}{{ with .Labels.service }}`service={{ . }}` {{ end }}{{ with .Labels.node }}`node={{ . }}` {{ end }}{{ with .Labels.instance }}`instance={{ . }}` {{ end }}
-              since {{ .StartsAt.Format "15:04 MST" }}{{ with .Annotations.dashboard_url }} · [dashboard]({{ . }}){{ end }}{{ with .GeneratorURL }} · [query]({{ . }}){{ end }}
-
+              since {{ .StartsAt.Format "15:04 MST" }}{{ with .Annotations.dashboard_url }} · [dashboard]({{ . }}){{ end }}
               {{ end }}{{ end }}
           alertmanagerSpec:
             # Alertmanager forgets a sent message after this long, then sends it again.
