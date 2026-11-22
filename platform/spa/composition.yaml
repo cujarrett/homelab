@@ -485,9 +485,7 @@ spec:
             {{- /* ---------- Connections ---------- */ -}}
             {{- /* apiProxies already states this SPA's dependencies, so they become     */ -}}
             {{- /* egress entries here rather than being declared a second time.         */ -}}
-            {{- /* No provides field - nothing calls a SPA workload-to-workload.         */ -}}
-
-            {{- $consumes := $params.consumes | default list }}
+            {{- /* No provides field - nothing calls a SPA workload-to-workload.         */}}
             ---
             # Every Spa has a route, and Traefik is unmeshed, so port 8080 cannot be
             # restricted by identity. A mattjarrett.dev host reaches the internet,
@@ -525,8 +523,8 @@ spec:
                 - to:
                     - operation: { ports: ["8080"] }
             ---
-            # REGISTRY_ONLY: only the control plane, the apiProxies upstreams, and what
-            # it declared. The upstream's namespace is read out of its FQDN, so each
+            # REGISTRY_ONLY: only the control plane and the apiProxies upstreams.
+            # The upstream's namespace is read out of its FQDN, so each
             # entry is scoped rather than matching that host in any namespace.
             apiVersion: networking.istio.io/v1
             kind: Sidecar
@@ -548,42 +546,6 @@ spec:
                     {{- $parts := splitList "." .authority }}
                     - "{{ index $parts 1 }}/{{ .authority }}"
                     {{- end }}
-                    {{- range $c := $consumes }}
-                    {{- if $c.host }}
-                    - "./{{ $c.host }}"
-                    {{- end }}
-                    {{- if and $c.app $c.namespace }}
-                    - "{{ $c.namespace }}/{{ $c.app }}.{{ $c.namespace }}.svc.cluster.local"
-                    {{- end }}
-                    {{- end }}
-            {{- /* A consumes host is outside the mesh, so it needs registering. */ -}}
-            {{- $serviceEntries := list }}
-            {{- range $c := $consumes }}
-            {{- if $c.host }}
-            {{- $serviceEntries = append $serviceEntries (dict "host" $c.host "port" ($c.port | default 443) "protocol" ($c.protocol | default "TLS")) }}
-            {{- end }}
-            {{- end }}
-            {{- range $se := $serviceEntries }}
-            ---
-            apiVersion: networking.istio.io/v1
-            kind: ServiceEntry
-            metadata:
-              name: {{ $name }}-{{ $se.host | replace "." "-" }}
-              namespace: {{ $namespace }}
-              annotations:
-                gotemplating.fn.crossplane.io/composition-resource-name: connection-se-{{ $se.host | replace "." "-" }}
-                gotemplating.fn.crossplane.io/ready: "True"
-            spec:
-              hosts:
-                - {{ $se.host | quote }}
-              location: MESH_EXTERNAL
-              resolution: DNS
-              exportTo: ["."]
-              ports:
-                - number: {{ $se.port }}
-                  name: {{ $se.protocol | lower }}
-                  protocol: {{ $se.protocol }}
-            {{- end }}
             {{- if $signIn }}
             {{- $redirects := list (printf "https://%s/auth/callback" $params.host) }}
             {{- range $u := ($userAuth.extraRedirectUris | default list) }}{{- $redirects = append $redirects $u }}{{- end }}

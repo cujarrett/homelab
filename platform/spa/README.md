@@ -26,9 +26,8 @@ The namespace is owned by the tenant - created by `namespace.yaml` in the tenant
 | `replicas` | no | `1` | Number of nginx replicas. Stateless - safe to scale freely. |
 | `apiProxies` | no | - | Array of path prefixes to proxy to a backend, keeping on-platform APIs off the public internet. Each entry requires `path` and `app`, the name of an Api on the platform. Its address is derived. `namespace` defaults to this SPA's own. An Api in another namespace works when its `allowedCallers` names this SPA. The prefix is stripped before proxying, so set `upstreamPath` when the backend registered its routes under one. |
 | `userAuth` | no | - | Sign-in for this SPA. `client` names the proxied app that completes the code exchange and holds the tokens, and there can be only one because only one backend owns the session. `scopes` lists what the signed-in user needs. `extraRedirectUris` adds a localhost callback for local development or a second domain during a migration. Tokens never reach the browser. |
-| `consumes` | no | - | Every destination this app calls that `apiProxies` does not already name. Each entry sets exactly one of `host`, `address` (a bare IPv4), or `app` plus `namespace`. |
 
-`apiProxies` doubles as a connection declaration - the composition allows those backends without you restating them in `consumes`. Nothing else is automatic: an app in the same namespace still needs a `consumes` entry, and is still gated by whatever the callee itself declares.
+`apiProxies` is also the connection declaration. The composition allows those backends and nothing else. Each backend still decides whether to admit this SPA.
 
 What this means for the API on the other end - stripped prefixes, forwarded client headers, and why it needs no hostname of its own - is in [Api → Being called through a Spa](../api/README.md#being-called-through-a-spa).
 

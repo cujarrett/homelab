@@ -126,38 +126,6 @@ spec:
                             type: string
                             pattern: "^https?://[A-Za-z0-9._~:/-]+$"
                             maxLength: 2048
-                    consumes:
-                      type: array
-                      description: "Every destination this SPA calls that apiProxies does not already name. Anything in apiProxies is allowed automatically — do not list it. Set either host (off-platform) or app+namespace (any app on the platform)."
-                      items:
-                        type: object
-                        properties:
-                          host:
-                            type: string
-                            pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
-                            maxLength: 253
-                            description: "Off-platform hostname (e.g. api.discogs.com). Anything not listed is blocked at this workload's own sidecar."
-                          port:
-                            type: integer
-                            description: "Port for host. Defaults to 443 when omitted."
-                          protocol:
-                            type: string
-                            enum: [TLS, HTTP]
-                            description: "Wire protocol for host. TLS for any https:// destination — the app terminates its own TLS. HTTP only for plaintext destinations."
-                          address:
-                            type: string
-                            pattern: "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
-                            description: "Bare IPv4 address of an off-platform destination that has no DNS name, such as a device on the LAN. Renders a ServiceEntry with static resolution rather than a DNS lookup. Use with port."
-                          app:
-                            type: string
-                            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
-                            maxLength: 63
-                            description: "metadata.name of an Api in another namespace this calls. Use with namespace."
-                          namespace:
-                            type: string
-                            pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
-                            maxLength: 63
-                            description: "Namespace of app. Required when app is set."
                   required:
                     - image
                     - host

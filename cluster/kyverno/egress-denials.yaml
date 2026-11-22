@@ -23,7 +23,7 @@ spec:
       - apiGroups: [platform.local.lab]
         apiVersions: [v1alpha1]
         operations: [CREATE, UPDATE]
-        resources: [apis, spas]
+        resources: [apis]
   variables:
     # Add a host here to shut it off platform-wide.
     - name: denied
