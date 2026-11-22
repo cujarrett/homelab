@@ -38,3 +38,26 @@ data:
                 A scanner path got a 2xx back.
                 Check what the response body held.
                 Then make that site return 404 for the path.
+          # ScannerProbeAnswered skips these hosts, because AWS, Entra and GitHub call them all day.
+          # They should only answer their known paths, so any other 2xx is new surface.
+          - alert: MachineEndpointAnsweredUnknownPath
+            expr: |
+              sum by (host, path, status) (
+                count_over_time(
+                  {log_type="access"}
+                  | json host="RequestHost", path="RequestPath", status="DownstreamStatus"
+                  | host=~"oidc.*|argocd-webhook.*"
+                  | path!~`/\.well-known/(openid-configuration|keys)|/keys|/api/webhook|/applicationset/api/webhook`
+                  | status < 300
+                  [10m]
+                )
+              ) > 0
+            labels:
+              severity: warning
+            annotations:
+              dashboard_url: "https://grafana.local.lab/d/web-traffic/web-traffic?from=now-24h&to=now"
+              summary: "{{ $labels.host }} answered {{ $labels.path }} with {{ $labels.status }}"
+              description: >-
+                This host should only answer its known paths.
+                Check what the response held.
+                Then make the route return 404 for the path.
