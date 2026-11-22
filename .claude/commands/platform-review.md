@@ -25,6 +25,7 @@ Never re-raise these. Raise one only if the reason below no longer holds, and sa
 - Spa userAuth and entraApp: unused, kept as a proof of concept for Launchpad.
 - Renovate chart bumps automerge unreviewed: the 7-day wait is the defence.
 - Stuck-state alerts wait 15m: the longest normal sync is 5 minutes, and the longest XR start is 3 minutes.
+- A graph router admits any meshed caller that declares it: both graphs already serve the same data on a `local.lab` host.
 - A fix of about 75 lines for a low worst case loses to accepting the risk.
 
 ## Lenses
