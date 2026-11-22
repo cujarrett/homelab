@@ -47,9 +47,10 @@ spec:
                     contentSecurityPolicy:
                       type: string
                       default: "default-src 'self'; frame-ancestors 'none'; base-uri 'self';"
-                      # Printable ASCII without a double quote.
+                      # Printable ASCII without a double quote or a backslash.
+                      # The value sits inside a quoted nginx string, and either one would end or escape it.
                       # A Unicode line break would end the YAML block the value is rendered into.
-                      pattern: "^[ !#-~]+$"
+                      pattern: '^[ !#-\[\]-~]+$'
                       description: >
                         Value for the Content-Security-Policy response header.
                         Override with app-specific origins (e.g. Google Fonts, external APIs).
