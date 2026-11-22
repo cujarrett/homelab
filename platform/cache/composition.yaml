@@ -35,7 +35,7 @@ spec:
             {{- $ns := $xr.metadata.namespace }}
             {{- $region := "us-east-1" }}
             {{- $size := $xr.spec.parameters.size | default "sm" }}
-            {{- $nodeTypeMap := dict "xs" "cache.t4g.micro" "sm" "cache.t4g.small" "md" "cache.t4g.medium" "lg" "cache.t4g.medium" }}
+            {{- $nodeTypeMap := dict "sm" "cache.t4g.micro" "md" "cache.t4g.small" "lg" "cache.t4g.medium" }}
             {{- $nodeType := get $nodeTypeMap $size | default "cache.t4g.micro" }}
             {{- $rgReady := "False" }}
             {{- $rgConn := dict }}

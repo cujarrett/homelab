@@ -17,7 +17,7 @@ Only the owning `Api` can connect to a `private-cloud` cache. Every other caller
 | Parameter | Required | Default | Description |
 |---|---|---|---|
 | `backend` | no | `private-cloud` | `private-cloud` uses in-cluster Redis; `public-cloud` uses AWS ElastiCache with IAM auth. |
-| `size` | no | `sm` | T-shirt size for the cache cluster (public-cloud only): `xs=cache.t4g.micro`, `sm=cache.t4g.small`, `md=cache.t4g.medium`, `lg=cache.t4g.medium`. |
+| `size` | no | `sm` | T-shirt size for the cache cluster (public-cloud only): `sm=cache.t4g.micro`, `md=cache.t4g.small`, `lg=cache.t4g.medium`. |
 | `consumerServiceAccount` | set by Api | - | Name of the Api service account. Used to scope the IAM trust policy to the pod's exact SPIFFE ID. Set automatically by the Api composition - not a tenant concern. |
 
 ## Binding secret
