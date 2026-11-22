@@ -80,7 +80,7 @@ spec:
 
               loki.source.file "pods" {
                 targets    = discovery.relabel.pods.output
-                forward_to = [loki.process.pods.receiver]
+                forward_to = [loki.process.pods.receiver, loki.process.probes.receiver]
                 file_match {
                   enabled = true
                 }
@@ -134,6 +134,50 @@ spec:
                       values = { log_type = "sandbox" }
                     }
                   }
+                }
+              }
+
+              // Scanner probes from every country, for the ScannerProbeAnswered alert.
+              // Kept: host, path, method and status. Nothing about the visitor is stored.
+              // The pods pipeline above keeps US browsers only, so alone it would hide most scanners from the alert.
+              loki.process "probes" {
+                forward_to = [loki.write.default.receiver]
+
+                stage.cri { }
+
+                stage.match {
+                  selector = `{app!="traefik"}`
+                  action   = "drop"
+                }
+
+                // The alert's path filter. Every other line stops here.
+                stage.match {
+                  selector            = `{namespace="kube-system", app="traefik"} !~ "(?i)\"RequestPath\":\"[^\"]*(/\\.[a-z_]|\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\.php|wlwmanifest|\\.php|/wp-)"`
+                  action              = "drop"
+                  drop_counter_reason = "probe_not_a_probe"
+                }
+
+                // The WordPress sites serve .php and /wp- paths to real readers, so those are not probes there.
+                stage.match {
+                  selector            = `{namespace="kube-system", app="traefik"} |~ "\"RequestHost\":\"[^\"]*(kentjarrett|mattjarrett)\\.com\"" !~ "(?i)\"RequestPath\":\"[^\"]*(/\\.[a-z_]|\\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\\.php|wlwmanifest)"`
+                  action              = "drop"
+                  drop_counter_reason = "probe_wordpress_reader"
+                }
+
+                // The line is rebuilt from four named fields, so a field Traefik adds later cannot slip through.
+                stage.json {
+                  expressions    = { host = "RequestHost", path = "RequestPath", method = "RequestMethod", status = "DownstreamStatus" }
+                  drop_malformed = true
+                }
+                stage.template {
+                  source   = "line"
+                  template = "{{`{\"RequestHost\":{{ .host | toJson }},\"RequestPath\":{{ .path | toJson }},\"RequestMethod\":{{ .method | toJson }},\"DownstreamStatus\":{{ .status }}}`}}"
+                }
+                stage.output {
+                  source = "line"
+                }
+                stage.static_labels {
+                  values = { log_type = "probe" }
                 }
               }
 

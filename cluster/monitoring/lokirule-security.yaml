@@ -16,11 +16,13 @@ data:
         interval: 1m
         rules:
           # Same scanner path filter as the Probes answered panel on the Web Traffic dashboard.
+          # probe: Alloy keeps these lines from every country and user agent, with no visitor fields.
+          # The access stream holds US browsers only, so it would hide most scanners from this alert.
           - alert: ScannerProbeAnswered
             expr: |
               sum by (host, path, status) (
                 count_over_time(
-                  {log_type=~"access|sandbox"}
+                  {log_type="probe"}
                   | json host="RequestHost", path="RequestPath", status="DownstreamStatus"
                   | host!~"oidc.*|argocd-webhook.*"
                   | (path=~`(?i).*(/\.[a-z_]|\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\.php|wlwmanifest).*` or (host!~`(kentjarrett|mattjarrett)\.com` and path=~`(?i).*(\.php|/wp-).*`))
