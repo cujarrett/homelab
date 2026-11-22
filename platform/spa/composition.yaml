@@ -114,6 +114,20 @@ spec:
                         return 404;
                     }
 
+                    # Any path the ScannerProbeAnswered alert calls a probe is a 404, so no scanner can set the alert off.
+                    # $request_uri: the path as sent, before nginx tidies it. /.env/..%2fhealthz is judged as written.
+                    # The words are the alert's own filter. ACME challenges under /.well-known/ pass, as they do there.
+                    set $probe 0;
+                    if ($request_uri ~* "^[^?]*(/\.[a-z_]|\.(sql|bak|old|swp|save|tfstate|tfvars)|phpinfo|wp-config|xmlrpc\.php|wlwmanifest|\.php|/wp-)") {
+                        set $probe 1;
+                    }
+                    if ($request_uri ~ "^/\.well-known/") {
+                        set $probe 0;
+                    }
+                    if ($probe) {
+                        return 404;
+                    }
+
                     location /healthz {
                         access_log off;
                         return 200 'ok';
