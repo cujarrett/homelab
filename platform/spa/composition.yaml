@@ -234,7 +234,7 @@ spec:
                         return 404;
                     }
 
-                    location ~* "^/(wp-admin|wp-includes|wp-content|wp-login|wp-cron|wp-config|wp-json|wordpress|wp|backup|old|new|web|cms|sito|site|admin|administrator)(/|$)" {
+                    location ~* "^/(wp-[^/]*|wordpress|wp|backup|old|new|web|cms|sito|site|admin|administrator)(/|$)" {
                         return 404;
                     }
 
