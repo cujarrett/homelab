@@ -6,7 +6,6 @@ Crossplane composition that deploys an API server (Go, Node, GraphQL, etc.) with
 - **Deployment** - runs the API server with init containers that block startup until each binding is ready
 - **Service** - ClusterIP on port 80 → container port (default 8080); separate metrics port (default 9090)
 - **ServiceAccount** - dedicated per-instance SA; pods do not use the namespace default SA
-- **Role + RoleBinding** - least-privilege RBAC: `get` only on the exact Secrets this instance mounts
 - **ServiceMonitor** - Prometheus scrape target on the metrics port
 - **Route** *(optional)* - HTTPS on `host`; only created when `host` is set. A public host also gets a rate limit.
 - **Cache** *(optional)* - short-lived cache cluster owned by this Api; created and deleted alongside it
