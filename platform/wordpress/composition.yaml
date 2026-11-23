@@ -37,7 +37,8 @@ spec:
             {{- $wpCPUReq := "50m" }}{{- $wpCPULim := "1000m" }}
             {{- $wpMemReq := "768Mi" }}{{- $wpMemLim := "768Mi" }}
             {{- $dbCPUReq := "50m" }}{{- $dbCPULim := "500m" }}
-            {{- $dbMemReq := "384Mi" }}{{- $dbMemLim := "384Mi" }}
+            # MariaDB peaks near 210Mi with its default 128M buffer pool.
+            {{- $dbMemReq := "288Mi" }}{{- $dbMemLim := "288Mi" }}
             {{- if eq $size "md" }}
             {{-   $wpCPUReq = "100m" }}{{- $wpCPULim = "1500m" }}
             {{-   $wpMemReq = "1280Mi" }}{{- $wpMemLim = "1280Mi" }}
