@@ -35,7 +35,8 @@ spec:
             # the busier site. CPU limits stay generous because CPU bursts only throttle.
             # Memory request equals limit so the scheduler never packs more onto a node than it holds.
             {{- $wpCPUReq := "50m" }}{{- $wpCPULim := "1000m" }}
-            {{- $wpMemReq := "768Mi" }}{{- $wpMemLim := "768Mi" }}
+            # WordPress peaks near 500Mi on sm with its four workers.
+            {{- $wpMemReq := "640Mi" }}{{- $wpMemLim := "640Mi" }}
             {{- $dbCPUReq := "50m" }}{{- $dbCPULim := "500m" }}
             # MariaDB peaks near 210Mi with its default 128M buffer pool.
             {{- $dbMemReq := "288Mi" }}{{- $dbMemLim := "288Mi" }}
