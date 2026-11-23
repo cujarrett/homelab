@@ -23,3 +23,18 @@ spec:
             description: >-
               Check `k get {{ $labels.kind | toLower }} {{ $labels.name }} -n {{ $labels.exported_namespace }}`
               for its conditions, then `crossplane beta trace` for the composed resource that is not Ready.
+
+        # Normal sandbox starts take 35 to 70s.
+        # launchpad-api keeps each gauge until it restarts.
+        # The offset drops the old ones, so the alert resolves after 30 minutes.
+        - alert: GuestSandboxSlowStart
+          expr: launchpad_guest_ready_seconds > 120 unless launchpad_guest_ready_seconds offset 30m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-platform"
+            summary: "{{ $labels.demo }} sandbox {{ $labels.workspace }} took {{ $value | humanizeDuration }} to turn Ready"
+            description: >-
+              Entra is the usual cause.
+              Check the Entra panels for slow ServicePrincipal or RoleAssignment times,
+              and the api container logs for AADSTS501051, which means the Temporal role has not reached Entra tokens yet.
