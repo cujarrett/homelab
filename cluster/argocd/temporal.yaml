@@ -20,8 +20,6 @@ spec:
               # renovate: datasource=docker depName=temporalio/server
               tag: 1.32.2
             replicaCount: 1
-            nodeSelector:
-              node-role.kubernetes.io/worker: worker
             securityContext:
               runAsNonRoot: true
               runAsUser: 1000
