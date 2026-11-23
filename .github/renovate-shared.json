@@ -34,6 +34,11 @@
       "allowedVersions": "<17"
     },
     {
+      "description": "client-go v11 and older are 2019 tags from before Go modules. Current releases are v0.x, matching the Kubernetes minor.",
+      "matchPackageNames": ["k8s.io/client-go"],
+      "allowedVersions": "<1.0.0"
+    },
+    {
       "description": "minor and patch land as one reviewed-by-CI batch. github-exporter reads the automerge label to tell an update it could merge on its own from one that always needed a person, so renaming the label blanks that half of the SDLC dashboard. recreateWhen is always because two batches a day apart can share a title like 'update non-breaking to v22.2.1', and Renovate turns automerge off when it finds a merged PR with the same title.",
       "matchUpdateTypes": ["minor", "patch", "digest"],
       "groupName": "non-breaking",
