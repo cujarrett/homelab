@@ -408,7 +408,7 @@ spec:
                     {{- if $workflowCloud }}
                     # Writes this pod's X.509 SVID as files and renews them. The app signs in to Temporal Cloud with them.
                     - name: spiffe-helper
-                      image: ghcr.io/spiffe/spiffe-helper:0.12.3@sha256:58f28329f6be32ab5a80248931845157d858f0aebdf7e462217a43f019e3452f
+                      image: ghcr.io/spiffe/spiffe-helper:0.12.4@sha256:8c63bb63f61c00ab79080fd7dea80cecb47558989c2b8d84f6a6d0dc7a1fba32
                       restartPolicy: Always
                       args: ["-config", "/config/helper.conf"]
                       securityContext:
