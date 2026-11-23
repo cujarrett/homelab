@@ -105,6 +105,7 @@ GitHub repo: `https://github.com/cujarrett/homelab.git` (branch `main`).
 | Add an ArgoCD Application or a Helm chart source | [Cluster → AppProjects](./docs/cluster.md#appprojects) |
 | Change the 1U display on `ctrl-1` | [Kiosk](./docs/kiosk/README.md) |
 | Change a Renovate wait, or decide whether a CVE fix skips it | [Update Lanes](./docs/update-lanes.md) |
+| Change a TLS version, a key exchange or a curve list on Traefik, istiod, SSH or a Go service | [Post-Quantum](./docs/post-quantum.md) |
 
 ## Crossplane Platform
 
