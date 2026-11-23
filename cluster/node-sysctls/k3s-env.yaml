@@ -5,6 +5,9 @@
 # - No restart from here: it would restart the control plane this pod depends on
 # - 4608MiB: live heap ~1.8GB plus runtime overhead passed 3GiB, and GC took over half of k3s CPU
 # - Integer only: Go rejects a fractional GOMEMLIMIT like 4.5GiB
+# Also reserves memory outside pods, so the scheduler never counts it as free.
+# - 6Gi: k3s ~4.6Gi, containerd ~0.5Gi, kiosk Chromium ~0.65Gi, plus the OS
+# - config.yaml.d: k3s reads it on start, and the installer never rewrites it
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -33,10 +36,13 @@ spec:
             - |
               set -e
               printf '[Service]\nEnvironment=GOMEMLIMIT=4608MiB\n' > /host/k3s.service.d/gomemlimit.conf
+              printf 'kubelet-arg:\n  - system-reserved=memory=6Gi\n' > /host/k3s-config.d/reserved.yaml
               sleep infinity
           volumeMounts:
             - name: k3s-dropin
               mountPath: /host/k3s.service.d
+            - name: k3s-config
+              mountPath: /host/k3s-config.d
           resources:
             requests:
               cpu: 5m
@@ -47,4 +53,8 @@ spec:
         - name: k3s-dropin
           hostPath:
             path: /etc/systemd/system/k3s.service.d
+            type: DirectoryOrCreate
+        - name: k3s-config
+          hostPath:
+            path: /etc/rancher/k3s/config.yaml.d
             type: DirectoryOrCreate
