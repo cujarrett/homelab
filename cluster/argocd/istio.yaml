@@ -79,6 +79,11 @@ spec:
             memory: 256Mi
           limits:
             memory: 512Mi
+        # pqc: mesh mTLS uses TLS 1.3 with the X25519MLKEM768 post-quantum key exchange.
+        # Experimental in Istio.
+        # Sidecars with and without it cannot talk, so mesh calls fail while istiod rolls.
+        env:
+          COMPLIANCE_POLICY: pqc
         # Every mesh pod gets one sidecar, so the chart's 1Gi limit adds up to more than a node holds.
         # Sidecars measure 32-60Mi. Request equals limit so the scheduler reserves what it allows.
         # CPU peaks under 7m per sidecar, against a chart default request of 100m.
