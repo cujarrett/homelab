@@ -72,6 +72,48 @@ spec:
             - kube_replicaset_created
             - kube_pod_tolerations
             - kube_configmap_.+
+          # Freight state feeds the KargoPromotionWaiting alert.
+          customResourceState:
+            enabled: true
+            config:
+              spec:
+                resources:
+                  - groupVersionKind:
+                      group: kargo.akuity.io
+                      version: v1alpha1
+                      kind: Freight
+                    metricNamePrefix: kargo_freight
+                    labelsFromPath:
+                      namespace: [metadata, namespace]
+                      freight: [metadata, name]
+                    metrics:
+                      - name: created
+                        help: Freight creation time
+                        each:
+                          type: Gauge
+                          gauge:
+                            path: [metadata, creationTimestamp]
+                      - name: verified
+                        help: Time the Freight passed verification, one series per Stage
+                        each:
+                          type: Gauge
+                          gauge:
+                            path: [status, verifiedIn]
+                            labelFromKey: stage
+                            valueFrom: [verifiedAt]
+                      - name: current
+                        help: Time the Freight reached each Stage it runs in now
+                        each:
+                          type: Gauge
+                          gauge:
+                            path: [status, currentlyIn]
+                            labelFromKey: stage
+                            valueFrom: [since]
+          rbac:
+            extraRules:
+              - apiGroups: [kargo.akuity.io]
+                resources: [freights]
+                verbs: [list, watch]
         prometheusOperator:
           # The chart's v0.95.1 images are amd64-only, so the arm64 nodes can't pull them.
           # Drop both pins once the chart's appVersion is past v0.95.1.

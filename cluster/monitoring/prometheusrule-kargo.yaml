@@ -27,3 +27,19 @@ spec:
               The Freight's images do not pass {{ $labels.policy_name }}.
               Fix the image, then click Reverify on the Stage in Kargo.
               Image rules are in https://github.com/cujarrett/homelab/blob/main/platform/docs/image-provenance.md
+        # graph-prod promotes by hand on purpose, as part of the demo.
+        # Fires when graph-test has verified Freight newer than what graph-prod runs.
+        - alert: KargoPromotionWaiting
+          expr: |
+            max by (namespace) (kargo_freight_created and on (namespace, freight) kargo_freight_verified{stage="graph-test"})
+              > on (namespace)
+            max by (namespace) (kargo_freight_created and on (namespace, freight) kargo_freight_current{stage="graph-prod"})
+          for: 15m
+          labels:
+            severity: info
+          annotations:
+            dashboard_url: "https://kargo.local.lab/project/{{ $labels.namespace }}"
+            summary: "Verified Freight in {{ $labels.namespace }} is waiting for promotion to graph-prod"
+            description: >-
+              graph-test has verified Freight newer than what graph-prod runs.
+              Promote it to graph-prod in Kargo.
