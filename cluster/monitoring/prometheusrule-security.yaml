@@ -81,21 +81,13 @@ spec:
             + homelab:security_open_renovate_blocked:count
             + homelab:security_open_kev:count
         # image CVE: Jobs are left out. A finished Job's image no longer runs, but its report stays while the Job object exists.
-        # image CVE: Renovate waits 7 days, so a fixable critical running 9 days after Trivy listed a fix means it missed
+        # image CVE: never overdue. A fixed package often ships in no upstream image yet, so nobody can act.
         # Renovate PR: blocked for 2 days means a fix is stuck behind a failing check
         # node rules: max by node first, so a node-updates pod rollout does not leave the old pod's last value in the window
         - record: homelab:security_overdue_node_updates:count
           expr: count(min_over_time(max by (node) (node_security_updates_pending)[3d:5m]) > 0) or vector(0)
         - record: homelab:security_overdue_node_reboot:count
           expr: count(min_over_time(max by (node) (node_reboot_required)[7d:5m]) > 0) or vector(0)
-        - record: homelab:security_overdue_image_cves:count
-          expr: |
-            count(
-              count by (image_repository, vuln_id) (
-                trivy_vulnerability_id{severity="Critical", fixed_version!="", resource_kind!="Job"}
-                and trivy_vulnerability_id{severity="Critical", fixed_version!="", resource_kind!="Job"} offset 9d
-              )
-            ) or vector(0)
         - record: homelab:security_overdue_renovate_blocked:count
           # The last clause keeps a series from a replaced github-exporter pod from counting for 2 more days.
           expr: count(min_over_time(github_exporter_pr_open_blocked[2d]) > 0 and on(repo) github_exporter_pr_open_blocked > 0) or vector(0)
@@ -104,7 +96,6 @@ spec:
             homelab:security_overdue_node_updates:count
             + homelab:security_overdue_node_reboot:count
             + homelab:security_open_unattended_stale:count
-            + homelab:security_overdue_image_cves:count
             + homelab:security_overdue_renovate_blocked:count
         # Defined after the open and overdue rules, so one evaluation computes all of them in order.
         # needs_you: only a person can clear these. Reboots and blocked PRs never fix themselves,
@@ -117,12 +108,11 @@ spec:
             + homelab:security_open_unattended_stale:count
             + homelab:security_open_renovate_blocked:count
             + homelab:security_overdue_node_updates:count
-            + homelab:security_overdue_image_cves:count
             + homelab:security_open_kev:count
         - record: homelab:security_waiting:count
           expr: |
             (homelab:security_open_node_updates:count - homelab:security_overdue_node_updates:count)
-            + (homelab:security_open_image_cves:count - homelab:security_overdue_image_cves:count)
+            + homelab:security_open_image_cves:count
         # node updates: unattended-upgrades runs daily, so 3 days pending means it stopped
         # node reboot: unattended-upgrades never reboots, so 7 days means nobody did
         - alert: SecurityItemsOverdue
