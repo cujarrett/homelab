@@ -23,7 +23,7 @@ spec:
       containers:
         - name: manager
           # temporal-controller's CI replaces this with each main build's sha tag.
-          image: ghcr.io/cujarrett/temporal-controller:sha-ebc865debb8cc9bc6fdab1b1c0236406b6d55149
+          image: ghcr.io/cujarrett/temporal-controller:sha-2b4630f456c512445f1040b5971d13dca038afdc
           args:
             - --temporal-address=temporal-frontend.temporal.svc.cluster.local:7233
             - --health-probe-bind-address=:8081
