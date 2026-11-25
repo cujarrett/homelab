@@ -114,3 +114,23 @@ spec:
               The container hit its memory limit. Check recent usage with
               kubectl top pod -n {{ $labels.namespace }} {{ $labels.pod }} --containers
               and raise the limit in the manifest or composition that sets it.
+
+        # Catches a controller that burns CPU with no errors, such as a Go garbage collection storm.
+        # - 3x yesterday: a namespace's CPU is steady from day to day
+        # - half a core: small namespaces triple on one busy job
+        # - 2h: provider starts and Trivy scans finish well inside it
+        - alert: NamespaceCPUJumped
+          expr: |
+            sum by (namespace) (rate(container_cpu_usage_seconds_total{container!=""}[1h]))
+              > 3 * sum by (namespace) (rate(container_cpu_usage_seconds_total{container!=""}[1h] offset 1d))
+            and sum by (namespace) (rate(container_cpu_usage_seconds_total{container!=""}[1h])) > 0.5
+          for: 2h
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-mbp/homelab"
+            summary: "{{ $labels.namespace }} uses {{ $value | humanize }} cores, over 3 times yesterday"
+            description: >-
+              Find the pod with kubectl top pod -n {{ $labels.namespace }} --containers.
+              Then check what changed, such as a version bump in the last day.
+              No errors in its logs points at garbage collection, so compare its memory with any GOMEMLIMIT.
