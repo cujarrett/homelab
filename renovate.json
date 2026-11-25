@@ -35,6 +35,11 @@
   ],
   "packageRules": [
     {
+      "description": "provider-azuread v2.5.6 waits about a minute before marking Entra objects Ready, so guest sandboxes took 4 to 5 minutes to start instead of under 30 seconds.",
+      "matchPackageNames": ["xpkg.upbound.io/upbound/provider-azuread"],
+      "allowedVersions": "!/^v2\\.5\\.6$/"
+    },
+    {
       "description": "A re-pushed tag cannot change what the cluster runs. Helm charts and Crossplane packages cannot carry a digest, so they are left out.",
       "matchDatasources": ["docker"],
       "matchManagers": ["custom.regex", "kubernetes"],
@@ -62,39 +67,6 @@
       ],
       "matchPackageNames": ["ghcr.io/cujarrett/platform-exporter", "ghcr.io/cujarrett/temporal-controller"],
       "pinDigests": false
-    },
-    {
-      "description": [
-        "These registries publish no release dates, so minimumReleaseAge would hold them forever.",
-        "minimumReleaseAge null: Renovate ignores prNotPendingHours while it is set.",
-        "The branch has no checks, since CI runs only on pull requests, so it stays pending.",
-        "The PR opens 7 days after the branch's last commit.",
-        "rebaseWhen conflicted: a rebase is a new commit and would restart the 7 days."
-      ],
-      "matchPackageNames": [
-        "ghcr.io/**",
-        "!ghcr.io/cujarrett/**",
-        "quay.io/**",
-        "gcr.io/**",
-        "registry.k8s.io/**",
-        "public.ecr.aws/**",
-        "xpkg.upbound.io/**",
-        "xpkg.crossplane.io/**"
-      ],
-      "minimumReleaseAge": null,
-      "prCreation": "not-pending",
-      "prNotPendingHours": 168,
-      "rebaseWhen": "conflicted"
-    },
-    {
-      "description": "A digest update of a tag with no version, such as trixie-slim, has no release date either.",
-      "matchDatasources": ["docker"],
-      "matchUpdateTypes": ["digest"],
-      "matchCurrentValue": "/^[a-z]+(-[a-z]+)*$/",
-      "minimumReleaseAge": null,
-      "prCreation": "not-pending",
-      "prNotPendingHours": 168,
-      "rebaseWhen": "conflicted"
     },
     {
       "matchPackageNames": ["wordpress"],

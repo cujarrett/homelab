@@ -24,17 +24,41 @@ spec:
               Check `k get {{ $labels.kind | toLower }} {{ $labels.name }} -n {{ $labels.exported_namespace }}`
               for its conditions, then `crossplane beta trace` for the composed resource that is not Ready.
 
-        # Normal sandbox starts take 35 to 70s.
-        # launchpad-api keeps each gauge until it restarts.
-        # The offset drops the old ones, so the alert resolves after 30 minutes.
-        - alert: GuestSandboxSlowStart
-          expr: launchpad_guest_ready_seconds > 120 unless launchpad_guest_ready_seconds offset 30m
+        # Fires when the last 6 hours of sandboxes start twice as slow as the 7-day median.
+        # - 2x: normal api pod starts already range from 20 to 60s
+        # - two sandboxes or more: one slow sandbox is the 1-minute backup's job
+        # - -t<digits> names: load tests, slow on purpose
+        # - unless offset 6h: the exporter keeps old gauges, so only pods new in the window count
+        - alert: GuestSandboxSlowerThanUsual
+          expr: |
+            quantile(0.5, max_over_time(platform_pod_time_to_ready_seconds_instance{exported_namespace=~"guest-.*",exported_namespace!~".*-t[0-9]+",exported_pod=~".*-api-.*"}[6h])
+                unless max_over_time(platform_pod_time_to_ready_seconds_instance{exported_namespace=~"guest-.*",exported_namespace!~".*-t[0-9]+",exported_pod=~".*-api-.*"}[1h] offset 6h))
+              > 2 * quantile(0.5, max_over_time(platform_pod_time_to_ready_seconds_instance{exported_namespace=~"guest-.*",exported_namespace!~".*-t[0-9]+",exported_pod=~".*-api-.*"}[7d] offset 6h))
+            and on() count(count by (exported_namespace) (
+              max_over_time(platform_pod_time_to_ready_seconds_instance{exported_namespace=~"guest-.*",exported_namespace!~".*-t[0-9]+",exported_pod=~".*-api-.*"}[6h])
+                unless max_over_time(platform_pod_time_to_ready_seconds_instance{exported_namespace=~"guest-.*",exported_namespace!~".*-t[0-9]+",exported_pod=~".*-api-.*"}[1h] offset 6h)
+            )) >= 2
           labels:
             severity: warning
           annotations:
             dashboard_url: "https://grafana.local.lab/d/homelab-platform"
-            summary: "{{ $labels.demo }} sandbox {{ $labels.workspace }} took {{ $value | humanizeDuration }} to turn Ready"
+            summary: "Sandbox api pods took a median {{ $value | humanizeDuration }} to turn Ready in the last 6 hours, over twice the 7-day median"
             description: >-
-              Entra is the usual cause.
-              Check the Entra panels for slow ServicePrincipal or RoleAssignment times,
-              and the api container logs for AADSTS501051, which means the Temporal role has not reached Entra tokens yet.
+              Check the Entra panels for which step got slower.
+              A step that got slower since a provider version bump points at the provider.
+              Compare it with the version before by setting the Provider package live.
+
+        # Backup for a slowdown the median has already absorbed.
+        # Guest pods are almost always ready within a minute.
+        # One alert per sandbox, not per pod.
+        - alert: GuestSandboxSlowStart
+          expr: max by (namespace) (kube_pod_status_ready{namespace=~"guest-.*",condition="true"} == 0)
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-platform"
+            summary: "Sandbox {{ $labels.namespace }} is not Ready after 1 minute"
+            description: >-
+              Check the api container logs for AADSTS501051, which means the Temporal role has not reached Entra tokens yet.
+              Then check the Entra panels for a slow ServicePrincipal or RoleAssignment.
