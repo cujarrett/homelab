@@ -30,6 +30,9 @@ set -uo pipefail
 # Every path below is repo-root-relative, so anchor to the repo root rather than cwd.
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)" || exit 1
 
+# `just setup` builds this virtualenv from the hash-pinned requirements.txt.
+[ -d platform/test/.venv ] && PATH="$PWD/platform/test/.venv/bin:$PATH"
+
 WORKSPACES=${WORKSPACES:-../homelab-workspaces}
 ENVCFG=platform/test/fixtures/aws-platform-config.yaml
 TMP=$(mktemp -d)
@@ -45,6 +48,7 @@ grn() { printf '\033[32m%s\033[0m\n' "$1"; }
 # --- prerequisites ------------------------------------------------------------
 command -v crossplane >/dev/null || { red "crossplane CLI not found"; exit 1; }
 docker info >/dev/null 2>&1 || { red "Docker is not running - render pulls function containers"; exit 1; }
+python3 -c 'import yaml' 2>/dev/null || { red "PyYAML not found - run: just setup (in platform/)"; exit 1; }
 [ -f "$ENVCFG" ] || { red "missing $ENVCFG - render needs a local EnvironmentConfig fixture"; exit 1; }
 [ -d "$WORKSPACES" ] || { red "workspaces not found at $WORKSPACES"; exit 1; }
 git -C "$WORKSPACES" rev-parse --git-dir >/dev/null 2>&1 && WS_GIT=1 || WS_GIT=0

@@ -12,7 +12,7 @@ It renders every workspace XR against the current compositions. No cluster, no A
 just render-check       # ~1 min, needs Docker for the function containers
 ```
 
-Docker must be running, since `crossplane render` pulls the functions as containers. Each gate below caught a bug that once reached the cluster.
+Docker must be running, since `crossplane render` pulls the functions as containers. Run `just setup` once first. It installs PyYAML into `test/.venv`, checked against the hashes in [requirements.txt](./requirements.txt). Each gate below caught a bug that once reached the cluster.
 
 | Gate | Catches |
 |---|---|

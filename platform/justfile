@@ -1,5 +1,12 @@
 # Platform tests
 
+# Install the render check's Python packages into test/.venv
+#   --only-binary     never build from source, because build tools are not hash-checked
+#   --require-hashes  pip refuses any file whose hash is not in requirements.txt
+setup python="python3":
+    {{python}} -m venv test/.venv
+    test/.venv/bin/pip install --only-binary :all: --require-hashes -r test/requirements.txt
+
 # Render every workspace XR against the current compositions (~1 min, no cluster)
 render-check:
     ./test/render-check.sh

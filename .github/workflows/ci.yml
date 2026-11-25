@@ -22,6 +22,10 @@ jobs:
         run: |
           curl -sSfL -o crossplane https://cli.crossplane.io/stable/${CROSSPLANE_VERSION}/bin/linux_amd64/crossplane
           sudo install crossplane /usr/local/bin/crossplane
+      - name: Install hash-pinned Python packages
+        run: |
+          python3 -m venv platform/test/.venv
+          platform/test/.venv/bin/pip install --only-binary :all: --require-hashes -r platform/test/requirements.txt
       - run: WORKSPACES="$GITHUB_WORKSPACE/workspaces" ./platform/test/render-check.sh
 
   kubeconform:
