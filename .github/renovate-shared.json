@@ -91,6 +91,39 @@
       "minimumReleaseAge": null
     },
     {
+      "description": [
+        "These registries publish no release dates, so minimumReleaseAge would hold them forever.",
+        "minimumReleaseAge null: Renovate ignores prNotPendingHours while it is set.",
+        "The branch has no checks, since CI runs only on pull requests, so it stays pending.",
+        "The PR opens 7 days after the branch's last commit.",
+        "rebaseWhen conflicted: a rebase is a new commit and would restart the 7 days."
+      ],
+      "matchPackageNames": [
+        "ghcr.io/**",
+        "!ghcr.io/cujarrett/**",
+        "quay.io/**",
+        "gcr.io/**",
+        "registry.k8s.io/**",
+        "public.ecr.aws/**",
+        "xpkg.upbound.io/**",
+        "xpkg.crossplane.io/**"
+      ],
+      "minimumReleaseAge": null,
+      "prCreation": "not-pending",
+      "prNotPendingHours": 168,
+      "rebaseWhen": "conflicted"
+    },
+    {
+      "description": "A digest update of a tag with no version, such as bookworm-slim, has no release date either.",
+      "matchDatasources": ["docker"],
+      "matchUpdateTypes": ["digest"],
+      "matchCurrentValue": "/^[a-z]+(-[a-z]+)*$/",
+      "minimumReleaseAge": null,
+      "prCreation": "not-pending",
+      "prNotPendingHours": 168,
+      "rebaseWhen": "conflicted"
+    },
+    {
       "description": "A major reaches a human on its own",
       "matchUpdateTypes": ["major"],
       "automerge": false
