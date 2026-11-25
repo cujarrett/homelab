@@ -42,10 +42,20 @@ spec:
             group by (namespace) (kube_namespace_status_phase{namespace=~"mattjarrett-com|kentjarrett-com|mattjarrett-dev|jerks|blog|my-vinyl|js-pollock|launchpad|platform-connections-demo|platform-graph-demo|argocd|spire-server|cloudflare|guest-.*"})
         # One series per running image and CVE that faces the internet.
         # Traefik: matched by image, since the rest of kube-system is not public.
+        # ReplicaSet: kept only while it owns a pod. Old revisions keep their report after scaling to 0.
+        # kube_pod_owner stands in for kube_replicaset_spec_replicas, which kube-state-metrics drops.
         - record: homelab:public_vulnerability:info
           expr: |
             group by (namespace, image_repository, vuln_id, vuln_score, severity, fixed_version) (
-              trivy_vulnerability_id{resource_kind!="Job"} and on (namespace) homelab:public_namespace:info
+              (
+                trivy_vulnerability_id{resource_kind!~"Job|ReplicaSet"}
+                or (
+                  trivy_vulnerability_id{resource_kind="ReplicaSet"}
+                  and on (namespace, resource_name)
+                    label_replace(kube_pod_owner{owner_kind="ReplicaSet"}, "resource_name", "$1", "owner_name", "(.*)")
+                )
+              )
+              and on (namespace) homelab:public_namespace:info
               or trivy_vulnerability_id{resource_kind!="Job", image_repository=~".*traefik.*"}
             )
         # homelab:security_open*  = open right now. The Homelab stat and Security dashboard show this.
