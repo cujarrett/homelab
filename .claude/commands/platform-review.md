@@ -27,6 +27,9 @@ Never re-raise these. Raise one only if the reason below no longer holds, and sa
 - Stuck-state alerts wait 15m: the longest normal sync is 5 minutes, and the longest XR start is 3 minutes.
 - A graph router admits any meshed caller that declares it: both graphs already serve the same data on a `local.lab` host.
 - A fix of about 75 lines for a low worst case loses to accepting the risk.
+- Five AWS provider pods for about 10 AWS objects: guest sandboxes need every provider live, and ctrl-1 has the memory.
+- The k3s `GOMEMLIMIT` on ctrl-1: it saves about 2Gi, and live data sits under half the cap.
+- A Spa answers 200 with the app shell for an unknown path with no dot: the page holds nothing private, and the `$probe` rule covers the alert's words.
 
 ## Lenses
 1. Security: tenant breakout, injection through XR fields, unchecked images or
@@ -36,6 +39,10 @@ Never re-raise these. Raise one only if the reason below no longer holds, and sa
 3. Grug: fields, branches or templates with zero uses. Count uses across
    `homelab-workspaces`, `launchpad-api` and the live cluster (`k get <kind> -A`).
    Give the line count each removal saves.
+   Also list every hand-set number that replaces a default: `GOMEMLIMIT`, worker and
+   processor counts, intervals, hand-grown lists. Read the live value beside each one.
+   A number within 20% of its measured value, or with no reason written, is a finding.
+   Deleting the setting is the first fix to offer.
 4. Consistency: the same idea spelled differently across types, XRD defaults that
    differ from template fallbacks, docs that claim more than the code enforces.
 
