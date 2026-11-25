@@ -30,13 +30,15 @@ spec:
 
         # Backstop - per-PVC usage says nothing about the node underneath, where a
         # genuine snapshot leak in /var/lib/longhorn would actually surface.
+        # - 85%: kubelet deletes unused images from here, so a firing alert means that cleanup fell behind
+        # - Eviction starts at 90%
         - alert: NodeDiskFillingUp
           expr: |
             100 - (
               node_filesystem_avail_bytes{mountpoint="/", fstype!~"tmpfs|overlay"}
               / node_filesystem_size_bytes{mountpoint="/", fstype!~"tmpfs|overlay"}
               * 100
-            ) > 75
+            ) > 85
           for: 1h
           labels:
             severity: warning
@@ -44,7 +46,5 @@ spec:
             dashboard_url: "https://grafana.local.lab/d/homelab-mbp/homelab"
             summary: "Node {{ $labels.instance }} root filesystem is {{ $value | printf \"%.0f\" }}% full"
             description: >-
-              Largest consumers are usually /var/lib/longhorn (replica data) and
-              /var/lib/rancher/k3s/agent/containerd (image store, which accretes
-              stale tags across Renovate bumps and is reclaimable with
-              `k3s crictl rmi --prune`).
+              Kubelet already deletes unused images at 85%, so check
+              /var/lib/longhorn (replica data) first. Pods are evicted at 90%.
