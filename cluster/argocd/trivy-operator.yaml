@@ -49,6 +49,12 @@ spec:
           configFile:
             image:
               platform: linux/arm64
+            # gosu drops root at container start, then exits.
+            # Its maintainer keeps an old Go on purpose, so Trivy flags Go CVEs in code gosu never calls.
+            # A real gosu fix still arrives as an upstream image update.
+            scan:
+              skip-files:
+                - usr/local/bin/gosu
           server:
             # Request: 30 day peak is 149Mi, including DB updates.
             # Limit stays at the chart default of 1Gi.
