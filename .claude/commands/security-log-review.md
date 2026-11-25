@@ -14,13 +14,13 @@ kubectl get spa -A
 
 For each, check:
 
-1. **Paths returning 200 that shouldn't** - filter `" 200 "` then exclude known-good patterns (`.js`, `.css`, `.png`, `.ico`, `.woff`, `.svg`, `.webmanifest`, `robots.txt`, `.jpg`, `sitemap`, `/`, `/login`, `/main-`, `/chunk-`, `/styles-`, `/favicon`). Any remaining 200s on probed paths (`.env`, `.git`, config files, credentials) are a hardening gap in the composition nginx config.
+1. **Paths returning 200 that shouldn't** - filter `" 200 "` then exclude known-good patterns (`.js`, `.css`, `.png`, `.ico`, `.woff`, `.svg`, `.webmanifest`, `robots.txt`, `.jpg`, `sitemap`, `/`, `/login`, `/main-`, `/chunk-`, `/styles-`, `/favicon`). Any remaining 200s on dotted paths (`.env`, `.git`, config files, credentials) are a hardening gap in the composition nginx config.
 
 2. **Scanner sweeps** - bursts of 4xx on credential/config paths. Note the User-Agent, frequency, and what was probed. No action needed if all returning 404, but flag if volume is high.
 
 3. **Unexpected POST/PUT/DELETE** - SPAs should only serve GET. A POST returning anything other than 405 is suspicious.
 
-4. **New probe patterns not covered by existing blocks** - compare against the blocked paths in [platform/spa/composition.yaml](../../platform/spa/composition.yaml). If a probe returns 200 via the SPA catch-all (`try_files`), a new nginx `location` block is needed.
+4. **A 200 on an unknown path is the app shell** - the SPA catch-all (`try_files`) serves `index.html` for any path with no dot, and that page holds nothing private. It is a finding only when the path matches the probe words in the `$probe` rule in [platform/spa/composition.yaml](../../platform/spa/composition.yaml), or the body is something other than `index.html`. Never add a `location` block for one scanner path.
 
 5. **Stale running config** - before concluding a probe path is a hardening gap, check whether it's already blocked in the current composition source but just not live yet. Compare live config (`kubectl exec deploy/<name> -n <namespace> -c spa -- nginx -T`) against [platform/spa/composition.yaml](../../platform/spa/composition.yaml). The Spa composition hashes nginx.conf into a pod annotation, so a config change rolls the Deployment on its own. A pod still serving old config means `platform-definitions` has not synced yet, or the roll failed. Sync, then check the rollout:
 ```bash

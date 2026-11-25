@@ -187,11 +187,6 @@ spec:
                     }
 
 
-                    # CI/CD and container files with no extension for the default-deny rule to catch
-                    location ~* (^|/)(Jenkinsfile|Dockerfile)$ {
-                        return 404;
-                    }
-
                     {{- range $proxies }}
                     # API proxy: routes {{ .path }}* to its declared backend (no public exposure needed)
                     location {{ .path }} {
@@ -230,46 +225,6 @@ spec:
                         return 404;
                     }
                     {{- end }}
-
-                    # Scanner probes, all answered 404 so the SPA catch-all never returns 200
-                    # and tells a scanner the stack is here. Grouped by suffix: ";" is a
-                    # terminator alongside "/" so /actuator;/env cannot slip past, _profiler and
-                    # _environment have no ^ anchor so they match nested paths, and id_rsa and friends have no
-                    # extension for the dotted default-deny below to catch.
-                    location ~* "(^|/)([a-z0-9_-]*credentials|secrets|var/log|wp-json|stats/prometheus)(/|$)|/(id_rsa|id_dsa|id_ecdsa|id_ed25519)(\.pub)?$" {
-                        return 404;
-                    }
-
-                    location ~* "^/(api/)?(actuator|jolokia|swagger|openapi|console|telescope|geoserver|v2/_catalog|v3/api-docs|rest/(V[0-9]+|default))(/|;|$)|^/server-status$|/(_profiler|_environment)(/|;|$)" {
-                        return 404;
-                    }
-
-                    location ~* "^/(api/|@vite/|actutor/|manage/|__|_)?env(/|\.|$)" {
-                        return 404;
-                    }
-
-                    location ~* "^/(wp-[^/]*|wordpress|wp|backup|old|new|web|cms|sito|site|admin|administrator)(/|$)" {
-                        return 404;
-                    }
-
-                    location ~* "^/(phpinfo|php-info|pinfo|server-info|server-status|feed|openid_connect|_ignition|sse|mcp|private-key|__debug__|info|health)(/|$)" {
-                        return 404;
-                    }
-
-                    location ~* "^/(setup|install|installer|installation|wizard|admin/setup|api/user|api/v[0-9]+/(user|config|env)|_internal)(/|$)|^/(app/)?config/(packages|routes|services|security)(/|$)" {
-                        return 404;
-                    }
-
-                    # Ops endpoints, debug toolbars, database admin tools and extensionless server files.
-                    # "\.php/" catches a script used as a directory, such as /index.php/admin/.
-                    location ~* "^/(metrics|debug|_debugbar|nginx_status|kubeconfig|graphql|api-docs|horizon|solr|jenkins|manager/html|developmentserver|latest/meta-data|cpanel|phpmyadmin|pma|myadmin|dbadmin|adminer|error_log|php_errorlog|Vagrantfile|Procfile|(v[0-9]+/)?config)(/|\?|$)|^/api$|^/\?|\.php/" {
-                        return 404;
-                    }
-
-                    # SSRF and open-proxy probes - a SPA never implements a server-side fetch proxy
-                    location ~* "^/(fetch|read|redirect|proxy|aws/metadata|api/v1/status/flags|@fs)(/|\?|$)" {
-                        return 404;
-                    }
 
                     # ACME HTTP-01 tokens are base64url - never contain a dot. Matching the token
                     # charset means a probe like acme-challenge/file.php falls through to the
