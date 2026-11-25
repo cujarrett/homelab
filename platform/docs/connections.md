@@ -1,29 +1,23 @@
 # Platform Connections
 
-Kubernetes runs the workloads. Service Mesh decides which calls get through.
+Kubernetes runs the workloads. The Istio service mesh decides which calls get through. It puts a proxy beside every pod, and every call in or out passes that proxy.
 
-Istio puts a proxy beside every pod. Nothing reaches a workload without passing that proxy, and nothing leaves without passing its own.
+By default anything in a cluster can call anything else. Declaring each call means a breach stops at one app, and access is a line in git. A team asks the team it wants to call, not a central queue.
 
-By default anything in the cluster can call anything else, so *can this app call that app* already has an answer and nobody chose it. A few thousand services across a few hundred teams cannot keep that in someone's head. Declaring it means a breach stops at one app, access is provable from a line in git rather than a claim about private networks, and a team asks the team it wants to call instead of a central queue.
-
-Live walkthrough at [connections.mattjarrett.dev](https://connections.mattjarrett.dev).
+Live walkthrough at [connections.mattjarrett.dev](https://connections.mattjarrett.dev). What a team writes is in [App Configuration](./app-configuration.md).
 
 ## Requirements
 
 1. Nothing is reachable without being declared. Same cluster or same namespace grants nothing.
 2. The team that owns an interface decides who may call it.
 3. Third-party egress is declared but not approved. It stays visible and can be shut off centrally.
-4. Every workload has an identity of its own that cannot be forged or shared.
-5. A refused call is legible. The reason is discoverable, never a silent allow.
-6. Apps never see Istio. No Istio kinds, no SPIFFE strings, no Envoy in any workspace file.
-
-What a team writes is in [App Configuration](./app-configuration.md). This is how the mesh enforces it.
+4. Every workload has its own identity that cannot be forged or shared.
+5. A refused call shows why. Nothing is silently allowed.
+6. Apps never see Istio. No Istio kinds, SPIFFE strings or Envoy in any workspace file.
 
 ## What gets rendered
 
-A call passes five checkpoints. Two leaving the caller, two arriving at the callee, one in the app. Miss any and the call dies.
-
-Each app's composition renders its own `Sidecar` and `AuthorizationPolicy` from that app's `consumes` and `provides`. Nothing aggregates across resources, so no controller writes these objects. Admission validation is a separate job and belongs to Kyverno - see [App Configuration → Admission checks](./app-configuration.md#admission-checks). A field that already states a dependency is not asked for twice: a `Spa` naming an `apiProxies` entry, or an `Api` binding a cache, declares nothing further.
+A call passes five gates: two leaving the caller, two arriving at the callee, one in the app. Each app's composition renders its own `Sidecar` and `AuthorizationPolicy` from its `consumes` and `provides`. Kyverno does admission checks, see [App Configuration → Admission checks](./app-configuration.md#admission-checks).
 
 ```mermaid
 flowchart LR
@@ -53,72 +47,71 @@ flowchart LR
     G5 -->|no| D5["401 or 403 from the app"]
 ```
 
-Gates 1 and 2 come from the caller's `consumes`. Gates 3 and 4 come from the callee's `provides`.
+| Gates | Come from |
+|---|---|
+| 1 and 2 | The caller's `consumes` |
+| 3 and 4 | The callee's `provides` |
+| 5 | App code. The mesh never reads the Entra token. The app validates it and decides what `roles` or `scp` permits |
 
-**The token is the app's business.** The mesh proves which workload is calling and refuses the ones that should not reach you, but it never reads the Entra token. Validating it and deciding what a `roles` or `scp` claim permits both happen in app code, which keeps one boundary instead of two. An app that authorizes on a claim needs the claim anyway, so proxy validation would only leave it trusting a header it cannot verify.
+A field that already names a dependency declares it, so there are no double asks. A `Spa` `apiProxies` entry, or an `Api` binding a cache, needs nothing more.
 
-**The symptom tells you the gate.**
+The symptom tells you the gate.
 
 | You see | Gate | Meaning |
 |---|---|---|
-| 502 through nginx | 1 | Destination missing from the caller's `Sidecar` egress, so its own proxy blackholed it |
+| 502 through nginx | 1 | Destination missing from the caller's `Sidecar` egress, so its own proxy dropped it |
 | Timeout to a public host | 2 | No `ServiceEntry`, so the host was never registered |
 | Connection reset | 3 | Caller arrived in plaintext. Unmeshed, or its sidecar never started |
 | RBAC 403 | 4 | Caller reached the callee and was refused by name. Not in `allowedCallers` |
-| 401 or 403 from the app | 5 | The call passed every mesh gate and the app refused the token. Missing, expired, wrong audience, or lacking the role the route wants |
+| 401 or 403 from the app | 5 | Every mesh gate passed and the app refused the token. Missing, expired, wrong audience, or lacking the role |
 
-**Registered is not permitted.** A `ServiceEntry` puts a hostname in the mesh registry so Envoy knows it exists. The `Sidecar` egress entry says *this workload* may send traffic there. `REGISTRY_ONLY` needs both, and the phonebook does not grant permission to dial. That split matters because a `ServiceEntry` is namespace-wide: if registering alone granted reach, every app in the namespace would inherit every host any other app declared.
+Rules worth knowing.
 
-**A policy can only attach to a pod that exists.** Off-platform hosts have no gates 3 and 4, so the caller-side declaration is the only gate they get. Same for shared in-cluster stores that run no policy of their own. A cache or database the platform composed does run one, and only an Api that binds it gets in.
-
-**Two unmeshed exceptions**, both infrastructure with no identity to match on. Prometheus scrapes `/metrics` on the metrics port and reaches no other path there, Traefik forwards ingress to the app port. The Traefik one applies only when a workload sets `host`, and [Known limits](#known-limits) says what it costs.
-
-**Proxied requests must carry the upstream's name as `Host`.** Envoy routes outbound by `:authority`. Forward the browser's hostname and Envoy finds nothing in the registry, then `REGISTRY_ONLY` blackholes it, so the destination never sees a connection. The `Spa` composition sets `Host` to the upstream service and keeps the original as `X-Forwarded-Host`.
-
-**WebSockets are not a gap.** A WebSocket opens as an HTTP/1.1 request with an `Upgrade` header, so it still carries `:authority` for Envoy to route on and gates 1-4 apply exactly as they do to any other HTTP call. Traefik and Cloudflare Tunnel both proxy the upgrade transparently. It only lands in [Complications outside HTTP](#complications-outside-http) if the app drops to raw TCP after the handshake and stops sending a `Host`.
+| Rule | Detail |
+|---|---|
+| Registered is not permitted | A `ServiceEntry` tells Envoy a host exists. The `Sidecar` egress entry lets this workload send there. `REGISTRY_ONLY` needs both. A `ServiceEntry` is namespace-wide, so alone it would open every host to every app in the namespace |
+| Policies attach to pods | Off-platform hosts have no gates 3 and 4. Neither do shared in-cluster stores without their own policy. A cache or database the platform composed has one, and only an Api that binds it gets in |
+| Two unmeshed callers | Prometheus scrapes `/metrics` on the metrics port and nothing else. Traefik forwards ingress to the app port, only when a workload sets `host`. See [Known limits](#known-limits) |
+| Proxied requests send the upstream's name as `Host` | Envoy routes on `:authority`. A browser hostname matches nothing, so `REGISTRY_ONLY` drops it. The `Spa` composition sets `Host` to the upstream and keeps the original as `X-Forwarded-Host` |
+| WebSockets work | They open as HTTP/1.1 with an `Upgrade` header, so gates 1 to 4 apply as usual. An app that drops to raw TCP after the handshake falls under [Complications outside HTTP](#complications-outside-http) |
 
 ## The identity it rests on
 
-Every pod gets a certificate saying who it is, and it cannot be faked. Istio issues each meshed pod an X.509 SVID carrying a SPIFFE URI SAN:
+Istio gives each meshed pod an X.509 certificate (an SVID) with a SPIFFE ID that cannot be faked.
 
 ```
 spiffe://cluster.local/ns/team-b/sa/orders
          └ trust domain   └ namespace └ service account
 ```
 
-That string is the workload's principal, the identity mTLS proves and Entra federates on. It is bound to a private key that never leaves the pod, so holding the name is not enough to claim it, and it is the only identity that survives an attacker already inside the cluster network.
+| Fact | Detail |
+|---|---|
+| The principal | mTLS proves this string. Entra and AWS trust a separate SPIRE identity instead |
+| Private key | Never leaves the pod, so knowing the name is not enough to claim it |
+| One ServiceAccount per workload | Two apps sharing one are the same identity, and grants between them mean nothing |
 
-**Every workload gets its own ServiceAccount.** The moment two apps share one they are the same identity and every grant between them is meaningless.
-
-Entra federates against this same identity, so a pod holds no secret for either system. [Platform Workload Identity](./workload-identity.md) has the rotation and federation detail.
+[Platform Workload Identity](./workload-identity.md) covers rotation and federation.
 
 ## Known limits
 
-The mesh does its own job, not the layer below it or above it. Below is packets, could a hostile pod send this at all, which is not built. Above is the app deciding what a claim permits, and past that whether a person may see a record, which is out of scope rather than pending.
+The mesh controls calls between workloads. It does not control raw packets below it, or what a claim permits above it. Record-level access is out of scope.
 
-**The mesh is governance, not containment.** Istio enforces its rules with iptables rules written inside the pod. Traffic is redirected to Envoy, Envoy applies the policy, and code in that pod is on the same side of the fence as the rules deciding what it may do.
-
-The clearest way past them is to run as UID 1337. Istio skips that UID when redirecting, because it is the UID Envoy itself runs as and redirecting Envoy into Envoy would loop forever. Anything else running as 1337 gets the same free pass, and its packets leave without Envoy ever seeing them.
-
-Stopping that takes a rule the pod cannot reach, enforced at the node end of the pod's virtual cable rather than inside the pod.
-
-**That layer is not built and is not planned.** It needed a CNI that enforces policy by identity and resolves egress rules by hostname, and the cluster runs flannel, which does neither. A compromised pod is out of the threat model here, so the mesh's governance is the boundary. Plain `NetworkPolicy` still works for coarse rules - the WordPress composition uses one to keep a compromised site off the LAN - but it names CIDRs, not hostnames, so it cannot express "this pod may reach one SaaS host and nothing else".
-
-**An app with a `host` is reachable by callers with no mesh identity** whatever its grants. Traefik is unmeshed and presents no identity, so the routed port has to admit it. Meshed apps still need a grant. A `mattjarrett.dev` host reaches the internet, a `local.lab` host the homelab network.
-
-**Nothing tests that an app can reach its backend.** Rendering is checked, behaviour is not. A workload can serve its page, report `2/2`, sync green, and still fail every call to its own API. This has already caused one outage and closing it is the most valuable work left.
-
-**Long-lived apiserver watches do not survive a sidecar.** The proxy severs streaming watch connections, so anything watching the apiserver is outside the design.
-
-**`Api` and `Spa` label pods differently**, `app.kubernetes.io/instance` versus `instance`. A selector copied between them matches nothing and fails silently: the policy renders, ArgoCD reports Synced, enforcement never happens.
-
-**The cost is diagnosis.** A 403, an mTLS reset, and blocked egress all look like "can it reach the IP" at first. The symptom table above is the map for telling them apart.
+| Limit | Detail |
+|---|---|
+| Governance, not containment | Istio enforces with iptables rules inside the pod. Code in that pod sits on the same side as the rules |
+| UID 1337 bypasses Envoy | Istio skips that UID, because Envoy runs as it. Any process running as 1337 sends packets Envoy never sees |
+| No node-level layer | Stopping that needs a CNI that enforces by identity and hostname. The cluster runs flannel, which does neither. This is not planned, because a compromised pod is outside the threat model |
+| `NetworkPolicy` still works for coarse rules | The WordPress composition uses one to keep a site off the LAN. It names CIDRs, not hostnames |
+| A `host` opens the app to unmeshed callers | Traefik has no mesh identity, so the routed port admits it. Meshed callers still need a grant. A `mattjarrett.dev` host reaches the internet. A `local.lab` host reaches the homelab network |
+| Nothing tests that an app reaches its backend | Rendering is checked, behaviour is not. A workload can show `2/2`, sync green, and still fail every call to its API. This has caused one outage. Closing it is the most valuable work left |
+| Long-lived apiserver watches break | The proxy cuts streaming watch connections |
+| `Api` and `Spa` label pods differently | `app.kubernetes.io/instance` versus `instance`. A selector copied between them matches nothing. The policy renders, ArgoCD shows Synced, and nothing is enforced |
+| Diagnosis takes work | A 403, an mTLS reset and blocked egress all look alike at first. Use the symptom table |
 
 ## Complications outside HTTP
 
-**UDP has no gates 3 and 4, because it has no principal to check.** The scheme above reads mTLS off an X.509 SAN and authorization off an HTTP route, both TCP and L7 constructs. Envoy passes UDP through, but there is no `Host` header and nothing for an `AuthorizationPolicy` to match. Reachability collapses back to L3/L4, the layer not built. Syslog, RTP, telemetry collectors, DNS, and QUIC all land here.
-
-**A reverse proxy only carries what it terminates.** Cloudflare Tunnel and Traefik speak HTTP or TCP to the origin, which is why every public hostname here exists. A UDP-only service has no HTTP request to terminate, so it cannot get a hostname at all, and Traefik does not listen on UDP anyway.
+- **UDP has no gates 3 and 4:** mTLS and `AuthorizationPolicy` need TCP and HTTP. Envoy passes UDP through with nothing to match. Syslog, RTP, telemetry collectors, DNS and QUIC all land here.
+- **UDP gets no hostname:** Cloudflare Tunnel and Traefik carry HTTP or TCP only. Traefik does not listen on UDP.
 
 ## Reference
 
@@ -128,8 +121,8 @@ Stopping that takes a rule the pod cannot reach, enforced at the node end of the
 | SPIFFE identity | [identity](https://istio.io/latest/docs/concepts/security/#istio-identity) | the principal string *is* the grant key |
 | PeerAuthentication | [mutual TLS](https://istio.io/latest/docs/concepts/security/#peer-authentication) | STRICT has no dry-run |
 | AuthorizationPolicy | [ref](https://istio.io/latest/docs/reference/config/security/authorization-policy/) | the first ALLOW makes that workload deny-by-default |
-| ServiceEntry | [egress control](https://istio.io/latest/docs/tasks/traffic-management/egress/egress-control/) | registers a host; alone it gates nothing |
-| Sidecar + `REGISTRY_ONLY` | [ref](https://istio.io/latest/docs/reference/config/networking/sidecar/) | this is what makes egress default-deny |
-| NetworkPolicy | [ref](https://kubernetes.io/docs/concepts/services-networking/network-policies/) | CIDR rules only; the kubelet probe needs an ingress rule of its own |
+| ServiceEntry | [egress control](https://istio.io/latest/docs/tasks/traffic-management/egress/egress-control/) | registers a host. Alone it gates nothing |
+| Sidecar + `REGISTRY_ONLY` | [ref](https://istio.io/latest/docs/reference/config/networking/sidecar/) | makes egress default-deny |
+| NetworkPolicy | [ref](https://kubernetes.io/docs/concepts/services-networking/network-policies/) | CIDR rules only. The kubelet probe needs its own ingress rule |
 
-> **Splitting a requirement widens it.** Istio ORs ALLOW policies and rules together, so two rules are two ways in, not two conditions. Anything that must all hold goes in one rule: `from` + `to` + `when`.
+> **Splitting a requirement widens it.** Istio ORs ALLOW policies and rules together, so two rules are two ways in. Anything that must all hold goes in one rule: `from` + `to` + `when`.

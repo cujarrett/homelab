@@ -1,11 +1,11 @@
 # Runbooks
 
-Procedures for changing the cluster without breaking it. Each one is a sequence to follow, not background reading.
+Step-by-step procedures for changing or rescuing the cluster.
 
-| Runbook | When to reach for it |
+| Runbook | Use it to |
 |---|---|
-| [Upgrading k3s](./k3s-upgrade.md) | Moving a node to a new k3s version |
-| [Setting up a node](./node-setup.md) | A freshly flashed node, before it joins the cluster |
-| [Debugging Crossplane](./debugging-crossplane.md) | An XR is not syncing or not going ready |
-| [Kill switches](./kill-switches.md) | A paid service is running up a bill and needs to stop now |
-| [Automerge Stop](../../scripts/automerge-stop/) | A bad dependency update is landing and Renovate must stop merging everywhere |
+| [Upgrading k3s](./k3s-upgrade.md) | Move a node to a new k3s version |
+| [Setting up a node](./node-setup.md) | Prepare a freshly flashed node before it joins |
+| [Debugging Crossplane](./debugging-crossplane.md) | Fix an XR that is not syncing or not ready |
+| [Kill switches](./kill-switches.md) | Stop a paid service that is running up a bill |
+| [Automerge Stop](../../scripts/automerge-stop/) | Stop Renovate merging bad updates in every repo |

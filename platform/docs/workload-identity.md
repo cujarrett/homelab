@@ -1,133 +1,68 @@
 # Platform Workload Identity
 
-A pod proves who it is with a token it did not choose and cannot forge. It trades that token for real credentials in AWS and Entra. Nothing long-lived is stored anywhere. SPIRE issues the identity, and the cluster publishes the keys that verify it. Each cloud trusts exactly one subject per role. Crossplane builds all of it from a single declaration in an app's manifest.
+A pod proves who it is with a token it cannot forge. It trades that token for short-lived credentials in AWS and Entra. No long-lived secret is stored anywhere. Crossplane builds all of it from the app's own manifest.
 
 [Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](../../docs/nothing-novel.md)
 
-Start with [The shape of it](#the-shape-of-it), then read the chapter for the cloud you use.
-
-| Chapter | What it covers |
-|---|---|
-| [The shape of it](#the-shape-of-it) | The five systems and what each one does |
-| [Who verifies what](#who-verifies-what) | The four checks every call passes |
-| [Provisioning](#provisioning) | What one commit creates, and in what order |
-| [Runtime: AWS](#runtime-aws) | How the sidecar turns one token into credentials for many roles |
-| [Runtime: Entra](#runtime-entra) | How the app's own Azure SDK does the exchange |
-| [What the app writes](#what-the-app-writes) | The declaration and the code that reads the credentials |
-| [Operational notes](#operational-notes) | Limits and traps seen in practice |
-| [Choices](#choices) | Why each binding gets its own role, and who creates it |
-| [One-way doors](#one-way-doors) | Decisions that are hard to change later |
-| [Where the detail lives](#where-the-detail-lives) | Related docs |
-
 ## The shape of it
 
-Five systems, each with one job. None of them shares a secret with any other.
+Five systems each do one job. None shares a secret with another.
 
-```mermaid
-%%{init: {'flowchart': {'nodeSpacing': 40, 'rankSpacing': 55}}}%%
-flowchart LR
-    subgraph git["Declaration"]
-        xr["Api XR<br/>objectStorageRefs, provides"]
-    end
-
-    subgraph cp["Control plane"]
-        xp["Crossplane<br/>reconciles to desired state"]
-    end
-
-    subgraph cluster["Cluster"]
-        spire["SPIRE server<br/>trust domain homelab.local"]
-        agent["SPIRE agent + CSI driver<br/>attests, mints SVIDs"]
-        pod["Pod<br/>app + credential sidecar"]
-        oidc["OIDC discovery provider<br/>oidc.mattjarrett.dev"]
-    end
-
-    subgraph clouds["Clouds"]
-        aws["AWS<br/>IAM role, trust policy"]
-        entra["Entra<br/>app registration, federated credential"]
-    end
-
-    xr --> xp
-    xp -->|"creates roles and registrations"| aws
-    xp -->|"creates roles and registrations"| entra
-    xp -->|"renders the pod"| pod
-    spire --> agent
-    agent -->|"SVID over the CSI socket"| pod
-    spire -->|"publishes public keys"| oidc
-    oidc -.->|"fetched to verify signatures"| aws
-    oidc -.->|"fetched to verify signatures"| entra
-    pod -->|"token traded for credentials"| aws
-    pod -->|"token traded for tokens"| entra
-```
-
-**SPIRE** is the identity provider. Its controller manager watches pods and issues an identity to any pod carrying `app: api`, the label the composition sets. The SPIFFE ID is `spiffe://homelab.local/ns/{namespace}/sa/{service-account}`, templated in [cluster/argocd/spire.yaml](../../cluster/argocd/spire.yaml). That URI is the identity, and every downstream trust decision is a literal string match on it.
-
-**The agent** does the attestation. It verifies with the node's own kubelet that the pod requesting a token is genuinely running with the namespace and service account it claims, before signing anything. This is why a stolen manifest is not an identity.
-
-**The [OIDC discovery provider](../../docs/spire-oidc-federation.md)** publishes SPIRE's JWT signing keys at `oidc.mattjarrett.dev`. It accepts no input and issues nothing. Both clouds fetch from it to check a signature themselves, which is why no secret is shared with either.
-
-**[`workload-identity-sidecar`](https://github.com/cujarrett/workload-identity-sidecar)** turns identity into credentials. It fetches SVIDs over the CSI-mounted Workload API socket and writes credential files the app reads. The app never sees a token.
-
-**Crossplane** builds everything above that is not a running process, and keeps it built. Core runs with `--enable-realtime-compositions` so a composed resource going Ready propagates on a watch rather than the 60s poll.
-
----
+| Part | Its job |
+|---|---|
+| SPIRE server | The identity provider. Its controller manager gives an identity to any pod labelled `app: api`, which the composition sets |
+| SPIFFE ID | `spiffe://homelab.local/ns/{namespace}/sa/{service-account}`, templated in [cluster/argocd/spire.yaml](../../cluster/argocd/spire.yaml). Every trust decision is an exact string match on it |
+| SPIRE agent | Asks the node's kubelet whether the pod really runs with the namespace and service account it claims. Only then does it sign. A stolen manifest is not an identity |
+| [OIDC discovery provider](../../docs/spire-oidc-federation.md) | Publishes SPIRE's signing keys at `oidc.mattjarrett.dev`. Both clouds fetch them to check signatures. It takes no input and issues nothing |
+| [`workload-identity-sidecar`](https://github.com/cujarrett/workload-identity-sidecar) | Fetches tokens (SVIDs) over the CSI-mounted Workload API socket. It writes credential files the app reads. The app never sees a token |
+| Crossplane | Builds and keeps everything above that is not a running process |
 
 ## Who verifies what
 
-A call from a pod to an AWS API passes four checks, run by four parties who do not consult each other. Any one of them refusing ends the call.
+A call from a pod to AWS or Entra passes four checks. Four parties run them, and any one can refuse.
 
 | Check | Who runs it | What it catches |
 |---|---|---|
-| Workload attestation | SPIRE agent, against the local kubelet | A process claiming a namespace and service account it is not running under |
-| Signature | AWS or Entra, against the published JWKS | A token not minted by this cluster's SPIRE |
-| `sub` claim, *who sent it* | AWS or Entra, literal match, no wildcards | The right cluster, the wrong pod. A renamed service account is a different identity and loses access rather than silently keeping it |
-| `aud` claim, *what it's for* | AWS or Entra, literal match | A token minted for one exchange being replayed at another |
+| Workload attestation | SPIRE agent, against the local kubelet | A process claiming a namespace and service account it does not run under |
+| Signature | AWS or Entra, against the published keys | A token this cluster's SPIRE did not mint |
+| `sub` claim, *who sent it* | AWS or Entra, exact match, no wildcards | The right cluster, the wrong pod. A renamed service account is a new identity and loses access |
+| `aud` claim, *what it's for* | AWS or Entra, exact match | A token minted for one cloud replayed at another |
 
-`sub` and `aud` both do exact-string matching, but on different questions. `sub` is the sender's identity. A wrong `sub` means the wrong pod entirely. `aud` is which exchange this particular token was minted for. A JWT-SVID for AWS carries `sts.amazonaws.com`, one for Entra carries `api://AzureADTokenExchange`. Same pod holds both, same `sub` on both, but each is only valid at the cloud it names. Without the `aud` check, a token good at AWS could be replayed at Entra.
+One pod holds tokens for both clouds, with the same `sub`.
 
----
+- **AWS token:** `aud` is `sts.amazonaws.com`.
+- **Entra token:** `aud` is `api://AzureADTokenExchange`.
 
 ## Provisioning
 
-One commit produces a role in AWS, a registration in Entra, a Secret in the cluster and a pod that waits for it. Nothing here waits on a value a cloud has to hand back first, so the AWS and Entra chains run in parallel.
+One commit creates everything below. The three groups run in parallel. With Entra, the first Deployment waits for the app's client ID.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Dev as App team
-    participant Argo as ArgoCD
-    participant XP as Crossplane
-    participant AWS
-    participant Entra
-    participant K8s as Cluster
-    participant Pod
+| Where | What gets created |
+|---|---|
+| AWS | An IAM role trusting one SPIFFE ID, with an inline policy for this resource only |
+| Entra | An Application (v2 tokens, stable identifierUri), its service principal, a federated identity credential (issuer, sub, aud), and an app role plus role assignment per caller |
+| Cluster | One binding Secret per declared ref, and a Deployment with the app and the sidecar |
 
-    Dev->>Argo: commit Api XR (refs and roles declared)
-    Argo->>XP: apply XR
-    par AWS chain
-        XP->>AWS: IAM Role, trust pinned to one SPIFFE ID
-        XP->>AWS: inline policy, this resource only
-    and Entra chain
-        XP->>Entra: Application (v2 tokens, stable identifierUri)
-        XP->>Entra: Principal
-        XP->>Entra: FederatedIdentityCredential (issuer, sub, aud)
-        XP->>Entra: AppRole and RoleAssignment per caller
-    and Cluster chain
-        XP->>K8s: binding Secret per declared ref (role ARN, resource metadata, no credentials)
-        XP->>K8s: Deployment with app + sidecar
-    end
-    K8s-->>Pod: Secret synced to volume
-    Pod->>Pod: init container blocks until /bindings/{name}/type exists
-    Note over Pod: sidecar image pulls only after every init container clears
-    Pod->>Pod: sidecar starts, first exchange
-    Pod->>Pod: sidecar's ready check passes once every ManagedSecret has a value
-    Note over Pod: the app container starts only after that check passes
-```
+The pod then starts in this order.
 
-**Crossplane predicts the role ARN.** It is derived from the naming convention, `arn:aws:iam::{account}:role/crossplane/crossplane-{ns}-{xr-name}-{suffix}`, falling back to `xp-{sha256sum[:61]}` past AWS's 64 character limit. Predicting it is what lets the Secret and the trust policy be written in the same pass rather than in two.
+1. The kubelet syncs each binding Secret to a volume.
+2. One init container per binding waits until `/bindings/{name}/type` exists.
+3. The sidecar image pulls and the sidecar does its first exchange.
+4. The sidecar's ready check passes once every ManagedSecret has a value.
+5. The app container starts.
 
-**The Entra GUIDs are derived too.** Entra identifies an app role by GUID and expects the same GUID every reconcile, so the composition hashes `{namespace}/{app}/{role}` into one. `uuidv4` would mint a new value on every render and replace the role each time. Rename the role and the GUID changes with it, which is correct, because a renamed permission is a different permission.
+> **`Init:0/N` means the pod is still provisioning.**
+> N counts one init container per binding, plus Istio's two and the sidecar. On first deploy a pod sits at `Init:0/N` for 60 to 90 seconds, waiting on Crossplane and the clouds.
 
-**Every declared ref gets its own binding Secret**, shaped for the resource type it points at. An `objectStorageRefs` entry gets an S3-flavored one, a `nosqlRef` gets a DynamoDB-flavored one, and so on. An Api with three refs gets three of these. None of them holds credentials, only the role ARN and the metadata the app needs to find the resource. It is useless to anyone without a valid SVID to back it. The S3 shape:
+> **The Entra grant shows red for about 30 seconds.**
+> The role has to copy from the app registration to its service principal. It heals on its own.
+
+Crossplane predicts two values, so nothing waits for them.
+
+- **Role ARN:** `arn:aws:iam::{account}:role/crossplane/crossplane-{ns}-{xr-name}-{suffix}`. Past AWS's 64 character limit it becomes `xp-{sha256sum[:61]}`.
+- **Entra role GUID:** a hash of `{namespace}/{app}/{role}`. Entra expects the same GUID every reconcile. Renaming the role gives a new GUID, because it is a new permission.
+
+**Each declared ref gets its own binding Secret**, shaped for its resource type. It holds the role ARN and the metadata the app needs. It holds no credentials, so it is useless without a valid SVID. The S3 shape:
 
 ```
 type:      s3
@@ -136,76 +71,50 @@ bucket:    platform-{namespace}-{name}
 region:    us-east-1
 ```
 
-**A `managedSecretRefs` entry is the one binding whose value the sidecar fetches**, rather than handing the app credentials to fetch it with. A secret is a value, not a service, so it arrives as files at `/secrets/{name}/{key}` like any other value the platform delivers, and no app carries cloud SDK code to read one. Its binding carries `secret-id`, `region` and `role-arn`, and never a value.
-
-> **`Init:0/N` means the pod is still provisioning**
-> N is one init container per binding. Each polls for the last key written to its binding volume, and regular container images are pulled only after every init container completes. During first provisioning a pod sits at `Init:0/N` for 60 to 90 seconds waiting on Crossplane and the clouds.
-
-**Expect the Entra grant to sit red for around 30 seconds.** The role has to replicate from the app registration to its service principal, and the grant is checked against the service principal. It self heals, and no intervention makes it faster.
-
----
+**A `managedSecretRefs` binding carries `secret-id`, `region` and `role-arn`, never a value.** The sidecar fetches the value and writes it as files at `/secrets/{name}/{key}`. Apps need no cloud SDK code to read a secret.
 
 ## Runtime: AWS
 
-The sidecar fetches one JWT-SVID and presents it to STS once per binding, naming a different role each time. Every 50 minutes it does it again, ahead of the one hour credential expiry. This is what a resource binding gets: credentials the app's own SDK then uses. A `managedSecretRefs` binding takes the same exchange somewhere else, described below.
+The sidecar turns one token into credentials for each AWS binding.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant App as App container
-    participant SC as Credential sidecar
-    participant Agent as SPIRE agent (local)
-    participant STS as AWS STS
+1. It fetches one JWT-SVID with `aud` `sts.amazonaws.com`.
+2. It calls STS `AssumeRoleWithWebIdentity` once per binding, naming a different role each time.
+3. STS checks the signature against the published keys, then matches `sub` and `aud`.
+4. The sidecar writes named profiles to `/aws-credentials/credentials`.
+5. The app's AWS SDK reads the profile named by its `AWS_PROFILE_*` env var.
+6. Every 50 minutes it repeats, ahead of the one hour expiry.
 
-    SC->>Agent: fetch JWT-SVID, aud sts.amazonaws.com
-    Agent-->>SC: JWT-SVID
-    loop once per binding
-        SC->>STS: AssumeRoleWithWebIdentity(token, role ARN)
-        STS->>STS: verify signature against published JWKS, match sub and aud
-        STS-->>SC: 1h credentials
-    end
-    SC->>SC: write named profiles to /aws-credentials/credentials
-    App->>App: AWS SDK reads the profile named by AWS_PROFILE_*
-```
+Facts about that loop.
 
-**One SVID becomes many roles.** The one role per pod limit belongs to the AWS SDK's default credential chain, not to the protocol. Any holder of a valid token may present it to several roles in turn, provided each trust policy accepts that subject. This is the single reason the platform owns a sidecar instead of using stock IRSA. It is also what lets an Api bind object storage, a table and a database at once with each reachable only by the code that asked for it.
-
-**Failure is quiet on purpose.** If a binding's files are not readable yet, or an exchange fails on a throttle or a network blip, the sidecar leaves the previous credentials file untouched, since it is still valid for up to an hour, and retries in 30 seconds rather than crashing.
-
-**A `managedSecretRefs` binding ends in a file.** The exchange above is identical. The sidecar then calls `GetSecretValue`. It writes each property of the value to `/secrets/{name}/{key}`, read-only, and refreshes every 15 minutes on its own clock rather than the 50 above, because it is tracking a value an owner may rotate rather than a credential with a known expiry. Until the owner sets one, it writes nothing and logs why.
-
----
+| Fact | Detail |
+|---|---|
+| One token, many roles | The AWS SDK's default chain allows one role per pod. The protocol does not. This is why the platform runs its own sidecar instead of stock IRSA. Each resource is reachable only by the code that asked for it |
+| Failure is quiet | If an exchange fails, the sidecar keeps the old file, still valid for up to an hour. It retries in 30 seconds |
+| `managedSecretRefs` | The same exchange, then `GetSecretValue`. Each property lands read-only at `/secrets/{name}/{key}`. It refreshes every 15 minutes, since an owner may rotate the value at any time. Until the owner sets a value, it writes nothing and logs why |
 
 ## Runtime: Entra
 
-Entra needs no exchange in the sidecar at all. The sidecar's whole job is keeping one file holding a fresh unexchanged SVID, and the app's own Azure SDK does the swap on demand via `WorkloadIdentityCredential`. That is the credential type Azure's client SDKs ship for exactly this pattern (env vars naming a client ID and a token file, which it reads and exchanges itself). Azure Kubernetes Service sets up that same contract natively for its own workload identity feature, and this platform mimics it closely enough that an app just calls the stock SDK credential with no platform-specific code.
+The sidecar never contacts Entra. It keeps one file holding a fresh token, and the app's Azure SDK does the exchange.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant App as App container (Azure SDK)
-    participant SC as Credential sidecar
-    participant Agent as SPIRE agent (local)
-    participant Entra as Microsoft Entra
+1. Every 240 seconds, ahead of the 5 minute SVID expiry, the sidecar fetches a JWT-SVID with `aud` `api://AzureADTokenExchange`.
+2. It writes the raw token to `/entra-identity/token`.
+3. The app's `WorkloadIdentityCredential` sends that token and `AZURE_CLIENT_ID` to Entra.
+4. Entra matches issuer, subject and audience against the federated credential.
+5. Entra returns an access token carrying the `roles` claim.
 
-    loop every 240s, ahead of the 5m SVID expiry
-        SC->>Agent: fetch JWT-SVID, aud api://AzureADTokenExchange
-        Agent-->>SC: JWT-SVID
-        SC->>SC: write raw token to /entra-identity/token
-    end
-    Note over SC: the sidecar never contacts Entra
-    App->>Entra: client_assertion exchange (token, AZURE_CLIENT_ID)
-    Entra->>Entra: match issuer, subject, audience against the federated credential
-    Entra-->>App: access token carrying the roles claim
-```
+Facts about that flow.
 
-**Two tokens expire on two clocks.** The SVID refreshes every few minutes; the Entra access token it buys lasts about an hour. Cache the access token and refresh it early. Re-running the exchange per request works and is the wrong thing to copy anywhere real.
-
-**The platform stops at the token.** It creates the registration, the principal, the federated credential, the role and the grant, and injects `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_FEDERATED_TOKEN_FILE` and one `ENTRA_SCOPE_<APP>` per declared callee. It does not check the token. The `roles` claim is read by app code, because only the app knows which of its own routes needs which role. This runs after the mesh, in addition to it. See [Platform Connections](./connections.md) for where Entra's gate sits relative to the mesh's.
+| Fact | Detail |
+|---|---|
+| Stock SDK | Azure Kubernetes Service uses the same env vars and token file. Apps call the stock credential with no platform code |
+| Two clocks | The SVID refreshes every few minutes. The Entra access token lasts about an hour. Cache it and refresh it early |
+| Injected env vars | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_FEDERATED_TOKEN_FILE`, and one `ENTRA_SCOPE_<APP>` per declared callee |
+| The app checks the token | The platform creates the registration, principal, federated credential, role and grant. App code reads the `roles` claim, because only the app knows which route needs which role |
+| After the mesh | This check runs in addition to the mesh. See [Platform Connections](./connections.md) |
 
 ## What the app writes
 
-The declaration, in the app's own [Api XR](../api/README.md):
+The declaration lives in the app's own [Api XR](../api/README.md).
 
 ```yaml
 spec:
@@ -219,7 +128,7 @@ spec:
           - { namespace: bar, app: bar-api }
 ```
 
-The AWS consumption, using the profile whose env var name is derived from the ref name:
+AWS code uses the profile named after the ref.
 
 ```go
 cfg, _ := config.LoadDefaultConfig(ctx,
@@ -227,56 +136,54 @@ cfg, _ := config.LoadDefaultConfig(ctx,
 s3Client := s3.NewFromConfig(cfg)
 ```
 
-The Entra consumption needs no platform-specific code at all, because the three injected env vars are the ones the Azure SDK already looks for:
+Entra code needs nothing platform specific. The Azure SDK already reads the injected env vars.
 
 ```go
 cred, _ := azidentity.NewWorkloadIdentityCredential(nil)
 ```
 
-**Static frontends get none of this.** The question is only whether anything server side makes an authenticated call on its own behalf. A client rendered SPA does not, so SPIRE does not match it. Server rendered pages do, on every request. Incrementally regenerated ones (Next.js ISR and similar) still do too. A cache serves most requests, but something server side wakes up periodically to regenerate the page behind that cache, and that regeneration is a real backend call needing real credentials just the same.
+**Static frontends get none of this.** Identity matters only when server code makes an authenticated call for itself.
 
----
+| Frontend | Needs identity | Why |
+|---|---|---|
+| Client-rendered SPA | No | No server call, so SPIRE does not match it |
+| Server-rendered pages | Yes | They call on every request |
+| Incrementally regenerated pages (Next.js ISR) | Yes | A server job rebuilds the cached page |
 
 ## Operational notes
 
-| Concern | What bites |
+| Concern | What to know |
 |---|---|
-| Federated credentials | Entra caps 20 per app registration. Fine at one per workload identity; per-environment variants exhaust it fast |
-| Key rotation | SPIRE publishes both old and new JWT signing keys during overlap. The failure mode is a cloud caching the JWKS past that window, so the CA TTL needs to stay comfortably longer than any consumer's cache |
-| Control plane credentials | Crossplane's own Entra app registration holds a client secret with `Application.ReadWrite.OwnedBy`, rotated by hand in Parameter Store (see [crossplane-entra App Registration](../../cluster/crossplane/azuread-permissions.md)). It is the one static credential in the whole system |
-| Ownership on created objects | An Entra app created through any API, CLI or Crossplane is never auto-owned. Without an explicit `owners` entry the controller can create objects it can never update or delete, which surfaces later as undeletable drift |
-| Token version | Entra mints v1 tokens by default, issued by `sts.windows.net`. An API validating the v2 issuer rejects every one of them and the token looks fine otherwise. Set `requestedAccessTokenVersion: 2` at creation |
-
----
+| Federated credentials | Entra allows 20 per app registration. One per workload is fine. Per-environment variants use them up fast |
+| Key rotation | SPIRE publishes old and new signing keys during overlap. Keep the CA TTL well past any cloud's key cache |
+| Control plane credential | Crossplane's own Entra app registration holds a client secret with `Application.ReadWrite.OwnedBy`. It is rotated by hand in Parameter Store. See [crossplane-entra App Registration](../../cluster/crossplane/azuread-permissions.md). Crossplane's AWS keys and the External Secrets reader key are static too |
+| Owners on Entra objects | An Entra app is never owned by its creator automatically. Without an explicit `owners` entry, the controller can create objects it can never update or delete |
+| Token version | Entra mints v1 tokens by default, issued by `sts.windows.net`. An API checking the v2 issuer rejects them all. Set `requestedAccessTokenVersion: 2` at creation |
 
 ## Choices
 
-> **One role per binding, not a shared role**
-> A shared role means any workload reaching it reaches everything. Per binding roles mean the object storage role cannot touch DynamoDB, and a compromised pod reaches only one resource.
-
-> **Api creates the role, not ObjectStorage or NoSql**
-> The trust policy needs the Api's service account name and namespace. ObjectStorage and NoSql don't know who will consume them, since any Api can reference them.
->
-> **Exception: Sql creates its own IAM roles.** Its binding Secret needs RDS connection details only known after provisioning completes, and Api has no way to read another XR's status. Consuming Apis declare themselves in `consumerServiceAccounts`, and each gets its own role scoped to that service account's exact SPIFFE ID.
-
----
+| Choice | Why |
+|---|---|
+| One role per binding | The object storage role cannot touch DynamoDB. A compromised pod reaches only one resource |
+| Api creates the role | The trust policy needs the Api's service account and namespace. `ObjectStorage` and `NoSql` don't know who will use them |
+| `Sql` creates its own IAM roles | Its binding Secret needs RDS details known only after provisioning, and an Api cannot read another XR's status. Each consuming Api is listed in `consumerServiceAccounts` and gets a role scoped to its exact SPIFFE ID |
 
 ## One-way doors
 
-| Decision | Why it is sticky |
-|---|---|
-| SPIRE trust domain `homelab.local` | Carried in every SVID and every cloud side trust policy. Changing it means rewriting every policy in one window |
-| The issuer URL `https://oidc.mattjarrett.dev` | Carried in the `iss` claim and registered in both clouds. Changing it requires re-registering the provider and updating every trust policy and federated credential simultaneously |
-| Publishing signing keys on the public internet | Once a cloud trusts this issuer, credential refresh depends on that endpoint being reachable |
-| One sidecar per Api, many bindings per sidecar | A sidecar shared across Apis would have to merge IAM permissions across workloads, which ends least privilege |
-| Derived Entra role GUIDs | The GUID is a hash of namespace, app and role name. Changing the derivation renames every role in the tenant at once |
+These are hard to change later.
 
----
+| Decision | Why it is hard to change |
+|---|---|
+| Trust domain `homelab.local` | It is in every SVID and every cloud trust policy. Changing it means rewriting every policy at once |
+| Issuer URL `https://oidc.mattjarrett.dev` | It is in the `iss` claim and registered in both clouds. Changing it means re-registering the provider and every trust policy and federated credential at once |
+| Public signing keys | Once a cloud trusts this issuer, credential refresh needs that endpoint up |
+| One sidecar per Api, many bindings per sidecar | A shared sidecar would merge IAM permissions across workloads |
+| Derived Entra role GUIDs | Changing the hash renames every role in the tenant at once |
 
 ## Where the detail lives
 
 | Doc | What it adds |
 |---|---|
 | [SPIRE OIDC Federation](../../docs/spire-oidc-federation.md) | The discovery endpoint, the Cloudflare `/.well-known` rewrite, and registering a cloud |
-| [Platform Connections](./connections.md) | The mesh gates a call passes before any token is read |
-| [AzureAD Permissions](../../cluster/crossplane/azuread-permissions.md) | Bootstrapping Crossplane's own Entra registration |
+| [Platform Connections](./connections.md) | The mesh checks a call passes before any token is read |
+| [AzureAD Permissions](../../cluster/crossplane/azuread-permissions.md) | Setting up Crossplane's own Entra registration |

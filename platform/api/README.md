@@ -1,51 +1,56 @@
 # Api
 
-Crossplane composition that deploys an API server (Go, Node, GraphQL, etc.) with optional bindings to platform data resources.
+Runs an API server, such as Go, Node or GraphQL. It binds to data resources and declares who it calls and who may call it.
 
 ## What it provisions
-- **Deployment** - runs the API server with init containers that block startup until each binding is ready
-- **Service** - ClusterIP on port 80 → container port (default 8080); separate metrics port (default 9090)
-- **ServiceAccount** - dedicated per-instance SA; pods do not use the namespace default SA
-- **ServiceMonitor** - Prometheus scrape target on the metrics port
-- **Route** *(optional)* - HTTPS on `host`; only created when `host` is set. A public host also gets a rate limit.
-- **Cache** *(optional)* - short-lived cache cluster owned by this Api; created and deleted alongside it
-- **Connection policy** - always. Refuses any call this API makes to a destination it has not declared, and any inbound call whose workload identity is not named in `provides`. Metrics scraping and, when `host` is set, ingress traffic stay reachable - neither carries a workload identity to match on. See [Platform Connections](../docs/connections.md).
-- **Entra identity** *(optional)* - only when an interface sets `auth: workload` or `auth: user`, or this API consumes another app. See [App Configuration](../docs/app-configuration.md).
 
-`ObjectStorage`, `Sql`, and `NoSql` are created independently and bound via refs. They outlive any one Api. For `ObjectStorage` and `NoSql`, this composition creates the IAM Role and binding Secret when the ref is declared - their binding secrets only contain names, region, and ARNs, which Api can compute. For `Sql`, those are created by the Sql composition itself, because its binding secret contains RDS connection details (host, port, username) that are only known after RDS provisioning. The tenant lists consuming Api names in `consumerServiceAccounts` on the Sql - each gets its own IAM role and binding secret scoped to its SA.
+| Resource | When | What |
+|---|---|---|
+| Workload | always | The API server, under its own service account. Startup waits for every binding. |
+| Service | always | Port 80 to the container `port`. Metrics on `metricsPort`, scraped by Prometheus. |
+| Route | `host` is set | HTTPS on `host`. A public host gets a rate limit. |
+| Cache | `cache.enabled` is true | Created and deleted with this Api. |
+| Connection policy | always | Lets through only declared traffic. See [Platform Connections](../docs/connections.md). |
+| Entra identity | an interface sets `auth: workload` or `auth: user`, this API consumes another app, or it sets a `private-cloud` `workflowSpaceRef` | An Entra identity for this Api. See [App Configuration](../docs/app-configuration.md). |
 
-The namespace is owned by the tenant - created by `namespace.yaml` in the tenant directory, not by this composition.
+The connection policy works like this.
+
+- **Outbound:** only destinations in `consumes`.
+- **Inbound:** only workloads named in `provides`.
+- **Metrics scraping and ingress on `host`:** stay open, since they carry no workload identity.
+
+`ObjectStorage`, `Sql` and `NoSql` live on their own and bind by ref. A `public-cloud` `Sql` must also list each consuming Api in its `consumerServiceAccounts`. The tenant's `namespace.yaml` creates the namespace.
 
 ## Parameters
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `image` | yes | - | Container image (`ghcr.io/owner/api:sha-abc123`). CI builds on merge to main and commits the new tag back to trigger sync. |
-| `repo` | no | - | GitHub repository URL for this app's source code. |
-| `port` | no | `8080` | Port the container listens on. Service always exposes port 80 → this targetPort. |
-| `metricsPort` | no | `9090` | Port the container exposes Prometheus metrics on. Set to match `port` if the app serves metrics and traffic on the same port. |
-| `scrapeInterval` | no | `60s` | Prometheus scrape interval. Reduce for apps that emit short-lived state changes. |
-| `replicas` | no | `1` | Number of API replicas. |
+| `image` | yes | - | Container image, such as `ghcr.io/owner/api:sha-abc123`. CI commits a new tag on each merge to main. |
+| `repo` | no | - | GitHub URL of the app's source. |
+| `port` | no | `8080` | Port the container listens on. The Service exposes it on 80. |
+| `metricsPort` | no | `9090` | Prometheus metrics port. Set it to `port` if one port serves both. |
+| `scrapeInterval` | no | `60s` | Metrics scrape interval. Lower it for short-lived state changes. |
+| `replicas` | no | `1` | Number of replicas. |
 | `size` | no | `sm` | Compute tier: `xs=25m/100m CPU, 32Mi/64Mi mem` · `sm=50m/200m CPU, 64Mi/128Mi mem` · `md=100m/500m CPU, 128Mi/256Mi mem` · `lg=250m/1000m CPU, 256Mi/512Mi mem`. |
-| `host` | no | - | Hostname clients call. Must be under `local.lab` for the homelab network or `mattjarrett.dev` for the internet. If omitted, no route is created. |
-| `callsClusterApi` | no | `false` | Set when this API calls the cluster's own control API, for example to watch platform resources. Those long-lived connections then stay direct and unbroken. |
-| `readinessCheckPath` | no | `/healthz` | HTTP path the readiness probe hits. Set to `/readyz` for apps that gate readiness on external dependencies. |
-| `cache.enabled` | no | `false` | Provision a cache cluster owned by this Api. |
+| `host` | no | - | Hostname clients call, under `local.lab` (homelab network) or `mattjarrett.dev` (internet). No route without it. |
+| `callsClusterApi` | no | `false` | Set when this API calls the cluster's own control API, such as to watch platform resources. Keeps those long-lived connections direct. |
+| `readinessCheckPath` | no | `/healthz` | Readiness probe path. Use `/readyz` if readiness depends on outside services. |
+| `cache.enabled` | no | `false` | Create a cache owned by this Api. |
 | `cache.backend` | no | `private-cloud` | `private-cloud`=in-cluster Redis, `public-cloud`=AWS ElastiCache. |
-| `objectStorageRefs` | no | - | Array of references to existing `ObjectStorage` instances. Each creates an IAM Role and binding Secret. |
-| `sqlRef.name` | no | - | Name of an existing `Sql` instance to bind. |
-| `sqlRef.backend` | no | `private-cloud` | Must match the `Sql` instance's backend. When `public-cloud`, the sidecar exchanges the SVID for STS credentials for RDS IAM DB auth. |
-| `nosqlRef.name` | no | - | Name of an existing `NoSql` instance to bind. Creates an IAM Role and binding Secret. |
-| `configFrom` | no | - | ConfigMaps in this namespace, mounted as environment in order, later entries winning. The team owns each, so changing a value never re-reconciles this Api. |
-| `managedSecretRefs` | no | - | Array of references to existing `ManagedSecret` instances. Each creates an IAM Role and binding Secret, and the sidecar writes the value to `/secrets/<ref-name>/<key>`, one file per property. |
-| `topicRef.name` | no | - | Name of an `Topic` this API publishes to. Injects `NATS_URL` and `NATS_STREAM` env vars. |
-| `topicRef.streamName` | no | - | NATS stream name from the Topic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the Topic's streamName differs from its metadata.name. |
-| `subscriptionRef.name` | no | - | Name of an `Subscription` this API consumes from. Injects `NATS_URL` and `NATS_CONSUMER` env vars. |
-| `workflowSpaceRef.name` | no | - | Name of a `WorkflowSpace` in this namespace. Injects `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE` and `TEMPORAL_TOKEN_SCOPE`, grants this API's workload identity the WorkflowSpace's permission, and allows traffic to the workflow service. See [WorkflowSpace](../workflow-space/README.md). |
-| `workflowSpaceRef.backend` | no | `private-cloud` | Must match the `WorkflowSpace`'s `backend`. `public-cloud` injects `TEMPORAL_TLS_CERT` and `TEMPORAL_TLS_KEY` in place of `TEMPORAL_TOKEN_SCOPE`. See [WorkflowSpace → public-cloud](../workflow-space/README.md#public-cloud). |
-| `provides` | no | - | Interfaces this API exposes, and which apps may call each one. Required to accept any call at all. Each entry requires `name`, `auth` and `allowedCallers`; each caller requires `namespace` and `app`. |
-| `provides[].auth` | yes | - | What a caller must prove. `mesh` = its workload identity is enough, no token, no Entra object. Required rather than defaulted, so every interface states it. `workload` = it must also carry an Entra app role, read from the `roles` claim. `user` = it must carry a delegated scope, read from `scp`, which is what on-behalf-of produces. |
-| `consumes` | no | - | Every destination this API calls, including apps in its own namespace. A `Cache` this API creates itself is allowed automatically - do not list it. Each entry sets exactly one of `host` (off-platform DNS name), `address` (a bare IPv4 with no DNS name, such as a device on the LAN), `app` plus `namespace` (on-platform), or `entraApp` (a registration the platform does not own, carrying `appIdUri`, `role`, and `host`). `port` and `protocol` apply to `host` and `address`. |
+| `objectStorageRefs` | no | - | List of `ObjectStorage` instances to bind. |
+| `sqlRef.name` | no | - | `Sql` instance to bind. |
+| `sqlRef.backend` | no | `private-cloud` | Must match the `Sql` backend. `public-cloud` signs in to the database with AWS credentials. |
+| `nosqlRef.name` | no | - | `NoSql` instance to bind. |
+| `configFrom` | no | - | ConfigMaps in this namespace, loaded as env vars in order. Later entries win. |
+| `managedSecretRefs` | no | - | List of `ManagedSecret` instances. Each lands at `/secrets/<ref-name>/<key>`. |
+| `topicRef.name` | no | - | `Topic` this API publishes to. Injects `NATS_URL` and `NATS_STREAM`. |
+| `topicRef.streamName` | no | - | The Topic's `streamName`. Defaults to `topicRef.name` uppercased. Set it when they differ. |
+| `subscriptionRef.name` | no | - | `Subscription` this API consumes from. Injects `NATS_URL` and `NATS_CONSUMER`. |
+| `workflowSpaceRef.name` | no | - | `WorkflowSpace` in this namespace. Grants access and injects `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE` and `TEMPORAL_TOKEN_SCOPE`. See [WorkflowSpace](../workflow-space/README.md). |
+| `workflowSpaceRef.backend` | no | `private-cloud` | Must match the `WorkflowSpace` backend. `public-cloud` injects `TEMPORAL_TLS_CERT` and `TEMPORAL_TLS_KEY` instead of `TEMPORAL_TOKEN_SCOPE`. See [WorkflowSpace → public-cloud](../workflow-space/README.md#public-cloud). |
+| `provides` | no | - | Interfaces this API exposes and who may call each. Without it, no call gets in. Each entry needs `name`, `auth` and `allowedCallers`. Each caller needs `namespace` and `app`. |
+| `provides[].auth` | yes | - | What a caller must prove. `mesh`: workload identity alone, no token. `workload`: an Entra app role in the `roles` claim. `user`: a delegated scope in `scp`, as on-behalf-of produces. |
+| `consumes` | no | - | Every destination this API calls, including its own namespace. Its own `Cache` is allowed automatically. Each entry sets exactly one of `host` (off-platform DNS name), `address` (bare IPv4, such as a LAN device), `app` plus `namespace` (on-platform), or `entraApp` (an outside registration, with `appIdUri`, `role` and `host`). `port` and `protocol` apply to `host` and `address`. |
 
 ## Example
 
@@ -79,152 +84,110 @@ spec:
       - { host: api.example.com }
 ```
 
-Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
+Instance files live in [`homelab-workspaces/`](https://github.com/cujarrett/homelab-workspaces).
 
 ## Being called through a Spa
 
-A [`Spa`](../spa/) can proxy a path prefix to this API, so the browser only ever talks to the SPA's hostname. The Spa declares it with `apiProxies` - a path and this API's in-cluster address - and nothing is set here. Four things follow for this API:
+A [`Spa`](../spa/) can forward a path prefix to this API with `apiProxies`. The browser then only talks to the SPA's hostname. Nothing is set here.
 
-- **No `host` needed.** Skip it and the API gets no route and no hostname. It stays reachable only inside the cluster. Setting `host` anyway leaves it reachable from the ingress controller regardless of `provides`.
-- **The prefix is stripped.** A browser request to `/api/baz` arrives here as `/baz`. Route on the bare path.
-- **Still gated.** Being proxied grants nothing. `provides.allowedCallers` must name the Spa or the call is refused with a 403.
-- **Client details move to headers.** The connecting peer is the Spa, so read `X-Forwarded-For` for the client address, `X-Forwarded-Host` for the hostname the browser used, and `X-Forwarded-Proto` for the scheme.
-
-Streaming responses work unchanged - the proxy is configured for Server-Sent Events, with buffering off and a long read timeout.
+- **No `host` needed.** The API stays inside the cluster. A `host` lets ingress in regardless of `provides`.
+- **The prefix is stripped.** `/api/baz` arrives as `/baz`.
+- **Still gated.** `provides.allowedCallers` must name the Spa, or the call gets a 403.
+- **Client details are in headers.** `X-Forwarded-For` is the client address, `X-Forwarded-Host` the browser's hostname, `X-Forwarded-Proto` the scheme.
+- **Server-Sent Events work.** Buffering is off and the read timeout is long.
 
 ## Configuration
 
-Two ways in, and which one a value takes depends on whether it changes while the pod runs.
+Pick by whether the value changes while the pod runs.
 
-`configFrom` names ConfigMaps, and every key in them becomes an environment variable. Later entries in the list win, so the order is a layering mechanism - a shared base first, an app-specific override after it.
+- **`configFrom`:** for values that never rotate. Each ConfigMap key becomes an env var. List a shared base first and overrides after.
+- **`managedSecretRefs`:** for values that rotate. Files at `/secrets/<name>/<key>` update without a restart. Read the file on each use, or the value goes stale.
 
 ```yaml
 configFrom: [foo-base, foo-overrides]   # foo-overrides wins on any shared key
 ```
 
-`managedSecretRefs` names `ManagedSecret` instances, and each one is mounted as a directory of files, one file per key.
-
-```
-/secrets/<name>/<key>
-```
-
-Read those files where the value is used rather than once at startup. A rotated value lands in the file and the pod does not restart, so a value captured at startup goes stale silently. Put anything that never rotates in a ConfigMap instead, so it arrives as an environment variable and stays one.
-
 ### What the platform injects
 
-On top of what the app declares, the composition sets variables named by its own rules. An AWS profile is `AWS_PROFILE_<KIND>_<REF>`, uppercased with `-` and `.` becoming `_`, so an `objectStorageRefs` entry named `foo-assets` gets `AWS_PROFILE_OBJECT_STORAGE_FOO_ASSETS`. `AWS_PROFILE_CACHE` is the exception, because an Api owns at most one cache. An `ENTRA_SCOPE_<APP>` carries the audience of each app in `consumes`.
+| Variable | Value |
+|---|---|
+| `AWS_PROFILE_<KIND>_<REF>` | One per AWS binding. See [Workload identity credential injection](#workload-identity-credential-injection). |
+| `ENTRA_SCOPE_<APP>` | The token scope for each `app` in `consumes`. An `entraApp` entry uses `ENTRA_SCOPE_<ROLE>`. |
 
-The running pod spec shows every variable and mounted path, so nothing has to be derived by hand:
+Names are uppercased, with `-` and `.` becoming `_`.
+
+The running pod spec lists every variable and mounted path.
 
 ```bash
-k get deploy <app> -n <namespace> -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}{"\n"}{end}'
-k get deploy <app> -n <namespace> -o jsonpath='{range .spec.template.spec.containers[0].volumeMounts[*]}{.mountPath}{"\n"}{end}'
+kubectl get deploy <app> -n <namespace> -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}{"\n"}{end}'
+kubectl get deploy <app> -n <namespace> -o jsonpath='{range .spec.template.spec.containers[0].volumeMounts[*]}{.mountPath}{"\n"}{end}'
 ```
 
 ## Binding secrets
 
-The platform mounts servicebinding.io-compliant Secrets at `/bindings/<binding>/`. Each file in that directory is one key. The app reads file contents at runtime.
+Each binding mounts at `/bindings/<binding>/`, one file per key. A ref named `foo-assets` mounts at `/bindings/object-storage-foo-assets/`.
 
-### `/bindings/object-storage-<ref-name>/`
+| File | `object-storage-<ref>/` | `sql/` | `nosql/` | `cache/` |
+|---|---|---|---|---|
+| `type` | `s3` | `postgresql` | `dynamodb` | `redis` |
+| `provider` | `aws` | `in-cluster` or `aws` | `aws` | `in-cluster` or `aws` |
+| `host` | - | Postgres hostname | - | Cache endpoint hostname |
+| `port` | - | `5432` | - | `6379` |
+| `database` | - | The Sql name. On `public-cloud`, dashes become underscores. | - | - |
+| `username` | - | `app` | - | - |
+| `password` | - | `private-cloud` only | - | - |
+| `bucket` | `platform-{namespace}-{ref-name}` | - | - | - |
+| `table-name` | - | - | DynamoDB table name | - |
+| `region` | `us-east-1` | - | `us-east-1` | - |
+| `role-arn` | IAM role ARN for this bucket and pod | `public-cloud` only | IAM role ARN for this table and pod | `public-cloud` only |
 
-Multiple `objectStorageRefs` each get their own mount, named after the ref. A ref named `foo-assets` mounts at `/bindings/object-storage-foo-assets/`.
+A `role-arn` binding gives the app an AWS profile instead of a password.
 
-| File | Value |
+| Binding | How the app signs in |
 |---|---|
-| `type` | `s3` |
-| `provider` | `aws` |
-| `bucket` | Bucket name (`platform-{namespace}-{ref-name}`) |
-| `region` | `us-east-1` |
-| `role-arn` | IAM role ARN (scoped to this bucket, this pod's SPIFFE ID) |
-
-The composition injects one `AWS_PROFILE_*` env var per object storage ref into the app container. The name is `AWS_PROFILE_<KIND>_<REF>`, so a ref named `foo-assets` gets `AWS_PROFILE_OBJECT_STORAGE_FOO_ASSETS=object-storage-foo-assets`.
-
-```go
-cfg, _ := config.LoadDefaultConfig(ctx,
-    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_OBJECT_STORAGE_FOO_ASSETS")))
-s3Client := s3.NewFromConfig(cfg)
-```
-
-### `/bindings/sql/`
-
-| File | Value | Backend |
-|---|---|---|
-| `type` | `postgresql` | all |
-| `provider` | `in-cluster` or `aws` | all |
-| `host` | Postgres hostname | all |
-| `port` | `5432` | all |
-| `database` | Database name - the Sql name as-is (`private-cloud`) or with dashes replaced by underscores (`public-cloud`) | all |
-| `username` | Database user (`app`) | all |
-| `password` | Database password | `private-cloud` only |
-| `role-arn` | IAM role ARN | `public-cloud` only |
-
-For `public-cloud`, the sidecar writes a `sql` named profile to the credentials file and the composition injects `AWS_PROFILE_SQL_<REF>=sql`. The app uses that profile's STS credentials to call `rds:GenerateDBAuthToken` and uses the resulting short-lived token as the database password.
-
-### `/bindings/nosql/`
-
-| File | Value |
-|---|---|
-| `type` | `dynamodb` |
-| `provider` | `aws` |
-| `table-name` | DynamoDB table name |
-| `region` | `us-east-1` |
-| `role-arn` | IAM role ARN (scoped to this table, this pod's SPIFFE ID) |
-
-The composition injects `AWS_PROFILE_NOSQL_<REF>=nosql` into the app container, so a ref named `foo` gets `AWS_PROFILE_NOSQL_FOO`.
-
-```go
-cfg, _ := config.LoadDefaultConfig(ctx,
-    config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE_NOSQL_FOO")))
-ddbClient := dynamodb.NewFromConfig(cfg)
-```
-
-### `/bindings/cache/`
-
-| File | Value | Backend |
-|---|---|---|
-| `type` | `redis` | all |
-| `provider` | `in-cluster` or `aws` | all |
-| `host` | Cache endpoint hostname | all |
-| `port` | `6379` | all |
-| `role-arn` | IAM role ARN | `public-cloud` only |
-
-For `public-cloud`, the sidecar writes a `cache` named profile to the credentials file and the composition injects `AWS_PROFILE_CACHE=cache`. The app uses those credentials to authenticate to ElastiCache via IAM auth.
+| ObjectStorage, NoSql | Use the profile with the standard AWS SDK. |
+| Sql | Call `rds:GenerateDBAuthToken` with the profile. The short-lived token is the database password. |
+| Cache | Sign in to ElastiCache with IAM auth. |
 
 ## Workload identity credential injection
 
-When any AWS cloud binding is declared, or this Api needs an Entra identity, the composition adds a `workload-identity-sidecar` container running [`workload-identity-sidecar`](https://github.com/cujarrett/workload-identity-sidecar) and a `spiffe-bundle` CSI volume (read-only SPIRE agent socket). What else gets added depends on which is enabled - an Api can declare both, and both run independently in the same sidecar.
+The [`workload-identity-sidecar`](https://github.com/cujarrett/workload-identity-sidecar) joins the pod when this Api has an AWS binding or needs an Entra identity. It reads the SPIRE agent socket through the `spiffe-bundle` volume.
 
-**AWS** (any `objectStorageRefs`, `nosqlRef`, `managedSecretRefs`, or `public-cloud` `sqlRef` cache):
-- The sidecar exchanges the pod's SVID for STS credentials, once per binding, every 50 minutes.
-- An `aws-credentials` emptyDir volume shared between the sidecar and the app container, mounted at `/aws-credentials/credentials`.
-- `AWS_SHARED_CREDENTIALS_FILE=/aws-credentials/credentials` env var in the app container.
-- `AWS_PROFILE_*` env vars for every AWS binding, named `AWS_PROFILE_<KIND>_<REF>` with the ref uppercased and `-` becoming `_`. Cache is the exception at `AWS_PROFILE_CACHE`, because an Api owns at most one and there is no ref name to use.
-- A `managedSecretRefs` entry gets no profile and no env var. The sidecar spends its credentials itself and leaves the value in `/secrets/<ref-name>/<key>`, so the app reads files rather than calling AWS.
+**AWS**, for `objectStorageRefs`, `nosqlRef`, `managedSecretRefs`, or a `public-cloud` `sqlRef` or cache:
 
-**Entra** (an interface sets `auth: workload` or `auth: user`, or this Api consumes another app):
-- The sidecar keeps a raw SPIFFE SVID fresh in an `entra-identity` emptyDir volume, mounted at `/entra-identity/token` - it does not exchange this token itself.
-- `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_FEDERATED_TOKEN_FILE=/entra-identity/token` env vars in the app container. The app's own Azure SDK (`WorkloadIdentityCredential`) reads these and does the exchange on demand - the same contract Azure Kubernetes Service (AKS) uses natively.
-- Egress to `login.microsoftonline.com`, since that is where the exchange happens. Needing an identity is what registers it, so it never goes in `consumes`.
-- A stable identifier, `api://<tenant-id>/platform-<namespace>-<name>`, so a caller can name this Api as an audience without looking up the client ID Entra generated for it. The tenant ID is required by Entra's default tenant policy, not decoration. A v2 token still arrives audienced to the client ID, which the Api already has as `AZURE_CLIENT_ID`.
-- Tokens issued at v2, so their issuer is `login.microsoftonline.com/<tenant>/v2.0` rather than the v1 `sts.windows.net`.
+| Item | Detail |
+|---|---|
+| Exchange | The sidecar trades the pod's SVID for STS credentials per binding, every 50 minutes. |
+| `AWS_SHARED_CREDENTIALS_FILE` | `/aws-credentials/credentials`, shared with the app. |
+| `AWS_PROFILE_<KIND>_<REF>` | One per binding, uppercased with `-` becoming `_`. Cache uses `AWS_PROFILE_CACHE`. |
+| `managedSecretRefs` | No profile. The sidecar writes the value to `/secrets/<ref-name>/<key>`. |
 
-For each interface with `auth: workload` the composition creates an app role and one assignment per allowed caller; `auth: user` creates a delegated scope and a permission grant instead. Validating the token and checking the claim are both the app's job - see [App Configuration → Entra](../docs/app-configuration.md#entra).
+**Entra**, when an interface sets `auth: workload` or `auth: user`, this Api consumes another app, or it sets a `private-cloud` `workflowSpaceRef`:
 
-For the full workload identity design: [Platform Workload Identity](../docs/workload-identity.md)
+| Item | Detail |
+|---|---|
+| `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_FEDERATED_TOKEN_FILE=/entra-identity/token` | The Azure SDK's `WorkloadIdentityCredential` reads these and exchanges on demand, as on AKS. The sidecar keeps the token file fresh. |
+| Egress | `login.microsoftonline.com` opens automatically. Never list it in `consumes`. |
+| Audience | `api://<tenant-id>/platform-<namespace>-<name>`, so callers need no client ID lookup. A v2 token still carries `AZURE_CLIENT_ID` as its audience. |
+| Issuer | `login.microsoftonline.com/<tenant>/v2.0`. |
+
+`auth: workload` creates an app role per interface, assigned to each allowed caller. `auth: user` creates a delegated scope and grant. The app validates the token and the claim. See [App Configuration → Entra](../docs/app-configuration.md#entra).
+
+Full design: [Platform Workload Identity](../docs/workload-identity.md).
 
 ## Operations
 
 ```bash
-# XR status - SYNCED=composition ran, READY=all children healthy
+# XR status. SYNCED=composition ran, READY=all children healthy
 kubectl get apis.platform.local.lab foo -n foo
 
-# Detailed conditions - shows exactly WHY something is not ready
+# Detailed conditions, showing why something is not ready
 kubectl get apis.platform.local.lab foo -n foo -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
-# Pod status - init containers block startup until each binding Secret is ready
+# Pod status. Init containers block startup until each binding Secret is ready
 kubectl get pods -n foo
 
-# Binding secret - confirm all keys are present
+# Binding secret, to confirm every key is present
 # Object storage secrets are named <api-name>-<ref-name>; nosql is <api-name>-nosql
 kubectl get secret foo-foo-assets -n foo \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'

@@ -1,8 +1,6 @@
 # cluster/
 
-Everything here is managed by ArgoCD. The bootstrap app-of-apps recurses `cluster/argocd/` on startup and discovers all Application manifests automatically.
-
-## Structure
+ArgoCD manages everything here. The bootstrap app-of-apps applies every Application manifest in `cluster/argocd/`, without recursing.
 
 ```
 cluster/
@@ -10,15 +8,17 @@ cluster/
   <app>/        ← Raw manifests for apps that need them. Not every app has one.
 ```
 
-An app whose whole Application is a name, a path and a namespace is a row in
-[cluster-apps.yaml](argocd/cluster-apps.yaml) rather than a file of its own. An app that needs a
-Helm chart, a second source or its own `ignoreDifferences` gets a hand-written Application.
+## Which file an app gets
+
+| The app needs | It gets |
+|---|---|
+| Name, path and namespace only | A row in [cluster-apps.yaml](argocd/cluster-apps.yaml), with no file of its own |
+| A Helm chart, a second source or its own `ignoreDifferences` | A hand-written Application in `cluster/argocd/` |
+| Pure Helm with no extra manifests | Only its Application file. No subfolder |
 
 ## When does an app get a subfolder?
 
-An app gets a subfolder under `cluster/` when it needs **raw Kubernetes manifests** that can't be expressed in Helm values alone - things like `Certificate`, `ServiceMonitor`, `Ingress`, or custom `ConfigMap` resources.
-
-Those apps use ArgoCD's multi-source feature, pointing at both the Helm chart and the subfolder:
+An app gets a subfolder when it needs raw Kubernetes manifests that Helm values can't express, such as a `Certificate`, `ServiceMonitor`, `Ingress` or custom `ConfigMap`. Its Application uses ArgoCD multi-source to point at both the chart and the subfolder.
 
 ```yaml
 sources:
@@ -27,5 +27,3 @@ sources:
   - repoURL: https://github.com/cujarrett/homelab.git
     path: cluster/<app>       # raw manifests go here
 ```
-
-If an app is **pure Helm with no extra manifests**, it only needs its Application file in `cluster/argocd/`. No subfolder.

@@ -1,56 +1,58 @@
-# kiosk.sh
+# Kiosk
 
-Runs a fullscreen Chromium kiosk on `ctrl-1`'s attached 1U display, showing the Grafana playlist.
+[kiosk.sh](./kiosk.sh) runs fullscreen Chromium on `ctrl-1`'s 1U display, showing the Grafana playlist.
 
-## What it does
-
-1. Disables screensaver and display power management (`xset`)
-2. Hides the mouse cursor after 1 second of inactivity (`unclutter`)
-3. Waits for Grafana to be healthy before launching
-4. Launches Chromium in kiosk mode pointing at the playlist
-5. Restarts Chromium automatically if it crashes (`while true` loop)
-6. Restarts Chromium every 24 hours (`timeout 24h`), so a crashed page ("Aw, Snap!") recovers
+| Part | What the script does |
+|---|---|
+| Screen | `xset` turns off the screensaver and display power saving |
+| Cursor | `unclutter` hides it after 1 second idle |
+| Start | Waits for Grafana to be healthy, then opens the playlist |
+| Crash | A `while true` loop relaunches Chromium |
+| Daily | `timeout 24h` restarts Chromium, so an "Aw, Snap!" page recovers |
 
 ## Display
 
-GeeekPi 6.91" 1U rack-mount LCD, mounted in the DeskPi RackMate and driven from `ctrl-1` over micro-HDMI.
+GeeekPi 6.91" 1U rack-mount LCD in the DeskPi RackMate, driven from `ctrl-1` over micro-HDMI.
 
-- Resolution: 1424×280 native
-- URL: `https://grafana.local.lab/playlists/play/adc6g24?kiosk`
-- Memory-constrained flags: `--max-old-space-size=64`, `--renderer-process-limit=1`
+| Setting | Value |
+|---|---|
+| Resolution | 1424×280 native |
+| URL | `https://grafana.local.lab/playlists/play/adc6g24?kiosk` |
+| Memory flags | `--max-old-space-size=64`, `--renderer-process-limit=1` |
 
-Confirm the touch state at any time:
+Check the touch state. It lists only root hubs while the touch lead is unplugged.
 
 ```bash
-# Lists only root hubs while the touch lead is unplugged
 ssh pi@192.168.10.100 "lsusb && DISPLAY=:0 xinput list"
 ```
 
 ## Restart the kiosk display on ctrl-1
 
+This restarts the tty1 session. Autologin then runs `startx`, then `kiosk.sh`, which loads the URL from the file.
+
 ```bash
 ssh pi@192.168.10.100 "sudo systemctl restart getty@tty1.service"
 ```
 
-This restarts the tty1 session, which runs autologin → `startx` → `kiosk.sh` and relaunches Chromium with the URL in `kiosk.sh`. Do not `pkill chromium`. The `while true` loop in `kiosk.sh` relaunches it with the old URL still in memory.
+Do not `pkill chromium`. The `while true` loop relaunches it with the old URL still in memory.
 
 ## How to update the URL without rebooting
+
+Edit the script, then restart the display as above.
 
 ```bash
 ssh pi@192.168.10.100 "sed -i 's|OLD_URL|NEW_URL|' ~/kiosk.sh"
 ```
 
-Then restart the display with the command above.
-
 ## Check the display remotely
 
-Take a screenshot (`scrot` is installed on `ctrl-1`):
+Take a screenshot with `scrot`, which is installed on `ctrl-1`.
 
 ```bash
 ssh pi@192.168.10.100 "DISPLAY=:0 scrot /tmp/kiosk.png" && scp pi@192.168.10.100:/tmp/kiosk.png /tmp/kiosk.png && open /tmp/kiosk.png
 ```
 
-Check the session and processes:
+Check the session and processes.
 
 ```bash
 ssh pi@192.168.10.100 "journalctl -u getty@tty1 -n 30 --no-pager && ps aux | grep -E 'chromium|kiosk|Xorg' | grep -v grep"
@@ -65,7 +67,7 @@ scp docs/kiosk/kiosk.sh pi@192.168.10.100:~/kiosk.sh
 ssh pi@192.168.10.100 "chmod +x ~/kiosk.sh"
 ```
 
-Then run the rest on `ctrl-1`. The Xorg file forces the HDMI DRM device and sets the real panel size, because the EDID reports 432x243mm and Chromium miscalculates the viewport.
+Run the rest on `ctrl-1`. The Xorg file forces the HDMI DRM device and sets the real panel size. The EDID reports 432x243mm, and Chromium gets the viewport wrong with it.
 
 ```bash
 sudo apt install -y --no-install-recommends xserver-xorg x11-xserver-utils xinit chromium unclutter

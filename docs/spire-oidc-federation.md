@@ -1,51 +1,37 @@
 # SPIRE OIDC Federation
 
-SPIRE publishes its JWT-SVID signing keys on the public internet so cloud providers can
-verify tokens minted in this cluster. A pod's SPIFFE ID becomes something AWS or Entra will
-trade for real credentials, with no shared secret anywhere.
+SPIRE publishes its JWT signing keys on the public internet. AWS and Entra use them to verify tokens minted in this cluster. A pod's SPIFFE ID then trades for real cloud credentials, with no shared secret.
 
-[Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](./nothing-novel.md)
+See [Nothing Novel](./nothing-novel.md) for the public patterns behind this.
 
 ## The endpoint
 
-The `spiffe-oidc-discovery-provider` subchart, enabled in
-[cluster/argocd/spire.yaml](../cluster/argocd/spire.yaml), serves two documents. Both are
-public by necessity: a cloud can only verify a token if it can fetch the signing key.
+The `spiffe-oidc-discovery-provider` subchart serves two public documents. It is enabled in [cluster/argocd/spire.yaml](../cluster/argocd/spire.yaml). A cloud can verify a token only if it can fetch the signing key.
 
 | URL | What it serves |
 |---|---|
-| `https://oidc.mattjarrett.dev/.well-known/openid-configuration` | Discovery document - names the issuer and where the keys live |
-| `https://oidc.mattjarrett.dev/.well-known/keys` | JWKS - the public half of SPIRE's JWT signing key |
+| `https://oidc.mattjarrett.dev/.well-known/openid-configuration` | The discovery document. It names the issuer and where the keys live |
+| `https://oidc.mattjarrett.dev/.well-known/keys` | The JWKS, the public half of SPIRE's JWT signing key |
 
-Neither accepts input and neither issues anything. Holding a key from here proves nothing;
-a caller still needs a JWT-SVID signed by SPIRE, which requires being a pod SPIRE attested.
+Neither accepts input or issues anything. A caller still needs a JWT-SVID signed by SPIRE, and only pods SPIRE attested get one.
 
-**The issuer is set once, globally.** `global.spire.jwtIssuer` sets both the `iss` claim
-that `spire-server` mints into tokens and the issuer the discovery document advertises.
-Setting it on the subchart alone changes only the document, and every cloud rejects the
-resulting tokens because `iss` does not match what it registered.
+**Set the issuer once, with `global.spire.jwtIssuer`.** It sets both the `iss` claim in tokens and the issuer in the discovery document. Setting it on the subchart alone changes only the document. Every cloud then rejects the tokens, because `iss` no longer matches what it registered.
 
 ## The /.well-known rewrite
 
-Cloudflare's bot protection returns 403 to datacenter callers on this zone, so AWS and
-Entra cannot fetch anything here. Requests under `/.well-known/` are let through, so the
-JWKS is published there and rewritten back to the provider's real `/keys` path by the
-HTTPRoute in [cluster/spire/oidc-jwks-ingress.yaml](../cluster/spire/oidc-jwks-ingress.yaml).
-`config.jwksUri` points the discovery document at the rewritten URL.
+Cloudflare's bot protection returns 403 to datacenter callers on this zone, so AWS and Entra can't fetch from it. Requests under `/.well-known/` get through.
 
-The signature of this failing is specific: the origin log shows the cloud fetching
-`/.well-known/openid-configuration` and returning 200, then never requesting the keys at
-all, and the cloud reports that it could not retrieve a verification key.
+- The JWKS is published at `/.well-known/keys`.
+- The HTTPRoute in [cluster/spire/oidc-jwks-ingress.yaml](../cluster/spire/oidc-jwks-ingress.yaml) rewrites it to the provider's real `/keys` path.
+- `config.jwksUri` points the discovery document at the rewritten URL.
+- Bot Fight Mode stays on, because it is zone-wide and guards the two WordPress sites.
+- Cloudflare does not document the `/.well-known/` pass-through. It is observed behaviour.
 
-> **Choice: rewrite the path, not disable bot protection**
-> Turning off Bot Fight Mode fixes it in one click, but it is zone-wide and this zone also
-> carries two WordPress sites, which are the things here actually worth attacking. The
-> rewrite is fifteen lines and touches nothing else. The tradeoff is that Cloudflare's
-> `/.well-known/` pass-through is observed behavior rather than a documented guarantee.
+When this breaks, the origin log shows the cloud fetch `/.well-known/openid-configuration` with a 200, then never request the keys. The cloud reports it could not retrieve a verification key.
 
 ## Federating a cloud
 
-Register the issuer, then write a trust policy pinned to one exact SPIFFE ID.
+Register the issuer, then write a trust policy pinned to one exact SPIFFE ID. AWS derives the thumbprint itself.
 
 ```bash
 aws iam create-open-id-connect-provider \
@@ -53,8 +39,7 @@ aws iam create-open-id-connect-provider \
   --client-id-list sts.amazonaws.com
 ```
 
-The thumbprint is derived automatically. The trust policy conditions on the SPIFFE ID as
-`sub` and the registered client ID as `aud`:
+The trust policy matches the SPIFFE ID as `sub` and the registered client ID as `aud`.
 
 ```json
 "Condition": {
@@ -65,18 +50,13 @@ The thumbprint is derived automatically. The trust policy conditions on the SPIF
 }
 ```
 
-Entra works the same way, matching issuer, subject, and an audience of
-`api://AzureADTokenExchange`, with a limit of 20 federated credentials per app registration.
+Entra matches issuer, subject and the audience `api://AzureADTokenExchange`. It allows 20 federated credentials per app registration.
 
-**Tokens are cached by the agent.** A JWT-SVID is cached per audience for most of its
-hour-long life, so a configuration change does not show up in the next fetch. Use a
-throwaway audience value to force a fresh mint when verifying.
+**The agent caches tokens.** It keeps a JWT-SVID per audience for most of its one-hour life, so a config change won't show in the next fetch. Use a throwaway audience to force a fresh token when verifying.
 
 ## Verifying end to end
 
-Run a pod labelled `app: api` with the SPIFFE CSI volume mounted, fetch a token, and trade
-it for credentials. Success returns `SubjectFromWebIdentityToken` equal to the pod's
-SPIFFE ID.
+Run a pod labelled `app: api` with the SPIFFE CSI volume mounted. Fetch a token and trade it for credentials. Success returns `SubjectFromWebIdentityToken` equal to the pod's SPIFFE ID.
 
 ```bash
 kubectl exec -n default oidc-test -- /opt/spire/bin/spire-agent api fetch jwt \
@@ -88,7 +68,9 @@ aws sts assume-role-with-web-identity \
 
 ## One-way doors
 
-| Decision | Why it's sticky |
+These choices are hard to undo.
+
+| Decision | Why it is hard to undo |
 |---|---|
-| The issuer URL `https://oidc.mattjarrett.dev` | Baked into the `iss` claim of every token and into every cloud-side trust policy. Changing it requires re-registering the provider in each cloud and updating every trust policy at the same time. |
-| Publishing signing keys on the public internet | Once a cloud trusts this issuer, credential refresh depends on the endpoint being reachable. An outage does not break running pods, but it does break every refresh until it returns. |
+| Issuer URL `https://oidc.mattjarrett.dev` | It is in every token's `iss` claim and every cloud trust policy. Changing it means re-registering the provider in each cloud and updating every trust policy at once |
+| Public signing keys | Once a cloud trusts this issuer, credential refresh needs the endpoint. An outage leaves running pods alone, but every refresh fails until it returns |

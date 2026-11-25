@@ -1,63 +1,41 @@
 # Platform Graph
 
-Every team ships its own small GraphQL API. A router joins them into one API that clients see as a single schema, and the platform makes joining one YAML file.
+Every team ships its own small GraphQL API. A router joins them into one API, and clients see one schema. Joining takes one YAML file.
 
 [Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](../../docs/nothing-novel.md)
 
 ## How a change moves
 
-`test` and `prod` are two fixed variants, one per environment. Nobody creates variants and nobody publishes a schema.
+`test` and `prod` are two fixed variants. Each lives in its own namespace, `graph-test` or `graph-prod`, with its router and subgraphs. Both routers are LAN and Tailscale only. Nobody publishes a schema by hand.
 
-1. A PR changes `schema.graphql` beside the resolvers. CI checks it against `test`, CODEOWNERS requests the platform team, branch protection requires both.
-2. Merge to main builds the image with signed build provenance. Kargo sees it and writes its digest into `graph-test/<subgraph>.yaml` in `homelab-workspaces`.
-3. ArgoCD syncs, Kyverno checks the image's provenance, Crossplane renders the subgraph. The Apollo operator for test reads the schema from that image and publishes it to `test`. GraphOS composes, and the router reloads.
+1. A PR changes `schema.graphql` beside the resolvers. CI runs `rover subgraph check` against `test`. CODEOWNERS requests the platform team. Branch protection requires the check.
+2. Merge to main builds the ARM64 image with signed build provenance. Kargo sees it and writes its digest into `graph-test/<subgraph>.yaml` in `homelab-workspaces`.
+3. ArgoCD syncs. Kyverno checks the image's provenance. Crossplane renders the subgraph. The test Apollo operator reads the schema from that image and publishes it to `test`. GraphOS composes, and the router reloads.
 4. Kargo checks both schemas against `prod` and queries the test router. A person clicks Promote, and Kargo writes the digests into `graph-prod/<subgraph>.yaml`.
 5. Prod repeats step 3 with its own Apollo operator and key. Rollback is promoting an older Freight in Kargo.
 
-## Index
+Facts about that flow.
 
-Start with [Design](#design), then [What a team writes](#what-a-team-writes) and [The lifecycle](#the-lifecycle).
-
-| Chapter | What's in it |
+| Topic | Detail |
 |---|---|
-| [How a change moves](#how-a-change-moves) | the five steps from a PR to prod |
-| [Goals](#goals) | what this is for |
-| [Federation in five minutes](#federation-in-five-minutes) | the whole concept, no prior GraphQL needed |
-| [Design](#design) | the philosophy, then the four layers that implement it |
-| [Decisions](#decisions) | the three choices that shape schema management |
-| [The offerings](#the-offerings) | the two platform Kinds |
-| [What a team writes](#what-a-team-writes) | one `GraphApi` file |
-| [What gets rendered](#what-gets-rendered) | each platform Kind mapped onto the objects it becomes |
-| [Topology](#topology) | where everything runs |
-| [The lifecycle](#the-lifecycle) | a schema change from a laptop to prod |
-| [Promoting in Kargo](#promoting-in-kargo) | reading a stage card, and the fix for each failed check |
-| [PR environments](#pr-environments) | a router per open PR, serving test plus the PR |
-| [Protecting the graph](#protecting-the-graph) | one control per threat |
-| [What a request costs](#what-a-request-costs) | why the bill stays at zero |
-| [The demo](#the-demo) | the chain animated, then real queries, at `graph.mattjarrett.dev` |
-| [Foundations to install](#foundations-to-install) | everything before the first subgraph |
-| [Known limits](#known-limits) | the deviations and the holes |
-| [TODO](#todo) | what waits until the first scope works |
-| [Reference](#reference) | one link per concept |
-
-## Goals
-
-- Learn how a Fortune 100 platform team runs federated GraphQL, on a homelab.
-- Show how a supergraph takes schema changes from N subgraphs safely. Two here, the same for two hundred.
-- A platform `GraphApi` Kind that provisions a subgraph.
-- Nobody publishes a schema by hand.
-- KRM all the way down, grug simple, [nothing novel](../../docs/nothing-novel.md).
+| Local development | `rover dev --graph-ref storefront-homelab@test` composes your laptop's subgraph with everything test already publishes |
+| The check | Composes the proposed schema against every other subgraph in the variant. A change to a `@key` another team extends fails on your PR, not theirs |
+| Operation checks | Compare against operations the variant saw in the last 7 days (Developer plan) |
+| A composition failure | The router keeps serving its last good supergraph. The error shows on the `SupergraphSchema` status |
+| CI | Never publishes a schema, never touches the cluster, never writes to `homelab-workspaces`. Kargo moves every digest |
 
 ## Federation in five minutes
 
-A GraphQL API publishes a **schema**, a typed description of everything it can answer. Federation is the case where several teams each own part of one product's schema, and clients should not have to know that.
+A GraphQL API publishes a **schema**, a typed list of everything it can answer. Federation lets several teams each own part of one schema, without clients knowing.
 
-- **Subgraph**: one team's service and its schema.
-- **Composition**: merging every subgraph schema into one **supergraph schema**. It fails loudly if two subgraphs disagree, which is the safety property.
-- **Router**: the one endpoint clients call. It splits a query into a **query plan**, calls the subgraphs it needs, and stitches one response.
-- **Variant**: one environment of a graph in GraphOS, written `storefront-homelab@test`.
+| Term | Meaning |
+|---|---|
+| Subgraph | One team's service and its schema |
+| Composition | Merging every subgraph schema into one **supergraph schema**. It fails loudly if two subgraphs disagree |
+| Router | The one endpoint clients call. It plans the query, calls the subgraphs it needs, and joins one response |
+| Variant | One environment of a graph in GraphOS, written `storefront-homelab@test` |
 
-Subgraphs link through an **entity**, a type split across services and joined on a key:
+Subgraphs link through an **entity**, a type split across services and joined on a key.
 
 ```graphql
 # records subgraph, owns the type
@@ -74,81 +52,56 @@ type Record @key(fields: "id") {
 }
 ```
 
-A client asks for `title` and `reviews` in one query. The router calls both services and neither service knows the other exists.
+A client asks for `title` and `reviews` in one query. The router calls both services. Neither service knows the other exists.
 
 ## Design
 
-The schema is an agreement between a service and the composer. It lives with the code that serves it, ships inside the image, and reaches the registry only from the image a pod was deployed with. Nobody publishes it by hand.
+The schema lives with the code that serves it and ships inside the image. It reaches the registry only from the image a pod runs. Everything else follows from that rule.
 
-Everything else follows from that one rule.
-
-| Layer | Owns | Writes |
+| Layer | Owns | Does |
 |---|---|---|
-| A team | the schema and the resolvers | one `GraphApi` file, twelve lines |
-| Crossplane | the conventions | the Apollo `Subgraph`, the workload, the mesh policy, the labels |
-| The Apollo operator | the registry and the router | reads `/schema.graphql` from the deployed image, publishes it, reloads the router |
-| GraphOS | composition | refuses two subgraphs that disagree, keeps history, checks a change against real traffic |
-
-```mermaid
-flowchart LR
-    T["team<br/>schema.graphql + resolvers"] -->|PR| CI["CI<br/>check, sign, write digest"]
-    CI -->|digest in git| A["ArgoCD"]
-    A --> X["Crossplane<br/>GraphApi → Subgraph CR + Api XR"]
-    X --> P["pod<br/>/schema.graphql inside"]
-    P --> O["Apollo operator<br/>reads, publishes"]
-    O --> G["GraphOS<br/>composes"]
-    G --> R["router<br/>serves the supergraph"]
-```
-
+| A team | The schema and resolvers | Writes one `GraphApi` file |
+| Crossplane | The conventions | Writes the Apollo `Subgraph`, the workload, the mesh policy and the labels |
+| The Apollo operator | The registry and the router | Reads `/schema.graphql` from the deployed image, publishes it, reloads the router |
+| GraphOS | Composition | Refuses subgraphs that disagree, keeps history, checks changes against real traffic |
 
 ## Decisions
 
-Three decisions that shape schema management. Everything else here is a house rule stated where it applies.
-
-| # | Decision | This build |
-|---|---|---|
-| 1 | [Where the schema file lives](#1-where-the-schema-file-lives) | with the service |
-| 2 | [How the schema reaches the registry](#2-how-the-schema-reaches-the-registry) | Apollo operator reads it from the deployed image |
-| 3 | [Governance of schema changes](#3-governance-of-schema-changes) | checks plus code owners |
+Three decisions shape schema management.
 
 ### 1. Where the schema file lives
 
-| Option | For | Against |
-|---|---|---|
-| **a. With the service** (picked) | one commit moves schema and resolvers, so they cannot drift. Teams own their part | review quality depends on branch protection in every repo |
-| b. Central schema repo owned by the graph team | one review venue | schema and resolvers drift. Every change is two PRs with an order that matters |
-| c. In the registry only | no files to manage | no git history, no review, nothing ties it to running code |
-
-The graph team still sees every change. CODEOWNERS on `schema.graphql` puts them on every schema PR in every repo, and GitHub gives them one review queue. See [The lifecycle](#the-lifecycle).
-
-The drift in b is concrete. The schema publishes before the deploy lands and a client's query for the new field returns an error. Or the deploy lands first and a resolver serves a field the registry never advertised. Nothing detects either.
+| Aspect | Detail |
+|---|---|
+| Picked | With the service. One commit moves schema and resolvers, so they cannot drift |
+| Review | CODEOWNERS on `schema.graphql` puts the graph team on every schema PR in every repo |
+| Cost | Review quality depends on branch protection in every repo |
 
 ### 2. How the schema reaches the registry
 
-| Option | For | Against |
-|---|---|---|
-| **a. Apollo operator reads it from the deployed image** (picked) | publish follows deploy, so the registry never advertises a field nobody serves. Apollo maintains the router Deployment | needs a paid plan, and the operator's Kinds are still alpha |
-| b. CI publishes with `rover subgraph publish` | works for subgraphs outside Kubernetes | publish and deploy can drift, and CI holds a key that can rewrite the graph |
-| c. A person runs `rover subgraph publish` | nothing to build | no review, no CI, no tie to the code that serves it, and that person holds Contributor |
-
-Operator 1.4.0 and the router both ship `linux/arm64` images.
+| Aspect | Detail |
+|---|---|
+| Picked | The Apollo operator reads it from the deployed image. The registry never advertises a field nobody serves |
+| Bonus | Apollo maintains the router Deployment |
+| Cost | Needs a paid plan, and the operator's Kinds are still alpha |
+| Platform | The operator ships a `linux/arm64` image. The router runs a rebuild of Apollo's image, because Apollo's aborts on the Pi's 16K-page kernel |
 
 ### 3. Governance of schema changes
 
-| Option | For | Against |
-|---|---|---|
-| **a. Checks plus code owners** (picked) | cheap, and review happens where the code already is | the graph team sees changes only where it is a code owner |
-| b. Schema proposals for shared types | design agreed before code exists | Standard plan, and a process that pays off only with many teams |
-| c. Linting in checks | machines settle naming and style | covers naming and style only |
+| Aspect | Detail |
+|---|---|
+| Picked | Checks plus code owners. Review happens where the code already is |
+| Cost | The graph team sees changes only where it is a code owner |
+| Later | Schema proposals and linting. See [TODO](#todo) |
 
 ## The offerings
 
-Two platform Kinds in `platform.local.lab`, both namespaced like every other platform Kind. Teams never apply an `apollographql.com` Kind directly, because the `workloads` AppProject allows `platform.local.lab` kinds and a few core objects, and no Apollo Kinds.
+Two platform Kinds in `platform.local.lab`. Teams never apply an `apollographql.com` Kind. The `workloads` AppProject does not allow them.
 
 | Kind | Who creates it | What it means |
 |---|---|---|
-| `GraphApi` | a team | "run this image as a subgraph of that graph" |
-| `FederatedGraph` | the platform team, one per environment | "here is the endpoint clients call" |
+| `GraphApi` | A team | "Run this image as a subgraph of that graph" |
+| `FederatedGraph` | The platform team, one per environment | "Here is the endpoint clients call" |
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
@@ -163,7 +116,7 @@ spec:
     replicas: 1
 ```
 
-It lists no subgraphs, so a team joins by merging its own file, never by editing the platform team's.
+It lists no subgraphs. A team joins by merging its own file, never by editing the platform team's.
 
 ## What a team writes
 
@@ -176,103 +129,52 @@ metadata:
 spec:
   parameters:
     graph: storefront
-    image: ghcr.io/cujarrett/storefront-records@sha256:4f1c...   # digest, written by CI
+    image: ghcr.io/cujarrett/storefront-records@sha256:4f1c...   # digest, written by Kargo
     size: sm
 ```
 
-`GraphApi` exposes four `Api` parameters: `graph`, `image`, `size` and `replicas`. `sqlRef`, `cache` and `consumes` are added when a real subgraph needs one.
+`GraphApi` takes four parameters: `graph`, `image`, `size` and `replicas`. `sqlRef`, `cache` and `consumes` arrive when a real subgraph needs one.
 
-Fixed by convention, never a field:
+These are fixed by convention, never a field.
 
 | Convention | Value |
 |---|---|
 | Schema location | `/schema.graphql` inside the image |
-| Image reference | a digest, never a tag |
+| Image reference | A digest, never a tag |
 | Port | `8080`, the `Api` default |
-| Endpoint | `http://<name>.<namespace>.svc.cluster.local/graphql`, derived from the Service the nested `Api` creates |
-| Ingress | none, the router is the only front door |
-| Allowed caller | the `FederatedGraph` router in the same namespace |
-| Labels | `platform.local.lab/graph: <graph>` and `platform.local.lab/environment: <namespace>`. Apollo's selectors have no namespace field, so the environment label keeps each graph to its own namespace |
+| Endpoint | `http://<name>.<namespace>.svc.cluster.local/graphql`, from the Service the nested `Api` creates |
+| Ingress | None. The router is the only front door |
+| Allowed caller | The `FederatedGraph` router in the same namespace |
+| Labels | `platform.local.lab/graph: <graph>` and `platform.local.lab/environment: <namespace>`. Apollo's selectors have no namespace field, so the environment label keeps each graph in its own namespace |
 
 ## What gets rendered
 
 | Platform Kind | Renders |
 |---|---|
-| `GraphApi` | an `Api` XR with no `host`, and an Apollo `Subgraph` with `schema.ociImage` pointing at the same image digest, the derived endpoint and both labels |
-| `FederatedGraph` | a `SupergraphSchema` selecting both labels with `partial: false` and `deletionPolicy: KeepVariant`, a `Supergraph` reading `schema.resource` with introspection off and a global rate limit, a LAN Ingress, and the mesh objects for the router |
+| `GraphApi` | An `Api` XR with no `host`. An Apollo `Subgraph` with `schema.ociImage` set to the same image digest, the endpoint and both labels |
+| `FederatedGraph` | A `SupergraphSchema` selecting both labels, with `partial: false` and `deletionPolicy: KeepVariant`. A `Supergraph` reading `schema.resource`, with introspection off and a global rate limit. A LAN `HTTPRoute` when `host` is set, and the router's mesh objects |
 
-`GraphApi` nests an `Api` the same way `Api` nests a `Cache`. Bindings, sizing, mesh, metrics and identity keep working because they are not reimplemented.
-
-## Topology
-
-One cluster, two operators, two environments. No router is public. The public reaches prod only through the demo's backend.
-
-```mermaid
-flowchart TB
-    LAN["LAN / Tailscale"]
-    PUB["public internet"]
-    GOS["GraphOS"]
-
-    subgraph cluster["k3s cluster"]
-      OPT["operator, test"]
-      OPP["operator, prod"]
-      TEST["graph-test<br/>storefront-homelab@test"]
-      PROD["graph-prod<br/>storefront-homelab@prod"]
-      DEMO["demo SPA and backend<br/>graph.mattjarrett.dev"]
-    end
-
-    LAN --> TEST
-    LAN --> PROD
-    PUB -->|Cloudflare Tunnel| DEMO
-    DEMO -->|fixed, cached queries| PROD
-    OPT -.-> TEST
-    OPP -.-> PROD
-    OPT -.->|publish| GOS
-    OPP -.->|publish| GOS
-```
-
-Each environment is one namespace holding its router and its subgraphs. Prod has its own operator and its own key, so nothing outside `graph-prod` can publish to the prod variant.
-
-## The lifecycle
-
-The schema lives in `schema.graphql` beside the resolvers and ships inside the image, so one digest moves both.
-
-| Stage | CI | KRM |
-|---|---|---|
-| Local | none. `rover dev --graph-ref storefront-homelab@test` composes the laptop's subgraph with everything test already publishes | none |
-| PR opens | `rover subgraph check` against `test`. Composition, and every operation test clients sent in the retention window | |
-| Review | CODEOWNERS requests the graph team on `schema.graphql`. Branch protection requires the check and the review | |
-| Merge to main | build the ARM64 image and cosign sign it by digest | Kargo finds the new digest and writes it into `graph-test/records.yaml` in `homelab-workspaces`. ArgoCD syncs. Kyverno admits the signed digest |
-| Test | | the operator pulls the same digest the pod runs, reads `/schema.graphql` from it and publishes to `test`. Composition runs. The router reloads |
-| Promote | | Kargo checks both subgraph schemas against `prod`. Freight that passes can be promoted to `graph-prod` with one click |
-| Prod | | Kargo writes the digests into `graph-prod/`. Same flow, variant `prod`, the prod operator |
-| Rollback | | promote an older Freight in Kargo. ArgoCD syncs the old digest, the operator republishes |
-
-A composition failure anywhere leaves that router serving its last good supergraph, and shows on the `SupergraphSchema` status.
-
-CI never publishes a schema, never touches the cluster and never writes to `homelab-workspaces`. Kargo moves every digest.
-
-The check composes the proposed schema against every other subgraph currently published to the variant. A change to a `@key` that another team extends fails on this PR, not theirs.
-
-**Operation checks are only as good as the traffic behind them.** They compare against operations the variant has seen inside the retention window, 7 days on the Developer plan. A graph with no real users has little to compare against, so a green check here is weaker than the same command against real client traffic.
+`GraphApi` nests an `Api`, the way `Api` nests a `Cache`. Bindings, sizing, mesh, metrics and identity all carry over.
 
 ## Promoting in Kargo
 
-Kargo at [kargo.local.lab](https://kargo.local.lab/project/kargo-storefront) is the only tool a team needs to move a change to prod. Each card is a stage, and its two badges answer two questions.
+Kargo at [kargo.local.lab](https://kargo.local.lab/project/kargo-storefront) is the only tool a team needs to reach prod. Each card is a stage.
 
-- **Freight:** one pair of subgraph images that ran together, named by a random alias such as `opining-abalone`.
-- **Middle of a stage card:** the Freight that stage runs now.
-- **Left badge, Verifying:** the checks are running. They finish within five minutes.
-- **Left badge, Ready:** the checks passed. That Freight can go to prod.
-- **Left badge, Failed:** a check failed. Click the card, open Verifications, and read which check failed.
-- **Right badge, Healthy:** the stage's app is up.
-- **⚠ on Select:** that Freight has not passed test. Kargo offers a manual approval. Leave it, and fix the cause instead.
+| You see | Meaning |
+|---|---|
+| Freight | One pair of subgraph images that ran together, named by an alias such as `opining-abalone` |
+| Middle of a card | The Freight that stage runs now |
+| Left badge, Verifying | Checks are running. They finish within five minutes |
+| Left badge, Ready | Checks passed. That Freight can go to prod |
+| Left badge, Failed | A check failed. Click the card, open Verifications, and read which one |
+| Right badge, Healthy | The stage's app is up |
+| ⚠ on Select | That Freight has not passed test. Kargo offers a manual approval. Leave it and fix the cause |
 
 Each check has its own fix.
 
 | Check | Fails when | Fix |
 |---|---|---|
-| `prod-schema-check` | a schema breaks composition with prod, or breaks an operation prod clients send | change `schema.graphql`, merge, and the new Freight runs the checks again |
+| `prod-schema-check` | a schema breaks composition with prod, or breaks an operation prod clients send | change `schema.graphql` and merge. The new Freight runs the checks again |
 | `test-router-query` | the test router cannot answer a query that joins both subgraphs | check the test router at `graph-test.local.lab` |
 | either, after exactly five minutes | an image fails [Image Provenance](./image-provenance.md), so the check never started. A Discord alert names the policy | merge a change to main so a new image builds, then click Reverify on the stage |
 
@@ -280,19 +182,20 @@ Each check has its own fix.
 
 Each open subgraph PR gets its own router. It serves all of test, with the PR's subgraph swapped in. GraphOS never sees it.
 
-- **Image:** the shared [subgraph workflow](../../.github/workflows/subgraph.yml) builds the PR's image and tags it `pr-<number>-<commit>`. Kargo only picks up `sha-` tags. Subgraph repos call that workflow, so they hold no build steps of their own.
-- **Environment:** the `graph-pr` ApplicationSet in [graph-pr-appset.yaml](../../cluster/argocd/graph-pr-appset.yaml) asks GitHub for open PRs every minute. For each one, ArgoCD applies [pr-chart](../federated-graph/pr-chart/) into a namespace named `graph-pr-<subgraph>-<number>`.
-- **Chart:** three objects. The namespace, a `FederatedGraph` that picks the `federated-graph-pr` Composition, and a `GraphApi` for the PR's image.
-- **Subgraph:** the PR's GraphApi runs the image and publishes nothing.
-- **Subgraph list:** the router needs the name, image and address of every subgraph. Crossplane runs the `federated-graph-pr` Composition, which copies that list from the `Subgraph` objects in `graph-test`. It then swaps in the PR's own subgraph. A PR on `reviews` gets `records` from test and `reviews` from the PR.
-- **Schema files:** the router pod mounts each of those images as a read-only image volume. The kubelet pulls them from the registry, and nothing in them runs.
-- **Supergraph:** an init container runs Rover from [images/rover](../../images/rover/). It joins every mounted `/schema.graphql` into one supergraph file, and the router loads it.
-- **Traffic:** the router calls the PR's subgraph in the PR namespace. It calls test's running pods for every other subgraph.
-- **Test changes:** a promotion changes an image digest, so the router restarts with the new schemas.
-- **On the PR:** once the environment is up, a comment names its namespace, links its Argo app and gives the command to query it. Each new commit updates that one comment. The PR also shows a deployment with the same name.
-- **Cleanup:** closing the PR deletes the namespace.
-
-The router reaches test's subgraphs as its own ServiceAccount. Test admits that account from any `graph-pr-*` namespace, so PR code itself can't call test. Kyverno lets `refs/pull/` builds run only in `graph-pr-*` namespaces. Only PRs opened by an allowed author get an environment. The list is the `selector` in the ApplicationSet, so a fork PR gets none.
+| Part | How it works |
+|---|---|
+| Image | The shared [subgraph workflow](../../.github/workflows/subgraph.yml) builds it and tags it `pr-<number>-<commit>`. Kargo picks up only `sha-` tags. Subgraph repos call that workflow and hold no build steps |
+| Environment | The `graph-pr` ApplicationSet in [graph-pr-appset.yaml](../../cluster/argocd/graph-pr-appset.yaml) polls GitHub for open PRs every minute. ArgoCD applies [pr-chart](../federated-graph/pr-chart/) into `graph-pr-<subgraph>-<number>` |
+| Chart | The namespace, a `FederatedGraph` using the `federated-graph-pr` Composition, and a `GraphApi` that runs the PR's image and publishes nothing |
+| Subgraph list | The `federated-graph-pr` Composition copies every subgraph's name, image and address from the `Subgraph` objects in `graph-test`. It swaps in the PR's subgraph. A PR on `reviews` gets `records` from test |
+| Supergraph | The router pod mounts each image as a read-only volume. Nothing in them runs. An init container runs Rover from [images/rover](../../images/rover/) to join every `/schema.graphql` into one file |
+| Traffic | The router calls the PR's subgraph in the PR namespace, and test's pods for the rest |
+| Test changes | A promotion changes a digest, so the router restarts with the new schemas |
+| On the PR | One comment names the namespace, links the Argo app and gives the query command. Each commit updates it |
+| Cleanup | Closing the PR deletes the namespace |
+| Calls into test | Test admits the router's ServiceAccount from any `graph-pr-*` namespace. PR code itself can't call test |
+| PR builds | Kyverno lets `refs/pull/` builds run only in `graph-pr-*` namespaces |
+| Authors | Only authors in the ApplicationSet `selector` get an environment. A fork PR gets none |
 
 ## Protecting the graph
 
@@ -300,46 +203,41 @@ Each control fails closed.
 
 | Threat | Control | Where |
 |---|---|---|
-| A schema change breaks the graph | the PR check fails, and the router keeps the last good supergraph if composition fails anyway | CI, GraphOS |
-| An unreviewed schema merges | branch protection requires the check and a code owner | GitHub |
-| A person publishes a schema | no person holds Contributor. Observer runs checks and reads subgraph SDL, which is everything local development needs | GraphOS roles |
-| An unreviewed image runs in test or prod | Kyverno admits only pods whose image was cosign-signed by the repo's CI workflow on `main` | Kyverno |
-| An unsigned image's schema is published without its pod ever running | the operator pulls the image itself, so Kyverno verifies the same signature on `spec.schema.ociImage.reference` of every `Subgraph` | Kyverno |
-| A schema is changed by hand in the cluster | teams can only apply `platform.local.lab` Kinds, and no human holds write on Apollo Kinds | ArgoCD AppProject, RBAC |
+| A schema change breaks the graph | the PR check fails. The router keeps the last good supergraph | CI, GraphOS |
+| An unreviewed schema merges | branch protection requires a PR and the check. CODEOWNERS requests a review | GitHub |
+| A person publishes a schema | no person holds Contributor. Observer is enough for local work | GraphOS roles |
+| An unreviewed image runs in test or prod | Kyverno admits only images the repo's CI built and signed on `main` | Kyverno |
+| An unsigned image's schema is published without its pod running | Kyverno checks the same signature on `spec.schema.ociImage.reference` of every `Subgraph` | Kyverno |
+| A schema is changed by hand in the cluster | teams apply only `platform.local.lab` Kinds. No human holds write on Apollo Kinds | ArgoCD AppProject, RBAC |
 | A test compromise publishes to prod | prod has its own operator and key, watching only `graph-prod` | operator install |
-| An operator key is stolen | each is readable only by its operator's ServiceAccount. CI holds a check-only key | Parameter Store, RBAC, GitHub |
+| An operator key is stolen | only its operator's ServiceAccount can read it. CI holds its own key | Parameter Store, RBAC, GitHub |
 
-Subgraphs keep STRICT mTLS from their nested `Api`, so the router is in the mesh. `FederatedGraph` renders its `Sidecar` and the `ServiceEntry` objects for GraphOS. See [Platform Connections](./connections.md).
+Subgraphs keep STRICT mTLS from their nested `Api`. `FederatedGraph` renders the router's `Sidecar` and the `ServiceEntry` objects for GraphOS. See [Platform Connections](./connections.md).
 
 ## What a request costs
 
-The Developer plan bills $5 per million router requests after a $50 signup credit, with no hard spend limit. The design keeps the bill at zero by controlling who can reach a router.
+The Developer plan bills $5 per million router requests after a $50 credit, with no spend limit. Few callers can reach a router, so the bill stays at zero.
 
-- **LAN only.** Neither router has a public hostname. Only my own traffic reaches them.
-- **One public caller.** The demo's backend is an ordinary `Api` with one endpoint per query. Each runs a fixed query against prod's router, at most 30 times a minute per query. However much traffic reaches the demo, the router sees at most 60 requests a minute, about 86,000 a day at the ceiling, which is under $1 a month and inside the credit.
-- **Backups already in the stack.** The backend's `Api` carries the platform's per-IP rate limit, and every router sets `traffic_shaping.router.global_rate_limit`.
+| Guard | Detail |
+|---|---|
+| LAN only | Neither router has a public hostname |
+| One public caller | The demo's backend, capped at 60 router requests a minute. That is under $1 a month |
+| Backups | The page's `Spa` has the platform's per-IP rate limit, and every backend call passes through it. Every router sets `traffic_shaping.router.global_rate_limit` |
 
 ## The demo
 
-`graph.mattjarrett.dev` is [launchpad's how-it-works](https://launchpad.mattjarrett.dev/how-it-works) shape applied to schema management. A map of the cluster and GraphOS, a stepped chain on the right, and a "what the team wrote" panel. Each scene lights the nodes it touches.
+`graph.mattjarrett.dev` walks the five steps of [How a change moves](#how-a-change-moves) on a map of the cluster and GraphOS, in the shape of [launchpad's how-it-works](https://launchpad.mattjarrett.dev/how-it-works).
 
-| Scene | Lights | What the team wrote |
-|---|---|---|
-| 01 A schema change | the subgraph repo, the PR | the `schema.graphql` diff |
-| 02 The check | GraphOS composing the proposal against every other published subgraph, and replaying prod's operations | |
-| 03 Review and merge | CODEOWNERS, the signed image, the digest landing in `homelab-workspaces` | the `GraphApi` file |
-| 04 Publish | ArgoCD, Crossplane rendering the `Subgraph` CR, the pod, the operator reading `/schema.graphql`, GraphOS recording it | |
-| 05 Serve | the router reloading, one query fanning out to both subgraphs | |
-
-The map shows `records`, `reviews` and a ghosted third subgraph, so the chain reads as N, not two. Every scene names the pattern it is and links to [Nothing novel](../../docs/nothing-novel.md).
-
-Below the map, **Run it**. Two fixed queries, one button each: one subgraph, and both subgraphs in one query. The response shows the query plan and which subgraph answered, and beside it what each subgraph is running: the digest its prod file names, linked, and the commit that last changed its schema.
-
-Beside the chain, **Live, right now**: the same digests, the last merged PR and the last schema commit, read from GitHub.
-
-The backend is an `Api` with one endpoint per query and one for the live rows. Every click reaches the router while a budget of 30 calls a minute per query lasts, so the latency shown is real. Past that the last answer is served. GitHub is read every ten minutes. Nothing the public sends reaches the router or GitHub. The page and the backend live in [platform-graph-demo](https://github.com/cujarrett/platform-graph-demo) under `spa/` and `backend/`, and deploy to the `platform-graph-demo` namespace like any other workspace.
+| Part | What it does |
+|---|---|
+| Run it | Two fixed queries, one button each. The response shows the query plan, which subgraph answered, and each subgraph's prod digest and last schema commit |
+| Live, right now | The same digests, the last merged PR and the last schema commit, from GitHub |
+| Backend | An `Api` with one endpoint per query and one for the live rows. Past 30 calls a minute per query it serves the last answer. It reads GitHub every ten minutes. Nothing the public sends reaches the router or GitHub |
+| Code | [platform-graph-demo](https://github.com/cujarrett/platform-graph-demo), under `spa/` and `backend/`. It deploys to the `platform-graph-demo` namespace |
 
 ## Foundations to install
+
+Everything here comes before the first subgraph.
 
 | Foundation | Where |
 |---|---|
@@ -349,28 +247,32 @@ The backend is an `Api` with one endpoint per query and one for the live rows. E
 | The operator's namespace in the ESO store `conditions` | [store.yaml](../../cluster/external-secrets/store.yaml) |
 | Crossplane RBAC for `apollographql.com` Kinds | [rbac.yaml](../../cluster/crossplane/rbac.yaml) |
 | `graph-test` and `graph-prod` in the `workloads` project destinations and every namespace list of the workspace RBAC policy | [projects.yaml](../../cluster/argocd/projects.yaml), [workspace-rbac.yaml](../../cluster/kyverno/workspace-rbac.yaml) |
-| A GraphOS key that can run checks, and a token that can write `homelab-workspaces`, as Actions secrets | each subgraph repo |
-| Kyverno `ImageValidatingPolicy` verifying `main`-branch cosign signatures from each subgraph repo on images in both lanes, for pods and for Apollo `Subgraph` resources | `cluster/kyverno/` |
+| A GraphOS key that can run checks, as an Actions secret | each subgraph repo |
+| Kyverno `ImageValidatingPolicy` checking each subgraph repo's `main` build signatures on images in both lanes, for pods and Apollo `Subgraph` resources | `cluster/kyverno/` |
 | `graph.mattjarrett.dev` tunnel entry for the demo page, before its cert. The backend sits behind the page's `apiProxies` and needs no hostname | `/add-cloudflare-tunnel-hostname` |
 
 ## Known limits
 
-- **The operator is a black box the platform depends on.** Its Kinds are `v1alpha2` and `v1alpha4`, so expect breaking upgrades.
-- **The Apollo operator's test Application owns the CRDs and ClusterRoles prod borrows.** Deleting that Application deletes every `Subgraph` and `Supergraph` in both lanes. Apollo ships no CRDs-only chart, and vendoring 16,000 lines of CRD goes stale, so the dependency stays and the Application keeps its name.
-- **An operator that starts before its RoleBindings exist never recovers.** Its watches fail with 403 and stay dead after the bindings land, so its CRs sit with no status. Restart the pod. Happens on every fresh install, because ArgoCD creates the Deployment and the RoleBindings in the same sync.
-- **No user authorization yet.** Anyone on the LAN can query any field. See [TODO](#todo).
-- **The operator writes a graph API key Secret into each router namespace.** It is controller-generated, like cert-manager TLS, so it stays out of ESO.
-- **Operation checks need traffic.** The demo's backend is the only client, so the check protects a handful of fixed queries.
-- **Every CI key is Graph Admin.** On the Developer plan a graph API key has one role, and it can publish. A leaked `storefront-records` CI key could publish over `reviews`. Each repo holds its own key, so a leak is attributed and rotated in one place, and nothing in CI ever publishes. Per-role and subgraph-scoped keys are Enterprise features.
+| Limit | Detail |
+|---|---|
+| Alpha operator | Its Kinds are `v1alpha2` and `v1alpha4`. Expect breaking upgrades |
+| Shared CRDs | The test operator's Application owns the CRDs and ClusterRoles prod uses. Deleting it deletes every `Subgraph` and `Supergraph` in both lanes. Keep its name |
+| Start order | An operator that starts before its RoleBindings exist gets 403 on its watches and never recovers. Its CRs show no status. Restart the pod. This happens on every fresh install |
+| No user authorization | Anyone on the LAN can query any field. See [TODO](#todo) |
+| Router key Secret | The operator writes a graph API key Secret into each router namespace. It is controller-generated, so it stays out of ESO |
+| Thin operation checks | The demo's backend is the only client, so checks protect a few fixed queries |
+| CI keys are Graph Admin | On the Developer plan a key has one role, and it can publish. A leaked `storefront-records` key could publish over `reviews`. Each repo holds its own key, so a leak is traced and rotated in one place |
 
 ## TODO
 
-Post initial scope. Each builds on a working demo.
+Each item builds on a working demo.
 
-- **User authorization.** JWT authentication on the router with Entra as the issuer, then `@authenticated` and `@requiresScopes` on fields.
-- **Schema governance.** Proposals for shared types, `@contact` on every subgraph, linting in checks. Decision [3](#3-governance-of-schema-changes).
-- **Router fleet.** Internal, partner and canary routers reading one variant.
-- **More clusters.** Each cluster's operator publishes its own subgraphs with `partial: true`.
+| Item | Plan |
+|---|---|
+| User authorization | JWT on the router with Entra as issuer, then `@authenticated` and `@requiresScopes` on fields |
+| Schema governance | Proposals for shared types, `@contact` on every subgraph, linting in checks. See [decision 3](#3-governance-of-schema-changes) |
+| Router fleet | Internal, partner and canary routers reading one variant |
+| More clusters | Each cluster's operator publishes its own subgraphs with `partial: true` |
 
 ## Reference
 

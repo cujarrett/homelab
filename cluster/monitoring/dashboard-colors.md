@@ -1,64 +1,58 @@
 # Dashboard Colors
 
-Green, yellow and red mean health. Nothing else is allowed to use them, so a wall of dashboards can be read from across the room.
-
-## Index
-
-| Chapter | What's in it |
-|---|---|
-| [The rule](#the-rule) | the whole philosophy in three lines |
-| [The palette](#the-palette) | which colors exist and what each one is for |
-| [What counts as health](#what-counts-as-health) | the test for whether a panel gets the health ramp |
-| [Picking a color](#picking-a-color) | the decision, panel type by panel type |
-| [The default that bites](#the-default-that-bites) | why a new panel is accidentally green |
-| [Auditing](#auditing) | listing every panel color in one command |
+Green, yellow and red mean health, and nothing else uses them. That way a wall of dashboards reads from across the room.
 
 ## The rule
 
-Health colors answer one question - *is something wrong?* Every other panel answers *how much?*, and gets a cool color instead.
+Health colors answer "is something wrong?". Every other panel answers "how much?" and gets a cool color.
 
-- Health ramp - green, yellow, orange, red - only on panels that say something is fine, degrading, or broken.
-- Magnitude - counts, rates, durations, bytes, money, uptime - uses the blue/purple family.
-- A number that is never "bad" is never green. A green pod count trains the eye to ignore green.
+| Case | Rule |
+|---|---|
+| Health ramp | Green, yellow, orange, red. Only on panels that say something is fine, degrading or broken. |
+| Magnitude | The blue and purple family. For counts, rates, durations, bytes, money and uptime. |
+| Never green | A number that is never "bad". A green pod count trains the eye to ignore green. |
 
 ## The palette
 
-Two families, no overlap.
+The two families never overlap.
 
 | Family | Colors | Used for |
 |---|---|---|
-| Health | `green` → `yellow` → `orange` → `red` | up/down, ready/not ready, saturation, error rate, capacity remaining |
-| Magnitude | `blue`, `purple`, `light-blue`, `dark-blue`, `light-purple`, `super-light-blue`, `continuous-BlPu`, `continuous-purples` | any plain value, and per-site or per-series identity colors |
+| Health | `green` → `yellow` → `orange` → `red` | Up/down, ready/not ready, saturation, error rate and capacity remaining. |
+| Magnitude | `blue`, `purple`, `light-blue`, `dark-blue`, `light-purple`, `super-light-blue`, `continuous-BlPu`, `continuous-purples` | Plain values, and per-site or per-series identity colors. |
+| Neutral | `text` | A value with no scale. A name, an ID, or a state that is neither good nor bad. |
 
-Neutral `text` is fine for a value with no scale at all - a name, an ID, a state that is neither good nor bad.
-
-Multi-series time series on `palette-classic` are exempt. That palette is categorical - it reads as *which series*, not *how healthy* - and rewriting it everywhere buys nothing. The exemption ends the moment a series color is set explicitly: a hand-assigned `fixedColor` follows the rule like everything else, unless the series **is** a status (2xx/3xx/4xx/5xx, mTLS vs plaintext).
+Multi-series time series on `palette-classic` are exempt. That palette says "which series", not "how healthy". The exemption ends once a series color is set by hand. A hand-set `fixedColor` follows the rule, unless the series is a status (2xx/3xx/4xx/5xx, mTLS vs plaintext).
 
 ## What counts as health
 
-One test: could this panel's color ever mean *go look at the cluster*?
+Ask one question. Could this panel's color ever mean "go look at the cluster"?
 
 Health, so the ramp applies:
 
-- Ready / not ready counts - certs ready, deployments available, nodes ready, ArgoCD synced
-- Failure counts where zero is the only good number - failed pods, out-of-sync apps, terminating namespaces, released PVs
-- Saturation against a ceiling - CPU %, memory %, PVC usage, disk usage
-- Rates with a budget - error rate, 5xx rate, success rate, reconcile errors
-- Capacity against a hard limit - guest workspaces against the five fixed slots
-- Latency against a target - p99 over a threshold is a problem
+| Kind | Examples |
+|---|---|
+| Ready counts | Certs ready, deployments available, nodes ready, ArgoCD synced. |
+| Failure counts where only zero is good | Failed pods, out-of-sync apps, terminating namespaces, released PVs. |
+| Saturation against a ceiling | CPU %, memory %, PVC usage, disk usage. |
+| Rates with a budget | Error rate, 5xx rate, success rate, reconcile errors. |
+| Capacity against a hard limit | Guest workspaces against the five fixed slots. |
+| Latency against a target | p99 over a threshold. |
 
-Not health, so blue/purple applies:
+Not health, so blue and purple apply:
 
-- Totals and inventories - pod count, ArgoCD app count, PVC count, guest resource count
-- Throughput with no budget - requests per hour, reconciles/s, runs per hour
-- Durations that only grow - node uptime, time since last outage, pod age
-- Physical readings - watts, rainfall, cost
-- State that is neither good nor bad - pump idle vs running
-- Rankings and leaderboards - longest-lived anything
+| Kind | Examples |
+|---|---|
+| Totals | Pod count, ArgoCD app count, PVC count, guest resource count. |
+| Throughput with no budget | Requests per hour, reconciles/s, runs per hour. |
+| Durations that only grow | Node uptime, time since last outage, pod age. |
+| Physical readings | Watts, rainfall, cost. |
+| Neutral state | Pump idle vs running. |
+| Rankings | Longest-lived anything. |
 
 ## Picking a color
 
-Panel type decides the mechanism; the rule above decides the family.
+The panel type sets the mechanism. The rule above sets the family.
 
 | Panel | Health | Magnitude |
 |---|---|---|
@@ -67,17 +61,17 @@ Panel type decides the mechanism; the rule above decides the family.
 | Table cell background | threshold steps on the field override | `continuous-BlPu` on the field override |
 | `timeseries` | explicit `fixedColor` per status series | `palette-classic`, or explicit blue/purple per series |
 
-Stat panels using `colorMode: background` carry the color across the whole tile, so they are the ones that matter most - a solid green tile is the strongest "all fine" signal on the wall.
+Stat panels with `colorMode: background` color the whole tile, so they matter most. A solid green tile is the strongest "all fine" signal on the wall.
 
 ## The default that bites
 
-A stat panel with no `color` block falls back to Grafana's default thresholds - base `green`, `red` at 80. So a brand-new "count of things" panel renders as a solid green tile that means nothing, and an unrelated value of 80 turns it red.
+A stat panel with no `color` block gets Grafana's default thresholds: base `green`, `red` at 80. A new count panel then shows a meaningless solid green tile, and turns red at 80.
 
-Always set `color` explicitly on a magnitude panel. Deleting the inherited `thresholds` block at the same time keeps the intent obvious in the JSON.
+Always set `color` on a magnitude panel. Delete the inherited `thresholds` block too, so the intent is clear in the JSON.
 
 ## Auditing
 
-Print every panel's color config across all dashboards, then read the list against the rule:
+This prints every panel's color config across all dashboards.
 
 ```bash
 cd cluster/monitoring
@@ -97,4 +91,4 @@ for f in sorted(glob.glob('grafana-dashboard-*.yaml')):
 EOF
 ```
 
-Two things to look for: a magnitude panel carrying `green`, and a health panel that drifted to blue.
+Look for two things: a magnitude panel with `green`, and a health panel that drifted to blue.

@@ -1,21 +1,18 @@
 # blog
 
-Ghost blog running at `blog.mattjarrett.dev` via Cloudflare Tunnel.
+The Ghost blog at `blog.mattjarrett.dev`, served through Cloudflare Tunnel.
 
-## Files
-
-| File | Purpose |
+| File | Holds |
 |---|---|
 | `ghost.yaml` | Namespace, PVC, Deployment, Service, HTTPRoute |
 | `ghost-backup.yaml` | CronJob that runs `ghost-backup.py` daily at 02:00 |
-| `ghost-backup.py` | Fetches published posts from Ghost Content API and commits them to GitHub |
-| `kustomization.yaml` | Wires `ghost-backup.py` into the `ghost-backup-script` ConfigMap |
+| `ghost-backup.py` | Fetches published posts from the Ghost Content API and commits them to GitHub |
+| `kustomization.yaml` | Puts `ghost-backup.py` into the `ghost-backup-script` ConfigMap |
 
 ## Backup
 
-Posts are backed up daily to [github.com/cujarrett/blog-backups](https://github.com/cujarrett/blog-backups).
+Posts back up daily to [cujarrett/blog-backups](https://github.com/cujarrett/blog-backups). Each post gets its own folder. Image `src` links point to the local copies, so each folder stands alone.
 
-Each post gets its own folder:
 ```
 posts/
   my-post-slug/
@@ -25,11 +22,9 @@ posts/
         photo.jpg
 ```
 
-Image `src` attributes in `index.md` are rewritten to relative paths so the files are self-contained.
-
 ### Secrets
 
-Both keys come from AWS Parameter Store through External Secrets - see [External Secrets](../../docs/external-secrets.md). To change one, write the parameter; ESO updates the Secret within the hour.
+Both keys come from AWS Parameter Store through [External Secrets](../../docs/external-secrets.md). Write the parameter to change one. ESO updates the Secret within the hour.
 
 | Key | Parameter | Where to get it |
 |---|---|---|

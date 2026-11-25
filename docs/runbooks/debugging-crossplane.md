@@ -1,8 +1,8 @@
 # Debugging Crossplane
 
-A layered workflow for diagnosing why an XR isn't syncing or ready. Work top-down - each layer reveals the next clue.
+Use this when an XR is not syncing or not ready. Work top-down. Each step points to the next clue.
 
-## 1. Start at the top - check the XR
+## 1. Check the XR
 
 ```bash
 kubectl get apis.platform.local.lab <name> -n <namespace>
@@ -10,120 +10,105 @@ kubectl get apis.platform.local.lab <name> -n <namespace>
 
 | Column | What it means |
 |---|---|
-| `SYNCED=True` | Composition ran without errors |
-| `SYNCED=False` | Composition failed - check XR events/conditions |
-| `READY=True` | All composed resources are ready |
-| `READY=<blank>` | Readiness not yet propagated - children still provisioning or failing |
+| `SYNCED=True` | The composition ran without errors |
+| `SYNCED=False` | The composition failed. Read the conditions in step 2 |
+| `READY=True` | Every composed resource is ready |
+| `READY=<blank>` | Children are still provisioning or failing |
 
 ## 2. Read the XR conditions
+
+This is usually the most direct error. Look at `reason` and `message` on any condition with `"status": "False"`.
 
 ```bash
 kubectl get apis.platform.local.lab <name> -n <namespace> -o jsonpath='{.status.conditions}' | python3 -m json.tool
 ```
 
-Look for `"reason"` and `"message"` on any condition where `"status": "False"`. This is usually the most direct error message.
-
-Example output for a composition pipeline error:
-```json
-[
-  {
-    "type": "Synced",
-    "status": "False",
-    "reason": "ReconcileError",
-    "message": "cannot compose resources: pipeline step \"go-templating\": ..."
-  }
-]
-```
-
 ## 3. Check the sub-XRs
 
-Api composes an `ObjectStorage` sub-XR. Check it directly:
+Api composes a `Cache` sub-XR, `<name>-cache`, when the cache is on. Object storage, Sql and NoSql are separate XRs the Api names in its refs. Check those the same way.
 
 ```bash
-kubectl get objectstorage <name>-object-storage -n <namespace>
-kubectl get objectstorage <name>-object-storage -n <namespace> \
+kubectl get caches.platform.local.lab <name>-cache -n <namespace>
+kubectl get caches.platform.local.lab <name>-cache -n <namespace> \
   -o jsonpath='{.status.conditions}' | python3 -m json.tool
 ```
 
 ## 4. Check all managed resources
 
-Managed resources (MRs) are the actual AWS objects. List everything owned by the XR:
+Managed resources (MRs) are the real AWS and Entra objects. Look for `SYNCED=False` or `READY=False` on any row.
 
 ```bash
 kubectl get managed -A | grep <name>
 ```
 
-Look for `SYNCED=False` or `READY=False` on any row. Then drill in:
+`describe` shows Events at the bottom. They often hold the AWS API error.
 
 ```bash
-# Describe gives you Events at the bottom - often has the AWS API error
 kubectl describe bucket.s3.aws.m.upbound.io <mr-name> -n <namespace>
-kubectl describe user.iam.aws.m.upbound.io <mr-name> -n <namespace>
-kubectl describe accesskey.iam.aws.m.upbound.io <mr-name> -n <namespace>
-kubectl describe userpolicyattachment.iam.aws.m.upbound.io <mr-name> -n <namespace>
-```
+kubectl describe role.iam.aws.m.upbound.io <mr-name> -n <namespace>
 
-Or get just the conditions on a specific MR type:
-
-```bash
+# conditions only
 kubectl get bucket.s3.aws.m.upbound.io <mr-name> -n <namespace> \
   -o jsonpath='{.status.conditions}' | python3 -m json.tool
 ```
 
 ## 5. Check the provider pod logs
 
-If conditions are unhelpful, go to the provider itself:
+Go here when the conditions say little.
 
 ```bash
-# Find the provider pod
-kubectl get pods -n crossplane-system | grep upbound-provider-aws
-
-# Tail logs - filter to your resource name
+kubectl get pods -n crossplane-system | grep provider-aws
 kubectl logs -n crossplane-system -l pkg.crossplane.io/revision --tail=100 | grep <name>
 ```
 
 ## 6. Check the Crossplane core logs
 
-For composition pipeline errors (function-go-templating, function-patch-and-transform):
+Composition pipeline errors from function-go-templating and function-environment-configs show up here.
 
 ```bash
 kubectl logs -n crossplane-system -l app=crossplane --tail=100
 ```
 
-## 7. Check the binding secret
+## 7. Check the binding secrets
 
-If the XR says Ready but the pod won't start, the init container may be waiting on the binding secret:
+The XR can be Ready while the pod waits in an init container for a binding secret. Each binding has its own secret in the XR's namespace.
+
+| Binding | Secret name |
+|---|---|
+| Object storage | `<name>-<ref>`, where `<ref>` is a name in `objectStorageRefs` |
+| NoSql | `<name>-nosql` |
+| Cache | `<name>-cache` |
+| Sql | The Sql XR's name for `private-cloud`, `<name>-sql` for `public-cloud` |
+| Managed secret | `<name>-secret-<ref>`, where `<ref>` is a name in `managedSecretRefs` |
+
+Every binding secret has `type` and `provider` keys. The init container waits for `type`.
 
 ```bash
-# Does the secret exist?
-kubectl get secret <name>-object-storage -n <name>
-
-# If it exists, does it have all 6 keys?
-kubectl get secret <name>-object-storage -n <name> \
+kubectl get secret -n <namespace>
+kubectl get secret <secret-name> -n <namespace> \
   -o go-template='{{range $k,$v := .data}}{{$k}}: {{$v | base64decode}}{{"\n"}}{{end}}'
 ```
 
-Expected keys: `type`, `provider`, `bucket`, `region`, `username`, `password`
-
 ## 8. Check the pod
 
-```bash
-kubectl get pods -n <name>
-kubectl describe pod -n <name> <pod-name>
-kubectl logs -n <name> <pod-name> --previous   # if it crashed
-kubectl logs -n <name> <pod-name> -c init-object-storage   # init container logs
-```
+Each init container is named `wait-for-<dir>-binding`. `<dir>` is `object-storage-<ref>`, `sql`, `nosql`, `cache` or `managed-secret-<ref>`. `describe` lists them.
 
----
+```bash
+kubectl get pods -n <namespace>
+kubectl describe pod -n <namespace> <pod-name>
+kubectl logs -n <namespace> <pod-name> --previous   # if it crashed
+kubectl logs -n <namespace> <pod-name> -c wait-for-<dir>-binding   # init container logs
+kubectl logs -n <namespace> <pod-name> -c workload-identity-sidecar   # cloud credential logs
+```
 
 ## Common failure patterns
 
 | Symptom | Likely cause | Where to look |
 |---|---|---|
-| `SYNCED=False` on XR | Composition pipeline error | XR conditions (step 2) |
-| `SYNCED=False` on MR | AWS API error (permissions, quota, invalid config) | MR describe events (step 4) |
-| `READY=False` on MR | AWS resource not yet in desired state | MR conditions (step 4) |
+| `SYNCED=False` on XR | Composition pipeline error | Step 2 |
+| `SYNCED=False` on MR | AWS API error, such as permissions, quota or bad config | Step 4 events |
+| `READY=False` on MR | AWS resource not in its desired state yet | Step 4 conditions |
 | `READY=<blank>` on XR | Children still provisioning | `kubectl get managed -A \| grep <name>` |
-| Pod stuck in `Init` | Binding secret missing or incomplete | Step 7 + step 8 init container logs |
+| Pod stuck in `Init` | Binding secret missing or incomplete | Steps 7 and 8 |
 | Pod `CrashLoopBackOff` | App error, not a platform error | `kubectl logs` on the main container |
-| ArgoCD `SyncError: auto-sync will wipe out all resources` | Would delete all resources - add `allowEmpty=true` to syncOptions | ArgoCD app details |
+| ArgoCD `SyncError: auto-sync will wipe out all resources` | The sync would delete every resource | Add `allowEmpty=true` to syncOptions |

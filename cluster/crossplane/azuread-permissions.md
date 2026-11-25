@@ -1,9 +1,6 @@
 # crossplane-entra App Registration
 
-Crossplane's Azure AD provider authenticates as its own Entra app registration
-(`crossplane-entra`), via a client secret in the `azuread-creds` Secret in
-`crossplane-system`. Not managed by Crossplane itself — must exist first. If it's ever
-lost or recreated, redo the four steps below.
+Crossplane's Azure AD provider signs in as the Entra app registration `crossplane-entra`. Its client secret lives in the `azuread-creds` Secret in `crossplane-system`. Crossplane does not manage this app, so create it first. If it is lost or recreated, redo the four steps below.
 
 ## 1. Create the app registration
 
@@ -12,9 +9,7 @@ az ad app create --display-name "crossplane-entra" --sign-in-audience AzureADMyO
 az ad sp create --id <appId-from-previous-command>
 ```
 
-No redirect URI — this is a backend app, nothing signs into it. The service principal
-is required; without it there's nothing for a permission grant or federated credential
-to attach to later.
+It needs no redirect URI, since nothing signs into it. The service principal is required. Permission grants and federated credentials attach to it.
 
 ## 2. Grant Graph API permission
 
@@ -25,18 +20,18 @@ az ad app permission add --id <appId> \
 az ad app permission admin-consent --id <appId>
 ```
 
-That's `Application.ReadWrite.OwnedBy`. Needs a Global Administrator or Application
-Administrator to run `admin-consent`.
-
-`admin-consent` can report success before the grant actually exists — Entra's own
-replication lag. Don't trust the exit code; check directly:
+| Item | Detail |
+|---|---|
+| Permission | `Application.ReadWrite.OwnedBy`. |
+| Who consents | A Global Administrator or Application Administrator. |
+| Exit code | `admin-consent` can report success before Entra has saved the grant. Check it directly. |
 
 ```bash
 az rest --method GET \
   --url "https://graph.microsoft.com/v1.0/servicePrincipals/<sp-object-id>/appRoleAssignments"
 ```
 
-Empty `value: []` means it hasn't landed yet. Wait and recheck.
+An empty `value: []` means the grant has not landed yet. Wait and check again.
 
 ## 3. Create a client secret
 
@@ -44,13 +39,12 @@ Empty `value: []` means it hasn't landed yet. Wait and recheck.
 az ad app credential reset --id <appId> --display-name "crossplane" --years 1 --query "password" -o tsv
 ```
 
-Set an expiry and track it somewhere — no rotation automation on this side yet. Capture
-the output straight into a shell variable; never let it land in a file that outlives
-the command.
+- **Expiry:** set one and track it. Nothing rotates it on its own.
+- **Output:** capture it straight into a shell variable. Never let it land in a file that outlives the command.
 
 ## 4. Store it in Parameter Store
 
-External Secrets renders `azuread-creds` from this parameter - see [External Secrets](../../docs/external-secrets.md) for staging the value without it touching shell history.
+External Secrets renders `azuread-creds` from this parameter. See [External Secrets](../../docs/external-secrets.md) to stage the value without it touching shell history.
 
 ```bash
 aws ssm put-parameter --name /homelab/crossplane-system/azuread-credentials --type SecureString --overwrite \
@@ -59,17 +53,11 @@ aws ssm put-parameter --name /homelab/crossplane-system/azuread-credentials --ty
 
 The value is `{"clientId":"<app-registration-client-id>","clientSecret":"<the-secret-value>","tenantId":"<entra-tenant-id>"}`.
 
-To rotate, use [Rotate Secret → Entra client secret](../../scripts/rotate-secret/README.md#entra-client-secret). The provider re-reads the Secret on its next reconcile, so no restart is needed.
+To rotate, follow [Rotate Secret → Entra client secret](../../scripts/rotate-secret/README.md#entra-client-secret). The provider rereads the Secret on its next reconcile, so no restart is needed.
 
----
+## Owners on every Application
 
-## Heads up for whoever builds the composition later
-
-`crossplane-entra` can create Entra apps but not delete or update them, unless each one
-is created with an explicit owner. The API — CLI or Crossplane, doesn't matter who's
-driving, never assigns an owner on its own; only the Entra web UI does
-that, as something the web page adds, not the API itself. So every `Application` the
-future composition creates needs:
+`crossplane-entra` can create an Entra app, but it can update or delete only apps it owns. The API never sets an owner on its own, whether the CLI or Crossplane calls it. So every `Application` a composition creates needs an explicit owner.
 
 ```yaml
 spec:
@@ -78,9 +66,9 @@ spec:
       - <crossplane-entra-service-principal-object-id>
 ```
 
-Skip it and the registration can be created once, then never touched again.
+Without it, the app is created once and can never be changed.
 
 ## What is NOT managed here
 
-- The `azuread-creds` value - held in Parameter Store and rendered by External Secrets, never in Git.
-- The Entra tenant itself, and who holds admin rights to grant consent.
+- **`azuread-creds` value:** in Parameter Store, rendered by External Secrets. Never in Git.
+- **The Entra tenant:** and who holds admin rights to grant consent.

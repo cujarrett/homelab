@@ -6,8 +6,10 @@ Stops Renovate merging anything, in every repo, until you resume it.
 ./automerge-stop.sh
 ```
 
-It opens GitHub's installed apps page. Suspend Renovate there (**Renovate → Configure → Suspend**), then press Enter. The script then disarms auto-merge on every open Renovate PR, since GitHub merges an armed PR without Renovate.
+1. The script opens GitHub's installed apps page.
+2. Suspend Renovate there (**Renovate → Configure → Suspend**), then press Enter.
+3. The script turns off auto-merge on every open Renovate PR. GitHub would merge an armed PR without Renovate.
 
 ## Resuming
 
-On the same page, choose **Unsuspend**. Renovate picks up on its next run and merges whatever passes its checks, so look over the open PRs first.
+Look over the open PRs first. Then choose **Unsuspend** on the same page. Renovate's next run merges whatever passes its checks.

@@ -1,45 +1,48 @@
 # Dependency Automation
 
-Most dependency pull requests are read once, glanced at, and merged. That glance catches almost nothing CI would have missed. The slice worth a human is what CI cannot judge: a major version, or a change whose failure does not self-correct.
+Renovate opens dependency pull requests and merges most of them on its own. A person sees only what CI cannot judge: a major version, or a change whose failure does not fix itself. Wait times are in [Update Lanes](../../docs/update-lanes.md).
 
 ## How it works
 
-Renovate opens the pull request and merges it with its own app credentials, so no workflow and no secret live in the repository. Dependabot cannot do this - GitHub gives its pull requests a read-only token by design, so automerge there needs a privileged `pull_request_target` workflow in every repo. Its security updates also arrive outside any grouping, so a workflow matching grouped branches would skip exactly the pull requests that matter most.
-
-Policy lives in [.github/renovate-shared.json](../../.github/renovate-shared.json). Every other repo carries one line:
+Renovate merges with its own app credentials. No workflow or secret lives in the repo. Policy lives in [.github/renovate-shared.json](../../.github/renovate-shared.json), and every other repo carries one line.
 
 ```json
 { "extends": ["github>cujarrett/homelab//.github/renovate-shared"] }
 ```
 
-The `//` is Renovate's subdirectory separator; a bare `github>cujarrett/homelab` would resolve to this repo's own `renovate.json`, which holds cluster-specific managers rather than shared policy. Repos track the default branch, so an edit ships on push.
+| Topic | Detail |
+|---|---|
+| The `//` | Renovate's subdirectory separator. A bare `github>cujarrett/homelab` loads this repo's own `renovate.json`, which holds cluster-only rules |
+| Shipping a change | Repos track the default branch, so an edit ships on push |
+| Why not Dependabot | GitHub gives its pull requests a read-only token. Automerge would need a privileged `pull_request_target` workflow in every repo |
 
 A pull request merges on its own only when all four hold.
 
-| Gate | Enforced by |
-|---|---|
-| Update is minor, patch, or a digest bump | `matchUpdateTypes` in the shared preset |
-| Every required status check passed | GitHub branch protection on each repo |
-| The release is at least 7 days old | `minimumReleaseAge` in the shared preset |
-| The package is not on the exclusion list | `automerge: false` rules in the preset |
+| Gate | Rule | Set by |
+|---|---|---|
+| Update type | Minor, patch or digest | `matchUpdateTypes` in the shared preset |
+| Checks | Every required status check passed | Branch protection on each repo |
+| Age | The release is at least 7 days old | `minimumReleaseAge` in the shared preset |
+| Exclusions | The package has no `automerge: false` rule | `automerge: false` rules in the shared preset or the repo's `renovate.json` |
 
-Nothing opens during working hours. A published vulnerability drops the age and schedule gates but still has to pass CI. The [SDLC dashboard](../../cluster/monitoring/grafana-dashboard-sdlc.yaml) tracks the share of merges no person clicked; one armed for automerge but stuck on a failing check still counts as toil.
+A published vulnerability waits 3 days instead of 7 and still has to pass CI. The [SDLC dashboard](../../cluster/monitoring/grafana-dashboard-sdlc.yaml) tracks the share of merges no person clicked. A pull request armed for automerge but stuck on a failing check counts as toil.
 
 ## Who may merge without review
 
-GitHub grants review bypass to an actor, never to a condition - it cannot be scoped to the author, the update type, or whether CI passed.
+GitHub grants review bypass to an actor, never to a condition. It cannot be limited to an author, an update type or a passing check.
 
-With one maintainer, drop the review requirement and let the status check be the gate. Approving your own bot catches nothing, and leaving the requirement on blocks every automated merge silently, the pull request sitting in `BLOCKED` while its checks show green. That is the current setup.
-
-The day a second person can commit, keep the requirement and grant the Renovate app a ruleset bypass. It covers all of the bot's pull requests, so major versions are then held by `automerge: false` rather than by GitHub, which makes the exclusion list load-bearing. An auto-approval workflow instead satisfies the rule literally while defeating its purpose, and puts back the per-repo privileged file Renovate removed.
+- **One maintainer (today):** no review requirement. The status check is the gate. With the requirement on, every automated merge sits in `BLOCKED` while checks show green.
+- **A second committer:** keep the requirement and give the Renovate app a ruleset bypass. Major versions are then held only by `automerge: false`, so the exclusion list matters more.
 
 ## What never automerges
 
-Every major version reaches a person. Beyond that:
+Every major version reaches a person. So do these.
 
-| Excluded | Why a person adds something |
+| Excluded | Why a person looks first |
 |---|---|
-| AdGuard Home | Its `Recreate` rollout plus `ctrl-1` resolving DNS through AdGuard itself means a cold image pull fails with `ImagePullBackOff`, and DNS stays down until a person fixes it. Run [/adguard-pre-pull](../../.claude/commands/adguard-pre-pull.md) first. |
-| SPIRE | The chart moves the server and a separate pin in [workload-identity-sidecar](https://github.com/cujarrett/workload-identity-sidecar) moves the agent binary, so the two can skew. Merging means checking the running server version. |
+| AdGuard Home | It rolls out with `Recreate`, and `ctrl-1` resolves DNS through AdGuard. A cold image pull fails with `ImagePullBackOff`, and DNS stays down until a person fixes it. Run [/adguard-pre-pull](../../.claude/commands/adguard-pre-pull.md) first |
+| SPIRE minor and major | Patches keep the same server version and automerge. The chart moves the server and the agent together. [workload-identity-sidecar](https://github.com/cujarrett/workload-identity-sidecar) talks to the agent through its own pinned `go-spiffe` library. Check the two still match before merging |
+| Federation minor (`apollographql/federation-rs`) | Check the PR router in `composition-pr.yaml` supports the new federation version |
+| A GitHub Action whose version tag moved to a new commit | A moved tag is how a hijacked action spreads. A person reads the new commit first |
 
-The test for adding a row is whether the person clicking merge does something CI and the cooldown do not. Crossplane, Istio, Kyverno, External Secrets and WordPress were all considered and left automated.
+Add a package here only if the person merging does something CI and the wait do not. Crossplane, Istio, Kyverno, External Secrets and WordPress stay automated.

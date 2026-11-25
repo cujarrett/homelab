@@ -1,24 +1,19 @@
 # Topic
 
-Crossplane composition that provisions a durable, persistent message stream.
-
-## What it provisions
-- **Message stream** - a named, durable channel that captures published events. Supports wildcards so a single stream can receive events from multiple subjects (e.g. `foo.events.>` captures `foo.events.created`, `foo.events.updated`, etc.).
-
-The `Subscription` type (see [`platform/subscription/`](../subscription/)) deploys consumer applications that subscribe to streams created by this XRD.
+A Topic is a durable message stream. Apps publish events to its subjects, and each [Subscription](../subscription/) reads them at its own pace. Wildcards let one stream catch many subjects, so `foo.events.>` catches `foo.events.created` and `foo.events.updated`.
 
 ## Parameters
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `streamName` | yes | - | Stream name (e.g. `FOO-TOPIC`). No spaces, dots, or wildcards. Uppercase is conventional. |
-| `subjects` | yes | - | List of subjects this stream captures. `*` matches one token, `>` matches all remaining tokens. e.g. `foo.events.*` matches `foo.events.created` but not `foo.events.user.created`; `foo.events.>` matches both. |
-| `retention` | no | `limits` | `limits` - remove oldest messages when size/age limits hit (~Kafka log retention). `interest` - remove when all consumers have read (~SNS fan-out). `workqueue` - remove when any one consumer acknowledges (~SQS). |
-| `maxAge` | no | `720h` | Go duration string. `720h` = 30 days. Empty string = unlimited. |
+| `streamName` | yes | - | Stream name, such as `FOO-TOPIC`. No spaces, dots or wildcards. Uppercase is the convention. |
+| `subjects` | yes | - | Subjects this stream catches. `*` matches one token. `>` matches all the rest. `foo.events.*` matches `foo.events.created` but not `foo.events.user.created`. `foo.events.>` matches both. |
+| `retention` | no | `limits` | `limits` drops the oldest messages at the size or age limit. `interest` drops a message once every consumer has read it. `workqueue` drops it once any one consumer acks it. |
+| `maxAge` | no | `720h` | Go duration. `720h` is 30 days. An empty string means no limit. |
 
-Replicas and max bytes are not configurable - the composition hardcodes 3 replicas (Raft across the NATS cluster) and unlimited max bytes.
+Every stream keeps 3 copies and has no size limit. Neither is configurable.
 
-## Example instance
+## Example
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
@@ -35,18 +30,18 @@ spec:
     maxAge: "720h"   # 30 days
 ```
 
-Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
+Instance files live in [`homelab-workspaces/`](https://github.com/cujarrett/homelab-workspaces).
 
-## Kafka / AWS equivalent concepts
+## Kafka and AWS equivalents
 
-| Topic parameter | NATS term | Kafka comparable | AWS comparable |
-|---|---|---|---|
-| `streamName` | Stream | Topic | Kinesis stream name |
-| `subjects` | Subjects (with wildcards) | Topic partitions filter | Kinesis shard filter |
-| `retention: limits` | Limits retention | `log.retention.ms` / `log.retention.bytes` | Kinesis retention period |
-| `retention: interest` | Interest retention | - | SNS (fan-out, remove when all consumers read) |
-| `retention: workqueue` | Workqueue retention | Compacted topic | SQS (remove on acknowledgement) |
-| `maxAge` | `max_age` (Go duration) | `log.retention.ms` | Kinesis retention hours |
+| Topic parameter | Kafka | AWS |
+|---|---|---|
+| `streamName` | Topic | Kinesis stream name |
+| `subjects` | Topic partitions filter | Kinesis shard filter |
+| `retention: limits` | `log.retention.ms` / `log.retention.bytes` | Kinesis retention period |
+| `retention: interest` | - | SNS (fan-out, remove when all consumers read) |
+| `retention: workqueue` | - | SQS (remove on acknowledgement) |
+| `maxAge` | `log.retention.ms` | Kinesis retention hours |
 
 ## Operations
 

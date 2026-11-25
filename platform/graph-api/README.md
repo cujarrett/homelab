@@ -1,12 +1,13 @@
 # GraphApi
 
-Crossplane composition that runs one team's subgraph and joins it to a federated graph. The team writes this file, and the schema inside the image is published from the running deployment. Nobody publishes by hand. The design is in [Platform Graph](../docs/graph.md).
+Runs one team's subgraph and joins it to a federated graph. The team writes this file. The platform publishes the schema from the running image, so nobody publishes by hand. The design is in [Platform Graph](../docs/graph.md).
 
 ## What it provisions
-- **Workload** - an `Api` with the same name, no `host`, so the router is the only way in. Sizing, mesh policy, metrics and identity come from `Api` unchanged.
-- **Subgraph registration** - the schema at `/schema.graphql` inside the image, read from the same digest the workload runs, published to the named graph's variant.
 
-The graph composes every subgraph in the namespace that names it. A change that breaks composition is refused and the router keeps serving the last good schema.
+- **Workload:** an `Api` with the same name and no `host`, so the router is the only way in. Sizing, mesh policy, metrics and identity work as in `Api`.
+- **Subgraph registration:** the schema at `/schema.graphql`, read from the same image digest the workload runs. It is published to the named graph's variant.
+
+A change that breaks composition is refused. The router keeps serving the last good schema.
 
 ## Parameters
 
@@ -17,7 +18,7 @@ The graph composes every subgraph in the namespace that names it. A change that 
 | `size` | no | `sm` | Compute tier. `xs`, `sm`, `md` or `lg`. |
 | `replicas` | no | `1` | Number of subgraph replicas. |
 
-Fixed by convention, never a field:
+The image must follow these fixed conventions. None of them is a field.
 
 | Convention | Value |
 |---|---|
@@ -44,7 +45,7 @@ spec:
 ## Operations
 
 ```bash
-# XR status - SYNCED=composition ran, READY=workload up and schema loaded
+# XR status. SYNCED=composition ran, READY=workload up and schema loaded
 kubectl get graphapi -n <namespace>
 
 # Was the schema read from the image, and which digest

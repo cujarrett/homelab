@@ -1,8 +1,10 @@
 # External Secrets
 
-Cluster-setup credentials live in AWS SSM Parameter Store under `/homelab/<namespace>/<name>`. ESO
-renders each into a Secret, mapped in [cluster/external-secrets/](../cluster/external-secrets/).
-Workload credentials and controller-generated TLS stay out.
+Cluster-setup credentials live in AWS SSM Parameter Store as `/homelab/<namespace>/<name>`. External Secrets Operator (ESO) renders each one into a Secret.
+
+- Mapping: [cluster/external-secrets/](../cluster/external-secrets/).
+- Left out: workload credentials and controller-generated TLS.
+- Hand edits to a rendered Secret are reverted within the hour.
 
 ## Rotating a credential
 
@@ -10,20 +12,19 @@ Workload credentials and controller-generated TLS stay out.
 
 ## Adding a credential
 
-Write the parameter with the rotate script, then add an `ExternalSecret`. A new namespace also needs adding to the store's `conditions`.
+Write the parameter with the rotate script, then add an `ExternalSecret`. A new namespace also goes in the store's `conditions`.
 
 ```bash
 scripts/rotate-secret/rotate-secret.sh /homelab/<ns>/<name>
 ```
 
-The script fails until the `ExternalSecret` exists, since nothing reads the value yet.
-
-Editing a rendered Secret by hand is reverted within the hour.
+The script still writes the value, but reports a failure until the `ExternalSecret` exists. Nothing reads the value before then.
 
 ## aws-eso-creds
 
-The one hand-created Secret, since ESO needs it to reach AWS. It can read every parameter, so it is
-the most sensitive key in the cluster. [Rotate Secret → AWS access keys](../scripts/rotate-secret/README.md#aws-access-keys) rotates it. Seed it on a rebuild:
+This is the one hand-created Secret, because ESO needs it to reach AWS. It can read every parameter, so it is the most sensitive key in the cluster. Rotate it with [Rotate Secret → AWS access keys](../scripts/rotate-secret/README.md#aws-access-keys).
+
+Seed it on a rebuild.
 
 ```bash
 umask 077 && mkdir -p local-only/eso
@@ -35,7 +36,7 @@ aws iam create-access-key --user-name eso-reader \
 && rm -P local-only/eso/key.txt
 ```
 
-`eso-reader` policy. `kms:ViaService` limits the wildcard to decrypts made through SSM.
+The `eso-reader` policy follows. `kms:ViaService` limits the wildcard to decrypts made through SSM.
 
 ```bash
 aws iam put-user-policy --user-name eso-reader --policy-name ESOReadHomelab --policy-document '{
@@ -51,10 +52,9 @@ aws iam put-user-policy --user-name eso-reader --policy-name ESOReadHomelab --po
 
 ## Not syncing
 
+A failed fetch leaves the existing Secret in place. On a fresh cluster, ESO must be healthy before Crossplane can sign in.
+
 ```bash
 kubectl get clustersecretstore aws-parameter-store   # Valid
 kubectl get externalsecret -A                        # SecretSynced
 ```
-
-A failed fetch leaves the existing Secret in place. On a fresh cluster, ESO must be healthy before
-Crossplane can authenticate.

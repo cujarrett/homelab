@@ -1,24 +1,18 @@
 # Subscription
 
-Provisions a durable message cursor on a Topic. Tracks delivery position across restarts so no messages are missed or replayed.
-
-This is infrastructure only - it does not deploy any compute. Use an Api instance with `subscriptionRef` to deploy the workload that reads from this cursor.
-
-## What it provisions
-
-- **Message cursor** - durable, named, position tracked across pod restarts
+A Subscription is a durable cursor on a Topic. It remembers its place across restarts, so no message is missed or replayed. It runs no code. Pair it with an `Api` that sets `subscriptionRef`.
 
 ## Parameters
 
 | Field | Required | Default | Description |
 |---|---|---|---|
-| `topicRef.name` | yes | - | `metadata.name` of the Topic to consume from. |
-| `topicRef.streamName` | no | - | NATS stream name from the Topic's `spec.parameters.streamName`. Defaults to `topicRef.name` uppercased. Set explicitly when the Topic's streamName differs from its metadata.name. |
-| `filterSubject` | no | `>` | Subject filter. `*` = one token, `>` = one or more. e.g. `foo.event.snapshot` |
-| `deliverPolicy` | no | `all` | `all` = replay from start. `new` = only new messages. `last` = most recent only. `lastPerSubject` = most recent per subject. |
-| `ackPolicy` | no | `explicit` | `explicit` = app must ack per message (at-least-once). `all` = cumulative ack. `none` = fire-and-forget. |
+| `topicRef.name` | yes | - | `metadata.name` of the Topic to read. |
+| `topicRef.streamName` | no | `topicRef.name` uppercased | The Topic's `streamName`. Set it when that differs from the uppercased Topic name. |
+| `filterSubject` | no | `>` | Subject filter, such as `foo.event.snapshot`. `*` matches one token. `>` matches one or more. |
+| `deliverPolicy` | no | `all` | `all` replays from the start. `new` sends only new messages. `last` sends the most recent. `lastPerSubject` sends the most recent per subject. |
+| `ackPolicy` | no | `explicit` | `explicit` means the app acks each message (at-least-once). `all` acks everything up to a message. `none` sends without acks. |
 
-Ack wait timeout is hardcoded at 30 seconds - unacked messages are redelivered after this interval. It is not configurable per subscription.
+Unacked messages come back after 30 seconds. That wait is fixed.
 
 ## Example
 
@@ -35,7 +29,7 @@ spec:
     filterSubject: "foo.event.>"
 ```
 
-Paired with an Api instance to deploy the workload:
+The paired Api runs the reader.
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1

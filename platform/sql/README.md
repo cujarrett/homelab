@@ -1,26 +1,20 @@
 # Sql
 
-Crossplane platform primitive that provisions a Postgres relational database and exposes connection details as a [servicebinding.io](https://servicebinding.io)-compliant Secret.
+A Sql is a Postgres database with its own lifecycle. An `Api` binds to it with `sqlRef.name` and gets its connection details as a [servicebinding.io](https://servicebinding.io) Secret.
 
-Standalone resource with a lifecycle independent of any one API. Bind to an `Api` via `sqlRef.name`.
+## Backends
 
-Only an `Api` that names a `private-cloud` database in `sqlRef` can connect to it. Every other caller is refused.
+- **`private-cloud`:** Postgres in the cluster, on a persistent volume. Only an `Api` that names it in `sqlRef` can connect.
+- **`public-cloud`:** AWS RDS Postgres with IAM database auth. The binding holds no password.
 
-## What it provisions
-- `backend: private-cloud` - **in-cluster Postgres** (Deployment + PVC on Longhorn) + binding Secret; no cloud resources
-- `backend: public-cloud` - **AWS RDS Postgres** + IAM Role + binding Secret; IAM DB auth; no password in the binding Secret
-
-> **Known limitation: `public-cloud` is not currently reachable from this cluster.** The RDS instance is created with `publiclyAccessible: false` and no explicit `dbSubnetGroupName`/security group, so it lands in the AWS account's default VPC. There is no network path (VPN, peering, or otherwise) between this homelab cluster and that VPC, so pods cannot open a connection to it - verified: the RDS hostname resolves only to a private VPC IP, and a raw TCP connection times out. Everything up to that point works correctly: the instance provisions, the IAM Role is created, and the sidecar successfully exchanges the pod's SVID for real STS credentials. The gap is purely network reachability, not identity or credentials. No current workload uses `public-cloud` for Sql - closing this would mean either making the instance internet-reachable and security-group-restricted (fixes only Sql; Cache's ElastiCache has no public-access option at all), or bridging into the VPC (e.g. a Tailscale subnet router running inside it, the same pattern already used for the homelab's own LAN) - worth doing only when a real workload needs it.
+> **`public-cloud` has no network path from this cluster.** The instance lands in a private AWS VPC. Provisioning and the credential exchange both work, but a pod cannot open a connection. No workload uses it today.
 
 ## Binding secret
 
-Secret name:
-- `public-cloud` → one secret per consumer: `{consumer}-sql` (e.g. `foo-api-sql`, `bar-api-sql`)
-- `private-cloud` → `{sql-name}`
+The Secret lands in the Sql's namespace and mounts at `/bindings/sql/`.
 
-Lands in the Sql's own namespace. Mounted at `/bindings/sql/` inside the container.
-
-Multiple consumers' secrets coexist in the same namespace but each Api's RBAC Role grants `get` only on its own named secrets - `foo-api`'s ServiceAccount cannot read `bar-api-sql`.
+- **`private-cloud` name:** `{sql-name}`.
+- **`public-cloud` name:** one per consumer, `{consumer}-sql`, such as `foo-api-sql`. Each Api can read only its own.
 
 | Key | Value | Backend |
 |---|---|---|
@@ -28,24 +22,28 @@ Multiple consumers' secrets coexist in the same namespace but each Api's RBAC Ro
 | `provider` | `in-cluster` or `aws` | all |
 | `host` | Database endpoint hostname | all |
 | `port` | `5432` | all |
-| `database` | Database name - the Sql name as-is (`private-cloud`) or with dashes replaced by underscores (`public-cloud`) | all |
-| `username` | Database user (`app`) | all |
+| `database` | The Sql name as-is (`private-cloud`), or with dashes turned to underscores (`public-cloud`) | all |
+| `username` | `app` | all |
 | `password` | Database password | `private-cloud` only |
 | `role-arn` | IAM role ARN | `public-cloud` only |
 
-**`public-cloud` auth flow:** No password is written to the binding Secret. The `workload-identity-sidecar` exchanges the pod's SVID for short-lived STS credentials. The app then calls `aws rds generate-db-auth-token` using those credentials to produce a short-lived RDS auth token, which it uses as the database password. No static password is stored anywhere accessible to the app.
+`public-cloud` sign-in works like this.
 
-> **Note: master password exists but is not app-visible.** The RDS instance requires a master password at creation time. The composition generates one deterministically from the XR UID and stores it outside the tenant namespace, where only the platform can read it. This is the RDS admin password - the app never sees it. The app authenticates via IAM DB auth only.
+1. The `workload-identity-sidecar` trades the pod's identity for short-lived AWS credentials.
+2. The app calls `aws rds generate-db-auth-token` with them.
+3. The app uses that token as the database password.
+
+RDS also needs an admin password. The platform keeps it in its own Secret, and the app never sees it.
 
 ## Parameters
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `backend` | no | `private-cloud` | `public-cloud` provisions AWS RDS Postgres; `private-cloud` provisions in-cluster Postgres. |
-| `size` | no | `sm` | T-shirt size for the RDS instance (public-cloud only): `xs=db.t4g.micro`, `sm=db.t4g.small`, `md=db.t4g.medium`, `lg=db.t4g.large` |
-| `dataRetention` | no | `delete` | Longhorn PVC reclaim (private-cloud only): `retain` (PVC survives XR deletion, data recoverable) or `delete` (PVC wiped on deletion, data unrecoverable). |
-| `storageSize` | yes | - | Size of the database storage, `1Gi` to `100Gi`, e.g. `1Gi`. `public-cloud` needs at least `20Gi`. Can be raised later but never lowered, so a lower value fails to apply. |
-| `consumerServiceAccounts` | public-cloud | - | List of Api names that will bind this database. Each entry gets its own IAM role and binding secret scoped to that SA's exact SPIFFE ID. Each entry must match an Api `metadata.name`. |
+| `backend` | no | `private-cloud` | `private-cloud` for in-cluster Postgres. `public-cloud` for AWS RDS Postgres. |
+| `size` | no | `sm` | RDS instance size, `public-cloud` only. `xs`: `db.t4g.micro`. `sm`: `db.t4g.small`. `md`: `db.t4g.medium`. `lg`: `db.t4g.large`. |
+| `dataRetention` | no | `delete` | `private-cloud` only. `retain` keeps the data after the XR is deleted. `delete` wipes it. |
+| `storageSize` | yes | - | `1Gi` to `100Gi`, such as `1Gi`. `public-cloud` needs at least `20Gi`. You can raise it later but never lower it. |
+| `consumerServiceAccounts` | `public-cloud` | - | Api names that bind this database. Each must match an Api `metadata.name` in the same namespace. Each gets its own IAM role and binding secret. |
 
 ## Example
 
@@ -76,48 +74,42 @@ spec:
       - foo-api   # each entry gets its own IAM role and binding secret
 ```
 
-Then reference from an `Api`:
+Then reference it from an `Api`.
 
 ```yaml
 spec:
   parameters:
     sqlRef:
       name: foo-db
+      backend: public-cloud   # only for a public-cloud Sql
 ```
 
-Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
+Instance files live in [`homelab-workspaces/`](https://github.com/cujarrett/homelab-workspaces).
 
 ## Public-cloud provisioning
 
-The `public-cloud` backend runs a multi-pass chain. The RDS instance and IAM Role are created in parallel on the first pass; subsequent steps wait for their prerequisites to appear in observed state.
+The database and the consumer roles come up first. Each binding secret follows once the database is ready.
 
-```
-Pass 1: RDS Instance created (iamDatabaseAuthenticationEnabled: true; master password from the platform-held master secret)
-        Per consumer in consumerServiceAccounts:
-          IAM Role created (trust policy StringEquals scoped to that SA's SPIFFE ID)
-Pass 2: Per consumer: Binding Secret written (deferred until RDS is ready)
-```
-
-**Trust policy scope.** Each consumer gets its own IAM role with a `StringEquals` trust policy scoped to `spiffe://homelab.local/ns/{namespace}/sa/{consumer}`. Multiple Apis can share one RDS instance - each declares itself in `consumerServiceAccounts` and gets an independent role and binding secret.
-
-Because Sql is standalone, consumer names must be declared upfront. Each consumer must match an Api `metadata.name` in the same namespace.
-
-The inline policy grants only `rds-db:connect` scoped to the `app` database user on any RDS instance in the account:
+| Topic | Detail |
+|---|---|
+| Roles | One per consumer. Each trusts only `spiffe://homelab.local/ns/{namespace}/sa/{consumer}`. |
+| Sharing | Many Apis can share one database. Each lists itself in `consumerServiceAccounts`. |
+| Permission | Only `rds-db:connect` as the `app` user. |
 
 ```json
 "Action": "rds-db:connect",
 "Resource": "arn:aws:rds-db:{region}:{account}:dbuser/*/app"
 ```
 
-For the full workload identity design: [Platform Workload Identity](../docs/workload-identity.md)
+See [Platform Workload Identity](../docs/workload-identity.md) for the full identity design.
 
-> **`skipFinalSnapshot: true`** The RDS instance is created without a final snapshot. Deleting the XR permanently destroys the data with no recovery path. Intentional for homelab cost management.
+> **Deleting the XR destroys the data.** RDS takes no final snapshot, so there is no recovery.
 
 ## Operations
 
 ```bash
 # XR status - SYNCED=composition ran, READY=all children healthy
-kubectl get sqls foo-db
+kubectl get sqls foo-db -n foo
 
 # Detailed conditions - shows exactly WHY something is not ready
 kubectl get sql foo-db -n foo -o jsonpath='{.status.conditions}' | python3 -m json.tool

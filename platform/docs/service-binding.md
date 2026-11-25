@@ -1,57 +1,23 @@
 # Platform Binding
 
-Kubernetes gave us CRDs to describe custom resources, and tools like [Crossplane](https://crossplane.io) turned them into a powerful way to provision infrastructure through APIs. You can declare what you want like S3 or RDS and the platform takes care of the rest.
-
-But there's still a gap in the experience: getting those provisioned credentials into the application without turning every team into accidental infrastructure plumbers.
-
-[Platform Binding](https://servicebinding.io) closes that gap by standardizing how credentials are delivered to workloads - consistently, predictably, as files mounted into the container where the app already lives.
+Crossplane provisions databases, caches and buckets. [Service binding](https://servicebinding.io) is how their connection details reach the app: as files mounted into the container. Every team reads them the same way, whatever backs the resource.
 
 [Fortune 100 Internal Developer Platform patterns, learned on a homelab. Nothing novel.](../../docs/nothing-novel.md)
 
 ## The servicebinding.io convention
 
-A "binding" is a directory mounted into the container at `$SERVICE_BINDING_ROOT/<binding-name>/`. Each file in that directory contains one value. The directory each kind mounts at, and the files in it, are in [Platform → Service binding](../README.md#service-binding).
+A binding is a directory mounted at `$SERVICE_BINDING_ROOT/<binding-name>/`. Each file holds one value. The mount path and files for each kind are in [Platform → Service binding](../README.md#service-binding).
 
-The app reads `os.ReadFile("/bindings/sql/host")` instead of `os.Getenv("DB_HOST")`. This is the invariant: regardless of which backend provisions the resource, the app always reads files from the same path. Whether the value behind `role-arn` came from an AWS-backed resource or `password` from an in-cluster one is a platform concern, not the app's.
+The app reads `os.ReadFile("/bindings/sql/host")`, not `os.Getenv("DB_HOST")`. The path stays the same whichever backend provisions the resource.
 
 ## How the Secret gets there
 
-Crossplane and every workload share this cluster - there is no separate platform cluster and no cross-cluster sync. The composition creates the binding Secret directly as a native Kubernetes composed resource using `function-go-templating`. For a resource with its own connection Secret (an RDS `Instance`, an ElastiCache `ReplicationGroup`), the go-templating step reads `.desired.composite.connectionDetails` and writes the final binding Secret in the app namespace, shaped to the table above. For an in-cluster resource with no upstream Secret (`private-cloud` Redis, `private-cloud` Postgres), the composition writes the binding Secret's values itself.
+Crossplane and every workload share one cluster. The composition writes the binding Secret into the app namespace with `function-go-templating`.
 
-The pod mounts it as a service binding volume:
+- **Resource with its own connection Secret** (an RDS `Instance`, an ElastiCache `ReplicationGroup`): the composition reads that resource's observed `connectionDetails` and reshapes it.
+- **In-cluster resource** (`private-cloud` Redis or Postgres): the composition writes the values itself.
 
-```yaml
-volumes:
-  - name: sql-binding
-    secret:
-      secretName: my-sql
-      optional: true
-volumeMounts:
-  - name: sql-binding
-    mountPath: /bindings/sql
-```
-
-No extra tooling required - the composition creates the Secret in the app namespace and it's immediately available.
-
-## What `role-arn` means instead of a password
-
-`ObjectStorage`, `NoSql`, and any `Sql` or `Cache` on `backend: public-cloud` never put a static AWS credential in the binding Secret at all - only an IAM Role ARN and resource metadata. The pod's [`workload-identity-sidecar`](https://github.com/cujarrett/workload-identity-sidecar) exchanges the pod's SPIFFE identity for real, hourly STS credentials at runtime and writes those to a separate volume, which the app reads through a named `AWS_PROFILE_*` environment variable. The binding Secret and the credential exchange are two different mechanisms - see [AWS credential binding](../README.md#aws-credential-binding) for the full flow.
-
-## Why init containers and `optional: true`
-
-The binding Secret doesn't exist until the cloud resource is fully provisioned. Without an init container the app would start immediately and crash or silently fail before credentials are available.
-
-The init container polls until the binding file exists:
-
-```yaml
-- name: wait-for-sql-binding
-  image: busybox:1.36
-  command: [sh, -c, "until [ -f /bindings/sql/type ]; do echo waiting; sleep 5; done"]
-```
-
-The first deploy takes as long as cloud provisioning. Subsequent pod restarts are immediate - the Secret already exists.
-
-The volume definition uses `optional: true`:
+The pod mounts it as a volume. `optional: true` lets the pod schedule before the Secret exists.
 
 ```yaml
 volumes:
@@ -59,15 +25,43 @@ volumes:
     secret:
       secretName: {name}-sql
       optional: true
+volumeMounts:
+  - name: sql-binding
+    mountPath: /bindings/sql
 ```
 
-This lets the pod schedule before the Secret exists. The init container is what actually enforces readiness - `optional: true` just prevents a scheduling deadlock.
+## What `role-arn` means instead of a password
+
+`ObjectStorage`, `NoSql`, and any `Sql` or `Cache` on `backend: public-cloud` never put an AWS credential in the binding. The Secret holds only an IAM role ARN and resource metadata.
+
+| Who | Does |
+|---|---|
+| The sidecar | [`workload-identity-sidecar`](https://github.com/cujarrett/workload-identity-sidecar) trades the pod's SPIFFE identity for hourly STS credentials |
+| The app | Reads them through a named `AWS_PROFILE_*` env var |
+
+The full flow is in [AWS credential binding](../README.md#aws-credential-binding).
+
+## Why init containers and `optional: true`
+
+The binding Secret exists only once the resource is provisioned. An init container holds the app until the binding file appears.
+
+```yaml
+- name: wait-for-sql-binding
+  image: busybox:1.38
+  command: [sh, -c, "until [ -f /bindings/sql/type ]; do echo waiting; sleep 5; done"]
+```
+
+| Item | Detail |
+|---|---|
+| `optional: true` | Lets the pod schedule. Without it the pod and Secret deadlock |
+| Init container | Enforces readiness |
+| First deploy | Takes as long as provisioning. Later restarts are immediate |
 
 ## Credential rotation
 
-Kubernetes keeps Secret volume mounts (non-`subPath`) in sync automatically. When a Secret is updated, the kubelet propagates the new file contents to running pods within about a minute - no pod restart required. This covers `password` on a `private-cloud` binding.
+The kubelet syncs Secret volume mounts (not `subPath`) to running pods within about a minute, with no restart. This covers `password` on a `private-cloud` binding.
 
-**The app is responsible for acting on the change.** If it reads binding files once at startup and holds the values in memory, it will keep using stale credentials until the pod restarts. To benefit from live rotation, read binding files on every use, not once at startup. Treat them like a config file, not a constructor argument.
+**Read binding files on every use, not once at startup.** An app that caches them keeps stale credentials until the pod restarts.
 
 ```go
 // Good - re-reads on every call
@@ -81,15 +75,12 @@ func getSQLConn() string {
 var conn = buildConn(os.ReadFile("/bindings/sql/host"))
 ```
 
-**Init containers don't help with rotation.** They only run at pod start. They gate initial credential availability but play no role after the pod is up.
-
-**`role-arn` bindings don't rotate this way at all.** The ARN itself never changes, so there is nothing in the binding Secret to sync. The credentials behind it rotate on their own schedule inside the sidecar - see [AWS credential binding](../README.md#aws-credential-binding).
+- **Init containers:** run only at pod start. They play no part in rotation.
+- **`role-arn` bindings:** the ARN never changes. The sidecar rotates the credentials behind it. See [AWS credential binding](../README.md#aws-credential-binding).
 
 ## `backend: private-cloud` vs `public-cloud`
 
-The composition is the only layer that knows what backs a binding. The app sees identical binding files regardless of whether `password` came from an in-cluster Postgres pod or `role-arn` from RDS.
-
-`Sql` and `Cache` both take a `backend` parameter:
+`Sql` and `Cache` take a `backend` parameter. The app sees the same binding files either way.
 
 ```yaml
 spec:
@@ -97,12 +88,11 @@ spec:
     backend: private-cloud   # or public-cloud
 ```
 
-`private-cloud` renders an in-cluster Deployment (Postgres or Redis) and writes the binding Secret directly, with the in-cluster Service DNS name as `host`. `public-cloud` renders the AWS resource and derives the binding Secret from its connection details. The init container pattern is identical either way - the `private-cloud` Secret just appears immediately, since there's no cloud provisioning to wait on.
+- **`private-cloud`:** an in-cluster Postgres or Redis Deployment. The binding Secret appears at once, with the Service DNS name as `host`.
+- **`public-cloud`:** the AWS resource. The binding Secret comes from its connection details once provisioning finishes.
 
 ## Manual wiring vs. the ServiceBinding operator
 
-There is a formal [servicebinding.io operator](https://github.com/servicebinding/runtime) that defines a `ServiceBinding` CRD. You point it at a Kubernetes Secret and a Deployment and it injects the volume mount automatically - no composition changes needed.
+The [servicebinding.io operator](https://github.com/servicebinding/runtime) has a `ServiceBinding` CRD that injects the volume mount for you. Here the composition does the wiring, so there is one source of truth and no extra operator. The operator also does not hold the app until the Secret exists.
 
-With manual wiring, the wiring lives in the Crossplane composition - one place of truth, no extra operator to install or manage. The init container readiness pattern (block the app until the Secret exists) is not something the ServiceBinding operator handles either way.
-
-The ServiceBinding operator is worth adopting when workloads are not managed by a Crossplane composition at all (plain Deployments deployed outside of platform abstractions).
+The operator fits workloads that no Crossplane composition manages, such as plain Deployments.

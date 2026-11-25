@@ -1,18 +1,19 @@
 # rotate-secret
 
-Every cluster credential has one paste block below. Run each from the homelab repo root.
+One paste block per cluster credential. Run each from the homelab repo root. The script writes the new value and checks the cluster has it.
 
-The script writes the new value and checks the cluster has it. It reads the value from a pipe, or prompts with echo off, so the value never lands in shell history or the process list.
-
-- `/homelab/...` values are in Parameter Store. The script waits until every Secret rendered from it holds the new value.
-- `platform/...` values are in Secrets Manager. Pods read them within 15 minutes, or at once when the block restarts them.
-- A last argument such as `blog/deployment/ghost` restarts that workload after the write.
-
-GitHub Actions secrets and App keys are in [GitHub Tokens](../../docs/github-tokens.md). The Launchpad token has its own checked script, [GitHub Token Rotate](../github-token-rotate/).
+| Case | What happens |
+|---|---|
+| Input | Comes from a pipe, or a prompt with echo off. The value never reaches shell history or the process list |
+| `/homelab/...` | Parameter Store. The script waits until every Secret built from it holds the new value |
+| `platform/...` | Secrets Manager. Pods read it within 15 minutes, or at once when the block restarts them |
+| Last argument, such as `blog/deployment/ghost` | Restarts that workload after the write |
+| GitHub Actions secrets and App keys | See [GitHub Tokens](../../docs/github-tokens.md) |
+| Launchpad token | Has its own checked script, [GitHub Token Rotate](../github-token-rotate/) |
 
 ## Pasted from a vendor page
 
-Regenerate the value on the page named, then run the block and paste it at the prompt.
+Regenerate the value on the page named. Then run its line and paste the value at the prompt.
 
 | Credential | Regenerate at |
 |---|---|
@@ -96,7 +97,7 @@ openssl rand -hex 32 | scripts/rotate-secret/rotate-secret.sh /homelab/monitorin
 
 ## Temporal Postgres password
 
-Postgres keeps its own copy, so the first command changes it there. Open connections stay up until the restart.
+Postgres keeps its own copy, so the second line changes it there. Open connections stay up until the restart.
 
 ```bash
 PW=$(openssl rand -hex 24)
@@ -107,7 +108,7 @@ kubectl rollout restart deployment -n temporal
 
 ## AWS access keys
 
-Each block makes a new key, writes it, then deletes the old one. IAM allows two keys per user, so a leftover second key makes `create-access-key` fail.
+Each block makes a new key, writes it, then deletes the old one. IAM allows two keys per user. A leftover second key makes `create-access-key` fail.
 
 ```bash
 OLD=$(aws iam list-access-keys --user-name crossplane-user --query 'AccessKeyMetadata[].AccessKeyId' --output text)
@@ -125,7 +126,7 @@ aws iam create-access-key --user-name aws-orphan-scanner --query 'AccessKey.[Acc
   && aws iam delete-access-key --user-name aws-orphan-scanner --access-key-id "$OLD"
 ```
 
-`eso-reader` is the key External Secrets itself signs in with, so it goes straight into its Secret. A forced sync of one ExternalSecret proves the new key works before the old one is deleted.
+`eso-reader` is the key External Secrets signs in with, so it goes straight into its Secret. A forced sync of one ExternalSecret proves the new key works before the old one is deleted.
 
 ```bash
 OLD=$(aws iam list-access-keys --user-name eso-reader --query 'AccessKeyMetadata[].AccessKeyId' --output text)

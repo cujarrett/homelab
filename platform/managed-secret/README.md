@@ -1,35 +1,33 @@
 # ManagedSecret
 
-Crossplane platform primitive for a value someone sets by hand in a cloud console - an API token, a webhook signing secret, a third-party credential - delivered to a pod as files. No value is ever committed to git, hand-created in the cluster, or stored as a Kubernetes Secret.
+A value someone sets by hand in a cloud console, such as an API token or a webhook signing secret. The pod gets it as files. The value never lands in git or in a Kubernetes Secret.
 
-Standalone resource, same-namespace only, like `ObjectStorage` and `NoSql`. Bind to an `Api` via `managedSecretRefs`.
-
-Kind is `ManagedSecret`, not `Secret` - avoids colliding with `kubectl get secret`, without narrowing to "credential" only, since a signing secret or encryption key fits too.
+It lives on its own in one namespace. Bind it to an `Api` with `managedSecretRefs`.
 
 ## What it provisions
 
-A cloud secret the owner sets the value of, holding one property per declared key. That is all.
-
-The identity and access to read it belong to the referencing `Api`, which creates them when the ref is declared, the same way it does for `objectStorageRefs`. Trust names the consuming pod, and a `ManagedSecret` does not know which pods those will be.
+An empty cloud secret. The owner sets the value, with one property per declared key. The referencing `Api` gets read access.
 
 ## Parameters
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `keys` | yes | - | Property names the value must carry. Each becomes one file in the pod. Declared so the owner knows what to set; nothing rejects a value missing one, so an app should check what it needs at startup |
-| `dataRetention` | no | `retain` | `retain` keeps the value recoverable for 7 days after the XR is deleted; `delete` purges it immediately and frees the name for reuse right away |
+| `keys` | yes | - | Property names the value must carry. Each becomes one file in the pod. Nothing rejects a value missing one, so the app should check what it needs at startup. |
+| `dataRetention` | no | `retain` | `retain` keeps the value recoverable for 7 days after the XR is deleted. `delete` purges it at once and frees the name for reuse. |
 
 ## How the value reaches a pod
 
-The pod proves who it is with a short-lived SVID, trades it for credentials scoped to this one secret, and the platform writes each property to a file. Nothing long-lived is stored, and the value never becomes a Kubernetes object. For the full design see [Platform Workload Identity](../docs/workload-identity.md).
-
-Files land at `/secrets/<name>/<key>`, one file per key.
+Each key lands at `/secrets/<name>/<key>`. The pod's short-lived identity unlocks this one secret, so nothing long-lived is stored. Full design: [Platform Workload Identity](../docs/workload-identity.md).
 
 ## Waiting for a value
 
-A `ManagedSecret` is created empty, because the owner sets the value out of band. The app container does not start until every `ManagedSecret` it references has a value. Until then the pod shows as not ready, and any earlier pod keeps serving.
+A `ManagedSecret` starts empty until the owner sets it. The app container waits to start until every `ManagedSecret` it references has a value.
 
-The pod waits up to an hour, then the sidecar restarts and the wait begins again. The reason is in the sidecar's logs:
+| Case | What happens |
+|---|---|
+| While waiting | The pod shows not ready. Any earlier pod keeps serving. |
+| After an hour | The sidecar restarts and the wait begins again. |
+| Why it waits | The sidecar's logs say. |
 
 ```bash
 kubectl logs <pod> -n <namespace> -c workload-identity-sidecar | grep waiting
@@ -37,9 +35,9 @@ kubectl logs <pod> -n <namespace> -c workload-identity-sidecar | grep waiting
 
 ## Setting and rotating the value
 
-The owner sets it in the cloud console. A rotated value reaches the files within 15 minutes without a pod restart, so read a file per use rather than caching it at startup.
+The owner sets it in the cloud console. A rotated value reaches the files within 15 minutes, with no pod restart. Read the file each time you use it rather than caching it at startup.
 
-Setting a value from a terminal instead needs care, since a secret passed as a command-line argument lands in shell history and is visible to `ps` - see [External Secrets](../../docs/external-secrets.md) for the staged-file handling this repo uses.
+To set a value from a terminal, see [Rotate Secret](../../scripts/rotate-secret/). A secret passed as a command-line argument lands in shell history and shows in `ps`.
 
 ## Example
 
@@ -54,7 +52,7 @@ spec:
     keys: [API_TOKEN, API_SECRET]
 ```
 
-Then reference from an `Api`:
+Then reference it from an `Api`:
 
 ```yaml
 spec:
@@ -64,18 +62,18 @@ spec:
 # The app reads /secrets/orders-credentials/API_TOKEN
 ```
 
-Instance files live in [`homelab-workspaces/`](../../../homelab-workspaces/).
+Instance files live in [`homelab-workspaces/`](https://github.com/cujarrett/homelab-workspaces).
 
 ## Operations
 
 ```bash
-# XR status - SYNCED=composition ran, READY=all children healthy
+# XR status. SYNCED=composition ran, READY=all children healthy
 kubectl get managedsecrets.platform.local.lab orders-credentials -n foo
 
-# Detailed conditions - shows exactly WHY something is not ready
+# Detailed conditions, showing why something is not ready
 kubectl get managedsecrets.platform.local.lab orders-credentials -n foo \
   -o jsonpath='{.status.conditions}' | python3 -m json.tool
 
-# Confirm the pod received every declared key, by name and size - never print a value
+# Confirm the pod received every declared key, by name and size. Never print a value
 kubectl exec <pod> -n foo -- ls -l /secrets/orders-credentials
 ```
