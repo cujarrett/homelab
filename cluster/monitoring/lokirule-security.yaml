@@ -18,6 +18,9 @@ data:
           # Same scanner path filter as the Probes answered panel on the Web Traffic dashboard.
           # probe: Alloy keeps these lines from every country and user agent, with no visitor fields.
           # The access stream holds US browsers only, so it would hide most scanners from this alert.
+          # The path words live in three more places, so change all four together.
+          # - platform/spa/composition.yaml: the $probe rule that answers 404
+          # - cluster/monitoring/alloy.yaml: the two stages that keep probe lines
           - alert: ScannerProbeAnswered
             expr: |
               sum by (host, path, status) (
