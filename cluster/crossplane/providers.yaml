@@ -11,18 +11,12 @@ spec:
           # Any node, ctrl-1 included. ctrl-1 reserves memory for k3s, see k3s-env.yaml.
           containers:
             - name: package-runtime
-              # Live heap is ~150Mi, but Go's default GC lets it grow to ~300Mi first.
-              # GOMEMLIMIT is soft, so a reconcile burst past it slows GC, not the pod.
-              env:
-                - name: GOMEMLIMIT
-                  value: 256MiB
-              # Providers request nothing by default while each holds 220-520Mi, so the
-              # scheduler counts them as free and stacks them on one node. 384Mi is the
-              # 7 day p95 across them. No limit, so a provider that briefly exceeds this
-              # is scheduled honestly, not killed.
+              # Providers request nothing by default, so the scheduler stacks them on one node.
+              # v2.10.0 holds ~240Mi of live heap, and Go's default GC grows it to ~2x that.
+              # No limit, so a provider past its request is scheduled honestly, not killed.
               resources:
                 requests:
-                  memory: 384Mi
+                  memory: 512Mi
 
 ---
 apiVersion: pkg.crossplane.io/v1beta1
