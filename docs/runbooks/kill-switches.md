@@ -1,6 +1,6 @@
 # Kill switches
 
-A bill is climbing. Kill the platform's key for that service first, then find the cause. Nothing new gets created or changed until the key works again.
+Something is going wrong. A bill is climbing, a key leaked, or a bad change is spreading. Kill the platform's key for that service first, then find the cause. Nothing new gets created or changed until the key works again.
 
 ## AWS
 
@@ -52,6 +52,53 @@ kubectl get workflowspaces.platform.local.lab -A -o jsonpath='{range .items[?(@.
 ```
 
 Delete each one, such as `kubectl delete workflowspace foo -n bar`. With the key killed, temporal-controller can't delete the Temporal Cloud side, so delete it in the console too.
+
+## Cloudflare
+
+Two tokens, one per job. Rolling a token kills the old value at once.
+
+| Token | Kill it at | While it is dead |
+|---|---|---|
+| cert-manager API token | [Cloudflare API tokens](https://dash.cloudflare.com/profile/api-tokens) → the token → Roll | Certificates stop renewing. Current ones work until they expire |
+| Tunnel token | Cloudflare dashboard → Networking → Tunnels → the tunnel → Overview → Refresh token | No new connector can join. Connectors already running keep serving |
+
+Refreshing leaves every open connection up, including one a stranger opened with the old token. Drop them all. Every public hostname goes offline until the undo.
+
+The prompt takes a Cloudflare API token with Account → Cloudflare Tunnel → Edit. Create one at [Cloudflare API tokens](https://dash.cloudflare.com/profile/api-tokens) → Create Token → Custom token, and delete it afterwards.
+
+```bash
+CREDS=$(kubectl get secret cloudflare-tunnel-token -n cloudflare -o jsonpath='{.data.tunnel-token}' | base64 -d | base64 -d)
+ACCOUNT_ID=$(jq -r .a <<<"$CREDS"); TUNNEL_ID=$(jq -r .t <<<"$CREDS"); unset CREDS
+read -rs CF_TOKEN
+curl -s -X DELETE "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/cfd_tunnel/$TUNNEL_ID/connections" \
+  -H "Authorization: Bearer $CF_TOKEN"; unset CF_TOKEN
+```
+
+Undo: paste the new value with the Cloudflare lines in [Rotate Secret](../../scripts/rotate-secret/README.md#pasted-from-a-vendor-page). The tunnel line restarts `cloudflared` with it.
+
+## Entra
+
+Turn off the sign-in Crossplane uses. Crossplane can no longer create or change Entra apps. Apps that already exist keep signing users in. Undo with `accountEnabled=true`.
+
+```bash
+APP=$(az ad app list --display-name crossplane-entra --query '[0].appId' -o tsv)
+az ad sp update --id "$APP" --set accountEnabled=false
+```
+
+A leaked secret needs a new one too. Follow [Rotate Secret → Entra client secret](../../scripts/rotate-secret/README.md#entra-client-secret).
+
+## GitHub
+
+Each row stops one thing that writes to a repo. Suspend an App at [Installed GitHub Apps](https://github.com/settings/installations) → the App → Configure → Suspend.
+
+| To stop | Do this | Undo |
+|---|---|---|
+| Renovate merging updates | Run [Automerge Stop](../../scripts/automerge-stop/) | Unsuspend Renovate on the same page |
+| Image tag bumps and Kargo promotions reaching `homelab-workspaces` | Suspend `homelab-workspaces-deployer` | Unsuspend it on the same page |
+| CI commits reaching `homelab` | Suspend `cujarrett-homelab-deployer` | Unsuspend it on the same page |
+| Launchpad writing guest sandbox directories | Regenerate `homelab-workspaces-launchpad` at [GitHub fine-grained tokens](https://github.com/settings/personal-access-tokens) and close the page | Run [GitHub Token Rotate](../../scripts/github-token-rotate/) |
+
+A leaked App key needs deleting too. Follow [GitHub Tokens → Revoking a key](../github-tokens.md#revoking-a-key).
 
 ## Public-cloud Sql, cache and workflow spaces
 

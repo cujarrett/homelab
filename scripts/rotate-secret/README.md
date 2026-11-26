@@ -21,7 +21,7 @@ Regenerate the value on the page named. Then run its line and paste the value at
 | Ghost Content API key | Ghost admin, Settings → Integrations → the backup integration |
 | Ghost SMTP password | [Google app passwords](https://myaccount.google.com/apppasswords) for cujarrett@gmail.com |
 | cert-manager Cloudflare token | [Cloudflare API tokens](https://dash.cloudflare.com/profile/api-tokens), Roll |
-| Cloudflare tunnel token | Cloudflare Zero Trust, Networks → Tunnels → the tunnel → Refresh token |
+| Cloudflare tunnel token | Cloudflare dashboard, Networking → Tunnels → the tunnel → Overview → Refresh token |
 | Alertmanager Discord webhook | Discord channel settings, Integrations → Webhooks |
 | Apollo operator keys | [Apollo org API keys](https://studio.apollographql.com/org/matt-jarretts-team-ms9dcawbqk44ps/api-keys), `homelab-test` and `homelab-prod`, Rotate. The old key works for one more day, so delete it once the operator restarts |
 | Kargo Apollo graph key | [storefront-homelab graph API keys](https://studio.apollographql.com/graph/storefront-homelab/variant/prod/settings/graph/api-keys), Create new key named `kargo`, then delete the old one |
