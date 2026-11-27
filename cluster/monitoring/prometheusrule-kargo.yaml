@@ -35,8 +35,10 @@ spec:
               > on (namespace)
             max by (namespace) (kargo_freight_created and on (namespace, freight) kargo_freight_current{stage="graph-prod"})
           for: 15m
+          # audience: workload marks an alert for the workload's owner, apart from cluster alerts.
+          # No severity label: InfoInhibitor mutes every severity="info" alert before Discord.
           labels:
-            severity: info
+            audience: workload
           annotations:
             dashboard_url: "https://kargo.local.lab/project/{{ $labels.namespace }}"
             summary: "Verified Freight in {{ $labels.namespace }} is waiting for promotion to graph-prod"

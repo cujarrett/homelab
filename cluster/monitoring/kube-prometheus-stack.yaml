@@ -132,11 +132,12 @@ spec:
           # survives. Keeps description alongside summary, unlike the old template.
           # No query link. Loki sends a relative URL, which Discord prints raw.
           # Prometheus sends an in-cluster URL, which no phone can open.
+          # audience="workload": gets its own title and badge, so it reads apart from cluster alerts.
           templateFiles:
             discord.tmpl: |
-              {{ define "discord.default.title" }}{{ if eq .Status "firing" }}🔴 FIRING{{ else }}✅ RESOLVED{{ end }}{{ if .GroupLabels.namespace }} · {{ .GroupLabels.namespace }}{{ end }} ({{ .Alerts | len }}){{ end }}
+              {{ define "discord.default.title" }}{{ if eq .CommonLabels.audience "workload" }}{{ if eq .Status "firing" }}📦 WORKLOAD · TO DO{{ else }}📦 WORKLOAD · DONE{{ end }}{{ else if eq .Status "firing" }}🔴 FIRING{{ else }}✅ RESOLVED{{ end }}{{ if .GroupLabels.namespace }} · {{ .GroupLabels.namespace }}{{ end }} ({{ .Alerts | len }}){{ end }}
 
-              {{ define "discord.default.message" }}{{ range .Alerts }}{{ if eq .Labels.severity "critical" }}🚨 `CRITICAL`{{ else if eq .Labels.severity "warning" }}⚠️ `WARNING`{{ else }}ℹ️ `INFO`{{ end }} **{{ .Labels.alertname }}**
+              {{ define "discord.default.message" }}{{ range .Alerts }}{{ if eq .Labels.audience "workload" }}📦 `WORKLOAD`{{ else if eq .Labels.severity "critical" }}🚨 `CRITICAL`{{ else if eq .Labels.severity "warning" }}⚠️ `WARNING`{{ else }}ℹ️ `INFO`{{ end }} **{{ .Labels.alertname }}**
               {{ with .Annotations.summary }}{{ . }}
               {{ end }}{{ with .Annotations.description }}> {{ . }}
               {{ end }}{{ with .Labels.pod }}`pod={{ . }}` {{ end }}{{ with .Labels.service }}`service={{ . }}` {{ end }}{{ with .Labels.node }}`node={{ . }}` {{ end }}{{ with .Labels.instance }}`instance={{ . }}` {{ end }}

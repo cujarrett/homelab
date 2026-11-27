@@ -33,15 +33,15 @@ data:
         {
           "id": 1,
           "type": "stat",
-          "title": "Firing",
-          "description": "Alerts firing now. Watchdog and InfoInhibitor are left out.",
+          "title": "Cluster Firing",
+          "description": "Cluster alerts firing now. Watchdog, InfoInhibitor and workload alerts are left out.",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
           "gridPos": {
             "h": 4,
-            "w": 5,
+            "w": 4,
             "x": 0,
             "y": 0
           },
@@ -89,7 +89,60 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "count(ALERTS{alertstate=\"firing\",alertname!~\"Watchdog|InfoInhibitor\"}) or vector(0)",
+              "expr": "count(ALERTS{alertstate=\"firing\",alertname!~\"Watchdog|InfoInhibitor\",audience!=\"workload\"}) or vector(0)",
+              "instant": true,
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "type": "stat",
+          "title": "Workload Firing",
+          "description": "Alerts for a workload's owner, such as a promotion waiting for a click. They carry the label audience=workload.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 3,
+            "x": 4,
+            "y": 0
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "blue"
+              },
+              "unit": "short",
+              "decimals": 0,
+              "mappings": []
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "count(ALERTS{alertstate=\"firing\",audience=\"workload\"}) or vector(0)",
               "instant": true,
               "refId": "A"
             }
@@ -106,8 +159,8 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 5,
-            "x": 5,
+            "w": 4,
+            "x": 7,
             "y": 0
           },
           "fieldConfig": {
@@ -171,8 +224,8 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 4,
-            "x": 10,
+            "w": 3,
+            "x": 11,
             "y": 0
           },
           "fieldConfig": {

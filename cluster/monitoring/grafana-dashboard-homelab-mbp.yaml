@@ -3145,7 +3145,7 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
+            "w": 3,
             "x": 12,
             "y": 29
           },
@@ -3170,13 +3170,67 @@ data:
           "pluginVersion": "13.2.3",
           "targets": [
             {
-              "expr": "count(ALERTS{alertstate=\"firing\",alertname!~\"Watchdog|InfoInhibitor\"}) or vector(0)",
+              "expr": "count(ALERTS{alertstate=\"firing\",alertname!~\"Watchdog|InfoInhibitor\",audience!=\"workload\"}) or vector(0)",
               "instant": true,
               "legendFormat": "",
               "refId": "A"
             }
           ],
-          "title": "Alerts Firing",
+          "title": "Cluster Alerts",
+          "type": "stat"
+        },
+        {
+          "fieldConfig": {
+            "defaults": {
+              "links": [
+                {
+                  "targetBlank": false,
+                  "title": "Alerts",
+                  "url": "/d/homelab-alerts/alerts"
+                }
+              ],
+              "color": {
+                "fixedColor": "blue",
+                "mode": "fixed"
+              },
+              "unit": "short",
+              "decimals": 0
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 3,
+            "x": 15,
+            "y": 29
+          },
+          "id": 934,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "13.2.3",
+          "targets": [
+            {
+              "expr": "count(ALERTS{alertstate=\"firing\",audience=\"workload\"}) or vector(0)",
+              "instant": true,
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Workload Alerts",
           "type": "stat"
         },
         {
@@ -3850,7 +3904,7 @@ data:
                 "uid": "cluster-availability-archive"
               },
               "editorMode": "code",
-              "expr": "time() - max_over_time((max(node_boot_time_seconds) and on() (max(node_boot_time_seconds) - min(node_boot_time_seconds) < 300))[365d:5m])",
+              "expr": "time() - max_over_time((max(node_boot_time_seconds) and on() (max(node_boot_time_seconds) - min(node_boot_time_seconds) < 300) and on() (count(max by (instance) (node_boot_time_seconds)) >= 4))[365d:5m])",
               "instant": true,
               "legendFormat": "Time Since Last Power Outage",
               "refId": "A"

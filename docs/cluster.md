@@ -244,6 +244,10 @@ More on some components:
   - Streams labelled `log_type="access"` (US visitors) and `log_type="sandbox"` (sandbox launches) keep 365 days for the visitor maps.
   - Query results are cached in-process and split by day. A repeat year-long query computes only today.
   - `argocd` makes about 60% of all log volume. Check it first if the PVC fills.
+- Alertmanager
+  - Cluster alerts tell the cluster's maintainer that something is wrong.
+  - Workload alerts tell a workload's owner that something waits for them, such as a Kargo promotion. They carry the label `audience: workload` and no `severity`.
+  - Discord shows a workload alert with a 📦 title. The dashboards count the two kinds in separate panels.
 - Alloy
   - Drops Traefik access log lines from non-US visitors, bots and scripts.
   - Replaces the visitor IP with a salted hash. The salt comes from `/homelab/monitoring/visitor-salt`.
