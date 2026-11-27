@@ -12,9 +12,9 @@ Alertmanager and Prometheus need auth on their hostnames, so query them through 
 
 ```bash
 S='/api/v1/namespaces/monitoring/services'
-k get --raw "$S/monitoring-kube-prometheus-alertmanager:9093/proxy/api/v2/alerts?active=true&silenced=false&inhibited=false" | jq -r '
-  .[] | select(.labels.alertname != "Watchdog")
-  | [.labels.severity, .labels.alertname, .startsAt[:16], (.annotations.summary // .annotations.description), (.labels | del(.alertname, .severity, .prometheus) | tostring)]
+k get --raw "$S/monitoring-kube-prometheus-alertmanager:9093/proxy/api/v2/alerts?active=true&silenced=false" | jq -r '
+  .[] | select(.labels.alertname | test("^(Watchdog|InfoInhibitor)$") | not)
+  | [(.labels.audience // "cluster"), .labels.severity, .labels.alertname, .startsAt[:16], (.annotations.summary // .annotations.description), (.labels | del(.alertname, .severity, .prometheus) | tostring)]
   | @tsv' | sort | column -t -s $'\t'
 k get --raw "$S/monitoring-kube-prometheus-prometheus:9090/proxy/api/v1/alerts" | jq -r '
   .data.alerts[] | select(.state == "pending") | [.labels.alertname, .activeAt[:16], (.labels | tostring)] | @tsv'
@@ -23,6 +23,8 @@ k get --raw "$S/monitoring-kube-prometheus-alertmanager:9093/proxy/api/v2/silenc
 ```
 
 - `Watchdog`: fires always, by design. Its absence is the finding.
+- Inhibited alerts are listed. `InfoInhibitor` mutes every `severity="info"` alert for Discord, and the dashboards still count it.
+- First column: `workload` is an alert for a workload's owner, labelled `audience: workload`. Everything else is `cluster`. Report the two groups apart.
 - Pending: the rule is true but its `for` wait has not passed. Triage it like a firing alert.
 - Silences: report one that ends within 3 days, because its alert comes back then.
 
