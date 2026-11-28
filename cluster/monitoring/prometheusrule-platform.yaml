@@ -24,6 +24,19 @@ spec:
               Check `k get {{ $labels.kind | toLower }} {{ $labels.name }} -n {{ $labels.exported_namespace }}`
               for its conditions, then `crossplane beta trace` for the composed resource that is not Ready.
 
+        # An XR can report Ready while a piece under it has failed.
+        - alert: PlatformManagedResourceNotReady
+          expr: platform_managed_ready{exported_namespace!~"guest-.*"} == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            dashboard_url: "https://grafana.local.lab/d/homelab-platform"
+            summary: "{{ $labels.kind }} {{ $labels.exported_namespace }}/{{ $labels.name }} has not been Ready for 15 minutes"
+            description: >-
+              A workload that depends on it may start with no credentials.
+              Run `k get managed -n {{ $labels.exported_namespace }}` and read the conditions on {{ $labels.name }}.
+
         # Fires when the last 6 hours of sandboxes start twice as slow as the 7-day median.
         # - 2x: normal api pod starts already range from 20 to 60s
         # - two sandboxes or more: one slow sandbox is the 1-minute backup's job
