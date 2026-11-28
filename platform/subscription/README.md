@@ -29,7 +29,7 @@ spec:
     filterSubject: "foo.event.>"
 ```
 
-The paired Api runs the reader.
+The paired Api runs the reader. It gets `NATS_URL` and `NATS_CONSUMER`. The app supplies the stream name itself, such as through `configFrom`.
 
 ```yaml
 apiVersion: platform.local.lab/v1alpha1
@@ -39,7 +39,7 @@ metadata:
   namespace: foo
 spec:
   parameters:
-    image: ghcr.io/example/foo-consumer:sha-abc123
+    image: ghcr.io/cujarrett/foo-consumer:sha-abc123
     subscriptionRef:
       name: foo-consumer
 ```

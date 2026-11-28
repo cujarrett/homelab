@@ -39,7 +39,7 @@ metadata:
 spec:
   parameters:
     graph: bar
-    image: ghcr.io/owner/foo@sha256:4f1c...
+    image: ghcr.io/cujarrett/foo@sha256:4f1c...
 ```
 
 ## Operations

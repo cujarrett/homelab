@@ -90,7 +90,7 @@ spec:
                       pattern: "^[A-Za-z0-9][A-Za-z0-9._/:@-]*$"
                       maxLength: 255
                       description: >-
-                        Container image (e.g. ghcr.io/owner/api:sha-abc123). Managed by CI -
+                        Container image (e.g. ghcr.io/cujarrett/api:sha-abc123). Managed by CI -
                         set on first create, then updated automatically on each merge to main.
                     repo:
                       type: string
@@ -197,7 +197,7 @@ spec:
                             type: string
                             pattern: "^[A-Za-z][A-Za-z0-9._-]*$"
                             maxLength: 120
-                            description: "Interface name (e.g. collection-write). Groups a set of routes under one grant, and becomes the Entra object a caller is granted."
+                            description: "Interface name (e.g. collection-write). Names one grant, and becomes the Entra object a caller is granted. A caller listed on any interface can reach every route. With auth workload or user, the app tells interfaces apart by the token claim."
                           auth:
                             type: string
                             # Required rather than defaulted - worth stating explicitly on
@@ -225,7 +225,7 @@ spec:
                     consumes:
                       type: array
                       maxItems: 10
-                      description: "Every destination this workload calls, including apps in its own namespace. Anything this XR creates itself (e.g. its own cache) is allowed automatically - do not list it. Set exactly one of host (off-platform), app plus namespace (on-platform), or entraApp (a registration the platform does not own)."
+                      description: "Every destination this workload calls, including apps in its own namespace. Anything this XR creates itself (e.g. its own cache) is allowed automatically - do not list it. Set exactly one of host (off-platform DNS name), address (off-platform IPv4), app plus namespace (on-platform), or entraApp (a registration the platform does not own)."
                       items:
                         type: object
                         x-kubernetes-validations:
@@ -247,7 +247,7 @@ spec:
                           protocol:
                             type: string
                             enum: [TLS, HTTP]
-                            description: "Wire protocol for host. TLS for any https:// destination - the app terminates its own TLS. HTTP only for plaintext destinations."
+                            description: "Wire protocol for host. TLS for any https:// destination - the app terminates its own TLS. HTTP only for plaintext destinations. Defaults to TLS when omitted."
                           address:
                             type: string
                             pattern: "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
@@ -256,7 +256,7 @@ spec:
                             type: string
                             pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
                             maxLength: 63
-                            description: "metadata.name of an Api in another namespace this calls. Use with namespace."
+                            description: "metadata.name of an Api this calls, in this namespace or another. Use with namespace."
                           namespace:
                             type: string
                             pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"

@@ -19,7 +19,7 @@ metadata:
   namespace: team-b
 spec:
   parameters:
-    image: ghcr.io/example/orders:sha-...
+    image: ghcr.io/cujarrett/orders:sha-...
     size: md
     host: orders.example.com
     configFrom: [orders-config]            # ConfigMaps
@@ -68,7 +68,7 @@ metadata:
   namespace: team-b
 spec:
   parameters:
-    image: ghcr.io/example/storefront:sha-...
+    image: ghcr.io/cujarrett/storefront:sha-...
     host: app.example.com
     publicConfig:
       FEATURE_X: "true"

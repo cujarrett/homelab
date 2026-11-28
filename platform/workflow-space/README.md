@@ -40,7 +40,7 @@ metadata:
   namespace: foo
 spec:
   parameters:
-    image: ghcr.io/foo/foo-worker:sha-abc123
+    image: ghcr.io/cujarrett/foo-worker:sha-abc123
     workflowSpaceRef:
       name: foo-workflows
 ```

@@ -6,9 +6,9 @@ Runs an API server, such as Go, Node or GraphQL. It binds to data resources and 
 
 | Resource | When | What |
 |---|---|---|
-| Workload | always | The API server, under its own service account. Startup waits for every binding. |
+| Workload | always | The API server, under its own service account. Startup waits for every binding. The container runs as user 65532 on a read-only filesystem, and only `/tmp` is writable. |
 | Service | always | Port 80 to the container `port`. Metrics on `metricsPort`, scraped by Prometheus. |
-| Route | `host` is set | HTTPS on `host`. A public host gets a rate limit. |
+| Route | `host` is set | HTTPS on `host`. A public host allows 60 requests a minute on average, burst of 20, per client IP. Every response carries `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'` and `X-Frame-Options: DENY`, so a browser renders no page from this host. |
 | Cache | `cache.enabled` is true | Created and deleted with this Api. |
 | Connection policy | always | Lets through only declared traffic. See [Platform Connections](../docs/connections.md). |
 | Entra identity | an interface sets `auth: workload` or `auth: user`, this API consumes another app, or it sets a `private-cloud` `workflowSpaceRef` | An Entra identity for this Api. See [App Configuration](../docs/app-configuration.md). |
@@ -25,14 +25,14 @@ The connection policy works like this.
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `image` | yes | - | Container image, such as `ghcr.io/owner/api:sha-abc123`. CI commits a new tag on each merge to main. |
+| `image` | yes | - | Container image, such as `ghcr.io/cujarrett/api:sha-abc123`. CI commits a new tag on each merge to main. |
 | `repo` | no | - | GitHub URL of the app's source. |
 | `port` | no | `8080` | Port the container listens on. The Service exposes it on 80. |
 | `metricsPort` | no | `9090` | Prometheus metrics port. Set it to `port` if one port serves both. |
 | `scrapeInterval` | no | `60s` | Metrics scrape interval. Lower it for short-lived state changes. |
 | `replicas` | no | `1` | Number of replicas. |
 | `size` | no | `sm` | Compute tier: `xs=25m/100m CPU, 32Mi/64Mi mem` · `sm=50m/200m CPU, 64Mi/128Mi mem` · `md=100m/500m CPU, 128Mi/256Mi mem` · `lg=250m/1000m CPU, 256Mi/512Mi mem`. |
-| `host` | no | - | Hostname clients call, under `local.lab` (homelab network) or `mattjarrett.dev` (internet). No route without it. |
+| `host` | no | - | Hostname clients call, under `local.lab` (homelab network) or `mattjarrett.dev` (internet). No route without it. A new public name needs the platform team to add it before it resolves. |
 | `callsClusterApi` | no | `false` | Set when this API calls the cluster's own control API, such as to watch platform resources. Keeps those long-lived connections direct. |
 | `readinessCheckPath` | no | `/healthz` | Readiness probe path. Use `/readyz` if readiness depends on outside services. |
 | `cache.enabled` | no | `false` | Create a cache owned by this Api. |
@@ -62,7 +62,7 @@ metadata:
   namespace: foo
 spec:
   parameters:
-    image: ghcr.io/owner/foo:main
+    image: ghcr.io/cujarrett/foo:main
     port: 8080
     host: foo.local.lab
     objectStorageRefs:

@@ -19,8 +19,8 @@ Your workspace owns the namespace through its `namespace.yaml`.
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `image` | yes | - | Container image, such as `ghcr.io/owner/app:sha-abc123`. CI builds on merge to main and commits the new tag back. |
-| `host` | yes | - | Hostname clients call, such as `foo.local.lab`. Use `local.lab` for the homelab network or `mattjarrett.dev` for the internet. |
+| `image` | yes | - | Container image, such as `ghcr.io/cujarrett/app:sha-abc123`. CI builds on merge to main and commits the new tag back. |
+| `host` | yes | - | Hostname clients call, such as `foo.local.lab`. Use `local.lab` for the homelab network or `mattjarrett.dev` for the internet. A new public name needs the platform team to add it before it resolves. |
 | `repo` | no | - | GitHub URL of the app's source. |
 | `size` | no | `sm` | nginx compute. `xs`: 25m/100m CPU, 32Mi/64Mi memory. `sm`: 50m/200m CPU, 64Mi/128Mi. `md`: 100m/500m CPU, 128Mi/256Mi. `lg`: 250m/1000m CPU, 256Mi/512Mi. |
 | `contentSecurityPolicy` | no | `default-src 'self'; frame-ancestors 'none'; base-uri 'self';` | CSP header. Add your app's origins, such as Google Fonts or external APIs. |
@@ -45,7 +45,7 @@ metadata:
   namespace: foo
 spec:
   parameters:
-    image: ghcr.io/owner/foo:sha-abc123
+    image: ghcr.io/cujarrett/foo:sha-abc123
     host: foo.local.lab
     apiProxies:
       - path: /api/

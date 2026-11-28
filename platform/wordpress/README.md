@@ -19,7 +19,7 @@ Your workspace owns the namespace through its `namespace.yaml`.
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
-| `host` | yes | - | Hostname clients call. Must match `siteurl` and `home` in the database. Changing it needs a database search-replace. |
+| `host` | yes | - | Hostname clients call. Must match `siteurl` and `home` in the database. Changing it needs a database search-replace. A new public name needs the platform team to add it before it resolves. |
 | `size` | no | `sm` | Compute for WordPress and MariaDB. See the size tiers below. |
 | `storageSize` | no | `10Gi` | `wp-content` volume size. |
 | `dbStorageSize` | no | `5Gi` | Database volume size. |
@@ -44,7 +44,7 @@ metadata:
   namespace: foo
 spec:
   parameters:
-    host: foo.example.com
+    host: foo.local.lab
     storageSize: "10Gi"
     dbStorageSize: "1Gi"
     size: sm
