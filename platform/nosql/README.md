@@ -46,7 +46,7 @@ spec:
     dataRetention: retain
 ```
 
-Every parameter is optional. An empty `parameters:` gives partition key `id` of type `S`.
+Every parameter is optional. An empty `parameters: {}` gives partition key `id` of type `S`.
 
 Then reference it from an `Api`:
 
