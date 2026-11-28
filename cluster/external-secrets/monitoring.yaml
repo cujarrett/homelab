@@ -12,6 +12,17 @@ spec:
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
+  name: alertmanager-discord-workload
+  namespace: monitoring
+spec:
+  secretStoreRef: {kind: ClusterSecretStore, name: aws-parameter-store}
+  data:
+    - secretKey: webhook-url
+      remoteRef: {key: /homelab/monitoring/discord-workload-webhook-url}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
   name: grafana-admin-secret
   namespace: monitoring
 spec:
