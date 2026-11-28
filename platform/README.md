@@ -85,7 +85,7 @@ Full design: [Platform Workload Identity](./docs/workload-identity.md).
 
 ## Environments and feature branches
 
-The namespace is the environment. Give each engineer or branch its own namespace. `foo-api` can then run in `foo-alice` and `foo-bob` at once. AWS names include the namespace, so the two never share anything.
+The namespace is the environment. Give each engineer or branch its own namespace. `foo-api` can then run in `foo-alice` and `foo-bob` at once. AWS names include the namespace, so the two never share anything. A new namespace needs the platform team to allow it before its first sync.
 
 | Resource | Name pattern | Example |
 |---|---|---|
