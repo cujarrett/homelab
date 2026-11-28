@@ -171,6 +171,29 @@ spec:
                 return {status = "Degraded", message = "Policy is not ready"}
               end
               return {status = "Healthy", message = "Policy is active"}
+            # Shows a platform XR as Healthy only when it is Ready and Synced.
+            # resource.customizations: the only key that takes a wildcard kind.
+            # useOpenLibs: lets the script call string.sub.
+            # Guest sandboxes: always Healthy, so their Spa starts without waiting for the Api.
+            resource.customizations: |
+              platform.local.lab/*:
+                health.lua.useOpenLibs: true
+                health.lua: |
+                  if string.sub(obj.metadata.namespace or "", 1, 6) == "guest-" then
+                    return {status = "Healthy", message = "Guest sandbox"}
+                  end
+                  local ready, synced
+                  for _, c in ipairs((obj.status or {}).conditions or {}) do
+                    if c.type == "Ready" then ready = c end
+                    if c.type == "Synced" then synced = c end
+                  end
+                  if synced ~= nil and synced.status == "False" then
+                    return {status = "Degraded", message = synced.message or "Not synced"}
+                  end
+                  if ready ~= nil and ready.status == "True" then
+                    return {status = "Healthy", message = "Ready"}
+                  end
+                  return {status = "Progressing", message = (ready and ready.message) or "Waiting for Ready"}
         # The repo server and Redis take requests with no auth, so only named callers reach ArgoCD.
         # argocd namespace: the components call each other.
         # kube-system Traefik: the UI and the GitHub webhooks.
