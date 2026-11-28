@@ -96,3 +96,10 @@ spec:
     - expression: "object.metadata.?annotations['argocd.argoproj.io/tracking-id'].orValue('').split(':')[0] == object.metadata.namespace"
       messageExpression: "object.kind + ' ' + object.metadata.name + ' is synced into ' + object.metadata.namespace + ' by another workspace. A workspace can only deploy into the namespace named after its directory.'"
       message: The resource is synced into this namespace by another workspace. A workspace can only deploy into the namespace named after its directory.
+    # A composition fix reaches only an XR that follows the newest revision.
+    # Older revisions stay in the cluster until the weekly pruner removes them.
+    - expression: >-
+        object.?spec.?crossplane.?compositionUpdatePolicy.orValue('Automatic') == 'Automatic' &&
+        !object.?spec.?crossplane.?compositionRevisionSelector.hasValue()
+      messageExpression: "object.kind + ' ' + object.metadata.name + ' must follow the newest composition revision. Remove compositionUpdatePolicy and compositionRevisionSelector.'"
+      message: The resource must follow the newest composition revision. Remove compositionUpdatePolicy and compositionRevisionSelector.
