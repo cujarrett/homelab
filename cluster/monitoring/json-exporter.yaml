@@ -54,6 +54,21 @@ spec:
                       vuln_id: '{.cveID}'
                     values:
                       listed: 1
+              # Any Shopify store serves a product's variants at <product page>.js.
+              # sku is the label to match on. The exporter prints the numeric id as a float.
+              # price is in cents.
+              shopify:
+                metrics:
+                  - name: shopify_variant
+                    type: object
+                    help: A product variant in a Shopify store.
+                    path: '{.variants[*]}'
+                    labels:
+                      sku: '{.sku}'
+                      variant: '{.title}'
+                    values:
+                      available: '{.available}'
+                      price_cents: '{.price}'
         serviceMonitor:
           enabled: true
           defaults:
@@ -73,6 +88,12 @@ spec:
               url: https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json
               module: kev
               interval: 1h
+              scrapeTimeout: 30s
+            # Homelab 2.0 nodes. A sold-out bundle can sell out again within hours, so it is checked every 5m.
+            - name: minisforum-ms-a2
+              url: https://store.minisforum.com/products/minisforum-ms-a2-workstation.js
+              module: shopify
+              interval: 5m
               scrapeTimeout: 30s
         resources:
           requests:

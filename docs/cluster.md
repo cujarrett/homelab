@@ -247,7 +247,8 @@ More on some components:
 - Alertmanager
   - Cluster alerts tell the cluster's maintainer that something is wrong.
   - Workload alerts tell a workload's owner that something waits for them, such as a Kargo promotion. They carry the label `audience: workload` and no `severity`.
-  - Discord shows a workload alert with a 📦 title. The dashboards count the two kinds in separate panels.
+  - Workload alerts post to the `#homelab-workload-alerts` Discord channel with a 📦 title. Cluster alerts keep the main channel. The dashboards count the two kinds in separate panels.
+  - `StoreItemInStock` watches the Minisforum store for the Homelab 2.0 node bundle. json-exporter reads the store's product data every 5 minutes.
 - Alloy
   - Drops Traefik access log lines from non-US visitors, bots and scripts.
   - Replaces the visitor IP with a salted hash. The salt comes from `/homelab/monitoring/visitor-salt`.
