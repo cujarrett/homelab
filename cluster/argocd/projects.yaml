@@ -96,6 +96,11 @@ spec:
     - {server: https://kubernetes.default.svc, namespace: "guest-*"}
   clusterResourceWhitelist:
     - {group: "", kind: Namespace}
+  # Workspaces may not own these namespaces.
+  # Kyverno's takeover check skips them.
+  clusterResourceBlacklist:
+    - {group: "", kind: Namespace, name: kyverno}
+    - {group: "", kind: Namespace, name: kube-system}
   namespaceResourceWhitelist:
     - {group: platform.local.lab, kind: "*"}
     - {group: "", kind: ConfigMap}
